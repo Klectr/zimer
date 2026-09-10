@@ -32,6 +32,14 @@ This is the most violated thing by new agents, so it's up front, not linked:
 - **Accent:** gold `#f2c14e` (primary), `#3a2a00` on-primary. Use sparingly:
   primary actions and active states only.
 - **Tonal, borderless fields.** Soft shadows, M3 shape scale (4/8/12/16/28px).
+- **Icons, never emoji/glyphs.** Actions use the `icon(name)` system in
+  `site/server.ts` (inline SVG, M3 outlined 24px, no icon font). Never use
+  emoji or text glyphs (🗑️, ✎, ▶, ←) as action icons.
+- **Text-field affixes.** Units and currency go in prefix/suffix affixes
+  (`$` … `/hr`), never crammed into the floating label.
+- **Selects are custom.** Native `<select>` keeps its OS arrow, which ignores
+  our radius — always `appearance: none` + the custom chevron (see
+  `docs/design-system.md`).
 - **No horizontal scrolling, ever.** Layouts must fit their container.
 - **Calendar conventions:** single-lane days showing tracked time only;
   entries are full-width, never side-by-side; overlaps get a soft upward
