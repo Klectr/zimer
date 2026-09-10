@@ -62,8 +62,20 @@ per-page:
   (see `statusPill` in `site/server.ts`).
 - **Icons:** inline SVG via `icon(name)` in `site/server.ts` — M3 outlined
   24px style (`stroke="currentColor"`, round caps/joins), no icon font or CDN.
-  Sizing: 20px leading in tabs, 18px in buttons, 24px in the extended FAB.
-  Icons are visual cues alongside labels, never the only affordance.
+  Sizing: 20px leading in tabs, 18px in buttons, 24px in the extended FAB,
+  24px in icon buttons. Icons are visual cues alongside labels, never the only
+  affordance. Destructive actions (delete) use the system `delete` icon in a
+  standard icon button with a hover tooltip — never emoji.
+- **Text-field affixes:** M3 text-field anatomy includes prefix/suffix in
+  `on-surface-variant`. Use `.has-prefix` / `.has-suffix` with `.affix.prefix`
+  / `.affix.suffix` spans (e.g. `$` … `/hr`) instead of cramming units into the
+  floating label. `.compact` gives a 40dp field for dense list rows.
+- **Manage forms:** `.manage-form` stacks the name field full-width over a
+  control row (`.manage-form-row`) whose primary action is end-aligned. The
+  form's submit is a **filled** button (highest emphasis = the form's primary
+  action); secondary row actions stay text buttons.
+- **Color control:** `.md-color-control` — M3 has no color picker, so ours is a
+  tonal container with a palette icon, "Color" label, and a circular swatch.
 - **Info callout:** `.form-info` — tonal container (`surface-container-highest`)
   with a leading icon for form-level helper text. Lives at the top of the form
   it describes, never floating between fields. No borders.

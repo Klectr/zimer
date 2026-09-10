@@ -244,13 +244,13 @@ h2.md-headline-small { margin: 24px 4px 12px; }
   border: none;
   background: transparent;
   color: var(--md-sys-color-on-surface-variant);
-  font-size: 22px;
   cursor: pointer;
   text-decoration: none;
   position: relative;
   overflow: hidden;
   flex: none;
 }
+.md-icon-button svg { width: 24px; height: 24px; }
 .md-icon-button:hover { color: var(--md-sys-color-on-surface); }
 .md-icon-button.danger:hover { color: var(--md-sys-color-error); }
 
@@ -298,24 +298,55 @@ h2.md-headline-small { margin: 24px 4px 12px; }
 .md-text-field input:focus + label { color: var(--md-sys-color-primary); }
 .md-text-field input[type="color"] { padding: 8px 16px; height: 56px; }
 
-/* color swatch field: fixed 56dp box, no floating label */
-.md-color-field {
-  width: 56px;
+/* prefix/suffix affixes (M3 text-field anatomy: prefix/suffix in on-surface-variant) */
+.md-text-field .affix {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 16px;
+  letter-spacing: 0.5px;
+  pointer-events: none;
+  z-index: 1;
+}
+.md-text-field .affix.prefix { left: 16px; }
+.md-text-field .affix.suffix { right: 16px; }
+.md-text-field.has-prefix input { padding-left: 32px; }
+.md-text-field.has-suffix input { padding-right: 46px; }
+.md-text-field.has-prefix label { left: 32px; }
+/* compact (40dp) field for dense rows */
+.md-text-field.compact input { height: 40px; padding-top: 8px; padding-bottom: 8px; font-size: 14px; }
+.md-text-field.compact .affix { font-size: 14px; }
+
+/* color control: tonal container with palette icon, label, and swatch */
+.md-color-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
   height: 56px;
-  flex: none;
-  padding: 8px;
+  padding: 8px 12px 8px 16px;
   background: var(--md-sys-color-surface-container-highest);
   border: none;
   border-radius: var(--md-sys-shape-corner-medium);
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.1px;
+  cursor: pointer;
+  flex: none;
 }
-.md-color-field input[type="color"] {
-  width: 100%;
-  height: 100%;
+.md-color-control svg { width: 20px; height: 20px; }
+.md-color-control input[type="color"] {
+  width: 36px;
+  height: 36px;
   border: none;
   padding: 0;
   background: none;
   cursor: pointer;
 }
+.md-color-control input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+.md-color-control input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
+.md-color-control input[type="color"]::-moz-color-swatch { border: none; border-radius: 50%; }
 
 /* ---------------- lists (expressive: rounded, inset dividers) ---------------- */
 .md-list {
@@ -496,8 +527,11 @@ h2.md-headline-small { margin: 24px 4px 12px; }
 .form { display: grid; gap: 16px; max-width: 480px; }
 .form .row { display: flex; gap: 8px; align-items: center; }
 .form .row.end { justify-content: flex-end; }
-.inline-form { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; align-items: flex-end; }
-.inline-form .grow { flex: 2; min-width: 180px; }
+/* stacked add-forms: name row, then a control row with the primary action end-aligned */
+.manage-form { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
+.manage-form-row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+.manage-form-row .grow { flex: 1; min-width: 140px; }
+.manage-form-spacer { flex: 1; }
 .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
 
 @media (max-width: 900px) {
@@ -586,10 +620,7 @@ h2.md-headline-small { margin: 24px 4px 12px; }
 .stripe-paid-chip { display: inline-block; margin-left: 8px; background: rgba(99,91,255,.18); color: #b3aeff;
   padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 500; vertical-align: middle; }
 
-.rate-form { display: inline-flex; align-items: center; gap: 4px; margin-right: 8px; }
-.rate-input { width: 72px; background: var(--md-sys-color-surface-container-highest); color: inherit;
-  border: none; border-radius: 8px; padding: 6px 8px; font: inherit; text-align: right; }
-.rate-input:focus { outline: 2px solid var(--md-sys-color-primary); }
+.rate-form { display: inline-flex; align-items: center; gap: 4px; margin-right: 4px; }
 
 /* ---------------- print ---------------- */
 @media print {

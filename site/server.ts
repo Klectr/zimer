@@ -134,6 +134,9 @@ const ICONS: Record<string, string> = {
   arrow_left: `<path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/>`,
   copy: `<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/>`,
   refresh: `<path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 3.5V8h-4.5"/>`,
+  delete: `<path d="M4 7h16"/><path d="M10 7V4.5h4V7"/><path d="M6.5 7l.9 13a1 1 0 0 0 1 .9h7.2a1 1 0 0 0 1-.9l.9-13"/><path d="M10 11v6M14 11v6"/>`,
+  edit: `<path d="M4 20h4l11-11a1.8 1.8 0 0 0-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/>`,
+  palette: `<path d="M12 3.5a8.5 8.5 0 1 0 0 17c1.4 0 1.9-.8 1.9-1.7 0-1.3-1.1-1.7-1.1-2.8 0-1.1.9-2 2.2-2h2.1a3.9 3.9 0 0 0 3.9-3.9c0-3.6-4-6.6-9-6.6z"/><circle cx="7.6" cy="11.4" r="1.2" fill="currentColor" stroke="none"/><circle cx="10.4" cy="7.6" r="1.2" fill="currentColor" stroke="none"/><circle cx="14.8" cy="7.6" r="1.2" fill="currentColor" stroke="none"/>`,
   info: `<circle cx="12" cy="12" r="9"/><path d="M12 11.5v5"/><circle cx="12" cy="8" r="1.1" fill="currentColor" stroke="none"/>`,
   play: `<path d="M8 5v14l11-7z" fill="currentColor" stroke="none"/>`,
   stop: `<rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor" stroke="none"/>`,
@@ -425,10 +428,10 @@ function entryRow(e: Entry): string {
     </div>
     <div class="md-list-item-trailing">
       <span class="dur">${dur}</span>
-      <a class="md-icon-button" href="/entries/${e.id}/edit" aria-label="Edit entry" title="Edit">✎</a>
+      <a class="md-icon-button" href="/entries/${e.id}/edit" aria-label="Edit entry" title="Edit">${icon("edit")}</a>
       <button class="md-icon-button danger" hx-delete="/entries/${e.id}"
         hx-target="#entry-${e.id}" hx-swap="outerHTML" hx-confirm="Delete this entry?"
-        aria-label="Delete entry" title="Delete">🗑</button>
+        aria-label="Delete entry" title="Delete">${icon("delete")}</button>
     </div>
   </li>`;
 }
@@ -857,44 +860,57 @@ function managePage(): string {
     <div class="two-col">
       <section>
         <h2 class="md-headline-small">Clients</h2>
-        <form method="post" action="/clients" class="inline-form">
-          <div class="md-text-field grow">
+        <form method="post" action="/clients" class="manage-form">
+          <div class="md-text-field">
             <input type="text" name="name" placeholder=" " required aria-label="Client name">
             <label>Client name</label>
           </div>
-          <div class="md-text-field shrink filled" style="max-width:110px">
-            <input type="number" name="rate" min="0" step="0.01" placeholder=" " aria-label="Hourly rate">
-            <label>$/hr</label>
+          <div class="manage-form-row">
+            <div class="md-text-field has-prefix has-suffix" style="max-width:172px">
+              <span class="affix prefix" aria-hidden="true">$</span>
+              <input type="number" name="rate" min="0" step="0.01" placeholder=" " aria-label="Hourly rate">
+              <label>Hourly rate</label>
+              <span class="affix suffix" aria-hidden="true">/hr</span>
+            </div>
+            <label class="md-color-control" title="Client color">
+              ${icon("palette")}
+              <span>Color</span>
+              <input type="color" name="color" value="#f2c14e" aria-label="Client color">
+            </label>
+            <span class="manage-form-spacer"></span>
+            <button class="md-filled-button" type="submit">${icon("add")}Add</button>
           </div>
-          <div class="md-color-field" title="Client color">
-            <input type="color" name="color" value="#f2c14e" aria-label="Client color">
-          </div>
-          <button class="md-tonal-button" type="submit">${icon("add")}Add</button>
         </form>
         ${clients.length ? `<ul class="md-list">${clients.map(c => `<li class="md-list-item" style="min-height:56px">
             <div class="md-list-item-content"><div class="md-list-item-headline"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${esc(c.color)};margin-right:8px"></span>${esc(c.name)}</div></div>
             <div class="md-list-item-trailing">
               <form method="post" action="/clients/${c.id}/rate" class="inline rate-form" title="Hourly rate">
-                <span class="muted tiny">$</span><input type="number" name="rate" value="${c.rate || ""}" min="0" step="0.01" placeholder="0" aria-label="Hourly rate for ${esc(c.name)}" class="rate-input"><span class="muted tiny">/hr</span>
+                <div class="md-text-field has-prefix has-suffix compact" style="width:104px">
+                  <span class="affix prefix" aria-hidden="true">$</span>
+                  <input type="number" name="rate" value="${c.rate || ""}" min="0" step="0.01" placeholder="0" aria-label="Hourly rate for ${esc(c.name)}">
+                  <span class="affix suffix" aria-hidden="true">/hr</span>
+                </div>
                 <button class="md-text-button" type="submit">Save</button>
               </form>
-              <form method="post" action="/clients/${c.id}/delete" class="inline"><button class="md-icon-button danger" hx-confirm="Delete client? Projects keep their entries." aria-label="Delete client ${esc(c.name)}" title="Delete">🗑</button></form>
+              <form method="post" action="/clients/${c.id}/delete" class="inline"><button class="md-icon-button danger" hx-confirm="Delete client? Projects keep their entries." aria-label="Delete client ${esc(c.name)}" title="Delete">${icon("delete")}</button></form>
             </div>
           </li>`).join("")}</ul>` : `<p class="muted">No clients yet.</p>`}
       </section>
       <section>
         <h2 class="md-headline-small">Projects</h2>
-        <form method="post" action="/projects" class="inline-form">
-          <div class="md-text-field grow">
+        <form method="post" action="/projects" class="manage-form">
+          <div class="md-text-field">
             <input type="text" name="name" placeholder=" " required aria-label="Project name">
             <label>Project name</label>
           </div>
-          <div class="md-text-field shrink filled">
-            <select name="client_id" aria-label="Client"><option value="">No client</option>
-              ${clients.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join("")}</select>
-            <label>Client</label>
+          <div class="manage-form-row">
+            <div class="md-text-field filled grow">
+              <select name="client_id" aria-label="Client"><option value="">No client</option>
+                ${clients.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join("")}</select>
+              <label>Client</label>
+            </div>
+            <button class="md-filled-button" type="submit">${icon("add")}Add</button>
           </div>
-          <button class="md-tonal-button" type="submit">${icon("add")}Add</button>
         </form>
         ${projects.length ? `<ul class="md-list">${projects.map(p => `<li class="md-list-item" style="min-height:56px">
             <div class="md-list-item-content">
@@ -902,7 +918,7 @@ function managePage(): string {
               ${p.client_name ? `<div class="md-list-item-supporting">${esc(p.client_name)}</div>` : ""}
             </div>
             <div class="md-list-item-trailing">
-              <form method="post" action="/projects/${p.id}/delete" class="inline"><button class="md-icon-button danger" hx-confirm="Delete project? Entries keep their history." aria-label="Delete project ${esc(p.name)}" title="Delete">🗑</button></form>
+              <form method="post" action="/projects/${p.id}/delete" class="inline"><button class="md-icon-button danger" hx-confirm="Delete project? Entries keep their history." aria-label="Delete project ${esc(p.name)}" title="Delete">${icon("delete")}</button></form>
             </div>
           </li>`).join("")}</ul>` : `<p class="muted">No projects yet.</p>`}
       </section>
