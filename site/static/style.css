@@ -537,6 +537,20 @@ h2.md-headline-small { margin: 24px 4px 12px; }
 .inv-dates { display: flex; gap: 32px; margin-bottom: 20px; }
 .inv-notes { margin-top: 16px; color: var(--md-sys-color-on-surface-variant); white-space: pre-wrap; }
 
+/* ---------------- invoice templates (milestone 2) ---------------- */
+.template-picker { display: flex; align-items: center; gap: 12px; margin: 4px 0 16px; }
+.tpl-options { display: flex; gap: 8px; }
+.tpl-option { border: none; background: var(--md-sys-color-surface-container-high); color: var(--md-sys-color-on-surface);
+  padding: 8px 18px; border-radius: 999px; font: inherit; font-size: 14px; cursor: pointer; }
+.tpl-option:hover { background: var(--md-sys-color-surface-container-highest); }
+.tpl-option.selected { background: var(--md-sys-color-primary); color: var(--md-sys-color-on-primary); font-weight: 500; }
+.inv-head-min { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 6px; }
+.inv-head-min .md-title-large { margin: 2px 0 4px; font-weight: 400; }
+.inv-dates-min { margin-bottom: 20px; }
+.template-minimal .md-table thead th { font-weight: 400; text-transform: none; letter-spacing: 0; font-size: 13px; }
+.template-minimal .md-table tbody tr { background: transparent; }
+.template-minimal .md-table tbody tr + tr { border-top: none; }
+
 .rate-form { display: inline-flex; align-items: center; gap: 4px; margin-right: 8px; }
 .rate-input { width: 72px; background: var(--md-sys-color-surface-container-highest); color: inherit;
   border: none; border-radius: 8px; padding: 6px 8px; font: inherit; text-align: right; }

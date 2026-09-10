@@ -9,7 +9,7 @@ import { Database } from "bun:sqlite";
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { mkdirSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve, normalize, sep } from "node:path";
-import { invoicePdf, isInvoiceTemplate } from "./pdf.ts";
+import { invoicePdf, isInvoiceTemplate, templateList } from "./pdf.ts";
 
 const PORT = Number(process.env.PORT || 3000);
 const DATA_DIR = process.env.DATA_DIR || resolve(import.meta.dir, "data");
@@ -997,7 +997,19 @@ function invoiceNewPage(p: NewInvParams, preview?: { items: any[]; emptyMsg?: st
 }
 
 /** /invoices/:id — printable detail with status actions. */
-function invoiceDetailPage(inv: Invoice & { items: InvoiceItem[] }): string {
+/** Template picker + invoice sheet, swapped live by HTMX when the template changes. */
+function templatePicker(inv: Invoice): string {
+  const opts = templateList().map(t => `
+    <button class="tpl-option${t.id === inv.template ? " selected" : ""}" type="button"
+      hx-post="/invoices/${inv.id}/template" hx-vals='{"template":"${t.id}"}'
+      hx-target="#invoice-doc" hx-swap="outerHTML" aria-pressed="${t.id === inv.template}">${esc(t.name)}</button>`).join("");
+  return `<div class="template-picker no-print">
+    <span class="md-label-medium muted">Template</span>
+    <div class="tpl-options" role="group" aria-label="Invoice template">${opts}</div>
+  </div>`;
+}
+
+function invoiceSheet(inv: Invoice & { items: InvoiceItem[] }): string {
   const t = invoiceTotals(inv.items, inv.tax_rate);
   const items = inv.items.map(it => `
     <tr>
@@ -1006,6 +1018,48 @@ function invoiceDetailPage(inv: Invoice & { items: InvoiceItem[] }): string {
       <td class="num">${money(it.rate)}</td>
       <td class="num">${money(it.amount)}</td>
     </tr>`).join("");
+  const client = inv.client_name ? esc(inv.client_name) : "<em>No client</em>";
+  const head = inv.template === "minimal" ? `
+      <div class="inv-head-min">
+        <div>
+          <div class="md-label-medium muted">Invoice</div>
+          <div class="md-title-large">${esc(inv.number)}</div>
+          <div class="muted">${client}</div>
+        </div>
+        <div class="inv-meta">${statusPill(inv.status)}</div>
+      </div>
+      <div class="muted tiny inv-dates-min">Issued ${esc(inv.issue_date)}${inv.due_date ? ` · due ${esc(inv.due_date)}` : ""}</div>` : `
+      <div class="inv-head">
+        <div>
+          <div class="md-headline-small">Invoice ${esc(inv.number)}</div>
+          <div class="muted">${client}</div>
+        </div>
+        <div class="inv-meta">${statusPill(inv.status)}</div>
+      </div>
+      <div class="inv-dates">
+        <div><span class="muted">Issued</span><br><strong>${esc(inv.issue_date)}</strong></div>
+        ${inv.due_date ? `<div><span class="muted">Due</span><br><strong>${esc(inv.due_date)}</strong></div>` : ""}
+      </div>`;
+  return `<div class="md-card invoice-sheet template-${esc(inv.template)}">
+      ${head}
+      <div class="table-wrap"><table class="md-table">
+        <thead><tr><th>Description</th><th class="num">Hours</th><th class="num">Rate</th><th class="num">Amount</th></tr></thead>
+        <tbody>${items || `<tr><td colspan="4" class="muted">No line items.</td></tr>`}</tbody>
+        <tfoot>
+          <tr><td colspan="3">Subtotal</td><td class="num">${money(t.subtotal)}</td></tr>
+          ${inv.tax_rate ? `<tr><td colspan="3">Tax (${inv.tax_rate}%)</td><td class="num">${money(t.tax)}</td></tr>` : ""}
+          <tr class="grand"><td colspan="3">Total due</td><td class="num">${money(t.total)}</td></tr>
+        </tfoot>
+      </table></div>
+      ${inv.notes ? `<p class="inv-notes">${esc(inv.notes)}</p>` : ""}
+    </div>`;
+}
+
+function invoiceDoc(inv: Invoice & { items: InvoiceItem[] }): string {
+  return `<div id="invoice-doc">${templatePicker(inv)}${invoiceSheet(inv)}</div>`;
+}
+
+function invoiceDetailPage(inv: Invoice & { items: InvoiceItem[] }): string {
   const next = inv.status === "draft" ? "sent" : inv.status === "sent" ? "paid" : null;
   const nextLabel = next === "sent" ? "Mark sent" : next === "paid" ? "Mark paid" : "";
   return layout(`Invoice ${inv.number}`, `
@@ -1022,29 +1076,7 @@ function invoiceDetailPage(inv: Invoice & { items: InvoiceItem[] }): string {
         </form>` : ""}
       </div>
     </div>
-    <div class="md-card invoice-sheet">
-      <div class="inv-head">
-        <div>
-          <div class="md-headline-small">Invoice ${esc(inv.number)}</div>
-          <div class="muted">${inv.client_name ? esc(inv.client_name) : "<em>No client</em>"}</div>
-        </div>
-        <div class="inv-meta">${statusPill(inv.status)}</div>
-      </div>
-      <div class="inv-dates">
-        <div><span class="muted">Issued</span><br><strong>${esc(inv.issue_date)}</strong></div>
-        ${inv.due_date ? `<div><span class="muted">Due</span><br><strong>${esc(inv.due_date)}</strong></div>` : ""}
-      </div>
-      <div class="table-wrap"><table class="md-table">
-        <thead><tr><th>Description</th><th class="num">Hours</th><th class="num">Rate</th><th class="num">Amount</th></tr></thead>
-        <tbody>${items || `<tr><td colspan="4" class="muted">No line items.</td></tr>`}</tbody>
-        <tfoot>
-          <tr><td colspan="3">Subtotal</td><td class="num">${money(t.subtotal)}</td></tr>
-          ${inv.tax_rate ? `<tr><td colspan="3">Tax (${inv.tax_rate}%)</td><td class="num">${money(t.tax)}</td></tr>` : ""}
-          <tr class="grand"><td colspan="3">Total due</td><td class="num">${money(t.total)}</td></tr>
-        </tfoot>
-      </table></div>
-      ${inv.notes ? `<p class="inv-notes">${esc(inv.notes)}</p>` : ""}
-    </div>`, "invoices");
+    ${invoiceDoc(inv)}`, "invoices");
 }
 
 function loginPage(): string {
@@ -1469,6 +1501,15 @@ Bun.serve({
       if (!ok) return new Response("Invalid status transition.", { status: 400 });
       db.query("UPDATE invoices SET status = ? WHERE id = ?").run(want, inv!.id);
       return new Response(null, { status: 302, headers: { Location: `/invoices/${inv!.id}` } });
+    }
+    m = path.match(/^\/invoices\/(\d+)\/template$/);
+    if (m && method === "POST") {
+      const form = await req.formData();
+      const tpl = String(form.get("template") || "");
+      if (!isInvoiceTemplate(tpl)) return new Response("Unknown template.", { status: 400 });
+      db.query("UPDATE invoices SET template = ? WHERE id = ?").run(tpl, Number(m[1]));
+      const inv = getInvoice(Number(m[1]));
+      return inv ? html(invoiceDoc(inv)) : new Response("Not found", { status: 404 });
     }
     m = path.match(/^\/invoices\/(\d+)\/delete$/);
     if (m && method === "POST") {
