@@ -154,7 +154,9 @@ function authedPage(req: Request): boolean {
 }
 
 /* ---------------- views ---------------- */
-function layout(title: string, body: string): string {
+function layout(title: string, body: string, active?: "timer" | "calendar" | "manage"): string {
+  const tab = (href: string, label: string, key: string) =>
+    `<a href="${href}" class="md-tab${active === key ? " active" : ""}"${active === key ? ` aria-current="page"` : ""}>${label}</a>`;
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -162,15 +164,20 @@ function layout(title: string, body: string): string {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(title)} · Timekeep</title>
 <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
 <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-<nav>
-  <a href="/" class="brand">⏱ Timekeep</a>
-  <a href="/">Timer</a>
-  <a href="/calendar">Calendar</a>
-  <a href="/manage">Clients &amp; Projects</a>
-  <a href="/logout" class="right">Log out</a>
+<header class="md-top-app-bar">
+  <span class="md-top-app-bar-title">⏱ Timekeep</span>
+  <span class="md-top-app-bar-spacer"></span>
+  <a class="md-text-button" href="/logout">Log out</a>
+</header>
+<nav class="md-tabs" aria-label="Primary">
+  ${tab("/", "Timer", "timer")}
+  ${tab("/calendar", "Calendar", "calendar")}
+  ${tab("/manage", "Clients & projects", "manage")}
 </nav>
 <main>${body}</main>
 </body>
@@ -188,22 +195,24 @@ function projectOptions(selected: number | null = null): string {
 
 function entryRow(e: Entry): string {
   const dur = fmtDur(durationSeconds(e.start_time, e.end_time));
-  const when = e.end_time ? `${fmtTime(e.start_time)} – ${fmtTime(e.end_time)}` : `${fmtTime(e.start_time)} – …`;
-  const dot = e.client_color ? `<span class="dot" style="background:${esc(e.client_color)}"></span>` : "";
-  const proj = e.project_name ? `<span class="proj">${dot}${esc(e.project_name)}${e.client_name ? ` · ${esc(e.client_name)}` : ""}</span>` : "";
+  const when = e.end_time ? `${fmtTime(e.start_time)} – ${fmtTime(e.end_time)}` : `${fmtTime(e.start_time)} – now`;
+  const chip = e.project_name
+    ? `<span class="md-chip">${e.client_color ? `<span class="dot" style="background:${esc(e.client_color)}"></span>` : ""}${esc(e.project_name)}</span>`
+    : "";
   const desc = e.description ? esc(e.description) : "<em>No description</em>";
-  return `<div class="entry" id="entry-${e.id}">
-    <div class="entry-main">
-      <div class="entry-desc">${desc}</div>
-      <div class="entry-meta">${proj}<span class="when">${esc(when)}</span></div>
+  return `<li class="md-list-item" id="entry-${e.id}">
+    <div class="md-list-item-content">
+      <div class="md-list-item-headline">${desc}</div>
+      <div class="md-list-item-supporting">${chip}<span>${esc(when)}${e.client_name && !e.project_name ? ` · ${esc(e.client_name)}` : ""}</span></div>
     </div>
-    <div class="entry-right">
+    <div class="md-list-item-trailing">
       <span class="dur">${dur}</span>
-      <a class="btn small" href="/entries/${e.id}/edit">Edit</a>
-      <button class="btn small danger" hx-delete="/entries/${e.id}"
-        hx-target="#entry-${e.id}" hx-swap="outerHTML" hx-confirm="Delete this entry?">✕</button>
+      <a class="md-icon-button" href="/entries/${e.id}/edit" aria-label="Edit entry" title="Edit">✎</a>
+      <button class="md-icon-button danger" hx-delete="/entries/${e.id}"
+        hx-target="#entry-${e.id}" hx-swap="outerHTML" hx-confirm="Delete this entry?"
+        aria-label="Delete entry" title="Delete">🗑</button>
     </div>
-  </div>`;
+  </li>`;
 }
 
 /** Timer card: running entry with live ticking, or the start form. */
@@ -211,11 +220,13 @@ function timerPartial(): string {
   const running = qRunning.get() as Entry | null;
   if (running) {
     const proj = running.project_name ? ` · ${esc(running.project_name)}` : "";
-    return `<div class="card running" id="timer-card">
-      <div class="timer-label">TRACKING${proj}</div>
-      <div class="timer-desc">${running.description ? esc(running.description) : "<em>No description</em>"}</div>
+    return `<div class="md-card tracking" id="timer-card">
+      <div class="timer-state-label">TRACKING${proj}</div>
+      <div class="md-title-medium">${running.description ? esc(running.description) : "No description"}</div>
       <div class="timer-elapsed" id="elapsed" data-start="${esc(running.start_time)}">…</div>
-      <button class="btn stop" hx-post="/timer/stop" hx-target="#timer-card" hx-swap="outerHTML">Stop</button>
+      <button class="md-extended-fab stop" hx-post="/timer/stop" hx-target="#timer-card" hx-swap="outerHTML">
+        <span class="fab-icon" aria-hidden="true">■</span>Stop
+      </button>
       <script>(function(){var el=document.getElementById('elapsed');if(!el)return;
         var s=new Date(el.dataset.start).getTime();
         function tick(){var d=Math.max(0,Date.now()-s);
@@ -224,12 +235,21 @@ function timerPartial(): string {
         tick();setInterval(tick,1000);})();</script>
     </div>`;
   }
-  return `<div class="card" id="timer-card">
-    <div class="timer-label">NOT TRACKING</div>
+  return `<div class="md-card" id="timer-card">
+    <div class="timer-state-label">TIMER</div>
+    <div class="md-title-medium muted">Nothing tracking</div>
     <form hx-post="/timer/start" hx-target="#timer-card" hx-swap="outerHTML" class="start-form">
-      <input type="text" name="description" placeholder="What are you working on?" autocomplete="off">
-      <select name="project_id"><option value="">No project</option>${projectOptions()}</select>
-      <button class="btn start" type="submit">Start</button>
+      <div class="md-text-field grow">
+        <input type="text" name="description" placeholder=" " autocomplete="off" aria-label="What are you working on?">
+        <label>What are you working on?</label>
+      </div>
+      <div class="md-text-field shrink filled">
+        <select name="project_id" aria-label="Project"><option value="">No project</option>${projectOptions()}</select>
+        <label>Project</label>
+      </div>
+      <button class="md-extended-fab" type="submit">
+        <span class="fab-icon" aria-hidden="true">▶</span>Start
+      </button>
     </form>
   </div>`;
 }
@@ -239,15 +259,15 @@ function todayPartial(): string {
   const entries = qRange.all(from, to) as Entry[];
   if (!entries.length) return `<p class="muted">Nothing tracked today yet.</p>`;
   const total = entries.reduce((a, e) => a + durationSeconds(e.start_time, e.end_time), 0);
-  return `<div class="day-total">Today: <strong>${fmtDur(total)}</strong></div>` +
-    entries.map(entryRow).join("");
+  return `<div class="day-total md-title-small">Today · <strong>${fmtDur(total)}</strong></div>
+    <ul class="md-list">${entries.map(entryRow).join("")}</ul>`;
 }
 
 function dashboardPage(): string {
   return layout("Timer", `
-    <div hx-get="/partial/timer" hx-trigger="load" hx-swap="outerHTML"><div class="card"><p class="muted">Loading…</p></div></div>
-    <h2>Today</h2>
-    <div id="today-list" hx-get="/partial/today" hx-trigger="load, timer-updated from:body"></div>`);
+    <div hx-get="/partial/timer" hx-trigger="load" hx-swap="outerHTML"><div class="md-card"><p class="muted">Loading…</p></div></div>
+    <h2 class="md-headline-small">Today</h2>
+    <div id="today-list" hx-get="/partial/today" hx-trigger="load, timer-updated from:body"></div>`, "timer");
 }
 
 /** Monday of the week containing dateStr (or today). Returns YYYY-MM-DD. */
@@ -279,15 +299,15 @@ function weekPartial(weekStr?: string): string {
     const [y, m, d] = day.split("-").map(Number);
     const label = new Date(y, m - 1, d).toLocaleDateString([], { weekday: "short", month: "numeric", day: "numeric" });
     cols.push(`<div class="day${day === todayStr() ? " today" : ""}">
-      <div class="day-head">${esc(label)}<span class="day-total">${fmtDur(total)}</span></div>
-      <div class="day-entries">${entries.map(entryRow).join("") || `<p class="muted tiny">—</p>`}</div>
+      <div class="day-head"><span class="md-title-small">${esc(label)}</span><span class="day-total tiny">${fmtDur(total)}</span></div>
+      ${entries.length ? `<ul class="md-list">${entries.map(entryRow).join("")}</ul>` : `<p class="muted tiny">—</p>`}
     </div>`);
   }
   return `<div id="week">
     <div class="week-nav">
-      <button class="btn small" hx-get="/partial/week?week=${prev}" hx-target="#week" hx-swap="outerHTML">← Prev</button>
-      <h2>${isThisWeek ? "This week" : `Week of ${esc(mon)}`} <span class="muted">· ${fmtDur(weekTotal)}</span></h2>
-      <button class="btn small" hx-get="/partial/week?week=${next}" hx-target="#week" hx-swap="outerHTML">Next →</button>
+      <button class="md-text-button" hx-get="/partial/week?week=${prev}" hx-target="#week" hx-swap="outerHTML">← Prev</button>
+      <h2 class="md-headline-small">${isThisWeek ? "This week" : `Week of ${esc(mon)}`} <span class="muted">· ${fmtDur(weekTotal)}</span></h2>
+      <button class="md-text-button" hx-get="/partial/week?week=${next}" hx-target="#week" hx-swap="outerHTML">Next →</button>
     </div>
     <div class="week-grid">${cols.join("")}</div>
   </div>`;
@@ -296,7 +316,7 @@ function weekPartial(weekStr?: string): string {
 function calendarPage(week?: string): string {
   const q = week ? `?week=${esc(week)}` : "";
   return layout("Calendar",
-    `<div hx-get="/partial/week${q}" hx-trigger="load" hx-swap="outerHTML"><p class="muted">Loading…</p></div>`);
+    `<div hx-get="/partial/week${q}" hx-trigger="load" hx-swap="outerHTML"><p class="muted">Loading…</p></div>`, "calendar");
 }
 
 function editPage(id: number): string | null {
@@ -308,15 +328,27 @@ function editPage(id: number): string | null {
     return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
   };
   return layout("Edit entry", `
-    <h2>Edit entry</h2>
+    <h2 class="md-headline-small">Edit entry</h2>
     <form method="post" action="/entries/${e.id}" class="form">
-      <label>Description<input type="text" name="description" value="${esc(e.description)}"></label>
-      <label>Project<select name="project_id"><option value="">No project</option>${projectOptions(e.project_id)}</select></label>
-      <label>Start<input type="datetime-local" name="start_time" value="${toLocal(e.start_time)}" required></label>
-      <label>End (blank = still running)<input type="datetime-local" name="end_time" value="${e.end_time ? toLocal(e.end_time) : ""}"></label>
+      <div class="md-text-field">
+        <input type="text" name="description" value="${esc(e.description)}" placeholder=" ">
+        <label>Description</label>
+      </div>
+      <div class="md-text-field filled">
+        <select name="project_id"><option value="">No project</option>${projectOptions(e.project_id)}</select>
+        <label>Project</label>
+      </div>
+      <div class="md-text-field filled">
+        <input type="datetime-local" name="start_time" value="${toLocal(e.start_time)}" required placeholder=" ">
+        <label>Start</label>
+      </div>
+      <div class="md-text-field filled">
+        <input type="datetime-local" name="end_time" value="${e.end_time ? toLocal(e.end_time) : ""}" placeholder=" ">
+        <label>End (blank = still running)</label>
+      </div>
       <div class="row">
-        <button class="btn start" type="submit">Save</button>
-        <a class="btn" href="/calendar">Cancel</a>
+        <button class="md-filled-button" type="submit">Save</button>
+        <a class="md-text-button" href="/calendar">Cancel</a>
       </div>
     </form>`);
 }
@@ -329,38 +361,68 @@ function managePage(): string {
   return layout("Clients & Projects", `
     <div class="two-col">
       <section>
-        <h2>Clients</h2>
+        <h2 class="md-headline-small">Clients</h2>
         <form method="post" action="/clients" class="inline-form">
-          <input type="text" name="name" placeholder="Client name" required>
-          <input type="color" name="color" value="#7c8aff" title="Color">
-          <button class="btn small" type="submit">Add</button>
+          <div class="md-text-field grow">
+            <input type="text" name="name" placeholder=" " required aria-label="Client name">
+            <label>Client name</label>
+          </div>
+          <div class="md-color-field" title="Client color">
+            <input type="color" name="color" value="#7c8aff" aria-label="Client color">
+          </div>
+          <button class="md-tonal-button" type="submit">Add</button>
         </form>
-        ${clients.map(c => `<div class="row-item"><span class="dot" style="background:${esc(c.color)}"></span>${esc(c.name)}
-          <form method="post" action="/clients/${c.id}/delete" class="inline"><button class="btn small danger" hx-confirm="Delete client? Projects keep their entries.">✕</button></form></div>`).join("") || `<p class="muted">No clients yet.</p>`}
+        ${clients.length ? `<ul class="md-list">${clients.map(c => `<li class="md-list-item" style="min-height:56px">
+            <div class="md-list-item-content"><div class="md-list-item-headline"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${esc(c.color)};margin-right:8px"></span>${esc(c.name)}</div></div>
+            <div class="md-list-item-trailing">
+              <form method="post" action="/clients/${c.id}/delete" class="inline"><button class="md-icon-button danger" hx-confirm="Delete client? Projects keep their entries." aria-label="Delete client ${esc(c.name)}" title="Delete">🗑</button></form>
+            </div>
+          </li>`).join("")}</ul>` : `<p class="muted">No clients yet.</p>`}
       </section>
       <section>
-        <h2>Projects</h2>
+        <h2 class="md-headline-small">Projects</h2>
         <form method="post" action="/projects" class="inline-form">
-          <input type="text" name="name" placeholder="Project name" required>
-          <select name="client_id"><option value="">No client</option>
-            ${clients.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join("")}</select>
-          <button class="btn small" type="submit">Add</button>
+          <div class="md-text-field grow">
+            <input type="text" name="name" placeholder=" " required aria-label="Project name">
+            <label>Project name</label>
+          </div>
+          <div class="md-text-field shrink filled">
+            <select name="client_id" aria-label="Client"><option value="">No client</option>
+              ${clients.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join("")}</select>
+            <label>Client</label>
+          </div>
+          <button class="md-tonal-button" type="submit">Add</button>
         </form>
-        ${projects.map(p => `<div class="row-item">${p.client_color ? `<span class="dot" style="background:${esc(p.client_color)}"></span>` : ""}${esc(p.name)}${p.client_name ? `<span class="muted"> · ${esc(p.client_name)}</span>` : ""}
-          <form method="post" action="/projects/${p.id}/delete" class="inline"><button class="btn small danger" hx-confirm="Delete project? Entries keep their history.">✕</button></form></div>`).join("") || `<p class="muted">No projects yet.</p>`}
+        ${projects.length ? `<ul class="md-list">${projects.map(p => `<li class="md-list-item" style="min-height:56px">
+            <div class="md-list-item-content">
+              <div class="md-list-item-headline">${p.client_color ? `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${esc(p.client_color)};margin-right:8px"></span>` : ""}${esc(p.name)}</div>
+              ${p.client_name ? `<div class="md-list-item-supporting">${esc(p.client_name)}</div>` : ""}
+            </div>
+            <div class="md-list-item-trailing">
+              <form method="post" action="/projects/${p.id}/delete" class="inline"><button class="md-icon-button danger" hx-confirm="Delete project? Entries keep their history." aria-label="Delete project ${esc(p.name)}" title="Delete">🗑</button></form>
+            </div>
+          </li>`).join("")}</ul>` : `<p class="muted">No projects yet.</p>`}
       </section>
-    </div>`);
+    </div>`, "manage");
 }
 
 function loginPage(): string {
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Log in · Timekeep</title><link rel="stylesheet" href="/static/style.css"></head>
-<body><main class="login"><h1>⏱ Timekeep</h1>
+<title>Log in · Timekeep</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="/static/style.css"></head>
+<body><main class="login">
+<div class="md-card" style="border-radius:28px;padding:28px">
+<h1 class="md-headline-small" style="margin-top:0">⏱ Timekeep</h1>
 <form method="post" action="/login" class="form">
-<label>API token<input type="password" name="token" autocomplete="off" required></label>
-<button class="btn start" type="submit">Log in</button>
+<div class="md-text-field">
+  <input type="password" name="token" autocomplete="off" required placeholder=" " aria-label="API token">
+  <label>API token</label>
+</div>
+<button class="md-filled-button" type="submit">Log in</button>
 <p class="muted tiny">Printed in the server log on first run, or set via TIMEKEEP_TOKEN.</p>
-</form></main></body></html>`;
+</form></div></main></body></html>`;
 }
 
 /* ---------------- server ---------------- */
