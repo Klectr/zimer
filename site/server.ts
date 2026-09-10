@@ -119,6 +119,29 @@ function fmtTime(iso: string): string {
   return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 }
 
+/* ---------------- icons: inline SVG, M3 outlined 24px style, no icon font ---------------- */
+const ICONS: Record<string, string> = {
+  timer: `<circle cx="12" cy="13" r="8"/><path d="M12 9.5V13l2.5 1.5"/><path d="M9.5 2.5h5"/><path d="M12 2.5V5.5"/>`,
+  calendar: `<rect x="3.5" y="5" width="17" height="16" rx="3"/><path d="M3.5 10h17"/><path d="M8 3v4M16 3v4"/>`,
+  group: `<circle cx="9" cy="8" r="3.5"/><path d="M3.5 19c.6-3 2.8-4.5 5.5-4.5s4.9 1.5 5.5 4.5"/><circle cx="16.8" cy="9" r="2.7"/><path d="M15.9 14.7c2.5.2 4.2 1.6 4.7 4.3"/>`,
+  receipt: `<path d="M6 3.5h12V21l-2-1.4-2 1.4-2-1.4-2 1.4-2-1.4L6 21z"/><path d="M9 8.5h6M9 12.5h6"/>`,
+  download: `<path d="M12 4v11"/><path d="M7.5 11l4.5 4.5L16.5 11"/><path d="M5 20h14"/>`,
+  check: `<path d="M5 12.5l4.5 4.5L19 7.5"/>`,
+  card: `<rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10.5h18"/><path d="M6.5 14.5h4"/>`,
+  add: `<path d="M12 5v14M5 12h14"/>`,
+  chevron_left: `<path d="M14.5 6l-6 6 6 6"/>`,
+  chevron_right: `<path d="M9.5 6l6 6-6 6"/>`,
+  arrow_left: `<path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/>`,
+  copy: `<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/>`,
+  refresh: `<path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 3.5V8h-4.5"/>`,
+  info: `<circle cx="12" cy="12" r="9"/><path d="M12 11.5v5"/><circle cx="12" cy="8" r="1.1" fill="currentColor" stroke="none"/>`,
+  play: `<path d="M8 5v14l11-7z" fill="currentColor" stroke="none"/>`,
+  stop: `<rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor" stroke="none"/>`,
+};
+function icon(name: keyof typeof ICONS): string {
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]}</svg>`;
+}
+
 function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString([], { month: "short", day: "numeric" });
 }
@@ -350,8 +373,8 @@ function authedPage(req: Request): boolean {
 
 /* ---------------- views ---------------- */
 function layout(title: string, body: string, active?: "timer" | "calendar" | "manage" | "invoices"): string {
-  const tab = (href: string, label: string, key: string) =>
-    `<a href="${href}" class="md-tab${active === key ? " active" : ""}"${active === key ? ` aria-current="page"` : ""}>${label}</a>`;
+  const tab = (href: string, label: string, key: string, ic: keyof typeof ICONS) =>
+    `<a href="${href}" class="md-tab${active === key ? " active" : ""}"${active === key ? ` aria-current="page"` : ""}>${icon(ic)}<span>${label}</span></a>`;
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -370,10 +393,10 @@ function layout(title: string, body: string, active?: "timer" | "calendar" | "ma
   <a class="md-text-button" href="/logout">Log out</a>
 </header>
 <nav class="md-tabs" aria-label="Primary">
-  ${tab("/", "Timer", "timer")}
-  ${tab("/calendar", "Calendar", "calendar")}
-  ${tab("/invoices", "Invoices", "invoices")}
-  ${tab("/manage", "Clients & projects", "manage")}
+  ${tab("/", "Timer", "timer", "timer")}
+  ${tab("/calendar", "Calendar", "calendar", "calendar")}
+  ${tab("/invoices", "Invoices", "invoices", "receipt")}
+  ${tab("/manage", "Clients & projects", "manage", "group")}
 </nav>
 <main${active ? ` class="page-${active}"` : ""}>${body}</main>
 </html>`;
@@ -420,7 +443,7 @@ function timerPartial(): string {
       <div class="md-title-medium">${running.description ? esc(running.description) : "No description"}</div>
       <div class="timer-elapsed" id="elapsed" data-start="${esc(running.start_time)}">…</div>
       <button class="md-extended-fab stop" hx-post="/timer/stop" hx-target="#timer-card" hx-swap="outerHTML">
-        <span class="fab-icon" aria-hidden="true">■</span>Stop
+        ${icon("stop")}Stop
       </button>
       <script>(function(){var el=document.getElementById('elapsed');if(!el)return;
         var s=new Date(el.dataset.start).getTime();
@@ -443,7 +466,7 @@ function timerPartial(): string {
         <label>Project</label>
       </div>
       <button class="md-extended-fab" type="submit">
-        <span class="fab-icon" aria-hidden="true">▶</span>Start
+        ${icon("play")}Start
       </button>
     </form>
   </div>`;
@@ -628,9 +651,9 @@ function weekGrid(weekStr?: string): string {
 
   return `<div id="week">
     <div class="week-nav">
-      <a class="md-text-button" href="/calendar?week=${prev}">← Prev</a>
+      <a class="md-text-button" href="/calendar?week=${prev}">${icon("chevron_left")}Prev</a>
       <h2 class="md-headline-small">${isThisWeek ? "This week" : `Week of ${esc(mon)}`} <span class="muted">· ${fmtDur(weekTotal)}</span></h2>
-      <a class="md-text-button" href="/calendar?week=${next}">Next →</a>
+      <a class="md-text-button" href="/calendar?week=${next}">Next${icon("chevron_right")}</a>
     </div>
     <p class="muted tiny cal-hint">Drag on the grid to log time. Click an entry to edit it.</p>
     <div class="cal-scroll">
@@ -846,7 +869,7 @@ function managePage(): string {
           <div class="md-color-field" title="Client color">
             <input type="color" name="color" value="#f2c14e" aria-label="Client color">
           </div>
-          <button class="md-tonal-button" type="submit">Add</button>
+          <button class="md-tonal-button" type="submit">${icon("add")}Add</button>
         </form>
         ${clients.length ? `<ul class="md-list">${clients.map(c => `<li class="md-list-item" style="min-height:56px">
             <div class="md-list-item-content"><div class="md-list-item-headline"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${esc(c.color)};margin-right:8px"></span>${esc(c.name)}</div></div>
@@ -871,7 +894,7 @@ function managePage(): string {
               ${clients.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join("")}</select>
             <label>Client</label>
           </div>
-          <button class="md-tonal-button" type="submit">Add</button>
+          <button class="md-tonal-button" type="submit">${icon("add")}Add</button>
         </form>
         ${projects.length ? `<ul class="md-list">${projects.map(p => `<li class="md-list-item" style="min-height:56px">
             <div class="md-list-item-content">
@@ -911,7 +934,7 @@ function invoicesPage(): string {
   return layout("Invoices", `
     <div class="page-head">
       <h2 class="md-headline-small">Invoices</h2>
-      <a class="md-filled-button" href="/invoices/new">+ New invoice</a>
+      <a class="md-filled-button" href="/invoices/new">${icon("add")}New invoice</a>
     </div>
     ${rows.length ? `<p class="muted">Outstanding: <strong>${money(outstanding)}</strong></p>` : ""}
     ${list}`, "invoices");
@@ -939,7 +962,7 @@ function invoiceNewPage(p: NewInvParams, preview?: { items: any[]; emptyMsg?: st
     <div class="md-card form-card">
       <h3 class="md-title-medium">1 · Pick unbilled time</h3>
       <div class="form-info">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11.5v5" stroke-linecap="round"/><circle cx="12" cy="8" r="1.1" fill="currentColor" stroke="none"/></svg>
+        ${icon("info")}
         <p>Only finished, unbilled entries on this client's projects are included. Client hourly rates can be set on the <a href="/manage">Clients &amp; projects page</a>.</p>
       </div>
       <form method="post" action="/invoices/preview" class="form">
@@ -1112,26 +1135,26 @@ function invoiceDetailPage(inv: Invoice & { items: InvoiceItem[] }): string {
       ${inv.stripe_payment_link ? `
         <span class="md-label-medium muted">Payment link</span>
         <input class="link-input" id="stripe-link-url" readonly value="${esc(inv.stripe_payment_link)}" onclick="this.select()" aria-label="Stripe payment link">
-        <button class="md-text-button" id="copy-stripe-link" type="button">Copy</button>
+        <button class="md-text-button" id="copy-stripe-link" type="button">${icon("copy")}<span>Copy</span></button>
         <form method="post" action="/invoices/${inv.id}/stripe-link" class="inline">
-          <button class="md-text-button" type="submit" title="Create a new payment link (replaces the old one)">Regenerate</button>
+          <button class="md-text-button" type="submit" title="Create a new payment link (replaces the old one)">${icon("refresh")}Regenerate</button>
         </form>
-        <script>(function(){var b=document.getElementById('copy-stripe-link');if(!b)return;b.addEventListener('click',function(){var i=document.getElementById('stripe-link-url');i.select();var done=function(){b.textContent='Copied';setTimeout(function(){b.textContent='Copy';},1500);};if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(i.value).then(done,done);}else{document.execCommand('copy');done();}});})();</script>`
+        <script>(function(){var b=document.getElementById('copy-stripe-link');if(!b)return;var lbl=b.querySelector('span');b.addEventListener('click',function(){var i=document.getElementById('stripe-link-url');i.select();var done=function(){lbl.textContent='Copied';setTimeout(function(){lbl.textContent='Copy';},1500);};if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(i.value).then(done,done);}else{document.execCommand('copy');done();}});})();</script>`
       : stripeConfigured() ? `
         <form method="post" action="/invoices/${inv.id}/stripe-link" class="inline">
-          <button class="md-filled-button" type="submit">Collect via Stripe</button>
+          <button class="md-filled-button" type="submit">${icon("card")}Collect via Stripe</button>
         </form>
         <span class="muted tiny">Creates a Stripe payment link for ${money(t.total)}.</span>` : `
         <span class="muted tiny">Set STRIPE_SECRET_KEY to collect via Stripe.</span>`}
     </div>`;
   return layout(`Invoice ${inv.number}`, `
     <div class="page-head no-print">
-      <a class="md-text-button" href="/invoices">← Invoices</a>
+      <a class="md-text-button" href="/invoices">${icon("arrow_left")}Invoices</a>
       <div class="row">
-        <a class="md-filled-button" href="/invoices/${inv.id}.pdf" download>Download PDF</a>
+        <a class="md-filled-button" href="/invoices/${inv.id}.pdf" download>${icon("download")}Download PDF</a>
         ${next ? `<form method="post" action="/invoices/${inv.id}/status" class="inline">
           <input type="hidden" name="status" value="${next}">
-          <button class="md-filled-button" type="submit">${nextLabel}</button>
+          <button class="md-filled-button" type="submit">${icon("check")}${nextLabel}</button>
         </form>` : ""}
         ${inv.status === "draft" ? `<form method="post" action="/invoices/${inv.id}/delete" class="inline">
           <button class="md-text-button danger" hx-confirm="Delete this draft invoice? Its entries become unbilled again.">Delete</button>

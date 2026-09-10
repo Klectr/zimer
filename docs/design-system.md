@@ -60,6 +60,10 @@ per-page:
   with outlines.
 - **Status pills:** invoice `draft / sent / paid` render as tonal pills
   (see `statusPill` in `site/server.ts`).
+- **Icons:** inline SVG via `icon(name)` in `site/server.ts` — M3 outlined
+  24px style (`stroke="currentColor"`, round caps/joins), no icon font or CDN.
+  Sizing: 20px leading in tabs, 18px in buttons, 24px in the extended FAB.
+  Icons are visual cues alongside labels, never the only affordance.
 - **Info callout:** `.form-info` — tonal container (`surface-container-highest`)
   with a leading icon for form-level helper text. Lives at the top of the form
   it describes, never floating between fields. No borders.
