@@ -1018,11 +1018,13 @@ function invoiceNewPage(p: NewInvParams, preview?: { items: any[]; emptyMsg?: st
   }
 
   return layout("New invoice", `
+    <div class="page-narrow">
     <div class="page-head">
       <h2 class="md-headline-small">New invoice</h2>
       <a class="md-text-button" href="/invoices">Cancel</a>
     </div>
-    ${step1}${step2}`, "invoices");
+    ${step1}${step2}
+    </div>`, "invoices");
 }
 
 /** /invoices/:id — printable detail with status actions. */

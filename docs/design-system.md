@@ -69,6 +69,16 @@ per-page:
 
 ## Patterns
 
+- **Page layout (M3).** Content pages (dashboard, calendar, invoices list) are
+  full-bleed and start-aligned. Focused task pages (forms like New invoice) use
+  a centered narrow body column — `.page-narrow`, 720px max — with content
+  inside start-aligned. Rationale, from the M3 spec site: layouts are built
+  from regions, and the body region is a centered container with flexible
+  margins/widths at larger breakpoints
+  ([canonical layouts](http://m3.material.io/foundations/layout/canonical-layouts),
+  [large-screen guidance](https://m3.material.io/blog/5-steps-large-screen-apps)).
+  Centering the column keeps a focused task visually contained; it does not
+  center the form's contents.
 - **No hard borders.** If you're reaching for `border:`, use a surface tone
   step or whitespace instead.
 - **No horizontal scrolling.** Tables and grids must fit; the calendar page is

@@ -536,6 +536,10 @@ h2.md-headline-small { margin: 24px 4px 12px; }
 /* ---------------- form cards: capped like the invoice sheet ---------------- */
 .md-card.form-card { max-width: 720px; }
 
+/* ---------------- focused task pages: centered narrow body column ---------------- */
+.page-narrow { max-width: 720px; margin-inline: auto; }
+.page-narrow .md-card.form-card { max-width: none; }
+
 /* ---------------- form info callout (tonal container + leading icon) ---------------- */
 .form-info { display: flex; gap: 12px; align-items: flex-start;
   background: var(--md-sys-color-surface-container-highest);
