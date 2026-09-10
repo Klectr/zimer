@@ -252,6 +252,26 @@ function revenueMonthly() {
   return months;
 }
 
+/** A3: per-client revenue (tax-inclusive), sorted by invoiced desc. */
+function revenueByClient() {
+  const rows = qRevenueRows.all() as RevenueRow[];
+  const map = new Map<number, { client_id: number; name: string; color: string | null; invoiced: number; paid: number }>();
+  for (const r of rows) {
+    if (r.client_id == null) continue;
+    const e = map.get(r.client_id) ?? {
+      client_id: r.client_id, name: r.client_name || "Unknown",
+      color: r.client_color, invoiced: 0, paid: 0,
+    };
+    const t = revenueTotal(r);
+    e.invoiced = round2(e.invoiced + t);
+    if (r.status === "paid") e.paid = round2(e.paid + t);
+    map.set(r.client_id, e);
+  }
+  return [...map.values()]
+    .map(e => ({ ...e, outstanding: round2(e.invoiced - e.paid) }))
+    .sort((a, b) => b.invoiced - a.invoiced);
+}
+
 /** Unbilled, finished entries for a client's projects inside [from, to). */
 function unbilledEntries(clientId: number, from: string, to: string) {
   return db.query(
@@ -462,7 +482,26 @@ function revenueChart(): string {
 function revenueSection(): string {
   if (revenueTotals().invoiced === 0)
     return `<p class="muted">No invoices yet — revenue will show up here.</p>`;
-  return revenueCards() + revenueChart();
+  return revenueCards() + revenueChart() + revenueClients();
+}
+
+/** A3: per-client revenue breakdown. */
+function revenueClients(): string {
+  const clients = revenueByClient();
+  if (!clients.length) return "";
+  const rows = clients.map(c => `
+    <li class="md-list-item">
+      <span class="rev-dot" style="background:${esc(c.color || "#f2c14e")}"></span>
+      <div class="md-list-item-content">
+        <div class="md-list-item-headline">${esc(c.name)}</div>
+        <div class="md-list-item-supporting">${money(c.paid)} paid · ${money(c.outstanding)} outstanding</div>
+      </div>
+      <div class="md-list-item-trailing"><span class="dur">${money(c.invoiced)}</span></div>
+    </li>`).join("");
+  return `<div class="md-card rev-clients-card">
+    <div class="md-title-medium rev-chart-title">By client</div>
+    <ul class="md-list">${rows}</ul>
+  </div>`;
 }
 
 /** Monday of the week containing dateStr (or today). Returns YYYY-MM-DD. */
@@ -1227,7 +1266,7 @@ Bun.serve({
       }
       /* ---- revenue API (milestone 1) ---- */
       if (path === "/api/revenue" && method === "GET")
-        return json({ totals: revenueTotals(), by_month: revenueMonthly() });
+        return json({ totals: revenueTotals(), by_month: revenueMonthly(), by_client: revenueByClient() });
       return json({ error: "not found" }, 404);
     }
 

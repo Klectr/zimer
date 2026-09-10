@@ -576,3 +576,6 @@ h2.md-headline-small { margin: 24px 4px 12px; }
 .rev-swatch { width: 12px; height: 12px; border-radius: 4px; display: inline-block; }
 .rev-swatch.paid { background: var(--md-sys-color-primary); }
 .rev-swatch.out { background: var(--md-sys-color-surface-container-highest); margin-left: 12px; }
+.rev-clients-card { padding: 16px 20px 8px; margin-top: 16px; }
+.rev-clients-card .md-list { margin-bottom: 8px; }
+.rev-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
