@@ -486,9 +486,9 @@ function todayPartial(): string {
 
 function dashboardPage(): string {
   return layout("Timer", `
-    <div hx-get="/partial/timer" hx-trigger="load" hx-swap="outerHTML"><div class="md-card"><p class="muted">Loading…</p></div></div>
     <div class="pane-layout">
-      <section class="pane-focus" aria-label="Today's entries">
+      <section class="pane-focus" aria-label="Timer and today's entries">
+        <div hx-get="/partial/timer" hx-trigger="load" hx-swap="outerHTML"><div class="md-card"><p class="muted">Loading…</p></div></div>
         <div class="scroll-region">
           <h2 class="md-headline-small">Today</h2>
           <div id="today-list" hx-get="/partial/today" hx-trigger="load, timer-updated from:body"></div>
