@@ -489,6 +489,7 @@ h2.md-headline-small { margin: 24px 4px 12px; }
 /* ---------------- forms / manage ---------------- */
 .form { display: grid; gap: 16px; max-width: 480px; }
 .form .row { display: flex; gap: 8px; align-items: center; }
+.form .row.end { justify-content: flex-end; }
 .inline-form { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; align-items: flex-end; }
 .inline-form .grow { flex: 2; min-width: 180px; }
 .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }

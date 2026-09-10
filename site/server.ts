@@ -965,7 +965,7 @@ function invoiceNewPage(p: NewInvParams, preview?: { items: any[]; emptyMsg?: st
           <div class="md-text-field filled"><input type="date" name="due_date" value="${esc(p.due_date)}" placeholder=" "><label>Due date</label></div>
         </div>
         <div class="md-text-field"><input type="text" name="notes" value="${esc(p.notes)}" placeholder=" "><label>Notes (optional)</label></div>
-        <div class="row"><button class="md-filled-button" type="submit">Preview line items</button></div>
+        <div class="row end"><button class="md-filled-button" type="submit">Preview line items</button></div>
       </form>
     </div>
     <script>(function(){
@@ -1011,7 +1011,7 @@ function invoiceNewPage(p: NewInvParams, preview?: { items: any[]; emptyMsg?: st
             </tfoot>
           </table></div>
           <p class="muted tiny">Amounts recalculate on save. Entries are marked billed when the invoice is created.</p>
-          <div class="row"><button class="md-filled-button" type="submit">Create invoice</button></div>
+          <div class="row end"><button class="md-filled-button" type="submit">Create invoice</button></div>
         </form>
       </div>`;
     }

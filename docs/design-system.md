@@ -63,6 +63,9 @@ per-page:
 - **Info callout:** `.form-info` — tonal container (`surface-container-highest`)
   with a leading icon for form-level helper text. Lives at the top of the form
   it describes, never floating between fields. No borders.
+- **Form actions:** submit rows use `.row.end` — buttons are end-aligned
+  (right in LTR), per the M3 dialog/action convention. Confirming action sits
+  farthest right when there are several.
 
 ## Patterns
 
