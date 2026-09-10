@@ -565,3 +565,14 @@ h2.md-headline-small { margin: 24px 4px 12px; }
 .rev-card { padding: 16px 20px; }
 .rev-card .md-title-large { margin-top: 4px; }
 .rev-paid { color: var(--md-sys-color-primary); }
+.rev-chart-card { padding: 16px 20px 12px; margin-top: 16px; }
+.rev-chart-title { margin-bottom: 8px; }
+.rev-chart { width: 100%; height: auto; display: block; }
+.rev-chart .bar-out { fill: var(--md-sys-color-surface-container-highest); }
+.rev-chart .bar-paid { fill: var(--md-sys-color-primary); }
+.rev-chart text { fill: var(--md-sys-color-on-surface-variant); font-size: 10px; }
+.rev-legend { display: flex; align-items: center; gap: 8px; margin-top: 8px;
+  color: var(--md-sys-color-on-surface-variant); font-size: 12px; }
+.rev-swatch { width: 12px; height: 12px; border-radius: 4px; display: inline-block; }
+.rev-swatch.paid { background: var(--md-sys-color-primary); }
+.rev-swatch.out { background: var(--md-sys-color-surface-container-highest); margin-left: 12px; }

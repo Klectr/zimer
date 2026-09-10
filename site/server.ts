@@ -229,6 +229,29 @@ function revenueTotals() {
   return { invoiced, paid, outstanding: round2(invoiced - paid) };
 }
 
+/** A2: trailing 12-month revenue (tax-inclusive), oldest → newest. */
+function revenueMonthly() {
+  const rows = qRevenueRows.all() as RevenueRow[];
+  const now = new Date();
+  const months: { month: string; label: string; invoiced: number; paid: number }[] = [];
+  for (let k = 11; k >= 0; k--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - k, 1);
+    months.push({
+      month: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
+      label: d.toLocaleDateString("en-US", { month: "short" }),
+      invoiced: 0, paid: 0,
+    });
+  }
+  for (const r of rows) {
+    const m = months.find(m => m.month === String(r.issue_date).slice(0, 7));
+    if (!m) continue;
+    const t = revenueTotal(r);
+    m.invoiced = round2(m.invoiced + t);
+    if (r.status === "paid") m.paid = round2(m.paid + t);
+  }
+  return months;
+}
+
 /** Unbilled, finished entries for a client's projects inside [from, to). */
 function unbilledEntries(clientId: number, from: string, to: string) {
   return db.query(
@@ -394,13 +417,12 @@ function dashboardPage(): string {
     <h2 class="md-headline-small">Today</h2>
     <div id="today-list" hx-get="/partial/today" hx-trigger="load, timer-updated from:body"></div>
     <h2 class="md-headline-small rev-heading">Revenue</h2>
-    ${revenueCards()}`, "timer");
+    ${revenueSection()}`, "timer");
 }
 
 /** A1: revenue stat cards (invoiced / paid / outstanding). */
 function revenueCards(): string {
   const t = revenueTotals();
-  if (t.invoiced === 0) return `<p class="muted">No invoices yet — revenue will show up here.</p>`;
   const card = (label: string, val: number, cls = "") => `
     <div class="md-card rev-card">
       <div class="md-label-medium muted">${label}</div>
@@ -411,6 +433,36 @@ function revenueCards(): string {
     ${card("Paid", t.paid, "rev-paid")}
     ${card("Outstanding", t.outstanding)}
   </div>`;
+}
+
+/** A2: trailing-12-month bar chart, hand-rolled SVG. Gold = paid, tonal = outstanding remainder. */
+function revenueChart(): string {
+  const months = revenueMonthly();
+  const max = Math.max(1, ...months.map(m => m.invoiced));
+  const W = 600, baseline = 190, areaH = 160, n = months.length;
+  const slot = W / n, bw = 30;
+  const bars = months.map((m, i) => {
+    const h = Math.round(m.invoiced / max * areaH);
+    const hp = m.invoiced > 0 ? Math.round(m.paid / m.invoiced * h) : 0;
+    const ho = h - hp;
+    const x = Math.round(i * slot + (slot - bw) / 2);
+    const cx = Math.round(i * slot + slot / 2);
+    return `<g><title>${esc(`${m.label}: ${money(m.paid)} paid of ${money(m.invoiced)} invoiced`)}</title>` +
+      (ho > 0 ? `<rect x="${x}" y="${baseline - h}" width="${bw}" height="${ho}" rx="4" class="bar-out"/>` : "") +
+      (hp > 0 ? `<rect x="${x}" y="${baseline - hp}" width="${bw}" height="${hp}" rx="4" class="bar-paid"/>` : "") +
+      `<text x="${cx}" y="${baseline + 18}" text-anchor="middle">${m.label}</text></g>`;
+  }).join("");
+  return `<div class="md-card rev-chart-card">
+    <div class="md-title-medium rev-chart-title">Last 12 months</div>
+    <svg class="rev-chart" viewBox="0 0 ${W} 215" role="img" aria-label="Monthly revenue, last 12 months">${bars}</svg>
+    <div class="rev-legend"><span class="rev-swatch paid"></span>Paid<span class="rev-swatch out"></span>Invoiced</div>
+  </div>`;
+}
+
+function revenueSection(): string {
+  if (revenueTotals().invoiced === 0)
+    return `<p class="muted">No invoices yet — revenue will show up here.</p>`;
+  return revenueCards() + revenueChart();
 }
 
 /** Monday of the week containing dateStr (or today). Returns YYYY-MM-DD. */
@@ -1174,7 +1226,8 @@ Bun.serve({
         }
       }
       /* ---- revenue API (milestone 1) ---- */
-      if (path === "/api/revenue" && method === "GET") return json({ totals: revenueTotals() });
+      if (path === "/api/revenue" && method === "GET")
+        return json({ totals: revenueTotals(), by_month: revenueMonthly() });
       return json({ error: "not found" }, 404);
     }
 
