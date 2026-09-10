@@ -375,7 +375,7 @@ function authedPage(req: Request): boolean {
 }
 
 /* ---------------- views ---------------- */
-function layout(title: string, body: string, active?: "timer" | "calendar" | "manage" | "invoices"): string {
+function layout(title: string, body: string, active?: "timer" | "calendar" | "manage" | "invoices", fixed?: boolean): string {
   const tab = (href: string, label: string, key: string, ic: keyof typeof ICONS) =>
     `<a href="${href}" class="md-tab${active === key ? " active" : ""}"${active === key ? ` aria-current="page"` : ""}>${icon(ic)}<span>${label}</span></a>`;
   return `<!DOCTYPE html>
@@ -389,7 +389,7 @@ function layout(title: string, body: string, active?: "timer" | "calendar" | "ma
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
 <link rel="stylesheet" href="/static/style.css">
 </head>
-<body${active === "calendar" ? ' class="cal-fixed"' : ""}>
+<body${fixed ? ' class="app-fixed"' : ""}>
 <header class="md-top-app-bar">
   <span class="md-top-app-bar-title">⏱ Timekeep</span>
   <span class="md-top-app-bar-spacer"></span>
@@ -487,10 +487,12 @@ function todayPartial(): string {
 function dashboardPage(): string {
   return layout("Timer", `
     <div hx-get="/partial/timer" hx-trigger="load" hx-swap="outerHTML"><div class="md-card"><p class="muted">Loading…</p></div></div>
+    <div class="scroll-region">
     <h2 class="md-headline-small">Today</h2>
     <div id="today-list" hx-get="/partial/today" hx-trigger="load, timer-updated from:body"></div>
     <h2 class="md-headline-small rev-heading">Revenue</h2>
-    ${revenueSection()}`, "timer");
+    ${revenueSection()}
+    </div>`, "timer", true);
 }
 
 /** A1: revenue stat cards (invoiced / paid / outstanding). */
@@ -821,7 +823,7 @@ function calScript(): string {
 }
 
 function calendarPage(week?: string): string {
-  return layout("Calendar", weekGrid(week), "calendar");
+  return layout("Calendar", weekGrid(week), "calendar", true);
 }
 
 function editPage(id: number): string | null {
@@ -864,6 +866,7 @@ function managePage(): string {
     `SELECT p.*, c.name AS client_name, c.color AS client_color FROM projects p
      LEFT JOIN clients c ON c.id = p.client_id ORDER BY p.name`).all() as any[];
   return layout("Clients & Projects", `
+    <div class="scroll-region">
     <div class="two-col">
       <section>
         <h2 class="md-headline-small">Clients</h2>
@@ -929,7 +932,8 @@ function managePage(): string {
             </div>
           </li>`).join("")}</ul>` : `<p class="muted">No projects yet.</p>`}
       </section>
-    </div>`, "manage");
+    </div>
+    </div>`, "manage", true);
 }
 
 function clientOptions(selected: number | null = null): string {
@@ -960,7 +964,7 @@ function invoicesPage(): string {
       <a class="md-filled-button" href="/invoices/new">${icon("add")}New invoice</a>
     </div>
     ${rows.length ? `<p class="muted">Outstanding: <strong>${money(outstanding)}</strong></p>` : ""}
-    ${list}`, "invoices");
+    <div class="scroll-region">${list}</div>`, "invoices", true);
 }
 
 type NewInvParams = {

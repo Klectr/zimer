@@ -449,19 +449,24 @@ h2.md-headline-small { margin: 24px 4px 12px; }
 /* M3 date-picker header pattern: headline leading, nav icon buttons grouped trailing. */
 .week-nav-actions { display: flex; align-items: center; gap: 4px; }
 .cal-hint { margin: 0 0 12px; }
-/* ---------------- calendar: fixed viewport, grid owns the scroll ----------------
- * Google Calendar pattern: the page never scrolls; the week grid is a
- * viewport-fitted region with its own vertical scroll and sticky day headers. */
-body.cal-fixed { height: 100vh; height: 100dvh; overflow: hidden; display: flex; flex-direction: column; }
-body.cal-fixed main.page-calendar {
+/* ---------------- fixed viewport: regions own the scroll (Google app pattern) ----
+ * Pages that opt in via layout(..., fixed=true) never scroll the page itself:
+ * body is a 100dvh flex column and exactly one region owns the vertical scroll.
+ * Document-like pages (invoice detail/new/edit entry) keep page scroll — the
+ * invoice detail must print. */
+body.app-fixed { height: 100vh; height: 100dvh; overflow: hidden; display: flex; flex-direction: column; }
+body.app-fixed main {
   flex: 1; min-height: 0; width: 100%;
   display: flex; flex-direction: column;
   padding-bottom: 16px;
 }
-body.cal-fixed #week { display: flex; flex-direction: column; flex: 1; min-height: 0; }
-body.cal-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
-body.cal-fixed .cal-day-head,
-body.cal-fixed .cal-gutter-spacer {
+/* the region that owns the scroll on fixed-viewport pages */
+.scroll-region { flex: 1; min-height: 0; overflow-y: auto; }
+/* calendar specifics: the week grid is the scroll region, headers stick */
+body.app-fixed #week { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
+body.app-fixed .cal-day-head,
+body.app-fixed .cal-gutter-spacer {
   position: sticky; top: 0; z-index: 5;
   background: var(--md-sys-color-surface);
 }

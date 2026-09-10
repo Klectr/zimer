@@ -111,10 +111,12 @@ per-page:
   (chevrons with "Previous/Next week" tooltips). A "Today" text button appears
   only when viewing a non-current week. Today is marked with a filled primary
   circle on the day number and a 10% primary tint on its lane.
-- **Calendar owns its scroll (Google Calendar pattern).** The calendar page is
-  a fixed viewport (`body.cal-fixed`): the page never scrolls; the week grid
-  is a flex-fitted region with its own vertical scroll, sticky day headers,
-  and scroll-to-now on load. Other pages keep normal page scrolling.
+- **Fixed viewport, regions own the scroll.** App pages (timer, calendar,
+  invoices list, manage) opt in via `layout(..., fixed=true)`: `body.app-fixed`
+  is a 100dvh flex column, the page never scrolls, and exactly one region owns
+  the vertical scroll (`.scroll-region`; the calendar's week grid instead).
+  Document-like pages (invoice detail, new/edit forms) keep page scroll — the
+  invoice detail must print.
 - **Charts:** hand-rolled SVG (no libraries). Distinguish series by tone/shade
   first, hue second.
 - **HTMX:** server-rendered partials swapped in place (`hx-post`/`hx-get`
