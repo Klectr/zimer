@@ -1,0 +1,57 @@
+# Timekeep
+
+Self-hostable time tracker — a Toggl alternative you own. Bun + HTMX site,
+lightweight Manifest V3 browser extension, one SQLite file for all your data.
+
+See [PLAN.md](PLAN.md) for the full plan (architecture, API contract, milestones).
+
+## Quickstart
+
+**Site** (needs [Bun](https://bun.sh)):
+
+```sh
+cd site
+bun server.ts
+# -> http://localhost:3000
+# First run prints your API token — save it, the extension needs it.
+```
+
+Open http://localhost:3000, paste the token on the login page.
+
+**Extension** (Chrome / Edge / Brave):
+
+1. Go to `chrome://extensions`, enable Developer mode.
+2. "Load unpacked" → select the `extension/` folder.
+3. Click the Timekeep icon → enter your site URL (e.g. `http://localhost:3000`)
+   and the API token → Save.
+4. Start/stop timers from the popup. They show up on the site's calendar.
+
+## Layout
+
+```
+timekeep/
+├── PLAN.md            # the plan: architecture, API, milestones
+├── site/
+│   ├── server.ts      # the whole backend: API + HTMX pages + SQLite
+│   └── static/
+│       └── style.css
+└── extension/
+    ├── manifest.json  # Manifest V3, no build step
+    ├── popup.html
+    └── popup.js       # vanilla JS: settings, start/stop, live elapsed
+```
+
+## Config (env vars)
+
+| Var              | Default        | What                          |
+|------------------|----------------|-------------------------------|
+| `PORT`           | `3000`         | HTTP port                     |
+| `DATA_DIR`       | `site/data`    | SQLite file + token live here |
+| `TIMEKEEP_TOKEN` | auto-generated | Shared secret for API + login |
+
+## Notes
+
+- Times are stored as UTC ISO strings; the site renders them in the server's
+  local timezone. If you host on a VPS in another timezone, set `TZ` for the
+  process (e.g. `TZ=America/Chicago bun server.ts`).
+- Back up `data/timekeep.db` — that's the entire app state.
