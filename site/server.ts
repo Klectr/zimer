@@ -35,7 +35,7 @@ db.exec(`
 CREATE TABLE IF NOT EXISTS clients (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
-  color TEXT NOT NULL DEFAULT '#7c8aff'
+  color TEXT NOT NULL DEFAULT '#f2c14e'
 );
 CREATE TABLE IF NOT EXISTS projects (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -282,7 +282,7 @@ function layout(title: string, body: string, active?: "timer" | "calendar" | "ma
   ${tab("/invoices", "Invoices", "invoices")}
   ${tab("/manage", "Clients & projects", "manage")}
 </nav>
-<main>${body}</main>
+<main${active ? ` class="page-${active}"` : ""}>${body}</main>
 </html>`;
 }
 
@@ -436,7 +436,7 @@ function weekGrid(weekStr?: string): string {
       .map(({ e, a, b }) => {
       const top = (a / 60) * CAL_HOUR_PX;
       const h = Math.max(((b - a) / 60) * CAL_HOUR_PX, 26);
-      const color = e.client_color || "#7c8aff";
+      const color = e.client_color || "#f2c14e";
       const running = !e.end_time;
       const overlap = sortedBlocks.some((o) => o.e !== e && o.a < b && o.b > a);
       const desc = e.description ? esc(e.description) : "<em>No description</em>";
@@ -685,7 +685,7 @@ function managePage(): string {
             <label>$/hr</label>
           </div>
           <div class="md-color-field" title="Client color">
-            <input type="color" name="color" value="#7c8aff" aria-label="Client color">
+            <input type="color" name="color" value="#f2c14e" aria-label="Client color">
           </div>
           <button class="md-tonal-button" type="submit">Add</button>
         </form>
@@ -1026,7 +1026,7 @@ Bun.serve({
       if (path === "/api/clients" && method === "POST") {
         if (!body.name) return json({ error: "name required" }, 400);
         const r = db.query("INSERT INTO clients (name, color, rate) VALUES (?, ?, ?) RETURNING *")
-          .get(String(body.name), String(body.color || "#7c8aff"), Number(body.rate) || 0) as any;
+          .get(String(body.name), String(body.color || "#f2c14e"), Number(body.rate) || 0) as any;
         return json(r, 201);
       }
       m = path.match(/^\/api\/clients\/(\d+)$/);
@@ -1200,7 +1200,7 @@ Bun.serve({
     if (path === "/clients" && method === "POST") {
       const form = await req.formData();
       db.query("INSERT INTO clients (name, color, rate) VALUES (?, ?, ?)")
-        .run(String(form.get("name")), String(form.get("color") || "#7c8aff"),
+        .run(String(form.get("name")), String(form.get("color") || "#f2c14e"),
              Number(form.get("rate") || 0));
       return new Response(null, { status: 302, headers: { Location: "/manage" } });
     }

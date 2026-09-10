@@ -2,15 +2,15 @@
  *
  * Tokens follow md.sys / md.comp naming from the M3 spec:
  * ref -> sys (these roles) -> comp (the classes below).
- * Seed: blue-violet (#7c8aff family). Dark scheme, tonal spot (no shadows).
+ * Seed: gold (#f2c14e family). Dark scheme, tonal spot (no shadows).
  */
 
 /* ---------------- sys tokens: color (dark) ---------------- */
 :root {
-  --md-sys-color-primary: #b9c3ff;
-  --md-sys-color-on-primary: #2b2f66;
-  --md-sys-color-primary-container: #464b8c;
-  --md-sys-color-on-primary-container: #e2e0ff;
+  --md-sys-color-primary: #f2c14e;
+  --md-sys-color-on-primary: #3a2a00;
+  --md-sys-color-primary-container: #6b4e12;
+  --md-sys-color-on-primary-container: #ffe9bd;
   --md-sys-color-secondary-container: #454654;
   --md-sys-color-on-secondary-container: #e4e1f2;
   --md-sys-color-error: #ffb4ab;
@@ -132,6 +132,7 @@ body {
 }
 
 main { max-width: 1000px; margin: 0 auto; padding: 24px 16px 96px; }
+main.page-calendar { max-width: 1360px; }
 main.login { max-width: 420px; margin-top: 8vh; }
 h2.md-headline-small { margin: 24px 4px 12px; }
 
@@ -404,7 +405,6 @@ h2.md-headline-small { margin: 24px 4px 12px; }
  * Separation comes from spacing (8px gutters) + tone (lane surfaces). */
 .cal-scroll { overflow-x: auto; border-radius: var(--md-sys-shape-corner-large); }
 .cal-grid {
-  min-width: 980px;
   display: grid;
   grid-template-columns: 54px repeat(7, minmax(0, 1fr));
   gap: 8px;
