@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  * { box-sizing: border-box; }
+  body { width: 320px; margin: 0; padding: 16px; font-family: -apple-system, "Segoe UI", sans-serif;
+         background: #101014; color: #e8e8ee; font-size: 14px; }
+  h1 { font-size: 16px; margin: 0 0 12px; }
+  .muted { color: #8a8a96; }
+  .tiny { font-size: 12px; }
+  input, select { width: 100%; background: #1a1a21; border: 1px solid #2a2a34; color: #e8e8ee;
+                  border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; font-size: 14px; }
+  button { width: 100%; border: none; border-radius: 8px; padding: 10px; font-size: 14px;
+           font-weight: 700; cursor: pointer; margin-top: 4px; }
+  button.start { background: #7c8aff; color: #0b0b10; }
+  button.stop { background: #ff6b6b; color: #0b0b10; }
+  button.ghost { background: transparent; border: 1px solid #2a2a34; color: #8a8a96; font-weight: 400; }
+  button:disabled { opacity: 0.5; cursor: default; }
+  .elapsed { font-size: 32px; font-variant-numeric: tabular-nums; margin: 4px 0 8px; }
+  .desc { font-weight: 600; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; }
+  .proj { color: #8a8a96; font-size: 12px; margin-bottom: 8px; }
+  .row { display: flex; gap: 8px; margin-top: 8px; }
+  .row button { margin-top: 0; }
+  .error { color: #ff6b6b; font-size: 12px; margin-top: 8px; }
+  .hidden { display: none; }
+  label { display: block; font-size: 12px; color: #8a8a96; margin-bottom: 4px; }
+</style>
+</head>
+<body>
+  <h1>⏱ Timekeep</h1>
+
+  <!-- settings -->
+  <div id="view-setup">
+    <p class="muted tiny">Point the extension at your self-hosted Timekeep server.</p>
+    <label>Site URL</label>
+    <input id="site-url" type="url" placeholder="http://localhost:3000" autocomplete="off">
+    <label>API token</label>
+    <input id="api-token" type="password" placeholder="paste token from server log" autocomplete="off">
+    <button id="btn-save" class="start">Save</button>
+    <div id="setup-error" class="error"></div>
+  </div>
+
+  <!-- main -->
+  <div id="view-main" class="hidden">
+    <div id="timer-running" class="hidden">
+      <div class="muted tiny">TRACKING</div>
+      <div class="desc" id="run-desc"></div>
+      <div class="proj" id="run-proj"></div>
+      <div class="elapsed" id="run-elapsed">…</div>
+      <button id="btn-stop" class="stop">Stop</button>
+    </div>
+    <div id="timer-idle" class="hidden">
+      <input id="in-desc" type="text" placeholder="What are you working on?" autocomplete="off">
+      <select id="in-project"><option value="">No project</option></select>
+      <button id="btn-start" class="start">Start</button>
+    </div>
+    <div id="main-error" class="error"></div>
+    <div class="row">
+      <button id="btn-open" class="ghost">Open dashboard</button>
+      <button id="btn-settings" class="ghost">Settings</button>
+    </div>
+  </div>
+
+<script src="popup.js"></script>
+</body>
+</html>
