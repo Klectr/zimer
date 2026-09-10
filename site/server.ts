@@ -936,7 +936,7 @@ function invoiceNewPage(p: NewInvParams, preview?: { items: any[]; emptyMsg?: st
   const clients = db.query("SELECT id, name, rate FROM clients ORDER BY name").all() as any[];
   const selClient = clients.find(c => String(c.id) === p.client_id);
   const step1 = `
-    <div class="md-card">
+    <div class="md-card form-card">
       <h3 class="md-title-medium">1 · Pick unbilled time</h3>
       <div class="form-info">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11.5v5" stroke-linecap="round"/><circle cx="12" cy="8" r="1.1" fill="currentColor" stroke="none"/></svg>
@@ -979,7 +979,7 @@ function invoiceNewPage(p: NewInvParams, preview?: { items: any[]; emptyMsg?: st
   let step2 = "";
   if (preview) {
     if (preview.emptyMsg) {
-      step2 = `<div class="md-card"><h3 class="md-title-medium">2 · Line items</h3><p class="muted">${esc(preview.emptyMsg)}</p></div>`;
+      step2 = `<div class="md-card form-card"><h3 class="md-title-medium">2 · Line items</h3><p class="muted">${esc(preview.emptyMsg)}</p></div>`;
     } else {
       const rows = preview.items.map((it, i) => `
         <tr>
@@ -991,7 +991,7 @@ function invoiceNewPage(p: NewInvParams, preview?: { items: any[]; emptyMsg?: st
         </tr>`).join("");
       const t = invoiceTotals(preview.items, Number(p.tax_rate) || 0);
       step2 = `
-      <div class="md-card">
+      <div class="md-card form-card">
         <h3 class="md-title-medium">2 · Review line items</h3>
         <form method="post" action="/invoices" class="form">
           <input type="hidden" name="client_id" value="${esc(p.client_id)}">
