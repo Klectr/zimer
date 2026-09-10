@@ -1019,6 +1019,11 @@ function invoiceSheet(inv: Invoice & { items: InvoiceItem[] }): string {
       <td class="num">${money(it.amount)}</td>
     </tr>`).join("");
   const client = inv.client_name ? esc(inv.client_name) : "<em>No client</em>";
+  const datesClassic = `
+      <div class="inv-dates">
+        <div><span class="muted">Issued</span><br><strong>${esc(inv.issue_date)}</strong></div>
+        ${inv.due_date ? `<div><span class="muted">Due</span><br><strong>${esc(inv.due_date)}</strong></div>` : ""}
+      </div>`;
   const head = inv.template === "minimal" ? `
       <div class="inv-head-min">
         <div>
@@ -1028,7 +1033,16 @@ function invoiceSheet(inv: Invoice & { items: InvoiceItem[] }): string {
         </div>
         <div class="inv-meta">${statusPill(inv.status)}</div>
       </div>
-      <div class="muted tiny inv-dates-min">Issued ${esc(inv.issue_date)}${inv.due_date ? ` · due ${esc(inv.due_date)}` : ""}</div>` : `
+      <div class="muted tiny inv-dates-min">Issued ${esc(inv.issue_date)}${inv.due_date ? ` · due ${esc(inv.due_date)}` : ""}</div>` : inv.template === "bold" ? `
+      <div class="inv-head-bold">
+        <div>
+          <div class="inv-bold-title">Invoice</div>
+          <div class="md-title-medium">${esc(inv.number)}</div>
+          <div class="muted">${client}</div>
+        </div>
+        <div class="inv-meta">${statusPill(inv.status)}</div>
+      </div>
+      ${datesClassic}` : `
       <div class="inv-head">
         <div>
           <div class="md-headline-small">Invoice ${esc(inv.number)}</div>
@@ -1036,10 +1050,7 @@ function invoiceSheet(inv: Invoice & { items: InvoiceItem[] }): string {
         </div>
         <div class="inv-meta">${statusPill(inv.status)}</div>
       </div>
-      <div class="inv-dates">
-        <div><span class="muted">Issued</span><br><strong>${esc(inv.issue_date)}</strong></div>
-        ${inv.due_date ? `<div><span class="muted">Due</span><br><strong>${esc(inv.due_date)}</strong></div>` : ""}
-      </div>`;
+      ${datesClassic}`;
   return `<div class="md-card invoice-sheet template-${esc(inv.template)}">
       ${head}
       <div class="table-wrap"><table class="md-table">

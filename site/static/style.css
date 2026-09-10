@@ -550,6 +550,10 @@ h2.md-headline-small { margin: 24px 4px 12px; }
 .template-minimal .md-table thead th { font-weight: 400; text-transform: none; letter-spacing: 0; font-size: 13px; }
 .template-minimal .md-table tbody tr { background: transparent; }
 .template-minimal .md-table tbody tr + tr { border-top: none; }
+.inv-head-bold { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
+.inv-bold-title { font-size: 32px; line-height: 36px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 4px; }
+.template-bold .md-table thead th { font-weight: 700; color: var(--md-sys-color-on-surface); }
+.template-bold .md-table tfoot tr.grand td { font-size: 20px; }
 
 .rate-form { display: inline-flex; align-items: center; gap: 4px; margin-right: 8px; }
 .rate-input { width: 72px; background: var(--md-sys-color-surface-container-highest); color: inherit;
