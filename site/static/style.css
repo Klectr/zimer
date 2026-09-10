@@ -269,7 +269,16 @@ h2.md-headline-small { margin: 24px 4px 12px; }
   letter-spacing: 0.5px;
   outline: none;
 }
-.md-text-field select { padding: 26px 16px 8px; }
+.md-text-field select {
+  padding: 26px 44px 8px 16px;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23cac4cf' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  background-size: 20px 20px;
+}
 .md-text-field label {
   position: absolute;
   left: 16px;
@@ -288,7 +297,7 @@ h2.md-headline-small { margin: 24px 4px 12px; }
   letter-spacing: 0.4px;
 }
 .md-text-field input:focus, .md-text-field select:focus {
-  background: var(--md-sys-color-surface-container-high);
+  background-color: var(--md-sys-color-surface-container-high);
 }
 /* keyboard focus ring (the base `outline: none` would otherwise kill the global one) */
 .md-text-field input:focus-visible, .md-text-field select:focus-visible {

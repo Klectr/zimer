@@ -76,6 +76,10 @@ per-page:
   action); secondary row actions stay text buttons.
 - **Color control:** `.md-color-control` — M3 has no color picker, so ours is a
   tonal container with a palette icon, "Color" label, and a circular swatch.
+- **Selects:** native `<select>` keeps its OS-drawn arrow button, which ignores
+  our radius — so selects use `appearance: none` with a custom chevron
+  (M3 exposed-dropdown pattern), keeping the same 12px tonal container as
+  every other field.
 - **Info callout:** `.form-info` — tonal container (`surface-container-highest`)
   with a leading icon for form-level helper text. Lives at the top of the form
   it describes, never floating between fields. No borders.
