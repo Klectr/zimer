@@ -446,6 +446,8 @@ h2.md-headline-small { margin: 24px 4px 12px; }
 /* ---------------- calendar (time grid) ---------------- */
 .week-nav { display: flex; align-items: center; justify-content: space-between; margin: 8px 0 4px; }
 .week-nav h2 { margin: 0; }
+/* M3 date-picker header pattern: headline leading, nav icon buttons grouped trailing. */
+.week-nav-actions { display: flex; align-items: center; gap: 4px; }
 .cal-hint { margin: 0 0 12px; }
 /* ---------------- calendar: tonal day lanes, no hard dividers ----------------
  * Separation comes from spacing (8px gutters) + tone (lane surfaces). */

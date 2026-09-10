@@ -106,6 +106,11 @@ per-page:
 - **Calendar entries:** full-width single lane per day, tracked time only.
   Overlapping entries keep full width and stack with a soft upward layered
   shadow so the topmost stays clickable.
+- **Calendar header (M3 date-picker pattern).** Headline leading
+  ("This week · total"); navigation icon buttons grouped at the trailing end
+  (chevrons with "Previous/Next week" tooltips). A "Today" text button appears
+  only when viewing a non-current week. Today is marked with a filled primary
+  circle on the day number and a 10% primary tint on its lane.
 - **Charts:** hand-rolled SVG (no libraries). Distinguish series by tone/shade
   first, hue second.
 - **HTMX:** server-rendered partials swapped in place (`hx-post`/`hx-get`

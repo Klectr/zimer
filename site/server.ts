@@ -654,9 +654,12 @@ function weekGrid(weekStr?: string): string {
 
   return `<div id="week">
     <div class="week-nav">
-      <a class="md-text-button" href="/calendar?week=${prev}">${icon("chevron_left")}Prev</a>
       <h2 class="md-headline-small">${isThisWeek ? "This week" : `Week of ${esc(mon)}`} <span class="muted">· ${fmtDur(weekTotal)}</span></h2>
-      <a class="md-text-button" href="/calendar?week=${next}">Next${icon("chevron_right")}</a>
+      <div class="week-nav-actions">
+        ${isThisWeek ? "" : `<a class="md-text-button" href="/calendar">Today</a>`}
+        <a class="md-icon-button" href="/calendar?week=${prev}" title="Previous week" aria-label="Previous week">${icon("chevron_left")}</a>
+        <a class="md-icon-button" href="/calendar?week=${next}" title="Next week" aria-label="Next week">${icon("chevron_right")}</a>
+      </div>
     </div>
     <p class="muted tiny cal-hint">Drag on the grid to log time. Click an entry to edit it.</p>
     <div class="cal-scroll">
