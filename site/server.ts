@@ -940,7 +940,7 @@ function invoiceNewPage(p: NewInvParams, preview?: { items: any[]; emptyMsg?: st
       <h3 class="md-title-medium">1 · Pick unbilled time</h3>
       <div class="form-info">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11.5v5" stroke-linecap="round"/><circle cx="12" cy="8" r="1.1" fill="currentColor" stroke="none"/></svg>
-        <p>Only finished, unbilled entries on this client's projects are included. Client hourly rates can be set on the <a href="/clients">Clients &amp; projects page</a>.</p>
+        <p>Only finished, unbilled entries on this client's projects are included. Client hourly rates can be set on the <a href="/manage">Clients &amp; projects page</a>.</p>
       </div>
       <form method="post" action="/invoices/preview" class="form">
         <div class="md-text-field filled">
