@@ -1,0 +1,1 @@
+{"action":{"default_popup":"popup.html","default_title":"Timekeep"},"description":"Track time against your self-hosted Timekeep server.","manifest_version":3,"name":"Timekeep","optional_host_permissions":["http://*/*","https://*/*"],"permissions":["storage"],"version":"0.1.0"}
