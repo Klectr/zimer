@@ -9,6 +9,7 @@ import { Database } from "bun:sqlite";
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { mkdirSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve, normalize, sep } from "node:path";
+import { invoicePdf } from "./pdf.ts";
 
 const PORT = Number(process.env.PORT || 3000);
 const DATA_DIR = process.env.DATA_DIR || resolve(import.meta.dir, "data");
@@ -50,7 +51,35 @@ CREATE TABLE IF NOT EXISTS time_entries (
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
 CREATE INDEX IF NOT EXISTS idx_entries_start ON time_entries(start_time);
+CREATE TABLE IF NOT EXISTS invoices (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  client_id INTEGER REFERENCES clients(id) ON DELETE SET NULL,
+  number TEXT NOT NULL UNIQUE,
+  issue_date TEXT NOT NULL,
+  due_date TEXT,
+  status TEXT NOT NULL DEFAULT 'draft',
+  tax_rate REAL NOT NULL DEFAULT 0,
+  notes TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+CREATE TABLE IF NOT EXISTS invoice_items (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  invoice_id INTEGER NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+  description TEXT NOT NULL,
+  hours REAL NOT NULL,
+  rate REAL NOT NULL,
+  amount REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_items_invoice ON invoice_items(invoice_id);
 `);
+/* idempotent column additions for DBs created before invoicing landed */
+for (const [tbl, col, def] of [
+  ["clients", "rate", "REAL NOT NULL DEFAULT 0"],
+  ["time_entries", "invoice_id", "INTEGER REFERENCES invoices(id) ON DELETE SET NULL"],
+] as const) {
+  try { db.exec(`ALTER TABLE ${tbl} ADD COLUMN ${col} ${def}`); }
+  catch { /* column already exists */ }
+}
 
 type Entry = {
   id: number;
@@ -136,6 +165,79 @@ const json = (data: unknown, status = 200) =>
 const html = (body: string, status = 200, extra: Record<string, string> = {}) =>
   new Response(body, { status, headers: { "Content-Type": "text/html; charset=utf-8", ...extra } });
 
+/* ---------------- invoicing helpers ---------------- */
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+function money(n: number): string {
+  return "$" + round2(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+type InvoiceItem = { id: number; description: string; hours: number; rate: number; amount: number };
+type Invoice = {
+  id: number; client_id: number | null; number: string; issue_date: string; due_date: string | null;
+  status: string; tax_rate: number; notes: string; created_at: string;
+  client_name: string | null; client_color: string | null;
+};
+
+const qInvoice = db.query(
+  `SELECT i.*, c.name AS client_name, c.color AS client_color
+   FROM invoices i LEFT JOIN clients c ON c.id = i.client_id WHERE i.id = ?`);
+const qInvoiceItems = db.query("SELECT * FROM invoice_items WHERE invoice_id = ? ORDER BY id");
+const qInvoices = db.query(
+  `SELECT i.*, c.name AS client_name, c.color AS client_color,
+          COALESCE((SELECT SUM(amount) FROM invoice_items WHERE invoice_id = i.id), 0) AS subtotal
+   FROM invoices i LEFT JOIN clients c ON c.id = i.client_id ORDER BY i.issue_date DESC, i.id DESC`);
+
+function getInvoice(id: number): (Invoice & { items: InvoiceItem[] }) | null {
+  const inv = qInvoice.get(id) as Invoice | null;
+  if (!inv) return null;
+  const items = qInvoiceItems.all(id) as InvoiceItem[];
+  return { ...inv, items };
+}
+
+function invoiceTotals(items: InvoiceItem[], taxRate: number) {
+  const subtotal = round2(items.reduce((a, it) => a + it.amount, 0));
+  const tax = round2(subtotal * taxRate / 100);
+  return { subtotal, tax, total: round2(subtotal + tax) };
+}
+
+function nextInvoiceNumber(): string {
+  const r = db.query("SELECT COALESCE(MAX(id), 0) + 1 AS n FROM invoices").get() as any;
+  return "INV-" + String(r.n).padStart(4, "0");
+}
+
+/** Unbilled, finished entries for a client's projects inside [from, to). */
+function unbilledEntries(clientId: number, from: string, to: string) {
+  return db.query(
+    `SELECT e.id, e.project_id, e.description, e.start_time, e.end_time,
+            p.name AS project_name
+     FROM time_entries e
+     JOIN projects p ON p.id = e.project_id
+     WHERE e.invoice_id IS NULL AND e.end_time IS NOT NULL
+       AND p.client_id = ? AND e.start_time >= ? AND e.start_time < ?
+     ORDER BY e.start_time`).all(clientId, from, to) as any[];
+}
+
+/** Group entries by project into draft line items. */
+function groupToLineItems(entries: any[], rate: number) {
+  const groups = new Map<number, { project: string; ids: number[]; secs: number }>();
+  for (const e of entries) {
+    const g = groups.get(e.project_id) ?? { project: e.project_name, ids: [], secs: 0 };
+    g.ids.push(e.id);
+    g.secs += durationSeconds(e.start_time, e.end_time);
+    groups.set(e.project_id, g);
+  }
+  return [...groups.values()].map(g => {
+    const hours = round2(g.secs / 3600);
+    return { description: g.project, hours, rate, amount: round2(hours * rate), entry_ids: g.ids };
+  });
+}
+
+function statusPill(status: string): string {
+  const label = status[0].toUpperCase() + status.slice(1);
+  return `<span class="pill pill-${esc(status)}">${esc(label)}</span>`;
+}
+
 /* ---------------- auth ---------------- */
 function tokensEqual(a: string, b: string): boolean {
   const ab = Buffer.from(a), bb = Buffer.from(b);
@@ -154,7 +256,7 @@ function authedPage(req: Request): boolean {
 }
 
 /* ---------------- views ---------------- */
-function layout(title: string, body: string, active?: "timer" | "calendar" | "manage"): string {
+function layout(title: string, body: string, active?: "timer" | "calendar" | "manage" | "invoices"): string {
   const tab = (href: string, label: string, key: string) =>
     `<a href="${href}" class="md-tab${active === key ? " active" : ""}"${active === key ? ` aria-current="page"` : ""}>${label}</a>`;
   return `<!DOCTYPE html>
@@ -177,10 +279,10 @@ function layout(title: string, body: string, active?: "timer" | "calendar" | "ma
 <nav class="md-tabs" aria-label="Primary">
   ${tab("/", "Timer", "timer")}
   ${tab("/calendar", "Calendar", "calendar")}
+  ${tab("/invoices", "Invoices", "invoices")}
   ${tab("/manage", "Clients & projects", "manage")}
 </nav>
 <main>${body}</main>
-</body>
 </html>`;
 }
 
@@ -578,6 +680,10 @@ function managePage(): string {
             <input type="text" name="name" placeholder=" " required aria-label="Client name">
             <label>Client name</label>
           </div>
+          <div class="md-text-field shrink filled" style="max-width:110px">
+            <input type="number" name="rate" min="0" step="0.01" placeholder=" " aria-label="Hourly rate">
+            <label>$/hr</label>
+          </div>
           <div class="md-color-field" title="Client color">
             <input type="color" name="color" value="#7c8aff" aria-label="Client color">
           </div>
@@ -586,6 +692,10 @@ function managePage(): string {
         ${clients.length ? `<ul class="md-list">${clients.map(c => `<li class="md-list-item" style="min-height:56px">
             <div class="md-list-item-content"><div class="md-list-item-headline"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${esc(c.color)};margin-right:8px"></span>${esc(c.name)}</div></div>
             <div class="md-list-item-trailing">
+              <form method="post" action="/clients/${c.id}/rate" class="inline rate-form" title="Hourly rate">
+                <span class="muted tiny">$</span><input type="number" name="rate" value="${c.rate || ""}" min="0" step="0.01" placeholder="0" aria-label="Hourly rate for ${esc(c.name)}" class="rate-input"><span class="muted tiny">/hr</span>
+                <button class="md-text-button" type="submit">Save</button>
+              </form>
               <form method="post" action="/clients/${c.id}/delete" class="inline"><button class="md-icon-button danger" hx-confirm="Delete client? Projects keep their entries." aria-label="Delete client ${esc(c.name)}" title="Delete">🗑</button></form>
             </div>
           </li>`).join("")}</ul>` : `<p class="muted">No clients yet.</p>`}
@@ -615,6 +725,193 @@ function managePage(): string {
           </li>`).join("")}</ul>` : `<p class="muted">No projects yet.</p>`}
       </section>
     </div>`, "manage");
+}
+
+function clientOptions(selected: number | null = null): string {
+  const rows = db.query("SELECT id, name, rate FROM clients ORDER BY name").all() as any[];
+  return rows.map(c =>
+    `<option value="${c.id}" data-rate="${c.rate || 0}"${c.id === selected ? " selected" : ""}>${esc(c.name)}</option>`
+  ).join("");
+}
+
+/** /invoices — list of invoices with status pills and totals. */
+function invoicesPage(): string {
+  const rows = qInvoices.all() as any[];
+  const outstanding = rows
+    .filter(r => r.status !== "paid")
+    .reduce((a, r) => a + r.subtotal * (1 + (r.tax_rate || 0) / 100), 0);
+  const list = rows.length ? `<ul class="md-list">${rows.map(r => {
+    return `<li class="md-list-item">
+      <div class="md-list-item-content">
+        <div class="md-list-item-headline"><a href="/invoices/${r.id}" class="inv-link">${esc(r.number)}</a> ${statusPill(r.status)}</div>
+        <div class="md-list-item-supporting">${r.client_name ? esc(r.client_name) : "<em>No client</em>"} · issued ${esc(r.issue_date)}${r.due_date ? ` · due ${esc(r.due_date)}` : ""}</div>
+      </div>
+      <div class="md-list-item-trailing"><span class="dur">${money(round2(r.subtotal * (1 + (r.tax_rate || 0) / 100)))}</span></div>
+    </li>`;
+  }).join("")}</ul>` : `<p class="muted">No invoices yet. Create one from your tracked time.</p>`;
+  return layout("Invoices", `
+    <div class="page-head">
+      <h2 class="md-headline-small">Invoices</h2>
+      <a class="md-filled-button" href="/invoices/new">+ New invoice</a>
+    </div>
+    ${rows.length ? `<p class="muted">Outstanding: <strong>${money(outstanding)}</strong></p>` : ""}
+    ${list}`, "invoices");
+}
+
+type NewInvParams = {
+  client_id: string; from: string; to: string; rate: string;
+  number: string; issue_date: string; due_date: string; tax_rate: string; notes: string;
+};
+
+function defaultNewInvParams(): NewInvParams {
+  const t = todayStr();
+  return {
+    client_id: "", from: addDays(t, -13), to: addDays(t, 1),
+    rate: "", number: nextInvoiceNumber(), issue_date: t,
+    due_date: addDays(t, 15), tax_rate: "0", notes: "",
+  };
+}
+
+/** Step 1: pick client + date range. Step 2 (preview): editable line items. */
+function invoiceNewPage(p: NewInvParams, preview?: { items: any[]; emptyMsg?: string }): string {
+  const clients = db.query("SELECT id, name, rate FROM clients ORDER BY name").all() as any[];
+  const selClient = clients.find(c => String(c.id) === p.client_id);
+  const step1 = `
+    <div class="md-card">
+      <h3 class="md-title-medium">1 · Pick unbilled time</h3>
+      <form method="post" action="/invoices/preview" class="form">
+        <div class="md-text-field filled">
+          <select name="client_id" id="inv-client" required aria-label="Client">
+            <option value="">Choose a client…</option>${clientOptions(p.client_id ? Number(p.client_id) : null)}
+          </select>
+          <label>Client</label>
+        </div>
+        <div class="two-field">
+          <div class="md-text-field filled"><input type="date" name="from" value="${esc(p.from)}" required placeholder=" "><label>From</label></div>
+          <div class="md-text-field filled"><input type="date" name="to" value="${esc(p.to)}" required placeholder=" "><label>To (exclusive)</label></div>
+        </div>
+        <div class="two-field">
+          <div class="md-text-field filled"><input type="number" name="rate" id="inv-rate" value="${esc(p.rate || (selClient ? String(selClient.rate || "") : ""))}" min="0" step="0.01" placeholder=" "><label>Hourly rate ($)</label></div>
+          <div class="md-text-field filled"><input type="number" name="tax_rate" value="${esc(p.tax_rate)}" min="0" step="0.01" placeholder=" "><label>Tax %</label></div>
+        </div>
+        <div class="two-field">
+          <div class="md-text-field"><input type="text" name="number" value="${esc(p.number)}" required placeholder=" "><label>Invoice number</label></div>
+        </div>
+        <div class="two-field">
+          <div class="md-text-field filled"><input type="date" name="issue_date" value="${esc(p.issue_date)}" required placeholder=" "><label>Issue date</label></div>
+          <div class="md-text-field filled"><input type="date" name="due_date" value="${esc(p.due_date)}" placeholder=" "><label>Due date</label></div>
+        </div>
+        <div class="md-text-field"><input type="text" name="notes" value="${esc(p.notes)}" placeholder=" "><label>Notes (optional)</label></div>
+        <p class="muted tiny">Only finished, unbilled entries on this client's projects are included. Client hourly rates can be set on the Clients &amp; projects page.</p>
+        <div class="row"><button class="md-filled-button" type="submit">Preview line items</button></div>
+      </form>
+    </div>
+    <script>(function(){
+      var sel=document.getElementById('inv-client'), rate=document.getElementById('inv-rate');
+      sel.addEventListener('change',function(){
+        var opt=sel.options[sel.selectedIndex];
+        if(opt&&opt.dataset.rate&&!rate.value) rate.value=opt.dataset.rate;
+      });
+    })();</script>`;
+
+  let step2 = "";
+  if (preview) {
+    if (preview.emptyMsg) {
+      step2 = `<div class="md-card"><h3 class="md-title-medium">2 · Line items</h3><p class="muted">${esc(preview.emptyMsg)}</p></div>`;
+    } else {
+      const rows = preview.items.map((it, i) => `
+        <tr>
+          <td><input type="text" name="g${i}_desc" value="${esc(it.description)}" class="cell-input" aria-label="Item description"></td>
+          <td><input type="number" name="g${i}_hours" value="${it.hours}" min="0" step="0.01" class="cell-input num" aria-label="Hours"></td>
+          <td><input type="number" name="g${i}_rate" value="${it.rate}" min="0" step="0.01" class="cell-input num" aria-label="Rate"></td>
+          <td class="num">${money(it.amount)}</td>
+          <input type="hidden" name="g${i}_ids" value="${it.entry_ids.join(",")}">
+        </tr>`).join("");
+      const t = invoiceTotals(preview.items, Number(p.tax_rate) || 0);
+      step2 = `
+      <div class="md-card">
+        <h3 class="md-title-medium">2 · Review line items</h3>
+        <form method="post" action="/invoices" class="form">
+          <input type="hidden" name="client_id" value="${esc(p.client_id)}">
+          <input type="hidden" name="number" value="${esc(p.number)}">
+          <input type="hidden" name="issue_date" value="${esc(p.issue_date)}">
+          <input type="hidden" name="due_date" value="${esc(p.due_date)}">
+          <input type="hidden" name="tax_rate" value="${esc(p.tax_rate)}">
+          <input type="hidden" name="notes" value="${esc(p.notes)}">
+          <input type="hidden" name="groups" value="${preview.items.length}">
+          <div class="table-wrap"><table class="md-table">
+            <thead><tr><th>Description</th><th class="num">Hours</th><th class="num">Rate</th><th class="num">Amount</th></tr></thead>
+            <tbody>${rows}</tbody>
+            <tfoot>
+              <tr><td colspan="3">Subtotal</td><td class="num">${money(t.subtotal)}</td></tr>
+              <tr><td colspan="3">Tax (${esc(p.tax_rate)}%)</td><td class="num">${money(t.tax)}</td></tr>
+              <tr class="grand"><td colspan="3">Total</td><td class="num">${money(t.total)}</td></tr>
+            </tfoot>
+          </table></div>
+          <p class="muted tiny">Amounts recalculate on save. Entries are marked billed when the invoice is created.</p>
+          <div class="row"><button class="md-filled-button" type="submit">Create invoice</button></div>
+        </form>
+      </div>`;
+    }
+  }
+
+  return layout("New invoice", `
+    <div class="page-head">
+      <h2 class="md-headline-small">New invoice</h2>
+      <a class="md-text-button" href="/invoices">Cancel</a>
+    </div>
+    ${step1}${step2}`, "invoices");
+}
+
+/** /invoices/:id — printable detail with status actions. */
+function invoiceDetailPage(inv: Invoice & { items: InvoiceItem[] }): string {
+  const t = invoiceTotals(inv.items, inv.tax_rate);
+  const items = inv.items.map(it => `
+    <tr>
+      <td>${esc(it.description)}</td>
+      <td class="num">${it.hours}</td>
+      <td class="num">${money(it.rate)}</td>
+      <td class="num">${money(it.amount)}</td>
+    </tr>`).join("");
+  const next = inv.status === "draft" ? "sent" : inv.status === "sent" ? "paid" : null;
+  const nextLabel = next === "sent" ? "Mark sent" : next === "paid" ? "Mark paid" : "";
+  return layout(`Invoice ${inv.number}`, `
+    <div class="page-head no-print">
+      <a class="md-text-button" href="/invoices">← Invoices</a>
+      <div class="row">
+        <a class="md-filled-button" href="/invoices/${inv.id}.pdf" download>Download PDF</a>
+        ${next ? `<form method="post" action="/invoices/${inv.id}/status" class="inline">
+          <input type="hidden" name="status" value="${next}">
+          <button class="md-filled-button" type="submit">${nextLabel}</button>
+        </form>` : ""}
+        ${inv.status === "draft" ? `<form method="post" action="/invoices/${inv.id}/delete" class="inline">
+          <button class="md-text-button danger" hx-confirm="Delete this draft invoice? Its entries become unbilled again.">Delete</button>
+        </form>` : ""}
+      </div>
+    </div>
+    <div class="md-card invoice-sheet">
+      <div class="inv-head">
+        <div>
+          <div class="md-headline-small">Invoice ${esc(inv.number)}</div>
+          <div class="muted">${inv.client_name ? esc(inv.client_name) : "<em>No client</em>"}</div>
+        </div>
+        <div class="inv-meta">${statusPill(inv.status)}</div>
+      </div>
+      <div class="inv-dates">
+        <div><span class="muted">Issued</span><br><strong>${esc(inv.issue_date)}</strong></div>
+        ${inv.due_date ? `<div><span class="muted">Due</span><br><strong>${esc(inv.due_date)}</strong></div>` : ""}
+      </div>
+      <div class="table-wrap"><table class="md-table">
+        <thead><tr><th>Description</th><th class="num">Hours</th><th class="num">Rate</th><th class="num">Amount</th></tr></thead>
+        <tbody>${items || `<tr><td colspan="4" class="muted">No line items.</td></tr>`}</tbody>
+        <tfoot>
+          <tr><td colspan="3">Subtotal</td><td class="num">${money(t.subtotal)}</td></tr>
+          ${inv.tax_rate ? `<tr><td colspan="3">Tax (${inv.tax_rate}%)</td><td class="num">${money(t.tax)}</td></tr>` : ""}
+          <tr class="grand"><td colspan="3">Total due</td><td class="num">${money(t.total)}</td></tr>
+        </tfoot>
+      </table></div>
+      ${inv.notes ? `<p class="inv-notes">${esc(inv.notes)}</p>` : ""}
+    </div>`, "invoices");
 }
 
 function loginPage(): string {
@@ -728,8 +1025,8 @@ Bun.serve({
         return json(db.query("SELECT * FROM clients ORDER BY name").all());
       if (path === "/api/clients" && method === "POST") {
         if (!body.name) return json({ error: "name required" }, 400);
-        const r = db.query("INSERT INTO clients (name, color) VALUES (?, ?) RETURNING *")
-          .get(String(body.name), String(body.color || "#7c8aff")) as any;
+        const r = db.query("INSERT INTO clients (name, color, rate) VALUES (?, ?, ?) RETURNING *")
+          .get(String(body.name), String(body.color || "#7c8aff"), Number(body.rate) || 0) as any;
         return json(r, 201);
       }
       m = path.match(/^\/api\/clients\/(\d+)$/);
@@ -751,6 +1048,89 @@ Bun.serve({
       if (m && method === "DELETE") {
         db.query("DELETE FROM projects WHERE id = ?").run(Number(m[1]));
         return new Response(null, { status: 204 });
+      }
+      /* ---- invoicing API ---- */
+      if (path === "/api/invoices" && method === "GET") {
+        const rows = qInvoices.all() as any[];
+        return json(rows.map(r => ({
+          ...r,
+          total: round2(r.subtotal * (1 + (r.tax_rate || 0) / 100)),
+        })));
+      }
+      if (path === "/api/invoices" && method === "POST") {
+        const number = String(body.number || nextInvoiceNumber());
+        if (db.query("SELECT 1 FROM invoices WHERE number = ?").get(number))
+          return json({ error: "invoice number already exists" }, 400);
+        let items: { description: string; hours: number; rate: number; entry_ids?: number[] }[];
+        if (Array.isArray(body.items)) {
+          items = body.items;
+        } else {
+          if (!body.client_id || !body.from || !body.to)
+            return json({ error: "client_id, from, to required (or items[])" }, 400);
+          items = groupToLineItems(
+            unbilledEntries(Number(body.client_id), String(body.from), String(body.to)),
+            Number(body.rate) || 0);
+        }
+        const clean = items
+          .map(it => ({
+            description: String(it.description || "Time"),
+            hours: round2(Number(it.hours) || 0),
+            rate: round2(Number(it.rate) || 0),
+            entry_ids: Array.isArray(it.entry_ids) ? it.entry_ids.map(Number).filter(n => n > 0) : [],
+          }))
+          .filter(it => it.hours > 0);
+        if (!clean.length) return json({ error: "no billable line items" }, 400);
+        const inv = db.query(
+          `INSERT INTO invoices (client_id, number, issue_date, due_date, tax_rate, notes)
+           VALUES (?, ?, ?, ?, ?, ?) RETURNING id`)
+          .get(
+            body.client_id ? Number(body.client_id) : null,
+            number,
+            String(body.issue_date || todayStr()),
+            body.due_date ? String(body.due_date) : null,
+            Number(body.tax_rate) || 0,
+            String(body.notes || "")) as any;
+        const insItem = db.query(
+          "INSERT INTO invoice_items (invoice_id, description, hours, rate, amount) VALUES (?, ?, ?, ?, ?)");
+        const linkEntry = db.query("UPDATE time_entries SET invoice_id = ? WHERE id = ?");
+        db.transaction(() => {
+          for (const it of clean) {
+            insItem.run(inv.id, it.description, it.hours, it.rate, round2(it.hours * it.rate));
+            for (const eid of it.entry_ids) linkEntry.run(inv.id, eid);
+          }
+        })();
+        const full = getInvoice(inv.id)!;
+        return json({ ...full, ...invoiceTotals(full.items, full.tax_rate) }, 201);
+      }
+      m = path.match(/^\/api\/invoices\/(\d+)$/);
+      if (m) {
+        const id = Number(m[1]);
+        if (method === "GET") {
+          const inv = getInvoice(id);
+          if (!inv) return json({ error: "not found" }, 404);
+          return json({ ...inv, ...invoiceTotals(inv.items, inv.tax_rate) });
+        }
+        if (method === "PATCH") {
+          const inv = qInvoice.get(id) as Invoice | null;
+          if (!inv) return json({ error: "not found" }, 404);
+          const want = String(body.status || "");
+          const ok = (inv.status === "draft" && want === "sent") ||
+                     (inv.status === "sent" && want === "paid");
+          if (!ok) return json({ error: "invalid status transition (draft → sent → paid)" }, 400);
+          db.query("UPDATE invoices SET status = ? WHERE id = ?").run(want, id);
+          const full = getInvoice(id)!;
+          return json({ ...full, ...invoiceTotals(full.items, full.tax_rate) });
+        }
+        if (method === "DELETE") {
+          const inv = qInvoice.get(id) as Invoice | null;
+          if (!inv) return json({ error: "not found" }, 404);
+          if (inv.status !== "draft") return json({ error: "only draft invoices can be deleted" }, 400);
+          db.transaction(() => {
+            db.query("UPDATE time_entries SET invoice_id = NULL WHERE invoice_id = ?").run(id);
+            db.query("DELETE FROM invoices WHERE id = ?").run(id);
+          })();
+          return new Response(null, { status: 204 });
+        }
       }
       return json({ error: "not found" }, 404);
     }
@@ -819,8 +1199,16 @@ Bun.serve({
     if (path === "/manage" && method === "GET") return html(managePage());
     if (path === "/clients" && method === "POST") {
       const form = await req.formData();
-      db.query("INSERT INTO clients (name, color) VALUES (?, ?)")
-        .run(String(form.get("name")), String(form.get("color") || "#7c8aff"));
+      db.query("INSERT INTO clients (name, color, rate) VALUES (?, ?, ?)")
+        .run(String(form.get("name")), String(form.get("color") || "#7c8aff"),
+             Number(form.get("rate") || 0));
+      return new Response(null, { status: 302, headers: { Location: "/manage" } });
+    }
+    m = path.match(/^\/clients\/(\d+)\/rate$/);
+    if (m && method === "POST") {
+      const form = await req.formData();
+      db.query("UPDATE clients SET rate = ? WHERE id = ?")
+        .run(Number(form.get("rate") || 0), Number(m[1]));
       return new Response(null, { status: 302, headers: { Location: "/manage" } });
     }
     m = path.match(/^\/clients\/(\d+)\/delete$/);
@@ -839,6 +1227,116 @@ Bun.serve({
     if (m && method === "POST") {
       db.query("DELETE FROM projects WHERE id = ?").run(Number(m[1]));
       return new Response(null, { status: 302, headers: { Location: "/manage" } });
+    }
+
+    /* ---- invoicing pages ---- */
+    if (path === "/invoices" && method === "GET") return html(invoicesPage());
+    if (path === "/invoices/new" && method === "GET") return html(invoiceNewPage(defaultNewInvParams()));
+    if (path === "/invoices/preview" && method === "POST") {
+      const form = await req.formData();
+      const p: NewInvParams = {
+        client_id: String(form.get("client_id") || ""),
+        from: String(form.get("from") || ""),
+        to: String(form.get("to") || ""),
+        rate: String(form.get("rate") || ""),
+        number: String(form.get("number") || nextInvoiceNumber()),
+        issue_date: String(form.get("issue_date") || todayStr()),
+        due_date: String(form.get("due_date") || ""),
+        tax_rate: String(form.get("tax_rate") || "0"),
+        notes: String(form.get("notes") || ""),
+      };
+      if (!p.client_id || !p.from || !p.to) return html(invoiceNewPage(p), 400);
+      const entries = unbilledEntries(Number(p.client_id), p.from + "T00:00:00", p.to + "T00:00:00");
+      if (!entries.length)
+        return html(invoiceNewPage(p, { items: [], emptyMsg: "No unbilled, finished entries on this client's projects in that range." }));
+      return html(invoiceNewPage(p, { items: groupToLineItems(entries, Number(p.rate) || 0) }));
+    }
+    if (path === "/invoices" && method === "POST") {
+      const form = await req.formData();
+      const groups = Number(form.get("groups") || 0);
+      const items: { description: string; hours: number; rate: number; amount: number; entry_ids: number[] }[] = [];
+      for (let i = 0; i < groups; i++) {
+        const hours = round2(Number(form.get(`g${i}_hours`) || 0));
+        const rate = round2(Number(form.get(`g${i}_rate`) || 0));
+        const ids = String(form.get(`g${i}_ids`) || "").split(",").map(Number).filter(n => n > 0);
+        if (hours <= 0 || !ids.length) continue;
+        items.push({
+          description: String(form.get(`g${i}_desc`) || "Time"),
+          hours, rate, amount: round2(hours * rate), entry_ids: ids,
+        });
+      }
+      if (!items.length) return new Response("No line items — nothing to invoice.", { status: 400 });
+      const number = String(form.get("number") || nextInvoiceNumber());
+      if (db.query("SELECT 1 FROM invoices WHERE number = ?").get(number))
+        return new Response("Invoice number already exists.", { status: 400 });
+      const clientId = form.get("client_id") ? Number(form.get("client_id")) : null;
+      const dueRaw = String(form.get("due_date") || "");
+      const inv = db.query(
+        `INSERT INTO invoices (client_id, number, issue_date, due_date, tax_rate, notes)
+         VALUES (?, ?, ?, ?, ?, ?) RETURNING id`)
+        .get(clientId, number, String(form.get("issue_date") || todayStr()),
+             dueRaw || null, Number(form.get("tax_rate") || 0), String(form.get("notes") || "")) as any;
+      const insItem = db.query(
+        "INSERT INTO invoice_items (invoice_id, description, hours, rate, amount) VALUES (?, ?, ?, ?, ?)");
+      const linkEntry = db.query("UPDATE time_entries SET invoice_id = ? WHERE id = ?");
+      db.transaction(() => {
+        for (const it of items) {
+          insItem.run(inv.id, it.description, it.hours, it.rate, it.amount);
+          for (const eid of it.entry_ids) linkEntry.run(inv.id, eid);
+        }
+      })();
+      return new Response(null, { status: 302, headers: { Location: `/invoices/${inv.id}` } });
+    }
+    m = path.match(/^\/invoices\/(\d+)$/);
+    if (m && method === "GET") {
+      const inv = getInvoice(Number(m[1]));
+      return inv ? html(invoiceDetailPage(inv)) : new Response("Not found", { status: 404 });
+    }
+    m = path.match(/^\/invoices\/(\d+)\.pdf$/);
+    if (m && method === "GET") {
+      const inv = getInvoice(Number(m[1]));
+      if (!inv) return new Response("Not found", { status: 404 });
+      const t = invoiceTotals(inv.items, inv.tax_rate);
+      const pdf = invoicePdf({
+        number: inv.number,
+        status: inv.status,
+        clientName: inv.client_name || "",
+        issueDate: inv.issue_date,
+        dueDate: inv.due_date,
+        items: inv.items.map(it => ({
+          description: it.description, hours: it.hours, rate: it.rate, amount: it.amount,
+        })),
+        subtotal: t.subtotal, tax: t.tax, taxRate: inv.tax_rate, total: t.total,
+        notes: inv.notes,
+      });
+      const filename = inv.number.replace(/[^A-Za-z0-9._-]+/g, "_") + ".pdf";
+      return new Response(pdf, {
+        headers: {
+          "Content-Type": "application/pdf",
+          "Content-Disposition": `attachment; filename="${filename}"`,
+        },
+      });
+    }
+    m = path.match(/^\/invoices\/(\d+)\/status$/);
+    if (m && method === "POST") {
+      const form = await req.formData();
+      const inv = qInvoice.get(Number(m[1])) as Invoice | null;
+      const want = String(form.get("status") || "");
+      const ok = !!inv && ((inv.status === "draft" && want === "sent") || (inv.status === "sent" && want === "paid"));
+      if (!ok) return new Response("Invalid status transition.", { status: 400 });
+      db.query("UPDATE invoices SET status = ? WHERE id = ?").run(want, inv!.id);
+      return new Response(null, { status: 302, headers: { Location: `/invoices/${inv!.id}` } });
+    }
+    m = path.match(/^\/invoices\/(\d+)\/delete$/);
+    if (m && method === "POST") {
+      const inv = qInvoice.get(Number(m[1])) as Invoice | null;
+      if (!inv) return new Response("Not found", { status: 404 });
+      if (inv.status !== "draft") return new Response("Only draft invoices can be deleted.", { status: 400 });
+      db.transaction(() => {
+        db.query("UPDATE time_entries SET invoice_id = NULL WHERE invoice_id = ?").run(inv.id);
+        db.query("DELETE FROM invoices WHERE id = ?").run(inv.id);
+      })();
+      return new Response(null, { status: 302, headers: { Location: "/invoices" } });
     }
 
     return new Response("Not found", { status: 404 });
