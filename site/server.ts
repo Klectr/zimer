@@ -10,6 +10,7 @@ import { randomBytes, timingSafeEqual } from "node:crypto";
 import { mkdirSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve, normalize, sep } from "node:path";
 import { invoicePdf, isInvoiceTemplate, templateList } from "./pdf.ts";
+import { stripeConfigured, createPaymentLink, verifyWebhookSignature } from "./stripe.ts";
 
 const PORT = Number(process.env.PORT || 3000);
 const DATA_DIR = process.env.DATA_DIR || resolve(import.meta.dir, "data");
@@ -77,6 +78,8 @@ for (const [tbl, col, def] of [
   ["clients", "rate", "REAL NOT NULL DEFAULT 0"],
   ["time_entries", "invoice_id", "INTEGER REFERENCES invoices(id) ON DELETE SET NULL"],
   ["invoices", "template", "TEXT NOT NULL DEFAULT 'classic'"],
+  ["invoices", "stripe_payment_link", "TEXT"],
+  ["invoices", "paid_via_stripe", "INTEGER NOT NULL DEFAULT 0"],
 ] as const) {
   try { db.exec(`ALTER TABLE ${tbl} ADD COLUMN ${col} ${def}`); }
   catch { /* column already exists */ }
@@ -177,6 +180,7 @@ type InvoiceItem = { id: number; description: string; hours: number; rate: numbe
 type Invoice = {
   id: number; client_id: number | null; number: string; issue_date: string; due_date: string | null;
   status: string; tax_rate: number; notes: string; template: string; created_at: string;
+  stripe_payment_link: string | null; paid_via_stripe: number;
   client_name: string | null; client_color: string | null;
 };
 
@@ -205,6 +209,28 @@ function invoiceTotals(items: InvoiceItem[], taxRate: number) {
 function nextInvoiceNumber(): string {
   const r = db.query("SELECT COALESCE(MAX(id), 0) + 1 AS n FROM invoices").get() as any;
   return "INV-" + String(r.n).padStart(4, "0");
+}
+
+/** Create (or regenerate) a Stripe payment link for a sent invoice. */
+async function stripeLinkFor(id: number): Promise<{ url?: string; error?: string; status?: number }> {
+  const inv = qInvoice.get(id) as Invoice | null;
+  if (!inv) return { error: "not found", status: 404 };
+  if (inv.status !== "sent") return { error: "only sent invoices can collect via Stripe", status: 400 };
+  if (!stripeConfigured()) return { error: "STRIPE_SECRET_KEY not configured", status: 503 };
+  const full = getInvoice(id)!;
+  const t = invoiceTotals(full.items, full.tax_rate);
+  try {
+    const link = await createPaymentLink({
+      invoiceId: id,
+      number: inv.number,
+      clientName: inv.client_name || "",
+      totalCents: Math.round(t.total * 100),
+    });
+    db.query("UPDATE invoices SET stripe_payment_link = ? WHERE id = ?").run(link.url, id);
+    return { url: link.url };
+  } catch (e: any) {
+    return { error: e?.message || "Stripe request failed", status: 502 };
+  }
 }
 
 /* ---------------- revenue (milestone 1) ---------------- */
@@ -1019,6 +1045,8 @@ function invoiceSheet(inv: Invoice & { items: InvoiceItem[] }): string {
       <td class="num">${money(it.amount)}</td>
     </tr>`).join("");
   const client = inv.client_name ? esc(inv.client_name) : "<em>No client</em>";
+  const paidChip = inv.paid_via_stripe
+    ? ` <span class="stripe-paid-chip" title="Marked paid automatically by a Stripe payment">⚡ Paid via Stripe</span>` : "";
   const datesClassic = `
       <div class="inv-dates">
         <div><span class="muted">Issued</span><br><strong>${esc(inv.issue_date)}</strong></div>
@@ -1031,7 +1059,7 @@ function invoiceSheet(inv: Invoice & { items: InvoiceItem[] }): string {
           <div class="md-title-large">${esc(inv.number)}</div>
           <div class="muted">${client}</div>
         </div>
-        <div class="inv-meta">${statusPill(inv.status)}</div>
+        <div class="inv-meta">${statusPill(inv.status)}${paidChip}</div>
       </div>
       <div class="muted tiny inv-dates-min">Issued ${esc(inv.issue_date)}${inv.due_date ? ` · due ${esc(inv.due_date)}` : ""}</div>` : inv.template === "bold" ? `
       <div class="inv-head-bold">
@@ -1040,7 +1068,7 @@ function invoiceSheet(inv: Invoice & { items: InvoiceItem[] }): string {
           <div class="md-title-medium">${esc(inv.number)}</div>
           <div class="muted">${client}</div>
         </div>
-        <div class="inv-meta">${statusPill(inv.status)}</div>
+        <div class="inv-meta">${statusPill(inv.status)}${paidChip}</div>
       </div>
       ${datesClassic}` : `
       <div class="inv-head">
@@ -1048,7 +1076,7 @@ function invoiceSheet(inv: Invoice & { items: InvoiceItem[] }): string {
           <div class="md-headline-small">Invoice ${esc(inv.number)}</div>
           <div class="muted">${client}</div>
         </div>
-        <div class="inv-meta">${statusPill(inv.status)}</div>
+        <div class="inv-meta">${statusPill(inv.status)}${paidChip}</div>
       </div>
       ${datesClassic}`;
   return `<div class="md-card invoice-sheet template-${esc(inv.template)}">
@@ -1073,6 +1101,24 @@ function invoiceDoc(inv: Invoice & { items: InvoiceItem[] }): string {
 function invoiceDetailPage(inv: Invoice & { items: InvoiceItem[] }): string {
   const next = inv.status === "draft" ? "sent" : inv.status === "sent" ? "paid" : null;
   const nextLabel = next === "sent" ? "Mark sent" : next === "paid" ? "Mark paid" : "";
+  const t = invoiceTotals(inv.items, inv.tax_rate);
+  const stripeSection = inv.status !== "sent" ? "" : `
+    <div class="stripe-row no-print">
+      ${inv.stripe_payment_link ? `
+        <span class="md-label-medium muted">Payment link</span>
+        <input class="link-input" id="stripe-link-url" readonly value="${esc(inv.stripe_payment_link)}" onclick="this.select()" aria-label="Stripe payment link">
+        <button class="md-text-button" id="copy-stripe-link" type="button">Copy</button>
+        <form method="post" action="/invoices/${inv.id}/stripe-link" class="inline">
+          <button class="md-text-button" type="submit" title="Create a new payment link (replaces the old one)">Regenerate</button>
+        </form>
+        <script>(function(){var b=document.getElementById('copy-stripe-link');if(!b)return;b.addEventListener('click',function(){var i=document.getElementById('stripe-link-url');i.select();var done=function(){b.textContent='Copied';setTimeout(function(){b.textContent='Copy';},1500);};if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(i.value).then(done,done);}else{document.execCommand('copy');done();}});})();</script>`
+      : stripeConfigured() ? `
+        <form method="post" action="/invoices/${inv.id}/stripe-link" class="inline">
+          <button class="md-filled-button" type="submit">Collect via Stripe</button>
+        </form>
+        <span class="muted tiny">Creates a Stripe payment link for ${money(t.total)}.</span>` : `
+        <span class="muted tiny">Set STRIPE_SECRET_KEY to collect via Stripe.</span>`}
+    </div>`;
   return layout(`Invoice ${inv.number}`, `
     <div class="page-head no-print">
       <a class="md-text-button" href="/invoices">← Invoices</a>
@@ -1087,6 +1133,7 @@ function invoiceDetailPage(inv: Invoice & { items: InvoiceItem[] }): string {
         </form>` : ""}
       </div>
     </div>
+    ${stripeSection}
     ${invoiceDoc(inv)}`, "invoices");
 }
 
@@ -1150,6 +1197,32 @@ Bun.serve({
 
     /* ---- JSON API ---- */
     if (path.startsWith("/api/")) {
+      /* ---- Stripe webhook: no Bearer auth — verified by signature instead.
+         Reads the raw body; signature is checked before any DB access. ---- */
+      if (path === "/api/stripe/webhook" && method === "POST") {
+        const secret = process.env.STRIPE_WEBHOOK_SECRET || "";
+        if (!secret) return json({ error: "webhook not configured" }, 503);
+        const payload = await req.text();
+        if (!verifyWebhookSignature(payload, req.headers.get("stripe-signature"), secret))
+          return json({ error: "invalid signature" }, 400);
+        let event: any;
+        try {
+          event = JSON.parse(payload);
+        } catch {
+          return json({ error: "invalid payload" }, 400);
+        }
+        if (event.type === "checkout.session.completed") {
+          const session = event.data?.object || {};
+          const invoiceId = Number(session.metadata?.invoice_id || 0);
+          if (invoiceId && session.payment_status === "paid") {
+            const inv = qInvoice.get(invoiceId) as Invoice | null;
+            if (inv && inv.status === "sent") {
+              db.query("UPDATE invoices SET status = 'paid', paid_via_stripe = 1 WHERE id = ?").run(invoiceId);
+            }
+          }
+        }
+        return json({ received: true });
+      }
       if (!authedApi(req)) return json({ error: "unauthorized" }, 401);
       const body = (await req.json().catch(() => ({}))) as any;
 
@@ -1314,6 +1387,11 @@ Bun.serve({
           })();
           return new Response(null, { status: 204 });
         }
+      }
+      m = path.match(/^\/api\/invoices\/(\d+)\/stripe-link$/);
+      if (m && method === "POST") {
+        const r = await stripeLinkFor(Number(m[1]));
+        return r.url ? json({ url: r.url }) : json({ error: r.error }, r.status);
       }
       /* ---- revenue API (milestone 1) ---- */
       if (path === "/api/revenue" && method === "GET")
@@ -1521,6 +1599,12 @@ Bun.serve({
       db.query("UPDATE invoices SET template = ? WHERE id = ?").run(tpl, Number(m[1]));
       const inv = getInvoice(Number(m[1]));
       return inv ? html(invoiceDoc(inv)) : new Response("Not found", { status: 404 });
+    }
+    m = path.match(/^\/invoices\/(\d+)\/stripe-link$/);
+    if (m && method === "POST") {
+      const r = await stripeLinkFor(Number(m[1]));
+      if (r.url) return new Response(null, { status: 302, headers: { Location: `/invoices/${m[1]}` } });
+      return new Response(r.error || "Stripe error", { status: r.status || 500 });
     }
     m = path.match(/^\/invoices\/(\d+)\/delete$/);
     if (m && method === "POST") {

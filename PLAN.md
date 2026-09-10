@@ -32,7 +32,7 @@ whatever URL you self-host (localhost, home server, VPS — runtime host permiss
 - `clients(id, name, color, rate)` — e.g. BYTEBOT, Upwork clients; `rate` = default hourly $
 - `projects(id, client_id, name)`
 - `time_entries(id, project_id, description, start_time, end_time, invoice_id)` — `end_time NULL` = running; `invoice_id` marks billed entries
-- `invoices(id, client_id, number UNIQUE, issue_date, due_date, status, tax_rate, notes, template)` — status: draft → sent → paid; `template` picks the PDF/HTML render (classic default)
+- `invoices(id, client_id, number UNIQUE, issue_date, due_date, status, tax_rate, notes, template)` — status: draft → sent → paid; `template` picks the PDF/HTML render (classic default); `stripe_payment_link` holds the Stripe payment URL; `paid_via_stripe` flags webhook-paid invoices
 - `invoice_items(id, invoice_id, description, hours, rate, amount)` — snapshot at creation so sent invoices never change
 
 ## API contract (all under `/api`, Bearer token)

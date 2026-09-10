@@ -555,6 +555,13 @@ h2.md-headline-small { margin: 24px 4px 12px; }
 .template-bold .md-table thead th { font-weight: 700; color: var(--md-sys-color-on-surface); }
 .template-bold .md-table tfoot tr.grand td { font-size: 20px; }
 
+/* ---------------- Stripe (milestone 3) ---------------- */
+.stripe-row { display: flex; align-items: center; gap: 10px; margin: 4px 0 16px; flex-wrap: wrap; }
+.link-input { flex: 1; min-width: 200px; background: var(--md-sys-color-surface-container-highest); color: inherit;
+  border: none; border-radius: 8px; padding: 8px 12px; font: inherit; font-size: 13px; }
+.stripe-paid-chip { display: inline-block; margin-left: 8px; background: rgba(99,91,255,.18); color: #b3aeff;
+  padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 500; vertical-align: middle; }
+
 .rate-form { display: inline-flex; align-items: center; gap: 4px; margin-right: 8px; }
 .rate-input { width: 72px; background: var(--md-sys-color-surface-container-highest); color: inherit;
   border: none; border-radius: 8px; padding: 6px 8px; font: inherit; text-align: right; }
