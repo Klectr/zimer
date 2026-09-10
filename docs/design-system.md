@@ -60,6 +60,9 @@ per-page:
   with outlines.
 - **Status pills:** invoice `draft / sent / paid` render as tonal pills
   (see `statusPill` in `site/server.ts`).
+- **Info callout:** `.form-info` — tonal container (`surface-container-highest`)
+  with a leading icon for form-level helper text. Lives at the top of the form
+  it describes, never floating between fields. No borders.
 
 ## Patterns
 

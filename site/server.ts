@@ -938,6 +938,10 @@ function invoiceNewPage(p: NewInvParams, preview?: { items: any[]; emptyMsg?: st
   const step1 = `
     <div class="md-card">
       <h3 class="md-title-medium">1 · Pick unbilled time</h3>
+      <div class="form-info">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11.5v5" stroke-linecap="round"/><circle cx="12" cy="8" r="1.1" fill="currentColor" stroke="none"/></svg>
+        <p>Only finished, unbilled entries on this client's projects are included. Client hourly rates can be set on the <a href="/clients">Clients &amp; projects page</a>.</p>
+      </div>
       <form method="post" action="/invoices/preview" class="form">
         <div class="md-text-field filled">
           <select name="client_id" id="inv-client" required aria-label="Client">
@@ -961,7 +965,6 @@ function invoiceNewPage(p: NewInvParams, preview?: { items: any[]; emptyMsg?: st
           <div class="md-text-field filled"><input type="date" name="due_date" value="${esc(p.due_date)}" placeholder=" "><label>Due date</label></div>
         </div>
         <div class="md-text-field"><input type="text" name="notes" value="${esc(p.notes)}" placeholder=" "><label>Notes (optional)</label></div>
-        <p class="muted tiny">Only finished, unbilled entries on this client's projects are included. Client hourly rates can be set on the Clients &amp; projects page.</p>
         <div class="row"><button class="md-filled-button" type="submit">Preview line items</button></div>
       </form>
     </div>
