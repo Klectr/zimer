@@ -557,3 +557,11 @@ h2.md-headline-small { margin: 24px 4px 12px; }
   .pill { border: 1px solid #999; background: #fff !important; color: #111 !important; }
   .inv-notes { color: #333; }
 }
+
+/* ---------------- revenue (milestone 1) ---------------- */
+.rev-heading { margin-top: 32px; }
+.rev-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+@media (max-width: 560px) { .rev-cards { grid-template-columns: 1fr; } }
+.rev-card { padding: 16px 20px; }
+.rev-card .md-title-large { margin-top: 4px; }
+.rev-paid { color: var(--md-sys-color-primary); }

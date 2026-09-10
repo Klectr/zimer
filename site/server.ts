@@ -206,6 +206,29 @@ function nextInvoiceNumber(): string {
   return "INV-" + String(r.n).padStart(4, "0");
 }
 
+/* ---------------- revenue (milestone 1) ---------------- */
+type RevenueRow = {
+  status: string; tax_rate: number; issue_date: string;
+  client_id: number | null; client_name: string | null; client_color: string | null;
+  subtotal: number;
+};
+
+const qRevenueRows = db.query(
+  `SELECT i.status, i.tax_rate, i.issue_date, i.client_id,
+          c.name AS client_name, c.color AS client_color,
+          COALESCE((SELECT SUM(amount) FROM invoice_items WHERE invoice_id = i.id), 0) AS subtotal
+   FROM invoices i LEFT JOIN clients c ON c.id = i.client_id`);
+
+const revenueTotal = (r: RevenueRow) => round2(r.subtotal * (1 + (r.tax_rate || 0) / 100));
+
+/** A1: top-level revenue totals, tax-inclusive. */
+function revenueTotals() {
+  const rows = qRevenueRows.all() as RevenueRow[];
+  const invoiced = round2(rows.reduce((a, r) => a + revenueTotal(r), 0));
+  const paid = round2(rows.filter(r => r.status === "paid").reduce((a, r) => a + revenueTotal(r), 0));
+  return { invoiced, paid, outstanding: round2(invoiced - paid) };
+}
+
 /** Unbilled, finished entries for a client's projects inside [from, to). */
 function unbilledEntries(clientId: number, from: string, to: string) {
   return db.query(
@@ -369,7 +392,25 @@ function dashboardPage(): string {
   return layout("Timer", `
     <div hx-get="/partial/timer" hx-trigger="load" hx-swap="outerHTML"><div class="md-card"><p class="muted">Loading…</p></div></div>
     <h2 class="md-headline-small">Today</h2>
-    <div id="today-list" hx-get="/partial/today" hx-trigger="load, timer-updated from:body"></div>`, "timer");
+    <div id="today-list" hx-get="/partial/today" hx-trigger="load, timer-updated from:body"></div>
+    <h2 class="md-headline-small rev-heading">Revenue</h2>
+    ${revenueCards()}`, "timer");
+}
+
+/** A1: revenue stat cards (invoiced / paid / outstanding). */
+function revenueCards(): string {
+  const t = revenueTotals();
+  if (t.invoiced === 0) return `<p class="muted">No invoices yet — revenue will show up here.</p>`;
+  const card = (label: string, val: number, cls = "") => `
+    <div class="md-card rev-card">
+      <div class="md-label-medium muted">${label}</div>
+      <div class="md-title-large${cls ? ` ${cls}` : ""}">${money(val)}</div>
+    </div>`;
+  return `<div class="rev-cards">
+    ${card("Invoiced", t.invoiced)}
+    ${card("Paid", t.paid, "rev-paid")}
+    ${card("Outstanding", t.outstanding)}
+  </div>`;
 }
 
 /** Monday of the week containing dateStr (or today). Returns YYYY-MM-DD. */
@@ -1132,6 +1173,8 @@ Bun.serve({
           return new Response(null, { status: 204 });
         }
       }
+      /* ---- revenue API (milestone 1) ---- */
+      if (path === "/api/revenue" && method === "GET") return json({ totals: revenueTotals() });
       return json({ error: "not found" }, 404);
     }
 
