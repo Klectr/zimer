@@ -284,39 +284,250 @@ function addDays(dateStr: string, n: number): string {
   return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
 }
 
-function weekPartial(weekStr?: string): string {
+/** Pixels per hour in the calendar time grid. */
+const CAL_HOUR_PX = 52;
+
+function weekGrid(weekStr?: string): string {
   const mon = mondayOf(weekStr);
   const prev = addDays(mon, -7), next = addDays(mon, 7);
   const isThisWeek = mon === mondayOf();
+  const today = todayStr();
+
+  // Fetch the whole week in one query, then bucket entries by local day.
+  const [wFrom, wTo] = [mon + "T00:00:00", addDays(mon, 7) + "T00:00:00"];
+  const rows = db.query(
+    `${ENTRY_SELECT} WHERE e.start_time >= ? AND e.start_time < ? ORDER BY e.start_time`).all(wFrom, wTo) as Entry[];
+  const byDay = new Map<string, Entry[]>();
+  for (const e of rows) {
+    const d = new Date(e.start_time);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    if (!byDay.has(key)) byDay.set(key, []);
+    byDay.get(key)!.push(e);
+  }
+
+  const toMin = (iso: string) => { const d = new Date(iso); return d.getHours() * 60 + d.getMinutes(); };
+  const toHM = (mins: number) => `${String(Math.floor(mins / 60)).padStart(2, "0")}:${String(mins % 60).padStart(2, "0")}`;
+
   let weekTotal = 0;
-  const cols = [];
+  const days: string[] = [];
   for (let i = 0; i < 7; i++) {
     const day = addDays(mon, i);
-    const [from, to] = dayBounds(day);
-    const entries = qRange.all(from, to) as Entry[];
+    const [y, m, d] = day.split("-").map(Number);
+    const dt = new Date(y, m - 1, d);
+    const wd = dt.toLocaleDateString([], { weekday: "short" });
+    const entries = byDay.get(day) ?? [];
     const total = entries.reduce((a, e) => a + durationSeconds(e.start_time, e.end_time), 0);
     weekTotal += total;
-    const [y, m, d] = day.split("-").map(Number);
-    const label = new Date(y, m - 1, d).toLocaleDateString([], { weekday: "short", month: "numeric", day: "numeric" });
-    cols.push(`<div class="day${day === todayStr() ? " today" : ""}">
-      <div class="day-head"><span class="md-title-small">${esc(label)}</span><span class="day-total tiny">${fmtDur(total)}</span></div>
-      ${entries.length ? `<ul class="md-list">${entries.map(entryRow).join("")}</ul>` : `<p class="muted tiny">—</p>`}
+    const isToday = day === today;
+
+    // Entries render full-width; an entry involved in an overlap gets a top
+    // drop shadow so it reads as elevated above the entry beneath it.
+    const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
+    const sortedBlocks = entries
+      .map((e) => {
+        const a = toMin(e.start_time);
+        const b = Math.max(e.end_time ? toMin(e.end_time) : nowMin, a + 15);
+        return { e, a, b };
+      })
+      .sort((x, y) => x.a - y.a);
+    const entryHtml = sortedBlocks
+      .map(({ e, a, b }) => {
+      const top = (a / 60) * CAL_HOUR_PX;
+      const h = Math.max(((b - a) / 60) * CAL_HOUR_PX, 26);
+      const color = e.client_color || "#7c8aff";
+      const running = !e.end_time;
+      const overlap = sortedBlocks.some((o) => o.e !== e && o.a < b && o.b > a);
+      const desc = e.description ? esc(e.description) : "<em>No description</em>";
+      const dur = fmtDur(durationSeconds(e.start_time, e.end_time));
+      return `<div class="cal-entry${running ? " running" : ""}${overlap ? " overlap" : ""}"
+          style="top:${top.toFixed(1)}px;height:${h.toFixed(1)}px;--c:${esc(color)}"
+          data-id="${e.id}" data-desc="${esc(e.description)}" data-project-id="${e.project_id ?? ""}"
+          data-date="${day}" data-start="${toHM(a)}" data-end="${running ? "" : toHM(Math.min(b, 1439))}"
+          tabindex="0" role="button" aria-label="${desc}, ${dur}">
+        <div class="cal-entry-desc">${e.project_name ? `<strong>${esc(e.project_name)}</strong> · ` : ""}${desc}</div>
+        <div class="cal-entry-dur">${dur}</div>
+      </div>`;
+    }).join("");
+    const nowLine = isToday
+      ? `<div class="cal-now" id="cal-now" style="top:${((nowMin / 60) * CAL_HOUR_PX).toFixed(1)}px"></div>` : "";
+    days.push(`<div class="cal-day${isToday ? " today" : ""}">
+      <div class="cal-day-head">
+        <div class="md-label-large muted">${esc(wd)}</div>
+        <div class="cal-day-num${isToday ? " today" : ""}">${d}</div>
+        <div class="tiny muted">${fmtDur(total)}</div>
+      </div>
+      <div class="cal-day-col" data-date="${day}">${entryHtml}${nowLine}</div>
     </div>`);
   }
+
+  const hourLabels = Array.from({ length: 24 }, (_, h) => {
+    const ampm = h === 0 ? "12 AM" : h < 12 ? `${h} AM` : h === 12 ? "12 PM" : `${h - 12} PM`;
+    return `<span class="cal-hour-label" style="top:${(h * CAL_HOUR_PX - 8).toFixed(0)}px">${ampm}</span>`;
+  }).join("");
+
   return `<div id="week">
     <div class="week-nav">
-      <button class="md-text-button" hx-get="/partial/week?week=${prev}" hx-target="#week" hx-swap="outerHTML">← Prev</button>
+      <a class="md-text-button" href="/calendar?week=${prev}">← Prev</a>
       <h2 class="md-headline-small">${isThisWeek ? "This week" : `Week of ${esc(mon)}`} <span class="muted">· ${fmtDur(weekTotal)}</span></h2>
-      <button class="md-text-button" hx-get="/partial/week?week=${next}" hx-target="#week" hx-swap="outerHTML">Next →</button>
+      <a class="md-text-button" href="/calendar?week=${next}">Next →</a>
     </div>
-    <div class="week-grid">${cols.join("")}</div>
+    <p class="muted tiny cal-hint">Drag on the grid to log time. Click an entry to edit it.</p>
+    <div class="cal-scroll">
+      <div class="cal-grid" id="cal-body" style="--cal-hour:${CAL_HOUR_PX}px">
+        <div class="cal-gutter-col">
+          <div class="cal-gutter-spacer"></div>
+          <div class="cal-gutter cal-hours">${hourLabels}</div>
+        </div>
+        ${days.join("")}
+      </div>
+    </div>
+    <div class="cal-scrim" id="cal-scrim" hidden>
+      <div class="cal-dialog" role="dialog" aria-modal="true" aria-labelledby="cal-dialog-title">
+        <h2 class="md-headline-small" id="cal-dialog-title">New entry</h2>
+        <p class="muted md-body-medium" id="cal-dialog-date"></p>
+        <div class="md-text-field">
+          <input type="text" id="cal-desc" placeholder=" " autocomplete="off">
+          <label for="cal-desc">Description</label>
+        </div>
+        <div class="md-text-field filled">
+          <select id="cal-project" aria-label="Project"><option value="">No project</option>${projectOptions()}</select>
+          <label for="cal-project">Project</label>
+        </div>
+        <div class="cal-time-row">
+          <div class="md-text-field filled">
+            <input type="time" id="cal-start" required>
+            <label for="cal-start">Start</label>
+          </div>
+          <div class="md-text-field filled">
+            <input type="time" id="cal-end" required>
+            <label for="cal-end">End</label>
+          </div>
+          <span class="md-title-small" id="cal-dur"></span>
+        </div>
+        <p class="error tiny" id="cal-error" hidden></p>
+        <div class="cal-dialog-actions">
+          <button class="md-text-button danger" id="cal-delete" hidden>Delete</button>
+          <span class="cal-spacer"></span>
+          <button class="md-text-button" id="cal-cancel">Cancel</button>
+          <button class="md-filled-button" id="cal-save">Save</button>
+        </div>
+      </div>
+    </div>
+    <script>${calScript()}</script>
   </div>`;
 }
 
+/** Inline script: drag-to-create, click-to-edit, now-line ticking. No htmx needed. */
+function calScript(): string {
+  return `(function(){
+  var HOUR=${CAL_HOUR_PX};
+  var body=document.getElementById('cal-body');
+  var scrim=document.getElementById('cal-scrim');
+  var title=document.getElementById('cal-dialog-title');
+  var dateLine=document.getElementById('cal-dialog-date');
+  var desc=document.getElementById('cal-desc');
+  var project=document.getElementById('cal-project');
+  var startI=document.getElementById('cal-start');
+  var endI=document.getElementById('cal-end');
+  var dur=document.getElementById('cal-dur');
+  var err=document.getElementById('cal-error');
+  var delBtn=document.getElementById('cal-delete');
+  var mode='create', editId=null, dayStr='';
+  function toMin(t){var p=t.split(':');return (+p[0])*60+(+p[1]);}
+  function toHM(m){m=((m%1440)+1440)%1440;return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');}
+  function fmtD(mins){var h=Math.floor(mins/60),m=mins%60;return (h?h+'h ':'')+m+'m';}
+  function updDur(){var s=toMin(startI.value||'00:00'),e=toMin(endI.value||'00:00');
+    dur.textContent=e>s?fmtD(e-s):'';}
+  startI.addEventListener('input',updDur); endI.addEventListener('input',updDur);
+  function openCreate(date,a,b){
+    mode='create'; editId=null; dayStr=date;
+    title.textContent='New entry'; delBtn.hidden=true; err.hidden=true;
+    var d=new Date(date+'T12:00:00');
+    dateLine.textContent=d.toLocaleDateString([],{weekday:'long',month:'long',day:'numeric'});
+    desc.value=''; project.value='';
+    startI.value=toHM(a); endI.value=toHM(b); updDur();
+    scrim.hidden=false; desc.focus();
+  }
+  function openEdit(el){
+    mode='edit'; editId=el.dataset.id; dayStr=el.dataset.date;
+    title.textContent='Edit entry'; delBtn.hidden=false; err.hidden=true;
+    var d=new Date(dayStr+'T12:00:00');
+    dateLine.textContent=d.toLocaleDateString([],{weekday:'long',month:'long',day:'numeric'});
+    desc.value=el.dataset.desc||''; project.value=el.dataset.projectId||'';
+    startI.value=el.dataset.start||'09:00'; endI.value=el.dataset.end||toHM(toMin(startI.value)+60); updDur();
+    scrim.hidden=false; desc.focus();
+  }
+  function close(){ scrim.hidden=true; }
+  document.getElementById('cal-cancel').addEventListener('click',close);
+  scrim.addEventListener('click',function(e){ if(e.target===scrim) close(); });
+  document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&!scrim.hidden) close(); });
+  function fail(msg){ err.textContent=msg; err.hidden=false; }
+  document.getElementById('cal-save').addEventListener('click',function(){
+    var s=toMin(startI.value),e=toMin(endI.value);
+    if(!(e>s)) return fail('End time must be after start time.');
+    var fd=new URLSearchParams();
+    fd.set('description',desc.value);
+    fd.set('project_id',project.value);
+    fd.set('start_time',dayStr+'T'+startI.value);
+    fd.set('end_time',dayStr+'T'+endI.value);
+    var url=mode==='create'?'/entries':'/entries/'+editId;
+    fetch(url,{method:'POST',body:fd}).then(function(r){
+      if(!r.ok) throw new Error('save failed');
+      location.reload();
+    }).catch(function(ex){ fail(ex.message); });
+  });
+  delBtn.addEventListener('click',function(){
+    if(!confirm('Delete this entry?')) return;
+    fetch('/entries/'+editId,{method:'DELETE'}).then(function(){ location.reload(); });
+  });
+  // drag-to-create on empty grid space
+  var drag=null;
+  function minsAt(ev,col){
+    var r=col.getBoundingClientRect();
+    var y=Math.max(0,Math.min(r.height,ev.clientY-r.top));
+    return Math.floor(y/HOUR*(60/15))*(15);
+  }
+  function place(el,a,b){
+    el.style.top=(a/60*HOUR)+'px';
+    el.style.height=Math.max((b-a)/60*HOUR,10)+'px';
+  }
+  body.addEventListener('pointerdown',function(e){
+    var entryEl=e.target.closest('.cal-entry');
+    if(entryEl){ openEdit(entryEl); return; }
+    var col=e.target.closest('.cal-day-col');
+    if(!col) return;
+    e.preventDefault();
+    var a=minsAt(e,col);
+    var pv=document.createElement('div');
+    pv.className='cal-drag-preview';
+    col.appendChild(pv); place(pv,a,a+15);
+    drag={col:col,a:a,pv:pv,moved:false};
+    function move(ev){ drag.moved=true; var m=minsAt(ev,col);
+      var x=Math.min(drag.a,m),y=Math.max(drag.a,m); place(pv,x,Math.max(y,x+15)); }
+    function up(ev){
+      window.removeEventListener('pointermove',move);
+      window.removeEventListener('pointerup',up);
+      var m=drag.moved?minsAt(ev,col):drag.a+60;
+      var x=Math.min(drag.a,m),y=Math.max(drag.a,m);
+      if(y-x<15) y=x+15;
+      drag.pv.remove(); var d={col:drag.col,x:x,y:y}; drag=null;
+      openCreate(d.col.dataset.date,d.x,Math.min(d.y,1439));
+    }
+    window.addEventListener('pointermove',move);
+    window.addEventListener('pointerup',up);
+  });
+  // keep the now-line pinned to the current time
+  function tickNow(){
+    var el=document.getElementById('cal-now'); if(!el) return;
+    var n=new Date();
+    el.style.top=((n.getHours()*60+n.getMinutes())/60*HOUR)+'px';
+  }
+  setInterval(tickNow,60000);
+})();`;
+}
+
 function calendarPage(week?: string): string {
-  const q = week ? `?week=${esc(week)}` : "";
-  return layout("Calendar",
-    `<div hx-get="/partial/week${q}" hx-trigger="load" hx-swap="outerHTML"><p class="muted">Loading…</p></div>`, "calendar");
+  return layout("Calendar", weekGrid(week), "calendar");
 }
 
 function editPage(id: number): string | null {
@@ -566,7 +777,19 @@ Bun.serve({
       return html(timerPartial(), 200, { "HX-Trigger": "timer-updated" });
     }
     if (path === "/calendar" && method === "GET") return html(calendarPage(url.searchParams.get("week") || undefined));
-    if (path === "/partial/week" && method === "GET") return html(weekPartial(url.searchParams.get("week") || undefined));
+
+    if (path === "/entries" && method === "POST") {
+      const form = await req.formData();
+      const endRaw = String(form.get("end_time") || "");
+      const pid = form.get("project_id");
+      db.query("INSERT INTO time_entries (project_id, description, start_time, end_time) VALUES (?, ?, ?, ?)")
+        .run(
+          pid ? Number(pid) : null,
+          String(form.get("description") || ""),
+          new Date(String(form.get("start_time"))).toISOString(),
+          endRaw ? new Date(endRaw).toISOString() : null);
+      return json({ ok: true }, 201);
+    }
 
     let m = path.match(/^\/entries\/(\d+)\/edit$/);
     if (m && method === "GET") {
