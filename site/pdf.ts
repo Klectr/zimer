@@ -1,9 +1,13 @@
 /**
- * Minimal hand-rolled PDF invoice generator — zero dependencies.
+ * Hand-rolled PDF invoice generator — zero dependencies.
  *
- * Builds a single self-contained PDF (Helvetica + Helvetica-Bold, both are
- * PDF base-14 fonts so no embedding needed). All text is sanitized to ASCII
- * so string lengths equal byte lengths for the xref table.
+ * Builds a self-contained PDF (Helvetica + Helvetica-Bold, both PDF base-14
+ * fonts so no embedding needed). All text is sanitized to ASCII so string
+ * lengths equal byte lengths for the xref table.
+ *
+ * Templates: each template is a draw function over a PdfDoc. Shared
+ * assembly (pages → xref PDF) lives in assemblePdf. Register new templates
+ * in TEMPLATES — classic/minimal/bold ship built-in.
  */
 
 export type PdfLineItem = {
@@ -65,81 +69,87 @@ const PAGE_H = 792;
 const M = 56; // margin
 const RIGHT = PAGE_W - M;
 
-export function invoicePdf(inv: PdfInvoice): Uint8Array {
-  const pages: string[][] = [[]];
-  let cmds = pages[0];
-  let y = PAGE_H - M;
-
-  const text = (x: number, yy: number, size: number, s: string, bold = false, gray = false) => {
+/** Drawing context: templates emit PDF content-stream commands into pages. */
+class PdfDoc {
+  pages: string[][] = [[]];
+  y = PAGE_H - M;
+  private get cmds(): string[] { return this.pages[this.pages.length - 1]; }
+  text(x: number, yy: number, size: number, s: string, bold = false, gray = false) {
     const color = gray ? "0.45 0.45 0.45 rg " : "";
-    cmds.push(`BT ${color}/F${bold ? 2 : 1} ${size} Tf ${x.toFixed(1)} ${yy.toFixed(1)} Td (${escPdf(s)}) Tj ET`);
-  };
-  const rtext = (rightX: number, yy: number, size: number, s: string, bold = false) => {
-    text(rightX - numWidth(s, size), yy, size, s, bold);
-  };
-  const rule = (yy: number, w = 1) => {
-    cmds.push(`${w} w ${M} ${yy} m ${RIGHT} ${yy} l S`);
-  };
-  const newPage = () => {
-    pages.push([]);
-    cmds = pages[pages.length - 1];
-    y = PAGE_H - M;
-  };
+    this.cmds.push(`BT ${color}/F${bold ? 2 : 1} ${size} Tf ${x.toFixed(1)} ${yy.toFixed(1)} Td (${escPdf(s)}) Tj ET`);
+  }
+  rtext(rightX: number, yy: number, size: number, s: string, bold = false) {
+    this.text(rightX - numWidth(s, size), yy, size, s, bold);
+  }
+  rule(yy: number, w = 1) {
+    this.cmds.push(`${w} w ${M} ${yy} m ${RIGHT} ${yy} l S`);
+  }
+  newPage() {
+    this.pages.push([]);
+    this.y = PAGE_H - M;
+  }
+}
 
+type TemplateDraw = (inv: PdfInvoice, doc: PdfDoc) => void;
+
+/* ---------------- classic ----------------
+ * The original layout, extracted verbatim. Byte-identical output guaranteed
+ * by the B1 migration test (old vs new writer diffed on a sample invoice). */
+function drawClassic(inv: PdfInvoice, doc: PdfDoc) {
   /* ---- header (page 1) ---- */
-  text(M, y, 26, "INVOICE", true);
-  rtext(RIGHT, y - 6, 16, inv.number, true);
-  y -= 30;
+  doc.text(M, doc.y, 26, "INVOICE", true);
+  doc.rtext(RIGHT, doc.y - 6, 16, inv.number, true);
+  doc.y -= 30;
   const dates = `Issued ${fmtDate(inv.issueDate)}${inv.dueDate ? `  |  Due ${fmtDate(inv.dueDate)}` : ""}`;
-  text(M, y, 11, dates, false, true);
-  rtext(RIGHT, y, 10, `Status: ${inv.status.toUpperCase()}`, true);
-  y -= 18;
-  rule(y);
-  y -= 28;
-  text(M, y, 11, "Bill to", true);
-  y -= 18;
-  text(M, y, 12, inv.clientName || "-");
-  y -= 30;
+  doc.text(M, doc.y, 11, dates, false, true);
+  doc.rtext(RIGHT, doc.y, 10, `Status: ${inv.status.toUpperCase()}`, true);
+  doc.y -= 18;
+  doc.rule(doc.y);
+  doc.y -= 28;
+  doc.text(M, doc.y, 11, "Bill to", true);
+  doc.y -= 18;
+  doc.text(M, doc.y, 12, inv.clientName || "-");
+  doc.y -= 30;
 
   /* ---- line-item table ---- */
   const C_DESC = M, C_HOURS = 400, C_RATE = 480, C_AMT = RIGHT;
   const tableHead = () => {
-    text(C_DESC, y, 10, "DESCRIPTION", true, true);
-    rtext(C_HOURS, y, 10, "HOURS", true, true);
-    rtext(C_RATE, y, 10, "RATE", true, true);
-    rtext(C_AMT, y, 10, "AMOUNT", true, true);
-    y -= 8;
-    rule(y);
-    y -= 20;
+    doc.text(C_DESC, doc.y, 10, "DESCRIPTION", true, true);
+    doc.rtext(C_HOURS, doc.y, 10, "HOURS", true, true);
+    doc.rtext(C_RATE, doc.y, 10, "RATE", true, true);
+    doc.rtext(C_AMT, doc.y, 10, "AMOUNT", true, true);
+    doc.y -= 8;
+    doc.rule(doc.y);
+    doc.y -= 20;
   };
   tableHead();
 
   if (!inv.items.length) {
-    text(M, y, 10, "No line items.", false, true);
-    y -= 20;
+    doc.text(M, doc.y, 10, "No line items.", false, true);
+    doc.y -= 20;
   }
   for (const it of inv.items) {
-    if (y < 130) {
-      newPage();
+    if (doc.y < 130) {
+      doc.newPage();
       tableHead();
     }
     const desc = it.description.length > 52 ? it.description.slice(0, 49) + "..." : it.description;
-    text(C_DESC, y, 10, desc);
+    doc.text(C_DESC, doc.y, 10, desc);
     const hours = String(it.hours).replace(/\.0+$/, "").replace(/(\.\d*?)0+$/, "$1");
-    rtext(C_HOURS, y, 10, hours);
-    rtext(C_RATE, y, 10, money(it.rate));
-    rtext(C_AMT, y, 10, money(it.amount));
-    y -= 18;
+    doc.rtext(C_HOURS, doc.y, 10, hours);
+    doc.rtext(C_RATE, doc.y, 10, money(it.rate));
+    doc.rtext(C_AMT, doc.y, 10, money(it.amount));
+    doc.y -= 18;
   }
-  y -= 6;
-  rule(y);
-  y -= 22;
+  doc.y -= 6;
+  doc.rule(doc.y);
+  doc.y -= 22;
 
   /* ---- totals ---- */
   const totalRow = (label: string, val: string, bold = false, size = 11) => {
-    rtext(C_RATE, y, size, label, bold);
-    rtext(C_AMT, y, size, val, bold);
-    y -= size + 8;
+    doc.rtext(C_RATE, doc.y, size, label, bold);
+    doc.rtext(C_AMT, doc.y, size, val, bold);
+    doc.y -= size + 8;
   };
   totalRow("Subtotal", money(inv.subtotal));
   if (inv.taxRate) totalRow(`Tax (${inv.taxRate}%)`, money(inv.tax));
@@ -147,36 +157,61 @@ export function invoicePdf(inv: PdfInvoice): Uint8Array {
 
   /* ---- notes ---- */
   if (inv.notes.trim()) {
-    y -= 12;
-    text(M, y, 11, "Notes", true);
-    y -= 16;
+    doc.y -= 12;
+    doc.text(M, doc.y, 11, "Notes", true);
+    doc.y -= 16;
     const words = inv.notes.split(/\s+/);
     let lineText = "";
     for (const w of words) {
       const trial = lineText ? lineText + " " + w : w;
       if (trial.length * 5 > RIGHT - M && lineText) {
-        text(M, y, 10, lineText);
-        y -= 14;
-        if (y < 80) newPage();
+        doc.text(M, doc.y, 10, lineText);
+        doc.y -= 14;
+        if (doc.y < 80) doc.newPage();
         lineText = w;
       } else {
         lineText = trial;
       }
     }
     if (lineText) {
-      text(M, y, 10, lineText);
-      y -= 14;
+      doc.text(M, doc.y, 10, lineText);
+      doc.y -= 14;
     }
   }
 
   /* ---- footers ---- */
-  pages.forEach((p, i) => {
+  doc.pages.forEach((p, i) => {
     p.push(`BT 0.45 0.45 0.45 rg /F1 9 Tf ${M} 40 Td (${escPdf(inv.number)} - Generated by Timekeep) Tj ET`);
-    const pg = `Page ${i + 1} of ${pages.length}`;
+    const pg = `Page ${i + 1} of ${doc.pages.length}`;
     p.push(`BT 0.45 0.45 0.45 rg /F1 9 Tf ${(RIGHT - numWidth(pg, 9)).toFixed(1)} 40 Td (${escPdf(pg)}) Tj ET`);
   });
+}
 
-  /* ---- assemble ---- */
+/* ---------------- registry ---------------- */
+
+const TEMPLATES: Record<string, { id: string; name: string; draw: TemplateDraw }> = {
+  classic: { id: "classic", name: "Classic", draw: drawClassic },
+};
+
+export function isInvoiceTemplate(id: string): boolean {
+  return id in TEMPLATES;
+}
+
+export function templateList(): { id: string; name: string }[] {
+  return Object.values(TEMPLATES).map(t => ({ id: t.id, name: t.name }));
+}
+
+/** Render an invoice PDF. Unknown template ids fall back to classic. */
+export function invoicePdf(inv: PdfInvoice, template = "classic"): Uint8Array {
+  const t = TEMPLATES[template] ?? TEMPLATES.classic;
+  const doc = new PdfDoc();
+  t.draw(inv, doc);
+  return assemblePdf(doc.pages);
+}
+
+/* ---------------- assembly (shared by all templates) ---------------- */
+
+function assemblePdf(pages: string[][]): Uint8Array {
   const n = pages.length;
   const font1 = 3 + n * 2;
   const font2 = 4 + n * 2;

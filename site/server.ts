@@ -9,7 +9,7 @@ import { Database } from "bun:sqlite";
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { mkdirSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve, normalize, sep } from "node:path";
-import { invoicePdf } from "./pdf.ts";
+import { invoicePdf, isInvoiceTemplate } from "./pdf.ts";
 
 const PORT = Number(process.env.PORT || 3000);
 const DATA_DIR = process.env.DATA_DIR || resolve(import.meta.dir, "data");
@@ -76,6 +76,7 @@ CREATE INDEX IF NOT EXISTS idx_items_invoice ON invoice_items(invoice_id);
 for (const [tbl, col, def] of [
   ["clients", "rate", "REAL NOT NULL DEFAULT 0"],
   ["time_entries", "invoice_id", "INTEGER REFERENCES invoices(id) ON DELETE SET NULL"],
+  ["invoices", "template", "TEXT NOT NULL DEFAULT 'classic'"],
 ] as const) {
   try { db.exec(`ALTER TABLE ${tbl} ADD COLUMN ${col} ${def}`); }
   catch { /* column already exists */ }
@@ -175,7 +176,7 @@ function money(n: number): string {
 type InvoiceItem = { id: number; description: string; hours: number; rate: number; amount: number };
 type Invoice = {
   id: number; client_id: number | null; number: string; issue_date: string; due_date: string | null;
-  status: string; tax_rate: number; notes: string; created_at: string;
+  status: string; tax_rate: number; notes: string; template: string; created_at: string;
   client_name: string | null; client_color: string | null;
 };
 
@@ -1245,11 +1246,18 @@ Bun.serve({
         if (method === "PATCH") {
           const inv = qInvoice.get(id) as Invoice | null;
           if (!inv) return json({ error: "not found" }, 404);
-          const want = String(body.status || "");
-          const ok = (inv.status === "draft" && want === "sent") ||
-                     (inv.status === "sent" && want === "paid");
-          if (!ok) return json({ error: "invalid status transition (draft → sent → paid)" }, 400);
-          db.query("UPDATE invoices SET status = ? WHERE id = ?").run(want, id);
+          if (body.template !== undefined) {
+            const tpl = String(body.template);
+            if (!isInvoiceTemplate(tpl)) return json({ error: "unknown template" }, 400);
+            db.query("UPDATE invoices SET template = ? WHERE id = ?").run(tpl, id);
+          }
+          if (body.status !== undefined) {
+            const want = String(body.status);
+            const ok = (inv.status === "draft" && want === "sent") ||
+                       (inv.status === "sent" && want === "paid");
+            if (!ok) return json({ error: "invalid status transition (draft → sent → paid)" }, 400);
+            db.query("UPDATE invoices SET status = ? WHERE id = ?").run(want, id);
+          }
           const full = getInvoice(id)!;
           return json({ ...full, ...invoiceTotals(full.items, full.tax_rate) });
         }
@@ -1443,7 +1451,7 @@ Bun.serve({
         })),
         subtotal: t.subtotal, tax: t.tax, taxRate: inv.tax_rate, total: t.total,
         notes: inv.notes,
-      });
+      }, inv.template);
       const filename = inv.number.replace(/[^A-Za-z0-9._-]+/g, "_") + ".pdf";
       return new Response(pdf, {
         headers: {
