@@ -64,6 +64,8 @@ This is the most violated thing by new agents, so it's up front, not linked:
 - Work is tracked as **thin vertical slices under milestones**. Check open
   milestones/issues before starting; each slice is DB → API → UI with
   acceptance criteria and non-goals.
+- **Standing change process:** file an issue → implement → test → push →
+  close the issue. Every change gets a ticket; see `docs/workflow.md`.
 
 ## Detail docs
 

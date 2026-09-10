@@ -1,5 +1,18 @@
 # Workflow — timekeep
 
+## Change process (standing requirement)
+
+Every change — feature, fix, or cleanup — follows this order, no exceptions:
+
+1. **File an issue ticket** describing the change, scope, and acceptance
+   criteria.
+2. **Implement** the fix against `main`.
+3. **Test** it (local server + checks; see below).
+4. **Push** to `main`, then **close the issue** with the commit reference.
+
+Don't batch unrelated changes into one issue, and don't close an issue until
+the change is pushed and verified.
+
 ## Local dev
 
 ```bash

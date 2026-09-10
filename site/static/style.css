@@ -94,41 +94,39 @@ body {
 }
 .md-top-app-bar-spacer { flex: 1; }
 
-/* ---------------- primary tabs (peer views, under app bar) ---------------- */
-.md-tabs {
-  display: flex;
-  gap: 8px;
-  padding: 0 16px;
-  background: var(--md-sys-color-surface);
-  border-bottom: 1px solid var(--md-sys-color-surface-container-high);
-  position: sticky;
-  top: 64px;
-  z-index: 9;
-}
-.md-tab {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  min-height: 48px;
-  min-width: 48px;
-  padding: 0 16px;
+/* ---------------- unified top app bar: title + primary nav + actions, one row ----
+ * M3: tabs are for related content within a page, not primary destinations.
+ * The four destinations are top-level pages, so they live in the app bar as
+ * nav items with an M3 navigation-bar-style active pill (secondary-container). */
+.md-top-app-bar-title { display: inline-flex; align-items: center; gap: 10px; }
+.md-top-app-bar-title svg { width: 24px; height: 24px; color: var(--md-sys-color-primary); }
+.md-top-nav { display: flex; align-items: center; gap: 4px; margin-left: 20px; }
+.md-top-nav-item {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 40px; padding: 0 16px;
+  border-radius: var(--md-sys-shape-corner-full);
   color: var(--md-sys-color-on-surface-variant);
-  text-decoration: none;
-  font-size: 14px;
-  font-weight: 500;
-  letter-spacing: 0.1px;
+  font-size: 14px; font-weight: 500; letter-spacing: 0.1px;
+  text-decoration: none; white-space: nowrap;
 }
-.md-tab:hover { color: var(--md-sys-color-on-surface); }
-.md-tab.active { color: var(--md-sys-color-primary); }
-.md-tab.active::after {
-  content: "";
-  position: absolute;
-  left: 16px;
-  right: 16px;
-  bottom: 0;
-  height: 3px;
-  border-radius: 3px 3px 0 0;
-  background: var(--md-sys-color-primary);
+.md-top-nav-item svg { width: 20px; height: 20px; flex: none; }
+.md-top-nav-item:hover {
+  background: color-mix(in srgb, var(--md-sys-color-on-surface) 8%, transparent);
+  color: var(--md-sys-color-on-surface);
+}
+.md-top-nav-item.active {
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+/* narrow screens: icon-only nav, title mark only — labels stay for AT/tooltips */
+@media (max-width: 760px) {
+  .md-top-app-bar { padding: 0 8px 0 16px; }
+  .md-top-nav { margin-left: 8px; gap: 0; }
+  .md-top-nav-item { padding: 0 12px; }
+  .md-top-app-bar-title span, .md-top-nav-item span {
+    position: absolute; width: 1px; height: 1px;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+  }
 }
 
 main { max-width: 1000px; margin: 0 auto; padding: 24px 16px 96px; }
@@ -204,8 +202,6 @@ h2.md-headline-small { margin: 24px 4px 12px; }
 .md-text-button.danger { color: var(--md-sys-color-error); }
 
 /* ---------------- icons (inline SVG, M3 outlined 24px) ---------------- */
-.md-tab { gap: 8px; }
-.md-tab svg { width: 20px; height: 20px; flex: none; }
 .md-filled-button svg, .md-tonal-button svg, .md-outlined-button svg, .md-text-button svg {
   width: 18px; height: 18px; flex: none; }
 
@@ -656,7 +652,7 @@ body.app-fixed .cal-gutter-spacer {
 
 /* ---------------- print ---------------- */
 @media print {
-  .md-top-app-bar, .md-tabs, .no-print, .page-head { display: none !important; }
+  .md-top-app-bar, .no-print, .page-head { display: none !important; }
   body { background: #fff; color: #111; }
   main { max-width: none; padding: 0; }
   .md-card.invoice-sheet { box-shadow: none; background: #fff; color: #111; max-width: none; }

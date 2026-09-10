@@ -376,8 +376,8 @@ function authedPage(req: Request): boolean {
 
 /* ---------------- views ---------------- */
 function layout(title: string, body: string, active?: "timer" | "calendar" | "manage" | "invoices", fixed?: boolean): string {
-  const tab = (href: string, label: string, key: string, ic: keyof typeof ICONS) =>
-    `<a href="${href}" class="md-tab${active === key ? " active" : ""}"${active === key ? ` aria-current="page"` : ""}>${icon(ic)}<span>${label}</span></a>`;
+  const navItem = (href: string, label: string, key: string, ic: keyof typeof ICONS) =>
+    `<a href="${href}" title="${label}" class="md-top-nav-item${active === key ? " active" : ""}"${active === key ? ` aria-current="page"` : ""}>${icon(ic)}<span>${label}</span></a>`;
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -391,16 +391,16 @@ function layout(title: string, body: string, active?: "timer" | "calendar" | "ma
 </head>
 <body${fixed ? ' class="app-fixed"' : ""}>
 <header class="md-top-app-bar">
-  <span class="md-top-app-bar-title">⏱ Timekeep</span>
+  <span class="md-top-app-bar-title">${icon("timer")}<span>Timekeep</span></span>
+  <nav class="md-top-nav" aria-label="Primary">
+    ${navItem("/", "Timer", "timer", "timer")}
+    ${navItem("/calendar", "Calendar", "calendar", "calendar")}
+    ${navItem("/invoices", "Invoices", "invoices", "receipt")}
+    ${navItem("/manage", "Clients & projects", "manage", "group")}
+  </nav>
   <span class="md-top-app-bar-spacer"></span>
   <a class="md-text-button" href="/logout">Log out</a>
 </header>
-<nav class="md-tabs" aria-label="Primary">
-  ${tab("/", "Timer", "timer", "timer")}
-  ${tab("/calendar", "Calendar", "calendar", "calendar")}
-  ${tab("/invoices", "Invoices", "invoices", "receipt")}
-  ${tab("/manage", "Clients & projects", "manage", "group")}
-</nav>
 <main${active ? ` class="page-${active}"` : ""}>${body}</main>
 </html>`;
 }

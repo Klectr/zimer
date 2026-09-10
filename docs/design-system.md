@@ -111,6 +111,12 @@ per-page:
   (chevrons with "Previous/Next week" tooltips). A "Today" text button appears
   only when viewing a non-current week. Today is marked with a filled primary
   circle on the day number and a 10% primary tint on its lane.
+- **Unified top app bar.** One header row: app title (icon + name) leading,
+  primary destinations as nav items, Log out trailing. The destinations are
+  top-level pages, and M3 reserves tabs for related content *within* a page —
+  so they are nav items with an M3 navigation-bar-style active pill
+  (`secondary-container`), not tabs. Below 760px the nav collapses to
+  icon-only (labels remain for assistive tech and tooltips).
 - **Fixed viewport, regions own the scroll.** App pages (timer, calendar,
   invoices list, manage) opt in via `layout(..., fixed=true)`: `body.app-fixed`
   is a 100dvh flex column, the page never scrolls, and exactly one region owns
