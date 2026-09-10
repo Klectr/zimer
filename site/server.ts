@@ -389,7 +389,7 @@ function layout(title: string, body: string, active?: "timer" | "calendar" | "ma
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
 <link rel="stylesheet" href="/static/style.css">
 </head>
-<body>
+<body${active === "calendar" ? ' class="cal-fixed"' : ""}>
 <header class="md-top-app-bar">
   <span class="md-top-app-bar-title">⏱ Timekeep</span>
   <span class="md-top-app-bar-spacer"></span>
@@ -723,6 +723,10 @@ function calScript(): string {
   var err=document.getElementById('cal-error');
   var delBtn=document.getElementById('cal-delete');
   var mode='create', editId=null, dayStr='';
+  /* grid owns the scroll: land near the current time when today is in view */
+  var scroller=document.querySelector('.cal-scroll'), nowEl=document.getElementById('cal-now');
+  if(scroller&&nowEl){var r=nowEl.getBoundingClientRect(),s=scroller.getBoundingClientRect();
+    scroller.scrollTop=Math.max(0,r.top-s.top+scroller.scrollTop-scroller.clientHeight*0.35);}
   function toMin(t){var p=t.split(':');return (+p[0])*60+(+p[1]);}
   function toHM(m){m=((m%1440)+1440)%1440;return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');}
   function fmtD(mins){var h=Math.floor(mins/60),m=mins%60;return (h?h+'h ':'')+m+'m';}
