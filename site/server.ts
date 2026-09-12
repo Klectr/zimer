@@ -721,15 +721,23 @@ const CAL_HOUR_PX = 52;
     Kept as a constant in this slice; a configurable target is a follow-up. */
 const WEEK_TARGET_SECS = 40 * 3600;
 
-/** Slim pacing bar under the week header: tracked hours vs the 40h target. */
+/** Slim pacing bar under the week header: tracked hours vs the 40h target.
+    M3 Expressive treatment ported from homeschool-planner's dashboard: the
+    gold fill is wave-masked and ripples while under target, settling to a
+    flat fill with a one-pass sheen once the target is met. */
 function weekTargetBar(weekTotalSecs: number): string {
   const pct = Math.min(100, (weekTotalSecs / WEEK_TARGET_SECS) * 100);
   const over = weekTotalSecs >= WEEK_TARGET_SECS;
+  const bar = over
+    ? `<div class="week-target-fill" style="width:${pct.toFixed(1)}%" aria-hidden="true"></div>`
+    : `${pct > 0 ? `<div class="week-target-fill-wrap" style="width:calc((100% - 4px) * ${(pct / 100).toFixed(3)})" aria-hidden="true"><div class="week-target-fill-wave"></div></div>` : ""}
+       <div class="week-target-remainder" aria-hidden="true"></div>
+       <div class="week-target-dot" aria-hidden="true"></div>`;
   return `
     <div class="week-target">
-      <div class="week-target-track" role="progressbar" aria-valuenow="${Math.round(pct)}"
+      <div class="week-target-track${over ? " complete" : ""}" role="progressbar" aria-valuenow="${Math.round(pct)}"
         aria-valuemin="0" aria-valuemax="100" aria-label="Weekly hours target, 40 hours">
-        <div class="week-target-fill" style="width:${pct.toFixed(1)}%"></div>
+        ${bar}
       </div>
       <div class="md-label-medium muted week-target-label">${fmtDur(weekTotalSecs)} / 40h${over ? ` · <span class="tiny">over target</span>` : ""}</div>
     </div>`;
