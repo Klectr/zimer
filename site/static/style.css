@@ -766,6 +766,13 @@ body.app-fixed .cal-gutter-spacer {
   text-decoration: none; }
 .nudge-chip:hover { background: var(--md-sys-color-surface-container-highest); }
 .nudge-chip .nudge-go { color: var(--md-sys-color-primary); }
+/* Nudge-chip entrance (#52): scale/fade from the chip's top-left anchor
+   corner, landing just after the week-nav entrance above it. */
+.nudge-chip {
+  transform-origin: 0 0;
+  animation: nudge-in var(--motion-duration-medium2) var(--motion-easing-emphasized-decelerate) var(--motion-duration-short2) backwards;
+}
+@keyframes nudge-in { from { opacity: 0; transform: scale(0.8); } }
 .inv-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
 .inv-dates { display: flex; gap: 32px; margin-bottom: 20px; }
 .inv-notes { margin-top: 16px; color: var(--md-sys-color-on-surface-variant); white-space: pre-wrap; }
