@@ -7,6 +7,7 @@
 
 /* ---------------- sys tokens: color (dark) ---------------- */
 :root {
+  color-scheme: dark;
   --md-sys-color-primary: #f2c14e;
   --md-sys-color-on-primary: #3a2a00;
   --md-sys-color-primary-container: #6b4e12;
@@ -282,7 +283,19 @@ h2.md-headline-small { margin: 24px 4px 12px; }
 .md-icon-button.danger:hover { color: var(--md-sys-color-error); }
 
 /* ---------------- text fields (borderless tonal, 56dp) ----------------
- * No indicator lines: separation comes from the tonal container + whitespace. */
+ * No indicator lines: separation comes from the tonal container + whitespace.
+ * Number inputs are typing-first: the native spinner arrows ignore the dark
+ * scheme and clutter compact fields, so they're hidden (same rationale as the
+ * custom select chevron). */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
 .md-text-field { position: relative; display: block; }
 .md-text-field input, .md-text-field select {
   width: 100%;
