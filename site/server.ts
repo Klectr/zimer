@@ -1443,7 +1443,7 @@ function invoiceSheet(inv: Invoice & { items: InvoiceItem[] }): string {
         <div class="inv-meta">${statusPill(inv.status)}${paidChip}</div>
       </div>
       ${datesClassic}`;
-  return `<div class="md-card invoice-sheet template-${esc(inv.template)}">
+  return `<div class="md-card invoice-sheet template-${esc(inv.template)}" id="invoice-sheet">
       ${head}
       <div class="table-wrap"><table class="md-table">
         <thead><tr><th>Description</th><th class="num">Hours</th><th class="num">Rate</th><th class="num">Amount</th></tr></thead>
