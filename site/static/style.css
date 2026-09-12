@@ -20,6 +20,8 @@
   --md-sys-color-surface: #131318;
   --md-sys-color-on-surface: #e5e1e9;
   --md-sys-color-on-surface-variant: #cac4cf;
+  --md-sys-color-inverse-surface: #e6e1e9;
+  --md-sys-color-inverse-on-surface: #322f35;
   --md-sys-color-surface-container-lowest: #0d0d12;
   --md-sys-color-surface-container-low: #1a1a20;
   --md-sys-color-surface-container: #1e1e24;
@@ -592,7 +594,7 @@ body.app-fixed .cal-gutter-spacer {
   grid-template-columns: 54px repeat(7, minmax(0, 1fr));
   gap: 8px;
 }
-.cal-gutter-spacer { height: 84px; }
+.cal-gutter-spacer { height: 64px; } /* matches the two-line day header */
 .cal-gutter { position: relative; }
 .cal-hours { height: calc(var(--cal-hour) * 24); }
 .cal-hour-label {
@@ -606,11 +608,41 @@ body.app-fixed .cal-gutter-spacer {
   animation: cal-day-enter var(--motion-duration-medium2) var(--motion-easing-emphasized-decelerate) backwards;
 }
 @keyframes cal-day-enter { from { opacity: 0; transform: translateY(12px); } }
-.cal-day-head { text-align: center; padding: 10px 4px 8px; min-height: 84px; }
+/* #69: header is two lines (weekday + date) — per-day stats moved into an M3 plain tooltip */
+.cal-day-head { position: relative; text-align: center; padding: 10px 4px 8px; min-height: 64px; }
+.cal-day-head[data-tip] { cursor: default; }
+.cal-day-head[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute; left: 50%; top: calc(100% + 4px); /* M3: 4dp anchor gap */
+  transform: translateX(-50%) translateY(-2px);
+  background: var(--md-sys-color-inverse-surface);
+  color: var(--md-sys-color-inverse-on-surface);
+  border-radius: var(--md-sys-shape-corner-extra-small); /* M3 plain tooltip shape */
+  padding: 4px 8px; /* M3 plain tooltip padding */
+  white-space: nowrap; max-width: 200px; /* M3 plain tooltip max width */
+  font-size: 12px; line-height: 16px;
+  opacity: 0; pointer-events: none; z-index: 30;
+  transition: opacity var(--motion-duration-short2) var(--motion-easing-standard),
+    transform var(--motion-duration-short2) var(--motion-easing-standard);
+}
+.cal-day-head[data-tip]:hover::after,
+.cal-day-head[data-tip]:focus-visible::after,
+.cal-day-head[data-tip].tip-show::after {
+  opacity: 1; transform: translateX(-50%) translateY(0);
+}
+/* keep edge-column tooltips inside the scroll region instead of clipping */
+.cal-day:first-child .cal-day-head[data-tip]::after { left: 0; transform: translateY(-2px); }
+.cal-day:last-child .cal-day-head[data-tip]::after { left: auto; right: 0; transform: translateX(0) translateY(-2px); }
+.cal-day:first-child .cal-day-head[data-tip]:hover::after,
+.cal-day:first-child .cal-day-head[data-tip]:focus-visible::after,
+.cal-day:first-child .cal-day-head[data-tip].tip-show::after,
+.cal-day:last-child .cal-day-head[data-tip]:hover::after,
+.cal-day:last-child .cal-day-head[data-tip]:focus-visible::after,
+.cal-day:last-child .cal-day-head[data-tip].tip-show::after { transform: translateY(0); }
 .cal-day-num { font-size: 22px; line-height: 28px; }
 .cal-day-num.today {
-  display: inline-block; min-width: 36px; height: 36px; line-height: 36px; border-radius: var(--md-sys-shape-corner-full);
-  background: var(--md-sys-color-primary); color: var(--md-sys-color-on-primary); font-weight: 500;
+  /* #69: today is marked with the primary color, not a filled badge */
+  color: var(--md-sys-color-primary); font-weight: 700;
 }
 .cal-day-col {
   position: relative; height: calc(var(--cal-hour) * 24); flex: none;

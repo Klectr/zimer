@@ -825,12 +825,16 @@ function weekInner(weekStr?: string): string {
     }).join("");
     const nowLine = isToday
       ? `<div class="cal-now" id="cal-now" style="top:${((nowMin / 60) * CAL_HOUR_PX).toFixed(1)}px"></div>` : "";
+    // #69: day stats live in an M3 plain tooltip on the header (hover / focus / long-press),
+    // not in the layout — the header stays two lines so time slots sit higher.
+    const tip = total > 0 ? `${fmtDur(total)} total · ${fmtDur(billable)} billable` : "";
+    const headAttrs = tip
+      ? ` tabindex="0" data-tip="${tip}" aria-label="${esc(wd)} ${d}: ${tip}"`
+      : "";
     days.push(`<div class="cal-day${isToday ? " today" : ""}${pastShort ? " paced-short" : ""}" style="animation-delay:${i * 40}ms">
-      <div class="cal-day-head">
+      <div class="cal-day-head"${headAttrs}>
         <div class="md-label-large muted">${esc(wd)}</div>
         <div class="cal-day-num${isToday ? " today" : ""}">${d}</div>
-        <div class="tiny muted">${fmtDur(total)}</div>
-        ${total > 0 ? `<div class="tiny muted">${fmtDur(billable)} billable</div>` : ""}
       </div>
       <div class="cal-day-col" data-date="${day}">${entryHtml}${nowLine}</div>
     </div>`);
@@ -1082,6 +1086,20 @@ function calScript(): string {
     }
     window.addEventListener('pointermove',move);
     window.addEventListener('pointerup',up);
+  });
+  /* #69: long-press (450ms) reveals the day-head stats tooltip on touch, where hover doesn't exist. */
+  var tipTimer=null,tipEl=null;
+  document.addEventListener('pointerdown',function(e){
+    var head=e.target.closest('.cal-day-head[data-tip]');
+    if(!head) return;
+    tipEl=head;
+    tipTimer=setTimeout(function(){ head.classList.add('tip-show'); },450);
+  });
+  ['pointerup','pointercancel'].forEach(function(t){
+    document.addEventListener(t,function(){
+      if(tipTimer){ clearTimeout(tipTimer); tipTimer=null; }
+      if(tipEl){ tipEl.classList.remove('tip-show'); tipEl=null; }
+    },{passive:true});
   });
   // keep the now-line pinned to the current time
   function tickNow(){
