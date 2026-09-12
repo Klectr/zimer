@@ -519,6 +519,11 @@ body.app-fixed .cal-gutter-spacer {
 .cal-day.today .cal-day-col {
   background-color: color-mix(in srgb, var(--md-sys-color-primary) 10%, var(--md-sys-color-surface-container-low));
 }
+/* Past days under 8h get a subtle one-step tonal lift; today and future
+   days are never tinted. Background only, so no layout shift. */
+.cal-day.paced-short .cal-day-col {
+  background-color: var(--md-sys-color-surface-container);
+}
 .cal-entry {
   position: absolute; left: 4px; right: 4px; border-radius: var(--md-sys-shape-corner-small);
   background: var(--c, var(--md-sys-color-primary)); color: #16161c;
