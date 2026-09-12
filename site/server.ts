@@ -731,6 +731,8 @@ function weekGrid(weekStr?: string): string {
     weekTotal += total;
     weekBillable += billable;
     const isToday = day === today;
+    /* Subtle tint for past days under 8h; never tint today or future days. */
+    const pastShort = day < today && total < 8 * 3600;
 
     // Entries render full-width; an entry involved in an overlap gets a top
     // drop shadow so it reads as elevated above the entry beneath it.
@@ -762,7 +764,7 @@ function weekGrid(weekStr?: string): string {
     }).join("");
     const nowLine = isToday
       ? `<div class="cal-now" id="cal-now" style="top:${((nowMin / 60) * CAL_HOUR_PX).toFixed(1)}px"></div>` : "";
-    days.push(`<div class="cal-day${isToday ? " today" : ""}">
+    days.push(`<div class="cal-day${isToday ? " today" : ""}${pastShort ? " paced-short" : ""}">
       <div class="cal-day-head">
         <div class="md-label-large muted">${esc(wd)}</div>
         <div class="cal-day-num${isToday ? " today" : ""}">${d}</div>
