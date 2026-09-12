@@ -457,7 +457,7 @@ function layout(title: string, body: string, active?: "timer" | "calendar" | "ma
 <script src="/static/motion.js" defer></script>
 </head>
 <body${fixed ? ' class="app-fixed"' : ""}>
-<header class="md-top-app-bar">
+<header class="md-top-app-bar" data-enter="1">
   <span class="md-top-app-bar-title">${icon("timer")}<span>Timekeep</span></span>
   <nav class="md-top-nav" aria-label="Primary">
     ${navItem("/", "Timer", "timer", "timer")}
@@ -611,14 +611,14 @@ function todayPartial(): string {
 function dashboardPage(): string {
   return layout("Timer", `
     <div class="pane-layout">
-      <section class="pane-focus" aria-label="Timer and today's entries">
+      <section class="pane-focus" data-enter="2" aria-label="Timer and today's entries">
         <div hx-get="/partial/timer" hx-trigger="load" hx-swap="outerHTML swap:200ms"><div class="md-card"><p class="muted">Loading…</p></div></div>
         <div class="scroll-region">
           <h2 class="md-headline-small">Today</h2>
           <div id="today-list" hx-get="/partial/today" hx-trigger="load, timer-updated from:body"></div>
         </div>
       </section>
-      <aside class="pane-supporting" aria-label="Revenue">
+      <aside class="pane-supporting" data-enter="3" aria-label="Revenue">
         <div class="scroll-region">
           <h2 class="md-headline-small">Revenue</h2>
           ${revenueSection()}
@@ -850,7 +850,7 @@ function weekGrid(weekStr?: string): string {
   }).join("");
 
   return `<div id="week">
-    <div class="week-nav">
+    <div class="week-nav" data-enter="2">
       <h2 class="md-headline-small">${isThisWeek ? "This week" : `Week of ${esc(mon)}`} <span class="muted">· ${fmtDur(weekTotal)}</span> ${deltaHtml} <span class="muted">· ${fmtDur(weekBillable)} billable</span></h2>
       <div class="week-nav-actions">
         ${isThisWeek ? "" : `<a class="md-text-button" href="/calendar">Today</a>`}
@@ -862,7 +862,7 @@ function weekGrid(weekStr?: string): string {
     ${weekTargetBar(weekTotal)}
     ${clientStrip}
     <p class="muted tiny cal-hint">Drag on the grid to log time. Click an entry to edit it.</p>
-    <div class="cal-scroll">
+    <div class="cal-scroll" data-enter="3">
       <div class="cal-grid" id="cal-body" style="--cal-hour:${CAL_HOUR_PX}px">
         <div class="cal-gutter-col">
           <div class="cal-gutter-spacer"></div>
@@ -1056,7 +1056,7 @@ function editPage(id: number): string | null {
     return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
   };
   return layout("Edit entry", `
-    <h2 class="md-headline-small">Edit entry</h2>
+    <h2 class="md-headline-small" data-enter="2">Edit entry</h2>
     <form method="post" action="/entries/${e.id}" class="form">
       <div class="md-text-field">
         <input type="text" name="description" value="${esc(e.description)}" placeholder=" ">
@@ -1089,7 +1089,7 @@ function managePage(): string {
   return layout("Clients & Projects", `
     <div class="scroll-region">
     <div class="two-col">
-      <section>
+      <section data-enter="2">
         <h2 class="md-headline-small">Clients</h2>
         <form method="post" action="/clients" class="manage-form">
           <div class="md-text-field">
@@ -1127,7 +1127,7 @@ function managePage(): string {
             </div>
           </li>`).join("")}</ul>` : `<p class="muted">No clients yet.</p>`}
       </section>
-      <section>
+      <section data-enter="3">
         <h2 class="md-headline-small">Projects</h2>
         <form method="post" action="/projects" class="manage-form">
           <div class="md-text-field">
@@ -1180,12 +1180,12 @@ function invoicesPage(): string {
     </li>`;
   }).join("")}</ul>` : `<p class="muted">No invoices yet. Create one from your tracked time.</p>`;
   return layout("Invoices", `
-    <div class="page-head">
+    <div class="page-head" data-enter="2">
       <h2 class="md-headline-small">Invoices</h2>
       <a class="md-filled-button" href="/invoices/new">${icon("add")}New invoice</a>
     </div>
     ${rows.length ? `<p class="muted">Outstanding: <strong>${money(outstanding)}</strong></p>` : ""}
-    <div class="scroll-region">${list}</div>`, "invoices", true);
+    <div class="scroll-region" data-enter="3">${list}</div>`, "invoices", true);
 }
 
 type NewInvParams = {
@@ -1289,7 +1289,7 @@ function invoiceNewPage(p: NewInvParams, preview?: { items: any[]; emptyMsg?: st
   }
 
   return layout("New invoice", `
-    <div class="page-narrow">
+    <div class="page-narrow" data-enter="2">
     <div class="page-head">
       <h2 class="md-headline-small">New invoice</h2>
       <a class="md-text-button" href="/invoices">Cancel</a>
@@ -1417,7 +1417,7 @@ function invoiceDetailPage(inv: Invoice & { items: InvoiceItem[] }, origin: stri
         <span class="muted tiny">Set STRIPE_SECRET_KEY to collect via Stripe.</span>`}
     </div>`;
   return layout(`Invoice ${inv.number}`, `
-    <div class="page-head no-print">
+    <div class="page-head no-print" data-enter="2">
       <a class="md-text-button" href="/invoices">${icon("arrow_left")}Invoices</a>
       <div class="row">
         <a class="md-filled-button" href="/invoices/${inv.id}.pdf" download>${icon("download")}Download PDF</a>
