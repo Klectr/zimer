@@ -587,7 +587,7 @@ body.app-fixed main {
   grid-template-rows: auto auto minmax(0, 1fr); }
 .cal-pane-layout .week-nav { grid-area: nav; }
 .cal-supporting { grid-area: summary; display: flex; flex-direction: column; gap: 14px; margin: 10px 0 12px; min-width: 0; }
-.cal-supporting .week-target, .cal-supporting .week-clients, .cal-supporting .cal-hint { margin: 0; }
+.cal-supporting .m3-progress, .cal-supporting .week-clients, .cal-supporting .cal-hint { margin: 0; }
 .cal-pane-layout .cal-scroll { grid-area: grid; }
 @media (min-width: 840px) {
   .cal-pane-layout { grid-template-columns: minmax(0, 1fr) 360px;
@@ -691,9 +691,9 @@ body.app-fixed .cal-gutter-spacer {
 #week.no-enter [data-enter],
 #week.no-enter .nudge-chip,
 #week.no-enter .cal-day,
-#week.no-enter .week-target-fill,
-#week.no-enter .week-target-fill-wrap,
-#week.no-enter .week-target-fill-wave { animation: none !important; }
+#week.no-enter .m3-progress-fill,
+#week.no-enter .m3-progress-fill-wrap,
+#week.no-enter .m3-progress-fill-wave { animation: none !important; }
 /* One-time highlight on the entry that was just created/updated. */
 .cal-entry.cal-flash { animation: cal-flash 1.2s var(--motion-easing-standard); }
 @keyframes cal-flash {
@@ -826,45 +826,53 @@ body.app-fixed .cal-gutter-spacer {
 .public-pay { text-align: center; margin: 28px 0 8px; }
 .public-pay-btn { font-size: 17px; padding: 14px 32px; border-radius: 999px; }
 
-/* Weekly target pacing bar on the calendar — M3 Expressive treatment ported
-   from homeschool-planner's dashboard. The gold fill is wave-masked and
-   ripples while under the target; once the 40h target is met it settles to a
-   flat fill with a one-pass sheen. The grow-in sweep (#44) is kept, `no-enter`
-   still suppresses it, and the ripple/sheen only run with motion allowed. */
-.week-target { display: flex; align-items: center; gap: 12px; margin: 2px 0 14px; flex-wrap: wrap; }
-.week-target-track { flex: 1; min-width: 120px; height: 14px; display: flex; align-items: center; gap: 4px; }
-.week-target-fill-wrap { height: 100%; overflow: hidden; border-radius: 999px; transition: width 300ms;
-  animation: week-target-fill var(--motion-duration-medium4) var(--motion-easing-emphasized-decelerate) var(--motion-duration-short2) backwards; }
-.week-target-fill-wave { height: 100%; width: 100%; background: #f2c14e;
+/* Reusable M3 Expressive determinate progress bar, ported from
+   homeschool-planner's dashboard (#85). The gold fill is wave-masked and
+   ripples while under the target; once the target is met it settles to a flat
+   fill with a one-pass sheen. The grow-in sweep (#44) is kept, `no-enter`
+   still suppresses it, and the ripple/sheen only run with motion allowed.
+   Instances: the calendar's 40h week bar and the timer page's 8h today bar. */
+.m3-progress { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+/* Instance spacing: the calendar's 40h week bar and the timer page's 8h today bar. */
+.week-target { margin: 2px 0 14px; }
+.today-target { margin: 0 0 12px; }
+.m3-progress-track { flex: 1; min-width: 120px; height: 14px; display: flex; align-items: center; gap: 4px; }
+.m3-progress-fill-wrap { height: 100%; overflow: hidden; border-radius: 999px; transition: width 300ms;
+  animation: m3-progress-fill var(--motion-duration-medium4) var(--motion-easing-emphasized-decelerate) var(--motion-duration-short2) backwards; }
+.m3-progress-fill-wave { height: 100%; width: 100%; background: #f2c14e;
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 14'%3E%3Cpath d='M0 7 Q10 2 20 7 T40 7' fill='none' stroke='white' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E") 0 50% / 40px 100% repeat-x;
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 14'%3E%3Cpath d='M0 7 Q10 2 20 7 T40 7' fill='none' stroke='white' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E") 0 50% / 40px 100% repeat-x; }
-.week-target-remainder { height: 4px; flex: 1; min-width: 0; border-radius: 999px;
+.m3-progress-remainder { height: 4px; flex: 1; min-width: 0; border-radius: 999px;
   background: var(--md-sys-color-surface-container-highest); }
-.week-target-dot { height: 4px; width: 4px; flex: none; border-radius: 999px; background: #f2c14e; }
+.m3-progress-dot { height: 4px; width: 4px; flex: none; border-radius: 999px; background: #f2c14e; }
 @media (prefers-reduced-motion: no-preference) {
-  .week-target-fill-wave { animation: week-target-wave-slide 1.6s linear infinite; }
+  .m3-progress-fill-wave { animation: m3-progress-wave-slide 1.6s linear infinite; }
 }
-@keyframes week-target-wave-slide {
+@keyframes m3-progress-wave-slide {
   from { -webkit-mask-position: 0 50%; mask-position: 0 50%; }
   to { -webkit-mask-position: 40px 50%; mask-position: 40px 50%; }
 }
-.week-target-track.complete { height: 4px; display: block; overflow: hidden; border-radius: 999px;
+.m3-progress-track.complete { height: 4px; display: block; overflow: hidden; border-radius: 999px;
   background: var(--md-sys-color-surface-container-highest); }
-.week-target-track.complete .week-target-fill { height: 100%; border-radius: inherit; background: #f2c14e;
+.m3-progress-track.complete .m3-progress-fill { height: 100%; border-radius: inherit; background: #f2c14e;
   position: relative; overflow: hidden;
-  animation: week-target-fill var(--motion-duration-medium4) var(--motion-easing-emphasized-decelerate) var(--motion-duration-short2) backwards; }
-.week-target-track.complete .week-target-fill::after { content: ""; position: absolute; inset: 0; width: 28%;
+  animation: m3-progress-fill var(--motion-duration-medium4) var(--motion-easing-emphasized-decelerate) var(--motion-duration-short2) backwards; }
+.m3-progress-track.complete .m3-progress-fill::after { content: ""; position: absolute; inset: 0; width: 28%;
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent); opacity: 0; }
 @media (prefers-reduced-motion: no-preference) {
-  .week-target-track.complete .week-target-fill::after { animation: week-target-sheen 900ms ease-out 120ms 1; }
+  .m3-progress-track.complete .m3-progress-fill::after { animation: m3-progress-sheen 900ms ease-out 120ms 1; }
 }
-@keyframes week-target-sheen {
+@keyframes m3-progress-sheen {
   0% { opacity: 0; transform: translateX(-140%); }
   25% { opacity: 1; }
   100% { opacity: 0; transform: translateX(380%); }
 }
-@keyframes week-target-fill { from { width: 0; } }
-.week-target-label { white-space: nowrap; }
+@keyframes m3-progress-fill { from { width: 0; } }
+.m3-progress-label { white-space: nowrap; }
+/* The today bar lives inside #today-list, which HTMX re-renders on every
+   timer start/stop: suppress the grow-in sweep there so the bar doesn't
+   re-sweep on each swap. The wave ripple and completion sheen still run. */
+#today-list .m3-progress-fill-wrap, #today-list .m3-progress-fill { animation: none; }
 
 /* Per-client week breakdown strip on the calendar. */
 .week-clients { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 0 0 14px; }
