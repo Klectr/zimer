@@ -40,6 +40,24 @@
   --md-state-hover: 0.08;
   --md-state-focus: 0.1;
   --md-state-pressed: 0.1;
+
+  /* motion (M3 sys tokens) */
+  --motion-easing-standard: cubic-bezier(0.2, 0, 0, 1);
+  --motion-easing-standard-accelerate: cubic-bezier(0.3, 0, 1, 1);
+  --motion-easing-standard-decelerate: cubic-bezier(0, 0, 0, 1);
+  --motion-easing-emphasized: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --motion-easing-emphasized-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15);
+  --motion-easing-emphasized-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --motion-duration-short1: 50ms;
+  --motion-duration-short2: 100ms;
+  --motion-duration-short3: 150ms;
+  --motion-duration-short4: 200ms;
+  --motion-duration-medium1: 250ms;
+  --motion-duration-medium2: 300ms;
+  --motion-duration-medium3: 350ms;
+  --motion-duration-medium4: 400ms;
+  --motion-duration-long1: 450ms;
+  --motion-duration-long2: 500ms;
 }
 
 /* ---------------- sys tokens: type ---------------- */
@@ -283,7 +301,9 @@ h2.md-headline-small { margin: 24px 4px 12px; }
   letter-spacing: 0.5px;
   color: var(--md-sys-color-on-surface-variant);
   pointer-events: none;
-  transition: top 0.15s, font-size 0.15s, color 0.15s;
+  transition: top var(--motion-duration-short3) var(--motion-easing-standard),
+    font-size var(--motion-duration-short3) var(--motion-easing-standard),
+    color var(--motion-duration-short3) var(--motion-easing-standard);
 }
 .md-text-field input:focus + label,
 .md-text-field input:not(:placeholder-shown) + label,
@@ -746,3 +766,27 @@ body.app-fixed .cal-gutter-spacer {
 .error-page h1 { margin: 0 0 12px; }
 .error-page p { margin: 0 0 28px; }
 .error-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+
+/* Reduced motion: collapse all motion to instant state changes.
+   Duration tokens are zeroed so token-based transitions inherit this;
+   the universal rule catches anything else. 0.01ms (not 0) keeps
+   transitionend events firing for JS-driven sequences. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-duration-short1: 0ms;
+    --motion-duration-short2: 0ms;
+    --motion-duration-short3: 0ms;
+    --motion-duration-short4: 0ms;
+    --motion-duration-medium1: 0ms;
+    --motion-duration-medium2: 0ms;
+    --motion-duration-medium3: 0ms;
+    --motion-duration-medium4: 0ms;
+    --motion-duration-long1: 0ms;
+    --motion-duration-long2: 0ms;
+  }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
