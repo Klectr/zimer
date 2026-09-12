@@ -566,7 +566,7 @@ function timerPartial(): string {
   if (running) {
     const proj = running.project_name ? ` · ${esc(running.project_name)}` : "";
     return `<div class="md-card tracking" id="timer-card">
-      <div class="timer-state-label">TRACKING${proj}</div>
+      <div class="timer-state-label"><span class="live-dot" aria-hidden="true"></span>TRACKING${proj}</div>
       <div class="md-title-medium">${running.description ? esc(running.description) : "No description"}</div>
       <div class="timer-elapsed" id="elapsed" data-start="${esc(running.start_time)}">…</div>
       <button class="md-extended-fab stop" hx-post="/timer/stop" hx-target="#timer-card" hx-swap="outerHTML swap:200ms">
