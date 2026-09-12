@@ -792,6 +792,14 @@ body.app-fixed .cal-gutter-spacer {
 .rev-chart { width: 100%; height: auto; display: block; }
 .rev-chart .bar-out { fill: var(--md-sys-color-surface-container-highest); }
 .rev-chart .bar-paid { fill: var(--md-sys-color-primary); }
+/* Bar grow-in (#47): each segment scales from its own base so the combined
+   bar grows uniformly from the baseline; stagger via inline animation-delay. */
+.rev-chart .bar-out, .rev-chart .bar-paid {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: bar-grow var(--motion-duration-medium2) var(--motion-easing-emphasized-decelerate) backwards;
+}
+@keyframes bar-grow { from { transform: scaleY(0); } }
 .rev-chart text { fill: var(--md-sys-color-on-surface-variant); font-size: 10px; }
 .rev-legend { display: flex; align-items: center; gap: 8px; margin-top: 8px;
   color: var(--md-sys-color-on-surface-variant); font-size: 12px; }

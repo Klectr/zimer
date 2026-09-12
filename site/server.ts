@@ -655,8 +655,8 @@ function revenueChart(): string {
     const x = Math.round(i * slot + (slot - bw) / 2);
     const cx = Math.round(i * slot + slot / 2);
     return `<g><title>${esc(`${m.label}: ${money(m.paid)} paid of ${money(m.invoiced)} invoiced`)}</title>` +
-      (ho > 0 ? `<rect x="${x}" y="${baseline - h}" width="${bw}" height="${ho}" rx="4" class="bar-out"/>` : "") +
-      (hp > 0 ? `<rect x="${x}" y="${baseline - hp}" width="${bw}" height="${hp}" rx="4" class="bar-paid"/>` : "") +
+      (ho > 0 ? `<rect x="${x}" y="${baseline - h}" width="${bw}" height="${ho}" rx="4" class="bar-out" style="animation-delay:${i * 40}ms"/>` : "") +
+      (hp > 0 ? `<rect x="${x}" y="${baseline - hp}" width="${bw}" height="${hp}" rx="4" class="bar-paid" style="animation-delay:${i * 40}ms"/>` : "") +
       `<text x="${cx}" y="${baseline + 18}" text-anchor="middle">${m.label}</text></g>`;
   }).join("");
   return `<div class="md-card rev-chart-card">
