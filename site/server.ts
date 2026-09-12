@@ -470,6 +470,40 @@ function layout(title: string, body: string, active?: "timer" | "calendar" | "ma
 </html>`;
 }
 
+/* Styled 404 page. Authed requests get the app layout with wayfinding;
+   anonymous requests (bad /i/:token, logged-out misses) get the minimal
+   public chrome — no nav, no logout, no app structure leaked. */
+function notFoundPage(authed: boolean): string {
+  const body = `
+    <div class="error-page">
+      <h1 class="md-headline-small">Page not found</h1>
+      <p class="muted">The page you&rsquo;re looking for doesn&rsquo;t exist or was moved.</p>
+      ${authed ? `
+      <div class="error-actions">
+        <a class="md-filled-button" href="/">Timer</a>
+        <a class="md-text-button" href="/calendar">Calendar</a>
+        <a class="md-text-button" href="/invoices">Invoices</a>
+      </div>` : ""}
+    </div>`;
+  if (authed) return layout("Page not found", body);
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Page not found &middot; Timekeep</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<main class="page-public-invoice">
+${body}
+</main>
+</html>`;
+}
+
 function projectOptions(selected: number | null = null): string {
   const rows = db.query(
     `SELECT p.id, p.name, c.name AS client FROM projects p
@@ -1385,7 +1419,7 @@ Bun.serve({
       const p = normalize(join(STATIC_DIR, path.slice("/static/".length)));
       if (!p.startsWith(STATIC_DIR + sep) && p !== STATIC_DIR) return new Response("Forbidden", { status: 403 });
       const f = Bun.file(p);
-      if (!(await f.exists())) return new Response("Not found", { status: 404 });
+      if (!(await f.exists())) return html(notFoundPage(authedPage(req)), 404);
       return new Response(f);
     }
     if (path === "/login") {
@@ -1417,7 +1451,7 @@ Bun.serve({
     if (pub && method === "GET") {
       const idRow = db.query("SELECT id FROM invoices WHERE public_token = ?").get(pub[1]) as { id: number } | null;
       const inv = idRow ? getInvoice(idRow.id) : null;
-      return inv ? html(publicInvoicePage(inv)) : new Response("Not found", { status: 404 });
+      return inv ? html(publicInvoicePage(inv)) : html(notFoundPage(false), 404);
     }
 
     /* ---- JSON API ---- */
@@ -1663,7 +1697,7 @@ Bun.serve({
     let m = path.match(/^\/entries\/(\d+)\/edit$/);
     if (m && method === "GET") {
       const page = editPage(Number(m[1]));
-      return page ? html(page) : new Response("Not found", { status: 404 });
+      return page ? html(page) : html(notFoundPage(authedPage(req)), 404);
     }
     m = path.match(/^\/entries\/(\d+)$/);
     if (m && method === "POST") {
@@ -1779,12 +1813,12 @@ Bun.serve({
     m = path.match(/^\/invoices\/(\d+)$/);
     if (m && method === "GET") {
       const inv = getInvoice(Number(m[1]));
-      return inv ? html(invoiceDetailPage(inv, publicOrigin(req))) : new Response("Not found", { status: 404 });
+      return inv ? html(invoiceDetailPage(inv, publicOrigin(req))) : html(notFoundPage(authedPage(req)), 404);
     }
     m = path.match(/^\/invoices\/(\d+)\.pdf$/);
     if (m && method === "GET") {
       const inv = getInvoice(Number(m[1]));
-      if (!inv) return new Response("Not found", { status: 404 });
+      if (!inv) return html(notFoundPage(authedPage(req)), 404);
       const t = invoiceTotals(inv.items, inv.tax_rate);
       const pdf = invoicePdf({
         number: inv.number,
@@ -1823,7 +1857,7 @@ Bun.serve({
       if (!isInvoiceTemplate(tpl)) return new Response("Unknown template.", { status: 400 });
       db.query("UPDATE invoices SET template = ? WHERE id = ?").run(tpl, Number(m[1]));
       const inv = getInvoice(Number(m[1]));
-      return inv ? html(invoiceDoc(inv)) : new Response("Not found", { status: 404 });
+      return inv ? html(invoiceDoc(inv)) : html(notFoundPage(authedPage(req)), 404);
     }
     m = path.match(/^\/invoices\/(\d+)\/stripe-link$/);
     if (m && method === "POST") {
@@ -1844,7 +1878,7 @@ Bun.serve({
     m = path.match(/^\/invoices\/(\d+)\/delete$/);
     if (m && method === "POST") {
       const inv = qInvoice.get(Number(m[1])) as Invoice | null;
-      if (!inv) return new Response("Not found", { status: 404 });
+      if (!inv) return html(notFoundPage(authedPage(req)), 404);
       if (inv.status !== "draft") return new Response("Only draft invoices can be deleted.", { status: 400 });
       db.transaction(() => {
         db.query("UPDATE time_entries SET invoice_id = NULL WHERE invoice_id = ?").run(inv.id);
@@ -1853,7 +1887,7 @@ Bun.serve({
       return new Response(null, { status: 302, headers: { Location: "/invoices" } });
     }
 
-    return new Response("Not found", { status: 404 });
+    return html(notFoundPage(authedPage(req)), 404);
   },
 });
 
