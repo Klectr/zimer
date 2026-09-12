@@ -682,7 +682,9 @@ body.app-fixed .cal-gutter-spacer {
 .week-target { display: flex; align-items: center; gap: 12px; margin: 2px 0 14px; flex-wrap: wrap; }
 .week-target-track { flex: 1; min-width: 120px; height: 8px; border-radius: 999px;
   background: var(--md-sys-color-surface-container-highest); overflow: hidden; }
-.week-target-fill { height: 100%; border-radius: inherit; background: #f2c14e; }
+.week-target-fill { height: 100%; border-radius: inherit; background: #f2c14e;
+  animation: week-target-fill var(--motion-duration-medium4) var(--motion-easing-emphasized-decelerate) var(--motion-duration-short2) backwards; }
+@keyframes week-target-fill { from { width: 0; } }
 .week-target-label { white-space: nowrap; }
 
 /* Per-client week breakdown strip on the calendar. */
