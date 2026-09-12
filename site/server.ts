@@ -823,7 +823,7 @@ function weekGrid(weekStr?: string): string {
     }).join("");
     const nowLine = isToday
       ? `<div class="cal-now" id="cal-now" style="top:${((nowMin / 60) * CAL_HOUR_PX).toFixed(1)}px"></div>` : "";
-    days.push(`<div class="cal-day${isToday ? " today" : ""}${pastShort ? " paced-short" : ""}">
+    days.push(`<div class="cal-day${isToday ? " today" : ""}${pastShort ? " paced-short" : ""}" style="animation-delay:${i * 40}ms">
       <div class="cal-day-head">
         <div class="md-label-large muted">${esc(wd)}</div>
         <div class="cal-day-num${isToday ? " today" : ""}">${d}</div>
