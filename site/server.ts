@@ -726,7 +726,9 @@ function weekTargetBar(weekTotalSecs: number): string {
     </div>`;
 }
 
-function weekGrid(weekStr?: string): string {
+/** Inner HTML of the #week section (everything that changes when entries do).
+    Served full-page via weekGrid() and in-place via GET /partial/week (#65). */
+function weekInner(weekStr?: string): string {
   const mon = mondayOf(weekStr);
   const prev = addDays(mon, -7), next = addDays(mon, 7);
   const isThisWeek = mon === mondayOf();
@@ -849,7 +851,7 @@ function weekGrid(weekStr?: string): string {
     return `<span class="cal-hour-label" style="top:${(h * CAL_HOUR_PX - 8).toFixed(0)}px">${ampm}</span>`;
   }).join("");
 
-  return `<div id="week">
+  return `
     <div class="week-nav" data-enter="2">
       <h2 class="md-headline-small">${isThisWeek ? "This week" : `Week of ${esc(mon)}`} <span class="muted">· ${fmtDur(weekTotal)}</span> ${deltaHtml} <span class="muted">· ${fmtDur(weekBillable)} billable</span></h2>
       <div class="week-nav-actions">
@@ -871,6 +873,15 @@ function weekGrid(weekStr?: string): string {
         ${days.join("")}
       </div>
     </div>
+  `;
+}
+
+/** Full calendar week section: the #week wrapper plus the persistent entry
+    dialog and calendar script. The dialog and script live outside #week so an
+    in-place week refresh (#65) never destroys dialog bindings or duplicates
+    listeners. */
+function weekGrid(weekStr?: string): string {
+  return `<div id="week">${weekInner(weekStr)}</div>
     <div class="cal-scrim" id="cal-scrim" hidden>
       <div class="cal-dialog" role="dialog" aria-modal="true" aria-labelledby="cal-dialog-title">
         <h2 class="md-headline-small" id="cal-dialog-title">New entry</h2>
@@ -904,14 +915,13 @@ function weekGrid(weekStr?: string): string {
       </div>
     </div>
     <script>${calScript()}</script>
-  </div>`;
+`;
 }
 
 /** Inline script: drag-to-create, click-to-edit, now-line ticking. No htmx needed. */
 function calScript(): string {
   return `(function(){
   var HOUR=${CAL_HOUR_PX};
-  var body=document.getElementById('cal-body');
   var scrim=document.getElementById('cal-scrim');
   var dialog=scrim.querySelector('.cal-dialog');
   /* M3 dialog motion: .open drives scrim fade + dialog scale/fade.
@@ -979,6 +989,30 @@ function calScript(): string {
   scrim.addEventListener('click',function(e){ if(e.target===scrim) close(); });
   document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&!scrim.hidden) close(); });
   function fail(msg){ err.textContent=msg; err.hidden=false; }
+  /* In-place week refresh (#65): re-render the #week section without a full
+     page reload. Load-entrance animations are suppressed for the swap
+     (no-enter), the grid scroll position is preserved, and the new/updated
+     entry gets a one-time highlight. */
+  function refreshWeek(highlightId){
+    var weekEl=document.getElementById('week');
+    var scroller=weekEl.querySelector('.cal-scroll');
+    var st=scroller?scroller.scrollTop:0;
+    var wk='';
+    try{ wk=new URLSearchParams(location.search).get('week')||''; }catch(e){}
+    fetch('/partial/week?week='+encodeURIComponent(wk)).then(function(r){
+      if(!r.ok) throw new Error('refresh failed');
+      return r.text();
+    }).then(function(html){
+      weekEl.classList.add('no-enter');
+      weekEl.innerHTML=html;
+      var sc2=weekEl.querySelector('.cal-scroll');
+      if(sc2) sc2.scrollTop=st;
+      if(highlightId){
+        var el=weekEl.querySelector('.cal-entry[data-id="'+highlightId+'"]');
+        if(el) el.classList.add('cal-flash');
+      }
+    }).catch(function(){ location.reload(); /* last resort: never leave stale data */ });
+  }
   document.getElementById('cal-save').addEventListener('click',function(){
     var s=toMin(startI.value),e=toMin(endI.value);
     if(!(e>s)) return fail('End time must be after start time.');
@@ -988,14 +1022,19 @@ function calScript(): string {
     fd.set('start_time',dayStr+'T'+startI.value);
     fd.set('end_time',dayStr+'T'+endI.value);
     var url=mode==='create'?'/entries':'/entries/'+editId;
+    var hid=mode==='edit'?editId:null;
     fetch(url,{method:'POST',body:fd}).then(function(r){
       if(!r.ok) throw new Error('save failed');
-      location.reload();
+      return r.json().catch(function(){ return {}; });
+    }).then(function(data){
+      if(mode==='create'&&data&&data.id) hid=data.id;
+      close();
+      refreshWeek(hid);
     }).catch(function(ex){ fail(ex.message); });
   });
   delBtn.addEventListener('click',function(){
     if(!confirm('Delete this entry?')) return;
-    fetch('/entries/'+editId,{method:'DELETE'}).then(function(){ location.reload(); });
+    fetch('/entries/'+editId,{method:'DELETE'}).then(function(){ close(); refreshWeek(null); });
   });
   // drag-to-create on empty grid space
   var drag=null;
@@ -1008,7 +1047,8 @@ function calScript(): string {
     el.style.top=(a/60*HOUR)+'px';
     el.style.height=Math.max((b-a)/60*HOUR,10)+'px';
   }
-  body.addEventListener('pointerdown',function(e){
+  /* #65: delegated on document so drag-to-create survives in-place #week refreshes. */
+  document.addEventListener('pointerdown',function(e){
     var entryEl=e.target.closest('.cal-entry');
     if(entryEl){ openEdit(entryEl); return; }
     var col=e.target.closest('.cal-day-col');
@@ -1720,6 +1760,10 @@ Bun.serve({
 
       if (path === "/" && method === "GET") return html(dashboardPage());
       if (path === "/partial/timer" && method === "GET") return html(timerPartial());
+      if (path === "/partial/week" && method === "GET") {
+        const w = new URL(req.url).searchParams.get("week") || undefined;
+        return html(weekInner(w || undefined));
+      }
       if (path === "/partial/today" && method === "GET") return html(todayPartial());
       if (path === "/timer/start" && method === "POST") {
         if (qRunning.get()) return html(timerPartial(), 409);
@@ -1740,13 +1784,13 @@ Bun.serve({
         const form = await req.formData();
         const endRaw = String(form.get("end_time") || "");
         const pid = form.get("project_id");
-        db.query("INSERT INTO time_entries (project_id, description, start_time, end_time) VALUES (?, ?, ?, ?)")
+        const ins = db.query("INSERT INTO time_entries (project_id, description, start_time, end_time) VALUES (?, ?, ?, ?)")
           .run(
             pid ? Number(pid) : null,
             String(form.get("description") || ""),
             new Date(String(form.get("start_time"))).toISOString(),
             endRaw ? new Date(endRaw).toISOString() : null);
-        return json({ ok: true }, 201);
+        return json({ ok: true, id: Number(ins.lastInsertRowid) }, 201);
       }
 
       let m = path.match(/^\/entries\/(\d+)\/edit$/);

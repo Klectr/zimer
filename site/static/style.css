@@ -616,6 +616,18 @@ body.app-fixed .cal-gutter-spacer {
   min-width: 0;
 }
 .cal-entry:hover { filter: brightness(1.08); }
+/* In-place week refresh (#65): load-entrance animations are suppressed while
+   the #week section is swapped, so saving an entry never replays the page. */
+#week.no-enter [data-enter],
+#week.no-enter .nudge-chip,
+#week.no-enter .cal-day,
+#week.no-enter .week-target-fill { animation: none !important; }
+/* One-time highlight on the entry that was just created/updated. */
+.cal-entry.cal-flash { animation: cal-flash 1.2s var(--motion-easing-standard); }
+@keyframes cal-flash {
+  0% { filter: brightness(1.7); }
+  100% { filter: brightness(1); }
+}
 /* overlap: soft layered top shadow (tailwind-style), reads as elevation */
 .cal-entry.overlap {
   box-shadow: 0 -10px 15px -3px rgb(0 0 0 / 0.3), 0 -4px 6px -4px rgb(0 0 0 / 0.25);
