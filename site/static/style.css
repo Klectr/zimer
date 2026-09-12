@@ -970,6 +970,23 @@ body.app-fixed .cal-gutter-spacer {
   }
 }
 
+/* ---------------- skeleton loaders ----------------
+ * Shimmer placeholders shown while HTMX partials load. Tonal shapes, no
+ * hard borders; the shimmer sweep is killed by the global
+ * prefers-reduced-motion guard (animation-duration override). */
+.skel { position: relative; overflow: hidden; background: var(--md-sys-color-surface-container-highest); }
+.skel::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(100deg, transparent 25%, rgba(255, 255, 255, 0.07) 50%, transparent 75%);
+  animation: skel-shimmer 1600ms linear infinite;
+}
+@keyframes skel-shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+.skel-stack { display: flex; flex-direction: column; gap: 12px; }
+.skel-line { height: 14px; border-radius: 7px; }
+.skel-display { height: 60px; border-radius: 12px; }
+.skel-btn { height: 56px; width: 148px; border-radius: 999px; }
+.skel-row { height: 64px; border-radius: var(--md-sys-shape-corner-medium); }
+
 /* M3 press ripple (JS-driven, see motion.js). Buttons already clip with
    overflow: hidden; the span paints above the ::after state layer. */
 .md-ripple {

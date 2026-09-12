@@ -615,10 +615,22 @@ function dashboardPage(): string {
   return layout("Timer", `
     <div class="pane-layout">
       <section class="pane-focus" data-enter="2" aria-label="Timer and today's entries">
-        <div hx-get="/partial/timer" hx-trigger="load" hx-swap="outerHTML swap:200ms"><div class="md-card"><p class="muted">Loading…</p></div></div>
+        <div hx-get="/partial/timer" hx-trigger="load" hx-swap="outerHTML swap:200ms">
+          <div class="md-card skel-stack" aria-hidden="true">
+            <div class="skel skel-line" style="width: 34%"></div>
+            <div class="skel skel-display" style="width: 62%"></div>
+            <div class="skel skel-btn"></div>
+          </div>
+        </div>
         <div class="scroll-region">
           <h2 class="md-headline-small">Today</h2>
-          <div id="today-list" hx-get="/partial/today" hx-trigger="load, timer-updated from:body"></div>
+          <div id="today-list" hx-get="/partial/today" hx-trigger="load, timer-updated from:body">
+            <div class="skel-stack" aria-hidden="true">
+              <div class="skel skel-row"></div>
+              <div class="skel skel-row"></div>
+              <div class="skel skel-row"></div>
+            </div>
+          </div>
         </div>
       </section>
       <aside class="pane-supporting" data-enter="3" aria-label="Revenue">
