@@ -637,6 +637,11 @@ body.app-fixed .cal-gutter-spacer {
 .form-info a { color: var(--md-sys-color-primary); }
 
 .invoice-sheet { max-width: 720px; }
+
+/* Public client invoice page: centered sheet, no app chrome. */
+.page-public-invoice { max-width: 800px; margin: 0 auto; padding: 32px 24px 48px; }
+.page-public-invoice .invoice-sheet { max-width: none; }
+.public-foot { text-align: center; margin-top: 28px; }
 .inv-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
 .inv-dates { display: flex; gap: 32px; margin-bottom: 20px; }
 .inv-notes { margin-top: 16px; color: var(--md-sys-color-on-surface-variant); white-space: pre-wrap; }

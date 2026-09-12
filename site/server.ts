@@ -80,10 +80,12 @@ for (const [tbl, col, def] of [
   ["invoices", "template", "TEXT NOT NULL DEFAULT 'classic'"],
   ["invoices", "stripe_payment_link", "TEXT"],
   ["invoices", "paid_via_stripe", "INTEGER NOT NULL DEFAULT 0"],
+  ["invoices", "public_token", "TEXT"],
 ] as const) {
   try { db.exec(`ALTER TABLE ${tbl} ADD COLUMN ${col} ${def}`); }
   catch { /* column already exists */ }
 }
+db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_invoices_public_token ON invoices(public_token)");
 
 type Entry = {
   id: number;
@@ -206,7 +208,7 @@ type InvoiceItem = { id: number; description: string; hours: number; rate: numbe
 type Invoice = {
   id: number; client_id: number | null; number: string; issue_date: string; due_date: string | null;
   status: string; tax_rate: number; notes: string; template: string; created_at: string;
-  stripe_payment_link: string | null; paid_via_stripe: number;
+  stripe_payment_link: string | null; paid_via_stripe: number; public_token: string | null;
   client_name: string | null; client_color: string | null;
 };
 
@@ -224,6 +226,55 @@ function getInvoice(id: number): (Invoice & { items: InvoiceItem[] }) | null {
   if (!inv) return null;
   const items = qInvoiceItems.all(id) as InvoiceItem[];
   return { ...inv, items };
+}
+
+/** Random public share token: 24 bytes = 192 bits of entropy, URL-safe. */
+function newPublicToken(): string {
+  return randomBytes(24).toString("base64url");
+}
+
+/** Mint and persist a public share token for an invoice if it lacks one. */
+function ensurePublicToken(id: number): string {
+  const cur = (db.query("SELECT public_token FROM invoices WHERE id = ?").get(id) as any)?.public_token;
+  if (cur) return cur;
+  for (let i = 0; i < 5; i++) {
+    const tok = newPublicToken();
+    try {
+      db.query("UPDATE invoices SET public_token = ? WHERE id = ? AND public_token IS NULL").run(tok, id);
+    } catch { continue; /* token collision — retry */ }
+    const minted = (db.query("SELECT public_token FROM invoices WHERE id = ?").get(id) as any)?.public_token;
+    if (minted) return minted;
+  }
+  throw new Error("could not mint public token");
+}
+
+/** Best-effort public origin for share links (honors reverse-proxy headers). */
+function publicOrigin(req: Request): string {
+  const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || `localhost:${PORT}`;
+  const proto = req.headers.get("x-forwarded-proto")
+    || (/^(localhost|127\.|10\.|192\.168\.)/.test(host) ? "http" : "https");
+  return `${proto}://${host}`;
+}
+
+/** Public client invoice page: no auth, read-only, no actions or navigation. */
+function publicInvoicePage(inv: Invoice & { items: InvoiceItem[] }): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Invoice ${esc(inv.number)} · Timekeep</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<main class="page-public-invoice">
+${invoiceSheet(inv)}
+<p class="muted tiny no-print public-foot">Shared securely via Timekeep</p>
+</main>
+</html>`;
 }
 
 function invoiceTotals(items: InvoiceItem[], taxRate: number) {
@@ -1161,10 +1212,18 @@ function invoiceDoc(inv: Invoice & { items: InvoiceItem[] }): string {
   return `<div id="invoice-doc">${templatePicker(inv)}${invoiceSheet(inv)}</div>`;
 }
 
-function invoiceDetailPage(inv: Invoice & { items: InvoiceItem[] }): string {
+function invoiceDetailPage(inv: Invoice & { items: InvoiceItem[] }, origin: string): string {
   const next = inv.status === "draft" ? "sent" : inv.status === "sent" ? "paid" : null;
   const nextLabel = next === "sent" ? "Mark sent" : next === "paid" ? "Mark paid" : "";
   const t = invoiceTotals(inv.items, inv.tax_rate);
+  const clientLink = `${origin}/i/${ensurePublicToken(inv.id)}`;
+  const shareSection = `
+    <div class="stripe-row no-print">
+      <span class="md-label-medium muted">Client link</span>
+      <input class="link-input" id="client-link-url" readonly value="${esc(clientLink)}" onclick="this.select()" aria-label="Client invoice link">
+      <button class="md-text-button" id="copy-client-link" type="button">${icon("copy")}<span>Copy</span></button>
+      <script>(function(){var b=document.getElementById('copy-client-link');if(!b)return;var lbl=b.querySelector('span');b.addEventListener('click',function(){var i=document.getElementById('client-link-url');i.select();var done=function(){lbl.textContent='Copied';setTimeout(function(){lbl.textContent='Copy';},1500);};if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(i.value).then(done,done);}else{document.execCommand('copy');done();}});})();</script>
+    </div>`;
   const stripeSection = inv.status !== "sent" ? "" : `
     <div class="stripe-row no-print">
       ${inv.stripe_payment_link ? `
@@ -1196,6 +1255,7 @@ function invoiceDetailPage(inv: Invoice & { items: InvoiceItem[] }): string {
         </form>` : ""}
       </div>
     </div>
+    ${shareSection}
     ${stripeSection}
     ${invoiceDoc(inv)}`, "invoices");
 }
@@ -1256,6 +1316,15 @@ Bun.serve({
         status: 302,
         headers: { Location: "/login", "Set-Cookie": "tk=; HttpOnly; Path=/; Max-Age=0" },
       });
+    }
+
+    /* Public client invoice page: no auth, read-only. The token is a
+       credential — it is never logged, and unknown tokens 404. */
+    const pub = path.match(/^\/i\/([A-Za-z0-9_-]{16,64})$/);
+    if (pub && method === "GET") {
+      const idRow = db.query("SELECT id FROM invoices WHERE public_token = ?").get(pub[1]) as { id: number } | null;
+      const inv = idRow ? getInvoice(idRow.id) : null;
+      return inv ? html(publicInvoicePage(inv)) : new Response("Not found", { status: 404 });
     }
 
     /* ---- JSON API ---- */
@@ -1617,7 +1686,7 @@ Bun.serve({
     m = path.match(/^\/invoices\/(\d+)$/);
     if (m && method === "GET") {
       const inv = getInvoice(Number(m[1]));
-      return inv ? html(invoiceDetailPage(inv)) : new Response("Not found", { status: 404 });
+      return inv ? html(invoiceDetailPage(inv, publicOrigin(req))) : new Response("Not found", { status: 404 });
     }
     m = path.match(/^\/invoices\/(\d+)\.pdf$/);
     if (m && method === "GET") {
