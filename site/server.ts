@@ -470,6 +470,27 @@ function layout(title: string, body: string, active?: "timer" | "calendar" | "ma
 </html>`;
 }
 
+/* Minimal public chrome for error pages: no nav, no logout, no app
+   structure leaked. Mirrors the public invoice page's head. */
+function publicShell(title: string, body: string): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>${esc(title)} &middot; Timekeep</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<main class="page-public-invoice">
+${body}
+</main>
+</html>`;
+}
+
 /* Styled 404 page. Authed requests get the app layout with wayfinding;
    anonymous requests (bad /i/:token, logged-out misses) get the minimal
    public chrome — no nav, no logout, no app structure leaked. */
@@ -486,22 +507,23 @@ function notFoundPage(authed: boolean): string {
       </div>` : ""}
     </div>`;
   if (authed) return layout("Page not found", body);
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex">
-<title>Page not found &middot; Timekeep</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
-<link rel="stylesheet" href="/static/style.css">
-</head>
-<body>
-<main class="page-public-invoice">
-${body}
-</main>
-</html>`;
+  return publicShell("Page not found", body);
+}
+
+/* Styled 500 page, rendered by the page-route catch-all. Never includes
+   error details — those go to the server log only. */
+function errorPage(authed: boolean): string {
+  const body = `
+    <div class="error-page">
+      <h1 class="md-headline-small">Something went wrong</h1>
+      <p class="muted">An unexpected error occurred. Please try again.</p>
+      <div class="error-actions">
+        <button class="md-tonal-button" onclick="history.back()">Go back</button>
+        <a class="md-filled-button" href="/">Timer</a>
+      </div>
+    </div>`;
+  if (authed) return layout("Something went wrong", body);
+  return publicShell("Something went wrong", body);
 }
 
 function projectOptions(selected: number | null = null): string {
@@ -1482,223 +1504,229 @@ Bun.serve({
         }
         return json({ received: true });
       }
-      if (!authedApi(req)) return json({ error: "unauthorized" }, 401);
-      const body = (await req.json().catch(() => ({}))) as any;
+      try {
+        if (!authedApi(req)) return json({ error: "unauthorized" }, 401);
+        const body = (await req.json().catch(() => ({}))) as any;
 
-      if (path === "/api/status" && method === "GET") {
-        const running = qRunning.get() as Entry | null;
-        return json({ running: running ? entryToJson(running) : null });
-      }
-      if (path === "/api/timer/start" && method === "POST") {
-        if (qRunning.get()) return json({ error: "a timer is already running" }, 409);
-        const projectId = body.project_id ? Number(body.project_id) : null;
-        const r = db.query(
-          "INSERT INTO time_entries (project_id, description, start_time) VALUES (?, ?, ?) RETURNING id")
-          .get(projectId, String(body.description || ""), new Date().toISOString()) as any;
-        return json(entryToJson(qOne.get(r.id) as Entry), 201);
-      }
-      if (path === "/api/timer/stop" && method === "POST") {
-        const running = qRunning.get() as Entry | null;
-        if (!running) return json({ error: "no timer running" }, 404);
-        db.query("UPDATE time_entries SET end_time = ? WHERE id = ?")
-          .run(new Date().toISOString(), running.id);
-        return json(entryToJson(qOne.get(running.id) as Entry));
-      }
-      if (path === "/api/entries" && method === "GET") {
-        const from = url.searchParams.get("from") || new Date(0).toISOString();
-        const to = url.searchParams.get("to") || new Date().toISOString();
-        return json((qRange.all(from, to) as Entry[]).map(entryToJson));
-      }
-      let m = path.match(/^\/api\/entries\/(\d+)$/);
-      if (m) {
-        const id = Number(m[1]);
-        if (method === "PATCH") {
-          const cur = qOne.get(id) as Entry | null;
-          if (!cur) return json({ error: "not found" }, 404);
-          db.query(`UPDATE time_entries SET description = ?, project_id = ?, start_time = ?, end_time = ? WHERE id = ?`)
-            .run(
-              body.description !== undefined ? String(body.description) : cur.description,
-              body.project_id !== undefined ? (body.project_id ? Number(body.project_id) : null) : cur.project_id,
-              body.start_time || cur.start_time,
-              body.end_time !== undefined ? (body.end_time || null) : cur.end_time,
-              id);
-          return json(entryToJson(qOne.get(id) as Entry));
+        if (path === "/api/status" && method === "GET") {
+          const running = qRunning.get() as Entry | null;
+          return json({ running: running ? entryToJson(running) : null });
         }
-        if (method === "DELETE") {
-          db.query("DELETE FROM time_entries WHERE id = ?").run(id);
+        if (path === "/api/timer/start" && method === "POST") {
+          if (qRunning.get()) return json({ error: "a timer is already running" }, 409);
+          const projectId = body.project_id ? Number(body.project_id) : null;
+          const r = db.query(
+            "INSERT INTO time_entries (project_id, description, start_time) VALUES (?, ?, ?) RETURNING id")
+            .get(projectId, String(body.description || ""), new Date().toISOString()) as any;
+          return json(entryToJson(qOne.get(r.id) as Entry), 201);
+        }
+        if (path === "/api/timer/stop" && method === "POST") {
+          const running = qRunning.get() as Entry | null;
+          if (!running) return json({ error: "no timer running" }, 404);
+          db.query("UPDATE time_entries SET end_time = ? WHERE id = ?")
+            .run(new Date().toISOString(), running.id);
+          return json(entryToJson(qOne.get(running.id) as Entry));
+        }
+        if (path === "/api/entries" && method === "GET") {
+          const from = url.searchParams.get("from") || new Date(0).toISOString();
+          const to = url.searchParams.get("to") || new Date().toISOString();
+          return json((qRange.all(from, to) as Entry[]).map(entryToJson));
+        }
+        let m = path.match(/^\/api\/entries\/(\d+)$/);
+        if (m) {
+          const id = Number(m[1]);
+          if (method === "PATCH") {
+            const cur = qOne.get(id) as Entry | null;
+            if (!cur) return json({ error: "not found" }, 404);
+            db.query(`UPDATE time_entries SET description = ?, project_id = ?, start_time = ?, end_time = ? WHERE id = ?`)
+              .run(
+                body.description !== undefined ? String(body.description) : cur.description,
+                body.project_id !== undefined ? (body.project_id ? Number(body.project_id) : null) : cur.project_id,
+                body.start_time || cur.start_time,
+                body.end_time !== undefined ? (body.end_time || null) : cur.end_time,
+                id);
+            return json(entryToJson(qOne.get(id) as Entry));
+          }
+          if (method === "DELETE") {
+            db.query("DELETE FROM time_entries WHERE id = ?").run(id);
+            return new Response(null, { status: 204 });
+          }
+        }
+        if (path === "/api/clients" && method === "GET")
+          return json(db.query("SELECT * FROM clients ORDER BY name").all());
+        if (path === "/api/clients" && method === "POST") {
+          if (!body.name) return json({ error: "name required" }, 400);
+          const r = db.query("INSERT INTO clients (name, color, rate) VALUES (?, ?, ?) RETURNING *")
+            .get(String(body.name), String(body.color || "#f2c14e"), Number(body.rate) || 0) as any;
+          return json(r, 201);
+        }
+        m = path.match(/^\/api\/clients\/(\d+)$/);
+        if (m && method === "DELETE") {
+          db.query("DELETE FROM clients WHERE id = ?").run(Number(m[1]));
           return new Response(null, { status: 204 });
         }
-      }
-      if (path === "/api/clients" && method === "GET")
-        return json(db.query("SELECT * FROM clients ORDER BY name").all());
-      if (path === "/api/clients" && method === "POST") {
-        if (!body.name) return json({ error: "name required" }, 400);
-        const r = db.query("INSERT INTO clients (name, color, rate) VALUES (?, ?, ?) RETURNING *")
-          .get(String(body.name), String(body.color || "#f2c14e"), Number(body.rate) || 0) as any;
-        return json(r, 201);
-      }
-      m = path.match(/^\/api\/clients\/(\d+)$/);
-      if (m && method === "DELETE") {
-        db.query("DELETE FROM clients WHERE id = ?").run(Number(m[1]));
-        return new Response(null, { status: 204 });
-      }
-      if (path === "/api/projects" && method === "GET")
-        return json(db.query(
-          `SELECT p.id, p.name, p.client_id, c.name AS client_name, c.color AS client_color
-           FROM projects p LEFT JOIN clients c ON c.id = p.client_id ORDER BY p.name`).all());
-      if (path === "/api/projects" && method === "POST") {
-        if (!body.name) return json({ error: "name required" }, 400);
-        const r = db.query("INSERT INTO projects (name, client_id) VALUES (?, ?) RETURNING *")
-          .get(String(body.name), body.client_id ? Number(body.client_id) : null) as any;
-        return json(r, 201);
-      }
-      m = path.match(/^\/api\/projects\/(\d+)$/);
-      if (m && method === "DELETE") {
-        db.query("DELETE FROM projects WHERE id = ?").run(Number(m[1]));
-        return new Response(null, { status: 204 });
-      }
-      /* ---- invoicing API ---- */
-      if (path === "/api/invoices" && method === "GET") {
-        const rows = qInvoices.all() as any[];
-        return json(rows.map(r => ({
-          ...r,
-          total: round2(r.subtotal * (1 + (r.tax_rate || 0) / 100)),
-        })));
-      }
-      if (path === "/api/invoices" && method === "POST") {
-        const number = String(body.number || nextInvoiceNumber());
-        if (db.query("SELECT 1 FROM invoices WHERE number = ?").get(number))
-          return json({ error: "invoice number already exists" }, 400);
-        let items: { description: string; hours: number; rate: number; entry_ids?: number[] }[];
-        if (Array.isArray(body.items)) {
-          items = body.items;
-        } else {
-          if (!body.client_id || !body.from || !body.to)
-            return json({ error: "client_id, from, to required (or items[])" }, 400);
-          items = groupToLineItems(
-            unbilledEntries(Number(body.client_id), String(body.from), String(body.to)),
-            Number(body.rate) || 0);
+        if (path === "/api/projects" && method === "GET")
+          return json(db.query(
+            `SELECT p.id, p.name, p.client_id, c.name AS client_name, c.color AS client_color
+             FROM projects p LEFT JOIN clients c ON c.id = p.client_id ORDER BY p.name`).all());
+        if (path === "/api/projects" && method === "POST") {
+          if (!body.name) return json({ error: "name required" }, 400);
+          const r = db.query("INSERT INTO projects (name, client_id) VALUES (?, ?) RETURNING *")
+            .get(String(body.name), body.client_id ? Number(body.client_id) : null) as any;
+          return json(r, 201);
         }
-        const clean = items
-          .map(it => ({
-            description: String(it.description || "Time"),
-            hours: round2(Number(it.hours) || 0),
-            rate: round2(Number(it.rate) || 0),
-            entry_ids: Array.isArray(it.entry_ids) ? it.entry_ids.map(Number).filter(n => n > 0) : [],
-          }))
-          .filter(it => it.hours > 0);
-        if (!clean.length) return json({ error: "no billable line items" }, 400);
-        const inv = db.query(
-          `INSERT INTO invoices (client_id, number, issue_date, due_date, tax_rate, notes)
-           VALUES (?, ?, ?, ?, ?, ?) RETURNING id`)
-          .get(
-            body.client_id ? Number(body.client_id) : null,
-            number,
-            String(body.issue_date || todayStr()),
-            body.due_date ? String(body.due_date) : null,
-            Number(body.tax_rate) || 0,
-            String(body.notes || "")) as any;
-        const insItem = db.query(
-          "INSERT INTO invoice_items (invoice_id, description, hours, rate, amount) VALUES (?, ?, ?, ?, ?)");
-        const linkEntry = db.query("UPDATE time_entries SET invoice_id = ? WHERE id = ?");
-        db.transaction(() => {
-          for (const it of clean) {
-            insItem.run(inv.id, it.description, it.hours, it.rate, round2(it.hours * it.rate));
-            for (const eid of it.entry_ids) linkEntry.run(inv.id, eid);
-          }
-        })();
-        const full = getInvoice(inv.id)!;
-        return json({ ...full, ...invoiceTotals(full.items, full.tax_rate) }, 201);
-      }
-      m = path.match(/^\/api\/invoices\/(\d+)$/);
-      if (m) {
-        const id = Number(m[1]);
-        if (method === "GET") {
-          const inv = getInvoice(id);
-          if (!inv) return json({ error: "not found" }, 404);
-          return json({ ...inv, ...invoiceTotals(inv.items, inv.tax_rate) });
+        m = path.match(/^\/api\/projects\/(\d+)$/);
+        if (m && method === "DELETE") {
+          db.query("DELETE FROM projects WHERE id = ?").run(Number(m[1]));
+          return new Response(null, { status: 204 });
         }
-        if (method === "PATCH") {
-          const inv = qInvoice.get(id) as Invoice | null;
-          if (!inv) return json({ error: "not found" }, 404);
-          if (body.template !== undefined) {
-            const tpl = String(body.template);
-            if (!isInvoiceTemplate(tpl)) return json({ error: "unknown template" }, 400);
-            db.query("UPDATE invoices SET template = ? WHERE id = ?").run(tpl, id);
-          }
-          if (body.status !== undefined) {
-            const want = String(body.status);
-            const ok = (inv.status === "draft" && want === "sent") ||
-                       (inv.status === "sent" && want === "paid");
-            if (!ok) return json({ error: "invalid status transition (draft → sent → paid)" }, 400);
-            db.query("UPDATE invoices SET status = ? WHERE id = ?").run(want, id);
-          }
-          const full = getInvoice(id)!;
-          return json({ ...full, ...invoiceTotals(full.items, full.tax_rate) });
+        /* ---- invoicing API ---- */
+        if (path === "/api/invoices" && method === "GET") {
+          const rows = qInvoices.all() as any[];
+          return json(rows.map(r => ({
+            ...r,
+            total: round2(r.subtotal * (1 + (r.tax_rate || 0) / 100)),
+          })));
         }
-        if (method === "DELETE") {
-          const inv = qInvoice.get(id) as Invoice | null;
-          if (!inv) return json({ error: "not found" }, 404);
-          if (inv.status !== "draft") return json({ error: "only draft invoices can be deleted" }, 400);
+        if (path === "/api/invoices" && method === "POST") {
+          const number = String(body.number || nextInvoiceNumber());
+          if (db.query("SELECT 1 FROM invoices WHERE number = ?").get(number))
+            return json({ error: "invoice number already exists" }, 400);
+          let items: { description: string; hours: number; rate: number; entry_ids?: number[] }[];
+          if (Array.isArray(body.items)) {
+            items = body.items;
+          } else {
+            if (!body.client_id || !body.from || !body.to)
+              return json({ error: "client_id, from, to required (or items[])" }, 400);
+            items = groupToLineItems(
+              unbilledEntries(Number(body.client_id), String(body.from), String(body.to)),
+              Number(body.rate) || 0);
+          }
+          const clean = items
+            .map(it => ({
+              description: String(it.description || "Time"),
+              hours: round2(Number(it.hours) || 0),
+              rate: round2(Number(it.rate) || 0),
+              entry_ids: Array.isArray(it.entry_ids) ? it.entry_ids.map(Number).filter(n => n > 0) : [],
+            }))
+            .filter(it => it.hours > 0);
+          if (!clean.length) return json({ error: "no billable line items" }, 400);
+          const inv = db.query(
+            `INSERT INTO invoices (client_id, number, issue_date, due_date, tax_rate, notes)
+             VALUES (?, ?, ?, ?, ?, ?) RETURNING id`)
+            .get(
+              body.client_id ? Number(body.client_id) : null,
+              number,
+              String(body.issue_date || todayStr()),
+              body.due_date ? String(body.due_date) : null,
+              Number(body.tax_rate) || 0,
+              String(body.notes || "")) as any;
+          const insItem = db.query(
+            "INSERT INTO invoice_items (invoice_id, description, hours, rate, amount) VALUES (?, ?, ?, ?, ?)");
+          const linkEntry = db.query("UPDATE time_entries SET invoice_id = ? WHERE id = ?");
           db.transaction(() => {
-            db.query("UPDATE time_entries SET invoice_id = NULL WHERE invoice_id = ?").run(id);
-            db.query("DELETE FROM invoices WHERE id = ?").run(id);
+            for (const it of clean) {
+              insItem.run(inv.id, it.description, it.hours, it.rate, round2(it.hours * it.rate));
+              for (const eid of it.entry_ids) linkEntry.run(inv.id, eid);
+            }
           })();
-          return new Response(null, { status: 204 });
+          const full = getInvoice(inv.id)!;
+          return json({ ...full, ...invoiceTotals(full.items, full.tax_rate) }, 201);
         }
+        m = path.match(/^\/api\/invoices\/(\d+)$/);
+        if (m) {
+          const id = Number(m[1]);
+          if (method === "GET") {
+            const inv = getInvoice(id);
+            if (!inv) return json({ error: "not found" }, 404);
+            return json({ ...inv, ...invoiceTotals(inv.items, inv.tax_rate) });
+          }
+          if (method === "PATCH") {
+            const inv = qInvoice.get(id) as Invoice | null;
+            if (!inv) return json({ error: "not found" }, 404);
+            if (body.template !== undefined) {
+              const tpl = String(body.template);
+              if (!isInvoiceTemplate(tpl)) return json({ error: "unknown template" }, 400);
+              db.query("UPDATE invoices SET template = ? WHERE id = ?").run(tpl, id);
+            }
+            if (body.status !== undefined) {
+              const want = String(body.status);
+              const ok = (inv.status === "draft" && want === "sent") ||
+                         (inv.status === "sent" && want === "paid");
+              if (!ok) return json({ error: "invalid status transition (draft → sent → paid)" }, 400);
+              db.query("UPDATE invoices SET status = ? WHERE id = ?").run(want, id);
+            }
+            const full = getInvoice(id)!;
+            return json({ ...full, ...invoiceTotals(full.items, full.tax_rate) });
+          }
+          if (method === "DELETE") {
+            const inv = qInvoice.get(id) as Invoice | null;
+            if (!inv) return json({ error: "not found" }, 404);
+            if (inv.status !== "draft") return json({ error: "only draft invoices can be deleted" }, 400);
+            db.transaction(() => {
+              db.query("UPDATE time_entries SET invoice_id = NULL WHERE invoice_id = ?").run(id);
+              db.query("DELETE FROM invoices WHERE id = ?").run(id);
+            })();
+            return new Response(null, { status: 204 });
+          }
+        }
+        m = path.match(/^\/api\/invoices\/(\d+)\/stripe-link$/);
+        if (m && method === "POST") {
+          const r = await stripeLinkFor(Number(m[1]));
+          return r.url ? json({ url: r.url }) : json({ error: r.error }, r.status);
+        }
+        /* ---- revenue API (milestone 1) ---- */
+        if (path === "/api/revenue" && method === "GET")
+          return json({ totals: revenueTotals(), by_month: revenueMonthly(), by_client: revenueByClient() });
+        return json({ error: "not found" }, 404);
+      } catch (err) {
+        console.error(`[timekeep] API ${method} ${path} threw:`, err);
+        return json({ error: "internal" }, 500);
       }
-      m = path.match(/^\/api\/invoices\/(\d+)\/stripe-link$/);
-      if (m && method === "POST") {
-        const r = await stripeLinkFor(Number(m[1]));
-        return r.url ? json({ url: r.url }) : json({ error: r.error }, r.status);
-      }
-      /* ---- revenue API (milestone 1) ---- */
-      if (path === "/api/revenue" && method === "GET")
-        return json({ totals: revenueTotals(), by_month: revenueMonthly(), by_client: revenueByClient() });
-      return json({ error: "not found" }, 404);
     }
 
     /* ---- pages ---- */
-    if (!authedPage(req)) {
-      return new Response(null, { status: 302, headers: { Location: "/login" } });
-    }
+    try {
+      if (!authedPage(req)) {
+        return new Response(null, { status: 302, headers: { Location: "/login" } });
+      }
 
-    if (path === "/" && method === "GET") return html(dashboardPage());
-    if (path === "/partial/timer" && method === "GET") return html(timerPartial());
-    if (path === "/partial/today" && method === "GET") return html(todayPartial());
-    if (path === "/timer/start" && method === "POST") {
-      if (qRunning.get()) return html(timerPartial(), 409);
-      const form = await req.formData();
-      const pid = form.get("project_id");
-      db.query("INSERT INTO time_entries (project_id, description, start_time) VALUES (?, ?, ?)")
-        .run(pid ? Number(pid) : null, String(form.get("description") || ""), new Date().toISOString());
-      return html(timerPartial(), 200, { "HX-Trigger": "timer-updated" });
-    }
-    if (path === "/timer/stop" && method === "POST") {
-      const running = qRunning.get() as Entry | null;
-      if (running) db.query("UPDATE time_entries SET end_time = ? WHERE id = ?").run(new Date().toISOString(), running.id);
-      return html(timerPartial(), 200, { "HX-Trigger": "timer-updated" });
-    }
-    if (path === "/calendar" && method === "GET") return html(calendarPage(url.searchParams.get("week") || undefined));
+      if (path === "/" && method === "GET") return html(dashboardPage());
+      if (path === "/partial/timer" && method === "GET") return html(timerPartial());
+      if (path === "/partial/today" && method === "GET") return html(todayPartial());
+      if (path === "/timer/start" && method === "POST") {
+        if (qRunning.get()) return html(timerPartial(), 409);
+        const form = await req.formData();
+        const pid = form.get("project_id");
+        db.query("INSERT INTO time_entries (project_id, description, start_time) VALUES (?, ?, ?)")
+          .run(pid ? Number(pid) : null, String(form.get("description") || ""), new Date().toISOString());
+        return html(timerPartial(), 200, { "HX-Trigger": "timer-updated" });
+      }
+      if (path === "/timer/stop" && method === "POST") {
+        const running = qRunning.get() as Entry | null;
+        if (running) db.query("UPDATE time_entries SET end_time = ? WHERE id = ?").run(new Date().toISOString(), running.id);
+        return html(timerPartial(), 200, { "HX-Trigger": "timer-updated" });
+      }
+      if (path === "/calendar" && method === "GET") return html(calendarPage(url.searchParams.get("week") || undefined));
 
-    if (path === "/entries" && method === "POST") {
-      const form = await req.formData();
-      const endRaw = String(form.get("end_time") || "");
-      const pid = form.get("project_id");
-      db.query("INSERT INTO time_entries (project_id, description, start_time, end_time) VALUES (?, ?, ?, ?)")
-        .run(
-          pid ? Number(pid) : null,
-          String(form.get("description") || ""),
-          new Date(String(form.get("start_time"))).toISOString(),
-          endRaw ? new Date(endRaw).toISOString() : null);
-      return json({ ok: true }, 201);
-    }
+      if (path === "/entries" && method === "POST") {
+        const form = await req.formData();
+        const endRaw = String(form.get("end_time") || "");
+        const pid = form.get("project_id");
+        db.query("INSERT INTO time_entries (project_id, description, start_time, end_time) VALUES (?, ?, ?, ?)")
+          .run(
+            pid ? Number(pid) : null,
+            String(form.get("description") || ""),
+            new Date(String(form.get("start_time"))).toISOString(),
+            endRaw ? new Date(endRaw).toISOString() : null);
+        return json({ ok: true }, 201);
+      }
 
-    let m = path.match(/^\/entries\/(\d+)\/edit$/);
-    if (m && method === "GET") {
-      const page = editPage(Number(m[1]));
-      return page ? html(page) : html(notFoundPage(authedPage(req)), 404);
-    }
+      let m = path.match(/^\/entries\/(\d+)\/edit$/);
+      if (m && method === "GET") {
+        const page = editPage(Number(m[1]));
+        return page ? html(page) : html(notFoundPage(authedPage(req)), 404);
+      }
     m = path.match(/^\/entries\/(\d+)$/);
     if (m && method === "POST") {
       const id = Number(m[1]);
@@ -1887,7 +1915,11 @@ Bun.serve({
       return new Response(null, { status: 302, headers: { Location: "/invoices" } });
     }
 
-    return html(notFoundPage(authedPage(req)), 404);
+      return html(notFoundPage(authedPage(req)), 404);
+    } catch (err) {
+      console.error(`[timekeep] page ${method} ${path} threw:`, err);
+      return html(errorPage(authedPage(req)), 500);
+    }
   },
 });
 
