@@ -120,6 +120,10 @@ per-page:
   (chevrons with "Previous/Next week" tooltips). A "Today" text button appears
   only when viewing a non-current week. Today is marked with a filled primary
   circle on the day number and a 10% primary tint on its lane.
+- **Billable definition.** On the calendar, an entry is billable when it has
+  a project (hence a client); entries without a project are non-billable.
+  Day headers and the week header show the billable portion beneath each
+  total (e.g. "6h 30m" then "5h billable").
 - **Unified top app bar.** One header row: app title (icon + name) leading,
   primary destinations as nav items, Log out trailing. The destinations are
   top-level pages, and M3 reserves tabs for related content *within* a page —
