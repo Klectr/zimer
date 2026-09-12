@@ -684,6 +684,26 @@ function weekGrid(weekStr?: string): string {
     byDay.get(key)!.push(e);
   }
 
+  /* Per-client week totals from the same query (no extra DB hit), sorted
+     descending. Entries without a client roll into a "No client" bucket. */
+  const byClient = new Map<string, { name: string; color: string | null; secs: number }>();
+  for (const e of rows) {
+    const key = e.client_name ?? "__none";
+    const cur = byClient.get(key) ?? { name: e.client_name ?? "No client", color: e.client_color, secs: 0 };
+    cur.secs += durationSeconds(e.start_time, e.end_time);
+    byClient.set(key, cur);
+  }
+  const clientRows = [...byClient.values()].sort((a, b) => b.secs - a.secs);
+  const clientStrip = clientRows.length === 0 ? "" : `
+    <div class="week-clients">
+      ${clientRows.map(c => `
+        <span class="week-client">
+          <span class="week-client-dot"${c.color ? ` style="background:${esc(c.color)}"` : ""}></span>
+          <span class="md-label-medium">${esc(c.name)}</span>
+          <span class="md-label-medium muted">${fmtDur(c.secs)}</span>
+        </span>`).join("")}
+    </div>`;
+
   const toMin = (iso: string) => { const d = new Date(iso); return d.getHours() * 60 + d.getMinutes(); };
   const toHM = (mins: number) => `${String(Math.floor(mins / 60)).padStart(2, "0")}:${String(mins % 60).padStart(2, "0")}`;
 
@@ -754,6 +774,7 @@ function weekGrid(weekStr?: string): string {
       </div>
     </div>
     ${weekTargetBar(weekTotal)}
+    ${clientStrip}
     <p class="muted tiny cal-hint">Drag on the grid to log time. Click an entry to edit it.</p>
     <div class="cal-scroll">
       <div class="cal-grid" id="cal-body" style="--cal-hour:${CAL_HOUR_PX}px">
