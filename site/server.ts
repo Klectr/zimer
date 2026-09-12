@@ -775,6 +775,16 @@ function weekGrid(weekStr?: string): string {
     </div>`);
   }
 
+  // Week-over-week delta vs the immediately preceding week.
+  const prevRows = qRange.all(addDays(mon, -7) + "T00:00:00", mon + "T00:00:00") as Entry[];
+  const prevTotal = prevRows.reduce((a, e) => a + durationSeconds(e.start_time, e.end_time), 0);
+  const deltaHtml = (() => {
+    if (prevTotal <= 0) return `<span class="muted">—</span>`;
+    const pct = Math.round(((weekTotal - prevTotal) / prevTotal) * 100);
+    const arrow = pct > 0 ? "↑" : pct < 0 ? "↓" : "→";
+    return `<span class="muted">${arrow} ${Math.abs(pct)}% vs prev week</span>`;
+  })();
+
   const hourLabels = Array.from({ length: 24 }, (_, h) => {
     const ampm = h === 0 ? "12 AM" : h < 12 ? `${h} AM` : h === 12 ? "12 PM" : `${h - 12} PM`;
     return `<span class="cal-hour-label" style="top:${(h * CAL_HOUR_PX - 8).toFixed(0)}px">${ampm}</span>`;
@@ -782,7 +792,7 @@ function weekGrid(weekStr?: string): string {
 
   return `<div id="week">
     <div class="week-nav">
-      <h2 class="md-headline-small">${isThisWeek ? "This week" : `Week of ${esc(mon)}`} <span class="muted">· ${fmtDur(weekTotal)} · ${fmtDur(weekBillable)} billable</span></h2>
+      <h2 class="md-headline-small">${isThisWeek ? "This week" : `Week of ${esc(mon)}`} <span class="muted">· ${fmtDur(weekTotal)}</span> ${deltaHtml} <span class="muted">· ${fmtDur(weekBillable)} billable</span></h2>
       <div class="week-nav-actions">
         ${isThisWeek ? "" : `<a class="md-text-button" href="/calendar">Today</a>`}
         <a class="md-icon-button" href="/calendar?week=${prev}" title="Previous week" aria-label="Previous week">${icon("chevron_left")}</a>
