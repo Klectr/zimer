@@ -554,6 +554,28 @@ body.app-fixed main {
   .pane-focus { flex: 1; }
   .pane-supporting { flex: 0 0 360px; }
 }
+/* ---------------- calendar supporting pane (M3 canonical, #67) ----------------
+ * The week grid is the primary content, the week summary is supplementary —
+ * the same canonical layout as the timer page (840px breakpoint, 360px pane).
+ * <840px: single column, the summary keeps its position above the grid (its
+ * long-standing spot; the grid is an internally-scrolling 24h surface, so the
+ * spec's below-the-fold placement would bury the summary and its invoice CTA).
+ * ≥840px: the summary trails beside the grid, which takes the freed vertical
+ * space. Grid areas keep the DOM order nav → summary → grid on narrow screens
+ * without a wrapper. */
+.cal-pane-layout { display: grid; flex: 1; min-height: 0; min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "nav" "summary" "grid";
+  grid-template-rows: auto auto minmax(0, 1fr); }
+.cal-pane-layout .week-nav { grid-area: nav; }
+.cal-supporting { grid-area: summary; display: flex; flex-direction: column; gap: 14px; margin: 10px 0 12px; min-width: 0; }
+.cal-supporting .week-target, .cal-supporting .week-clients, .cal-supporting .cal-hint { margin: 0; }
+.cal-pane-layout .cal-scroll { grid-area: grid; }
+@media (min-width: 840px) {
+  .cal-pane-layout { grid-template-columns: minmax(0, 1fr) 360px;
+    grid-template-areas: "nav summary" "grid summary"; column-gap: 24px; }
+  .cal-supporting { margin: 8px 0 0; min-height: 0; overflow-y: auto; }
+}
 /* calendar specifics: the week grid is the scroll region, headers stick */
 body.app-fixed #week { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }

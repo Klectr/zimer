@@ -851,19 +851,28 @@ function weekInner(weekStr?: string): string {
     return `<span class="cal-hour-label" style="top:${(h * CAL_HOUR_PX - 8).toFixed(0)}px">${ampm}</span>`;
   }).join("");
 
+  const weekLabel = new Date(mon + "T12:00:00").toLocaleDateString([], { month: "short", day: "numeric" });
+
   return `
+  <div class="cal-pane-layout">
     <div class="week-nav" data-enter="2">
-      <h2 class="md-headline-small">${isThisWeek ? "This week" : `Week of ${esc(mon)}`} <span class="muted">· ${fmtDur(weekTotal)}</span> ${deltaHtml} <span class="muted">· ${fmtDur(weekBillable)} billable</span></h2>
+      <h2 class="md-headline-small">${isThisWeek ? "This week" : `Week of ${esc(weekLabel)}`}</h2>
       <div class="week-nav-actions">
         ${isThisWeek ? "" : `<a class="md-text-button" href="/calendar">Today</a>`}
         <a class="md-icon-button" href="/calendar?week=${prev}" title="Previous week" aria-label="Previous week">${icon("chevron_left")}</a>
         <a class="md-icon-button" href="/calendar?week=${next}" title="Next week" aria-label="Next week">${icon("chevron_right")}</a>
       </div>
     </div>
-    ${nudgeChip}
-    ${weekTargetBar(weekTotal)}
-    ${clientStrip}
-    <p class="muted tiny cal-hint">Drag on the grid to log time. Click an entry to edit it.</p>
+    <aside class="cal-supporting" data-enter="3" aria-label="Week summary">
+      <div class="cal-summary">
+        <div class="md-headline-small">${fmtDur(weekTotal)}</div>
+        <div class="md-label-medium muted">${fmtDur(weekBillable)} billable · ${deltaHtml}</div>
+      </div>
+      ${nudgeChip}
+      ${weekTargetBar(weekTotal)}
+      ${clientStrip}
+      <p class="muted tiny cal-hint">Drag on the grid to log time. Click an entry to edit it.</p>
+    </aside>
     <div class="cal-scroll" data-enter="3">
       <div class="cal-grid" id="cal-body" style="--cal-hour:${CAL_HOUR_PX}px">
         <div class="cal-gutter-col">
@@ -873,6 +882,7 @@ function weekInner(weekStr?: string): string {
         ${days.join("")}
       </div>
     </div>
+  </div>
   `;
 }
 
