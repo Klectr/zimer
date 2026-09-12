@@ -748,7 +748,7 @@ function weekGrid(weekStr?: string): string {
       .map(({ e, a, b }) => {
       const top = (a / 60) * CAL_HOUR_PX;
       const h = Math.max(((b - a) / 60) * CAL_HOUR_PX, 26);
-      const color = e.client_color || "#f2c14e";
+      const color = e.client_color || "#9aa0a6"; // no-client: neutral gray, distinct from client colors
       const running = !e.end_time;
       const overlap = sortedBlocks.some((o) => o.e !== e && o.a < b && o.b > a);
       const desc = e.description ? esc(e.description) : "<em>No description</em>";
