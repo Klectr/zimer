@@ -913,6 +913,29 @@ function calScript(): string {
   var HOUR=${CAL_HOUR_PX};
   var body=document.getElementById('cal-body');
   var scrim=document.getElementById('cal-scrim');
+  var dialog=scrim.querySelector('.cal-dialog');
+  /* M3 dialog motion: .open drives scrim fade + dialog scale/fade.
+     Generation counter keeps rapid open/close/open sequences sane. */
+  var scrimGen=0;
+  function showScrim(){
+    scrimGen++;
+    scrim.hidden=false;
+    void scrim.offsetWidth; /* commit unhide so the transition runs */
+    scrim.classList.add('open');
+  }
+  function hideScrim(){
+    var gen=++scrimGen;
+    scrim.classList.remove('open');
+    var done=false;
+    var finish=function(){ if(done||gen!==scrimGen) return; done=true; scrim.hidden=true; };
+    var onEnd=function(e){
+      if(e.target===dialog&&e.propertyName==='transform'){
+        dialog.removeEventListener('transitionend',onEnd); finish();
+      }
+    };
+    dialog.addEventListener('transitionend',onEnd);
+    setTimeout(finish,400);
+  }
   var title=document.getElementById('cal-dialog-title');
   var dateLine=document.getElementById('cal-dialog-date');
   var desc=document.getElementById('cal-desc');
@@ -940,7 +963,7 @@ function calScript(): string {
     dateLine.textContent=d.toLocaleDateString([],{weekday:'long',month:'long',day:'numeric'});
     desc.value=''; project.value='';
     startI.value=toHM(a); endI.value=toHM(b); updDur();
-    scrim.hidden=false; desc.focus();
+    showScrim(); desc.focus();
   }
   function openEdit(el){
     mode='edit'; editId=el.dataset.id; dayStr=el.dataset.date;
@@ -949,9 +972,9 @@ function calScript(): string {
     dateLine.textContent=d.toLocaleDateString([],{weekday:'long',month:'long',day:'numeric'});
     desc.value=el.dataset.desc||''; project.value=el.dataset.projectId||'';
     startI.value=el.dataset.start||'09:00'; endI.value=el.dataset.end||toHM(toMin(startI.value)+60); updDur();
-    scrim.hidden=false; desc.focus();
+    showScrim(); desc.focus();
   }
-  function close(){ scrim.hidden=true; }
+  function close(){ hideScrim(); }
   document.getElementById('cal-cancel').addEventListener('click',close);
   scrim.addEventListener('click',function(e){ if(e.target===scrim) close(); });
   document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&!scrim.hidden) close(); });
