@@ -538,14 +538,14 @@ function projectOptions(selected: number | null = null): string {
   ).join("");
 }
 
-function entryRow(e: Entry): string {
+function entryRow(e: Entry, i = 0): string {
   const dur = fmtDur(durationSeconds(e.start_time, e.end_time));
   const when = e.end_time ? `${fmtTime(e.start_time)} – ${fmtTime(e.end_time)}` : `${fmtTime(e.start_time)} – now`;
   const chip = e.project_name
     ? `<span class="md-chip">${e.client_color ? `<span class="dot" style="background:${esc(e.client_color)}"></span>` : ""}${esc(e.project_name)}</span>`
     : "";
   const desc = e.description ? esc(e.description) : "<em>No description</em>";
-  return `<li class="md-list-item" id="entry-${e.id}">
+  return `<li class="md-list-item" id="entry-${e.id}" style="animation-delay:${Math.min(i * 30, 300)}ms">
     <div class="md-list-item-content">
       <div class="md-list-item-headline">${desc}</div>
       <div class="md-list-item-supporting">${chip}<span>${esc(when)}${e.client_name && !e.project_name ? ` · ${esc(e.client_name)}` : ""}</span></div>
@@ -554,7 +554,7 @@ function entryRow(e: Entry): string {
       <span class="dur">${dur}</span>
       <a class="md-icon-button" href="/entries/${e.id}/edit" aria-label="Edit entry" title="Edit">${icon("edit")}</a>
       <button class="md-icon-button danger" hx-delete="/entries/${e.id}"
-        hx-target="#entry-${e.id}" hx-swap="outerHTML" hx-confirm="Delete this entry?"
+        hx-target="#entry-${e.id}" hx-swap="outerHTML swap:220ms" hx-confirm="Delete this entry?"
         aria-label="Delete entry" title="Delete">${icon("delete")}</button>
     </div>
   </li>`;
