@@ -458,6 +458,24 @@ body.app-fixed main {
 }
 /* the region that owns the scroll on fixed-viewport pages */
 .scroll-region { flex: 1; min-height: 0; overflow-y: auto; }
+/* ---------------- supporting-pane layout (M3 canonical, timer page) ----------------
+ * <840px: single stacked column — timer card stays pinned above, entries + revenue
+ * share one scroll region. ≥840px: focus pane (entries) + trailing 360px supporting
+ * pane (revenue), each scrolling independently. Spec: supporting-pane example. */
+.pane-layout { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.pane-focus, .pane-supporting { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+.pane-supporting { container-type: inline-size; }
+@media (max-width: 839px) {
+  .pane-layout { overflow-y: auto; }
+  .pane-focus, .pane-supporting { flex: none; }
+  .pane-layout .scroll-region { flex: none; overflow: visible; }
+  .pane-supporting { margin-top: 32px; }
+}
+@media (min-width: 840px) {
+  .pane-layout { flex-direction: row; gap: 24px; }
+  .pane-focus { flex: 1; }
+  .pane-supporting { flex: 0 0 360px; }
+}
 /* calendar specifics: the week grid is the scroll region, headers stick */
 body.app-fixed #week { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
@@ -667,9 +685,9 @@ body.app-fixed .cal-gutter-spacer {
 }
 
 /* ---------------- revenue (milestone 1) ---------------- */
-.rev-heading { margin-top: 32px; }
 .rev-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-@media (max-width: 560px) { .rev-cards { grid-template-columns: 1fr; } }
+/* feed-style adaptive grid inside the supporting pane: stack when the pane is narrow */
+@container (max-width: 480px) { .rev-cards { grid-template-columns: 1fr; } }
 .rev-card { padding: 16px 20px; }
 .rev-card .md-title-large { margin-top: 4px; }
 .rev-paid { color: var(--md-sys-color-primary); }
