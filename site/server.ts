@@ -281,6 +281,7 @@ function publicInvoicePage(inv: Invoice & { items: InvoiceItem[] }): string {
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
 <link rel="stylesheet" href="/static/style.css">
+<script src="/static/motion.js" defer></script>
 </head>
 <body>
 <main class="page-public-invoice">
@@ -453,6 +454,7 @@ function layout(title: string, body: string, active?: "timer" | "calendar" | "ma
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
 <link rel="stylesheet" href="/static/style.css">
+<script src="/static/motion.js" defer></script>
 </head>
 <body${fixed ? ' class="app-fixed"' : ""}>
 <header class="md-top-app-bar">
@@ -483,6 +485,7 @@ function publicShell(title: string, body: string): string {
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
 <link rel="stylesheet" href="/static/style.css">
+<script src="/static/motion.js" defer></script>
 </head>
 <body>
 <main class="page-public-invoice">
@@ -1414,7 +1417,8 @@ function loginPage(): string {
 <title>Log in · Timekeep</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
-<link rel="stylesheet" href="/static/style.css"></head>
+<link rel="stylesheet" href="/static/style.css">
+<script src="/static/motion.js" defer></script></head>
 <body><main class="login">
 <div class="md-card" style="border-radius:28px;padding:28px">
 <h1 class="md-headline-small" style="margin-top:0">⏱ Timekeep</h1>
