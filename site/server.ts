@@ -96,10 +96,11 @@ type Entry = {
   project_name: string | null;
   client_name: string | null;
   client_color: string | null;
+  invoice_id: number | null;
 };
 
 const ENTRY_SELECT = `
-  SELECT e.id, e.project_id, e.description, e.start_time, e.end_time,
+  SELECT e.id, e.project_id, e.description, e.start_time, e.end_time, e.invoice_id,
          p.name AS project_name, c.name AS client_name, c.color AS client_color
   FROM time_entries e
   LEFT JOIN projects p ON p.id = e.project_id
@@ -694,6 +695,13 @@ function weekGrid(weekStr?: string): string {
     byClient.set(key, cur);
   }
   const clientRows = [...byClient.values()].sort((a, b) => b.secs - a.secs);
+  const uninvoiced = rows.reduce(
+    (s, e) => s + (e.invoice_id == null ? durationSeconds(e.start_time, e.end_time) : 0), 0);
+  const nudgeChip = uninvoiced > 0 ? `
+    <a class="nudge-chip" href="/invoices/new">
+      <span class="md-label-large">${fmtDur(uninvoiced)} not yet invoiced</span>
+      <span class="md-label-large nudge-go">→ New invoice</span>
+    </a>` : "";
   const clientStrip = clientRows.length === 0 ? "" : `
     <div class="week-clients">
       ${clientRows.map(c => `
@@ -773,6 +781,7 @@ function weekGrid(weekStr?: string): string {
         <a class="md-icon-button" href="/calendar?week=${next}" title="Next week" aria-label="Next week">${icon("chevron_right")}</a>
       </div>
     </div>
+    ${nudgeChip}
     ${weekTargetBar(weekTotal)}
     ${clientStrip}
     <p class="muted tiny cal-hint">Drag on the grid to log time. Click an entry to edit it.</p>
