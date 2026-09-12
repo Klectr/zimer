@@ -549,8 +549,11 @@ body.app-fixed main {
   display: flex; flex-direction: column;
   padding-bottom: 16px;
 }
-/* the region that owns the scroll on fixed-viewport pages */
-.scroll-region { flex: 1; min-height: 0; overflow-y: auto; }
+/* the region that owns the scroll on fixed-viewport pages.
+ * 4px breathing room: the :focus-visible ring extends 2px + 2px offset beyond a
+ * field, and fields sit flush against this region's clip edge (overflow-y: auto
+ * clips the ring otherwise). */
+.scroll-region { flex: 1; min-height: 0; overflow-y: auto; padding: 4px; }
 /* ---------------- supporting-pane layout (M3 canonical, timer page) ----------------
  * <840px: single stacked column — timer card stays pinned above, entries + revenue
  * share one scroll region. ≥840px: focus pane (entries) + trailing 360px supporting
