@@ -648,6 +648,24 @@ function addDays(dateStr: string, n: number): string {
 /** Pixels per hour in the calendar time grid. */
 const CAL_HOUR_PX = 52;
 
+/** Weekly hours target: 40h matches the ~80h biweekly invoicing pace.
+    Kept as a constant in this slice; a configurable target is a follow-up. */
+const WEEK_TARGET_SECS = 40 * 3600;
+
+/** Slim pacing bar under the week header: tracked hours vs the 40h target. */
+function weekTargetBar(weekTotalSecs: number): string {
+  const pct = Math.min(100, (weekTotalSecs / WEEK_TARGET_SECS) * 100);
+  const over = weekTotalSecs >= WEEK_TARGET_SECS;
+  return `
+    <div class="week-target">
+      <div class="week-target-track" role="progressbar" aria-valuenow="${Math.round(pct)}"
+        aria-valuemin="0" aria-valuemax="100" aria-label="Weekly hours target, 40 hours">
+        <div class="week-target-fill" style="width:${pct.toFixed(1)}%"></div>
+      </div>
+      <div class="md-label-medium muted week-target-label">${fmtDur(weekTotalSecs)} / 40h${over ? ` · <span class="tiny">over target</span>` : ""}</div>
+    </div>`;
+}
+
 function weekGrid(weekStr?: string): string {
   const mon = mondayOf(weekStr);
   const prev = addDays(mon, -7), next = addDays(mon, 7);
@@ -735,6 +753,7 @@ function weekGrid(weekStr?: string): string {
         <a class="md-icon-button" href="/calendar?week=${next}" title="Next week" aria-label="Next week">${icon("chevron_right")}</a>
       </div>
     </div>
+    ${weekTargetBar(weekTotal)}
     <p class="muted tiny cal-hint">Drag on the grid to log time. Click an entry to edit it.</p>
     <div class="cal-scroll">
       <div class="cal-grid" id="cal-body" style="--cal-hour:${CAL_HOUR_PX}px">

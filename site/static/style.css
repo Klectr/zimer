@@ -644,6 +644,13 @@ body.app-fixed .cal-gutter-spacer {
 .public-foot { text-align: center; margin-top: 28px; }
 .public-pay { text-align: center; margin: 28px 0 8px; }
 .public-pay-btn { font-size: 17px; padding: 14px 32px; border-radius: 999px; }
+
+/* Weekly target pacing bar on the calendar. */
+.week-target { display: flex; align-items: center; gap: 12px; margin: 2px 0 14px; flex-wrap: wrap; }
+.week-target-track { flex: 1; min-width: 120px; height: 8px; border-radius: 999px;
+  background: var(--md-sys-color-surface-container-highest); overflow: hidden; }
+.week-target-fill { height: 100%; border-radius: inherit; background: #f2c14e; }
+.week-target-label { white-space: nowrap; }
 .inv-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
 .inv-dates { display: flex; gap: 32px; margin-bottom: 20px; }
 .inv-notes { margin-top: 16px; color: var(--md-sys-color-on-surface-variant); white-space: pre-wrap; }
