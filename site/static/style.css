@@ -441,6 +441,14 @@ h2.md-headline-small { margin: 24px 4px 12px; }
 .md-chip .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
 
 /* ---------------- timer ---------------- */
+/* HTMX swap choreography (#45): outgoing card sinks/fades during the
+   swap:200ms delay; incoming card rises/fades in from .htmx-settling. */
+#timer-card {
+  transition: opacity var(--motion-duration-short4) var(--motion-easing-standard),
+    transform var(--motion-duration-short4) var(--motion-easing-emphasized-decelerate);
+}
+#timer-card.htmx-swapping { opacity: 0; transform: translateY(6px) scale(0.99); }
+#timer-card.htmx-settling { opacity: 0; transform: translateY(-8px); }
 .timer-state-label {
   font-size: 12px;
   font-weight: 500;

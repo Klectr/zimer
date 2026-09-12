@@ -569,7 +569,7 @@ function timerPartial(): string {
       <div class="timer-state-label">TRACKING${proj}</div>
       <div class="md-title-medium">${running.description ? esc(running.description) : "No description"}</div>
       <div class="timer-elapsed" id="elapsed" data-start="${esc(running.start_time)}">…</div>
-      <button class="md-extended-fab stop" hx-post="/timer/stop" hx-target="#timer-card" hx-swap="outerHTML">
+      <button class="md-extended-fab stop" hx-post="/timer/stop" hx-target="#timer-card" hx-swap="outerHTML swap:200ms">
         ${icon("stop")}Stop
       </button>
       <script>(function(){var el=document.getElementById('elapsed');if(!el)return;
@@ -583,7 +583,7 @@ function timerPartial(): string {
   return `<div class="md-card" id="timer-card">
     <div class="timer-state-label">TIMER</div>
     <div class="md-title-medium muted">Nothing tracking</div>
-    <form hx-post="/timer/start" hx-target="#timer-card" hx-swap="outerHTML" class="start-form">
+    <form hx-post="/timer/start" hx-target="#timer-card" hx-swap="outerHTML swap:200ms" class="start-form">
       <div class="md-text-field grow">
         <input type="text" name="description" placeholder=" " autocomplete="off" aria-label="What are you working on?">
         <label>What are you working on?</label>
@@ -612,7 +612,7 @@ function dashboardPage(): string {
   return layout("Timer", `
     <div class="pane-layout">
       <section class="pane-focus" aria-label="Timer and today's entries">
-        <div hx-get="/partial/timer" hx-trigger="load" hx-swap="outerHTML"><div class="md-card"><p class="muted">Loading…</p></div></div>
+        <div hx-get="/partial/timer" hx-trigger="load" hx-swap="outerHTML swap:200ms"><div class="md-card"><p class="muted">Loading…</p></div></div>
         <div class="scroll-region">
           <h2 class="md-headline-small">Today</h2>
           <div id="today-list" hx-get="/partial/today" hx-trigger="load, timer-updated from:body"></div>
