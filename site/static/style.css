@@ -60,6 +60,17 @@
   --motion-duration-long2: 500ms;
 }
 
+/* Staggered content entrance (#48): page regions fade + rise in sequence
+   on page load. Attributes sit on shells HTMX never replaces, so the
+   entrance plays once per page load and never replays on swaps. */
+[data-enter] {
+  animation: content-enter var(--motion-duration-medium3) var(--motion-easing-emphasized-decelerate) backwards;
+}
+[data-enter="2"] { animation-delay: 60ms; }
+[data-enter="3"] { animation-delay: 120ms; }
+[data-enter="4"] { animation-delay: 180ms; }
+@keyframes content-enter { from { opacity: 0; transform: translateY(16px); } }
+
 /* ---------------- sys tokens: type ---------------- */
 *, *::before, *::after { box-sizing: border-box; }
 body {
