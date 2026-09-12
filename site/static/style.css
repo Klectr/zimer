@@ -562,6 +562,12 @@ body.app-fixed .cal-gutter-spacer {
   font-size: 11px; color: var(--md-sys-color-on-surface-variant); white-space: nowrap;
 }
 .cal-day { display: flex; flex-direction: column; min-width: 0; }
+/* Grid entrance (#49): columns stagger in left→right inside the #48 region
+   entrance; per-column delay rendered inline by weekGrid. */
+#cal-body .cal-day {
+  animation: cal-day-enter var(--motion-duration-medium2) var(--motion-easing-emphasized-decelerate) backwards;
+}
+@keyframes cal-day-enter { from { opacity: 0; transform: translateY(12px); } }
 .cal-day-head { text-align: center; padding: 10px 4px 8px; min-height: 84px; }
 .cal-day-num { font-size: 22px; line-height: 28px; }
 .cal-day-num.today {
