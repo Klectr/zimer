@@ -235,15 +235,22 @@ function newPublicToken(): string {
 
 /** Mint and persist a public share token for an invoice if it lacks one. */
 function ensurePublicToken(id: number): string {
-  const cur = (db.query("SELECT public_token FROM invoices WHERE id = ?").get(id) as any)?.public_token;
-  if (cur) return cur;
+  return getPublicToken(id) ?? mintPublicToken(id);
+}
+
+/** Current public share token for an invoice, or null if none (never mints). */
+function getPublicToken(id: number): string | null {
+  return (db.query("SELECT public_token FROM invoices WHERE id = ?").get(id) as any)?.public_token ?? null;
+}
+
+/** Mint a fresh public share token, replacing any existing one. */
+function mintPublicToken(id: number): string {
   for (let i = 0; i < 5; i++) {
     const tok = newPublicToken();
     try {
-      db.query("UPDATE invoices SET public_token = ? WHERE id = ? AND public_token IS NULL").run(tok, id);
-    } catch { continue; /* token collision — retry */ }
-    const minted = (db.query("SELECT public_token FROM invoices WHERE id = ?").get(id) as any)?.public_token;
-    if (minted) return minted;
+      db.query("UPDATE invoices SET public_token = ? WHERE id = ?").run(tok, id);
+      return tok;
+    } catch { /* token collision — retry */ }
   }
   throw new Error("could not mint public token");
 }
@@ -258,6 +265,11 @@ function publicOrigin(req: Request): string {
 
 /** Public client invoice page: no auth, read-only, no actions or navigation. */
 function publicInvoicePage(inv: Invoice & { items: InvoiceItem[] }): string {
+  const t = invoiceTotals(inv.items, inv.tax_rate);
+  const pay = inv.stripe_payment_link ? `
+    <div class="no-print public-pay">
+      <a class="md-filled-button public-pay-btn" href="${esc(inv.stripe_payment_link)}" target="_blank" rel="noopener">${icon("card")}<span>Pay ${money(t.total)}</span></a>
+    </div>` : "";
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -272,6 +284,7 @@ function publicInvoicePage(inv: Invoice & { items: InvoiceItem[] }): string {
 <body>
 <main class="page-public-invoice">
 ${invoiceSheet(inv)}
+${pay}
 <p class="muted tiny no-print public-foot">Shared securely via Timekeep</p>
 </main>
 </html>`;
@@ -1216,13 +1229,26 @@ function invoiceDetailPage(inv: Invoice & { items: InvoiceItem[] }, origin: stri
   const next = inv.status === "draft" ? "sent" : inv.status === "sent" ? "paid" : null;
   const nextLabel = next === "sent" ? "Mark sent" : next === "paid" ? "Mark paid" : "";
   const t = invoiceTotals(inv.items, inv.tax_rate);
-  const clientLink = `${origin}/i/${ensurePublicToken(inv.id)}`;
-  const shareSection = `
+  const token = getPublicToken(inv.id);
+  const clientLink = token ? `${origin}/i/${token}` : null;
+  const shareSection = clientLink ? `
     <div class="stripe-row no-print">
       <span class="md-label-medium muted">Client link</span>
       <input class="link-input" id="client-link-url" readonly value="${esc(clientLink)}" onclick="this.select()" aria-label="Client invoice link">
       <button class="md-text-button" id="copy-client-link" type="button">${icon("copy")}<span>Copy</span></button>
+      <form method="post" action="/invoices/${inv.id}/public-token/regenerate" class="inline">
+        <button class="md-text-button" type="submit" title="Create a new link (invalidates the old one)">${icon("refresh")}Regenerate</button>
+      </form>
+      <form method="post" action="/invoices/${inv.id}/public-token/revoke" class="inline">
+        <button class="md-text-button danger" type="submit" onclick="return confirm('Revoke the client link? The current URL will stop working.')">Revoke</button>
+      </form>
       <script>(function(){var b=document.getElementById('copy-client-link');if(!b)return;var lbl=b.querySelector('span');b.addEventListener('click',function(){var i=document.getElementById('client-link-url');i.select();var done=function(){lbl.textContent='Copied';setTimeout(function(){lbl.textContent='Copy';},1500);};if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(i.value).then(done,done);}else{document.execCommand('copy');done();}});})();</script>
+    </div>` : `
+    <div class="stripe-row no-print">
+      <span class="md-label-medium muted">Client link</span>
+      <form method="post" action="/invoices/${inv.id}/public-token/regenerate" class="inline">
+        <button class="md-text-button" type="submit">${icon("add")}Create client link</button>
+      </form>
     </div>`;
   const stripeSection = inv.status !== "sent" ? "" : `
     <div class="stripe-row no-print">
@@ -1737,6 +1763,16 @@ Bun.serve({
       const r = await stripeLinkFor(Number(m[1]));
       if (r.url) return new Response(null, { status: 302, headers: { Location: `/invoices/${m[1]}` } });
       return new Response(r.error || "Stripe error", { status: r.status || 500 });
+    }
+    m = path.match(/^\/invoices\/(\d+)\/public-token\/regenerate$/);
+    if (m && method === "POST") {
+      mintPublicToken(Number(m[1]));
+      return new Response(null, { status: 302, headers: { Location: `/invoices/${m[1]}` } });
+    }
+    m = path.match(/^\/invoices\/(\d+)\/public-token\/revoke$/);
+    if (m && method === "POST") {
+      db.query("UPDATE invoices SET public_token = NULL WHERE id = ?").run(Number(m[1]));
+      return new Response(null, { status: 302, headers: { Location: `/invoices/${m[1]}` } });
     }
     m = path.match(/^\/invoices\/(\d+)\/delete$/);
     if (m && method === "POST") {
