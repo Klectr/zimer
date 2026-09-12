@@ -99,6 +99,15 @@ per-page:
   [large-screen guidance](https://m3.material.io/blog/5-steps-large-screen-apps)).
   Centering the column keeps a focused task visually contained; it does not
   center the form's contents.
+- **Supporting-pane layout (M3, timer page).** The timer page uses the M3
+  supporting-pane canonical layout with responsive switching. Below 840px it
+  is a single stacked column (timer card → today's entries → revenue); at
+  840px and up the focus pane (timer card + today's entries, fluid) sits
+  beside a trailing 360px supporting pane (revenue summary) with a 24px gap,
+  and each pane owns its own scroll. Revenue is the supporting pane because it
+  is contextual info derived from tracked time, per the spec's supporting-pane
+  test. The stat cards reflow inside the narrow pane via container queries
+  (`@container (max-width: 480px)`), not viewport queries.
 - **No hard borders.** If you're reaching for `border:`, use a surface tone
   step or whitespace instead.
 - **No horizontal scrolling.** Tables and grids must fit; the calendar page is
