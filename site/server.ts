@@ -716,6 +716,7 @@ function weekGrid(weekStr?: string): string {
   const toHM = (mins: number) => `${String(Math.floor(mins / 60)).padStart(2, "0")}:${String(mins % 60).padStart(2, "0")}`;
 
   let weekTotal = 0;
+  let weekBillable = 0;
   const days: string[] = [];
   for (let i = 0; i < 7; i++) {
     const day = addDays(mon, i);
@@ -724,7 +725,11 @@ function weekGrid(weekStr?: string): string {
     const wd = dt.toLocaleDateString([], { weekday: "short" });
     const entries = byDay.get(day) ?? [];
     const total = entries.reduce((a, e) => a + durationSeconds(e.start_time, e.end_time), 0);
+    /* Billable = entry has a project (hence a client); non-billable = no project. */
+    const billable = entries.reduce(
+      (a, e) => a + (e.project_id != null ? durationSeconds(e.start_time, e.end_time) : 0), 0);
     weekTotal += total;
+    weekBillable += billable;
     const isToday = day === today;
 
     // Entries render full-width; an entry involved in an overlap gets a top
@@ -762,6 +767,7 @@ function weekGrid(weekStr?: string): string {
         <div class="md-label-large muted">${esc(wd)}</div>
         <div class="cal-day-num${isToday ? " today" : ""}">${d}</div>
         <div class="tiny muted">${fmtDur(total)}</div>
+        ${total > 0 ? `<div class="tiny muted">${fmtDur(billable)} billable</div>` : ""}
       </div>
       <div class="cal-day-col" data-date="${day}">${entryHtml}${nowLine}</div>
     </div>`);
@@ -774,7 +780,7 @@ function weekGrid(weekStr?: string): string {
 
   return `<div id="week">
     <div class="week-nav">
-      <h2 class="md-headline-small">${isThisWeek ? "This week" : `Week of ${esc(mon)}`} <span class="muted">· ${fmtDur(weekTotal)}</span></h2>
+      <h2 class="md-headline-small">${isThisWeek ? "This week" : `Week of ${esc(mon)}`} <span class="muted">· ${fmtDur(weekTotal)} · ${fmtDur(weekBillable)} billable</span></h2>
       <div class="week-nav-actions">
         ${isThisWeek ? "" : `<a class="md-text-button" href="/calendar">Today</a>`}
         <a class="md-icon-button" href="/calendar?week=${prev}" title="Previous week" aria-label="Previous week">${icon("chevron_left")}</a>
