@@ -577,14 +577,22 @@ body.app-fixed .cal-gutter-spacer {
   position: fixed; inset: 0; z-index: 60;
   background: rgba(0, 0, 0, 0.5);
   display: flex; align-items: center; justify-content: center; padding: 16px;
+  opacity: 0;
+  transition: opacity var(--motion-duration-short4) var(--motion-easing-standard);
 }
 .cal-scrim[hidden] { display: none; }
+.cal-scrim.open { opacity: 1; }
 .cal-dialog {
   background: var(--md-sys-color-surface-container-high);
   border-radius: var(--md-sys-shape-corner-extra-large);
   padding: 24px; width: min(480px, 100%);
   display: grid; gap: 16px;
+  transform: scale(0.9);
+  opacity: 0;
+  transition: transform var(--motion-duration-medium2) var(--motion-easing-emphasized),
+    opacity var(--motion-duration-short4) var(--motion-easing-standard);
 }
+.cal-scrim.open .cal-dialog { transform: scale(1); opacity: 1; }
 .cal-dialog h2 { margin: 0; }
 .cal-dialog p { margin: 0; }
 .cal-time-row { display: flex; gap: 12px; align-items: flex-end; }
