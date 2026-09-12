@@ -790,3 +790,24 @@ body.app-fixed .cal-gutter-spacer {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* M3 press ripple (JS-driven, see motion.js). Buttons already clip with
+   overflow: hidden; the span paints above the ::after state layer. */
+.md-ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0);
+  pointer-events: none;
+}
+.md-ripple.go {
+  transition: transform var(--motion-duration-medium2) var(--motion-easing-emphasized),
+    opacity var(--motion-duration-short4) var(--motion-easing-standard);
+  transform: translate(-50%, -50%) scale(1);
+  opacity: 0.14;
+}
+.md-ripple.go.fade {
+  transition: opacity var(--motion-duration-short3) var(--motion-easing-standard);
+  opacity: 0;
+}
