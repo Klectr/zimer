@@ -756,6 +756,13 @@ body.app-fixed .cal-gutter-spacer {
 
 /* ---------------- invoice templates (milestone 2) ---------------- */
 .template-picker { display: flex; align-items: center; gap: 12px; margin: 4px 0 16px; }
+/* Template preview crossfade (#50): doc fades out during the swap:200ms
+   delay, then the new doc fades in from .htmx-settling. */
+#invoice-doc {
+  transition: opacity var(--motion-duration-short4) var(--motion-easing-standard);
+}
+#invoice-doc.htmx-swapping { opacity: 0; }
+#invoice-doc.htmx-settling { opacity: 0; }
 .tpl-options { display: flex; gap: 8px; }
 .tpl-option { border: none; background: var(--md-sys-color-surface-container-high); color: var(--md-sys-color-on-surface);
   padding: 8px 18px; border-radius: 999px; font: inherit; font-size: 14px; cursor: pointer; }

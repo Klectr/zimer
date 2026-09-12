@@ -1304,7 +1304,7 @@ function templatePicker(inv: Invoice): string {
   const opts = templateList().map(t => `
     <button class="tpl-option${t.id === inv.template ? " selected" : ""}" type="button"
       hx-post="/invoices/${inv.id}/template" hx-vals='{"template":"${t.id}"}'
-      hx-target="#invoice-doc" hx-swap="outerHTML" aria-pressed="${t.id === inv.template}">${esc(t.name)}</button>`).join("");
+      hx-target="#invoice-doc" hx-swap="outerHTML swap:200ms" aria-pressed="${t.id === inv.template}">${esc(t.name)}</button>`).join("");
   return `<div class="template-picker no-print">
     <span class="md-label-medium muted">Template</span>
     <div class="tpl-options" role="group" aria-label="Invoice template">${opts}</div>
