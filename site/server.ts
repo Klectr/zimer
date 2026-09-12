@@ -865,9 +865,9 @@ function weekInner(weekStr?: string): string {
     <div class="week-nav" data-enter="2">
       <h2 class="md-headline-small">${isThisWeek ? "This week" : `Week of ${esc(weekLabel)}`}</h2>
       <div class="week-nav-actions">
-        ${isThisWeek ? "" : `<a class="md-text-button" href="/calendar">Today</a>`}
-        <a class="md-icon-button" href="/calendar?week=${prev}" title="Previous week" aria-label="Previous week">${icon("chevron_left")}</a>
-        <a class="md-icon-button" href="/calendar?week=${next}" title="Next week" aria-label="Next week">${icon("chevron_right")}</a>
+        ${isThisWeek ? "" : `<a class="md-text-button" href="/calendar" hx-get="/partial/week" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar">Today</a>`}
+        <a class="md-icon-button" href="/calendar?week=${prev}" hx-get="/partial/week?week=${prev}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?week=${prev}" title="Previous week" aria-label="Previous week">${icon("chevron_left")}</a>
+        <a class="md-icon-button" href="/calendar?week=${next}" hx-get="/partial/week?week=${next}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?week=${next}" title="Next week" aria-label="Next week">${icon("chevron_right")}</a>
       </div>
     </div>
     <aside class="cal-supporting" data-enter="3" aria-label="Week summary">
@@ -1010,6 +1010,14 @@ function calScript(): string {
      page reload. Load-entrance animations are suppressed for the swap
      (no-enter), the grid scroll position is preserved, and the new/updated
      entry gets a one-time highlight. */
+  /* Week-nav buttons (#77) swap #week via HTMX: suppress the load-entrance
+     animations for the swap, same as refreshWeek above. Unlike refreshWeek,
+     grid scroll is intentionally NOT preserved — a fresh week starts at the
+     top, matching full-load behavior. */
+  document.body.addEventListener('htmx:beforeSwap',function(e){
+    if(e.detail && e.detail.target && e.detail.target.id==='week')
+      document.getElementById('week').classList.add('no-enter');
+  });
   function refreshWeek(highlightId){
     var weekEl=document.getElementById('week');
     var scroller=weekEl.querySelector('.cal-scroll');
