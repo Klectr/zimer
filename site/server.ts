@@ -1655,8 +1655,8 @@ function manageCols(): string {
         <p class="md-body-medium">Download the full database as a single file. Keep it somewhere safe — restoring is just swapping this file back in.</p>
       </div>
       <div class="backup-card-actions">
-        <a class="md-filled-tonal-button" href="/export/entries.csv" download>${icon("download")}Export entries CSV</a>
-        <a class="md-filled-tonal-button" href="/backup" download>${icon("download")}Download backup</a>
+        <a class="md-tonal-button" href="/export/entries.csv" download>${icon("download")}Export entries CSV</a>
+        <a class="md-tonal-button" href="/backup" download>${icon("download")}Download backup</a>
       </div>
     </section>`;
 }
