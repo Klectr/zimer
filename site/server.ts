@@ -2398,9 +2398,9 @@ Bun.serve({
     }
 
     if (path === "/manage" && method === "GET") return html(managePage());
-    m = path.match(/^\/clients\/(\d+)\/portal-link$/);
-    if (m && method === "POST") {
-      const id = Number(m[1]);
+    const pm = path.match(/^\/clients\/(\d+)\/portal-link$/);
+    if (pm && method === "POST") {
+      const id = Number(pm[1]);
       const c = db.query("SELECT id, name FROM clients WHERE id = ?").get(id) as any;
       if (!c) return new Response("Not found", { status: 404 });
       const url = `${publicOrigin(req)}/p/${ensurePortalToken(id)}`;
