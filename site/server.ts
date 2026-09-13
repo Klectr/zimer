@@ -605,9 +605,10 @@ function timerPartial(): string {
 function todayPartial(): string {
   const [from, to] = dayBounds(todayStr());
   const entries = qRange.all(from, to) as Entry[];
-  if (!entries.length) return `<p class="muted">Nothing tracked today yet.</p>`;
   const total = entries.reduce((a, e) => a + durationSeconds(e.start_time, e.end_time), 0);
-  return `<div class="day-total md-title-small">Today · <strong>${fmtDur(total)}</strong></div>
+  const bar = todayTargetBar(total);
+  if (!entries.length) return `${bar}<p class="muted">Nothing tracked today yet.</p>`;
+  return `${bar}
     <ul class="md-list">${entries.map(entryRow).join("")}</ul>`;
 }
 
@@ -721,25 +722,45 @@ const CAL_HOUR_PX = 52;
     Kept as a constant in this slice; a configurable target is a follow-up. */
 const WEEK_TARGET_SECS = 40 * 3600;
 
-/** Slim pacing bar under the week header: tracked hours vs the 40h target.
-    M3 Expressive treatment ported from homeschool-planner's dashboard: the
-    gold fill is wave-masked and ripples while under target, settling to a
-    flat fill with a one-pass sheen once the target is met. */
+/** Daily hours target: 8h, matching the calendar's under-8h-day pacing (#22). */
+const DAY_TARGET_SECS = 8 * 3600;
+
+/** Shared M3 Expressive determinate progress track (#87). Under target: a
+    wave-masked gold fill that ripples while motion is allowed, a tonal
+    remainder track, and a small gold gap dot. At/over target: settles to a
+    flat full-width gold fill with a one-pass completion sheen. `pct` is
+    clamped 0..100; `met` selects the settled state. */
+function m3ProgressBar(pct: number, met: boolean, ariaLabel: string): string {
+  const bar = met
+    ? `<div class="m3-progress-fill" style="width:${pct.toFixed(1)}%" aria-hidden="true"></div>`
+    : `${pct > 0 ? `<div class="m3-progress-fill-wrap" style="width:calc((100% - 4px) * ${(pct / 100).toFixed(3)})" aria-hidden="true"><div class="m3-progress-fill-wave"></div></div>` : ""}
+       <div class="m3-progress-remainder" aria-hidden="true"></div>
+       <div class="m3-progress-dot" aria-hidden="true"></div>`;
+  return `<div class="m3-progress-track${met ? " complete" : ""}" role="progressbar" aria-valuenow="${Math.round(pct)}"
+      aria-valuemin="0" aria-valuemax="100" aria-label="${ariaLabel}">${bar}</div>`;
+}
+
+/** Slim pacing bar under the week header: tracked hours vs the 40h target. */
 function weekTargetBar(weekTotalSecs: number): string {
   const pct = Math.min(100, (weekTotalSecs / WEEK_TARGET_SECS) * 100);
   const over = weekTotalSecs >= WEEK_TARGET_SECS;
-  const bar = over
-    ? `<div class="week-target-fill" style="width:${pct.toFixed(1)}%" aria-hidden="true"></div>`
-    : `${pct > 0 ? `<div class="week-target-fill-wrap" style="width:calc((100% - 4px) * ${(pct / 100).toFixed(3)})" aria-hidden="true"><div class="week-target-fill-wave"></div></div>` : ""}
-       <div class="week-target-remainder" aria-hidden="true"></div>
-       <div class="week-target-dot" aria-hidden="true"></div>`;
   return `
-    <div class="week-target">
-      <div class="week-target-track${over ? " complete" : ""}" role="progressbar" aria-valuenow="${Math.round(pct)}"
-        aria-valuemin="0" aria-valuemax="100" aria-label="Weekly hours target, 40 hours">
-        ${bar}
-      </div>
-      <div class="md-label-medium muted week-target-label">${fmtDur(weekTotalSecs)} / 40h${over ? ` · <span class="tiny">over target</span>` : ""}</div>
+    <div class="m3-progress week-target">
+      ${m3ProgressBar(pct, over, "Weekly hours target, 40 hours")}
+      <div class="md-label-medium muted m3-progress-label">${fmtDur(weekTotalSecs)} / 40h${over ? ` · <span class="tiny">over target</span>` : ""}</div>
+    </div>`;
+}
+
+/** Today-vs-8h pacing bar at the top of the timer page's today list. Rendered
+    inside todayPartial so it refreshes on every timer start/stop via the
+    existing `timer-updated` trigger. */
+function todayTargetBar(totalSecs: number): string {
+  const pct = Math.min(100, (totalSecs / DAY_TARGET_SECS) * 100);
+  const met = totalSecs >= DAY_TARGET_SECS;
+  return `
+    <div class="m3-progress today-target">
+      ${m3ProgressBar(pct, met, "Today's hours target, 8 hours")}
+      <div class="md-label-medium muted m3-progress-label">Today · ${fmtDur(totalSecs)} / 8h${met ? ` · <span class="tiny">target met</span>` : ""}</div>
     </div>`;
 }
 
