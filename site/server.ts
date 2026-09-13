@@ -896,6 +896,7 @@ function dashboardPage(): string {
         <div class="scroll-region">
           <h2 class="md-headline-small">Revenue</h2>
           ${revenueSection()}
+          ${budgetAlertCard()}
         </div>
       </aside>
     </div>`, "timer", true);
@@ -1554,13 +1555,16 @@ function manageCols(): string {
         </form>
         ${projects.length ? `<ul class="md-list">${projects.map(p => {
           const spend = projectSpend(p.id);
+          const bs = budgetStatus(p, spend);
+          const chip = bs === "over" ? ` <span class="attn-chip">Over budget</span>`
+            : bs === "warn" ? ` <span class="warn-chip">80% of budget</span>` : "";
           const bits: string[] = [];
           if (p.budget_hours) bits.push(`${spend.hours}h / ${p.budget_hours}h`);
           if (p.budget_amount) bits.push(`${money(spend.amount)} / ${money(p.budget_amount)}`);
           if (!bits.length && spend.hours > 0) bits.push(`${spend.hours}h logged`);
           return `<li class="md-list-item" style="min-height:56px">
             <div class="md-list-item-content">
-              <div class="md-list-item-headline">${p.client_color ? `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${esc(p.client_color)};margin-right:8px"></span>` : ""}${esc(p.name)}</div>
+              <div class="md-list-item-headline">${p.client_color ? `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${esc(p.client_color)};margin-right:8px"></span>` : ""}${esc(p.name)}${chip}</div>
               ${p.client_name ? `<div class="md-list-item-supporting">${esc(p.client_name)}</div>` : ""}
               ${bits.length ? `<div class="md-list-item-supporting budget-spend">${bits.join(" · ")}</div>` : ""}
             </div>
@@ -1737,6 +1741,45 @@ function projectSpend(projectId: number): { hours: number; amount: number; rate:
     WHERE e.project_id = ? AND e.end_time IS NOT NULL`).get(projectId) as any;
   const hours = round2(row.hours || 0);
   return { hours, rate: Number(row.rate || 0), amount: round2(hours * Number(row.rate || 0)) };
+}
+
+/* Milestone 14.2: budget status — null when under 80% of every budget. */
+function budgetStatus(p: any, spend: { hours: number; amount: number }): "warn" | "over" | null {
+  const ratios: number[] = [];
+  if (p.budget_hours) ratios.push(spend.hours / p.budget_hours);
+  if (p.budget_amount) ratios.push(spend.amount / p.budget_amount);
+  if (!ratios.length) return null;
+  const worst = Math.max(...ratios);
+  return worst >= 1 ? "over" : worst >= 0.8 ? "warn" : null;
+}
+/** Projects at >=80% of any budget, for the dashboard attention card. */
+function budgetAlerts(): any[] {
+  const rows = db.query(`SELECT p.*, c.name AS client_name FROM projects p
+    LEFT JOIN clients c ON c.id = p.client_id
+    WHERE p.budget_hours IS NOT NULL OR p.budget_amount IS NOT NULL`).all() as any[];
+  return rows
+    .map(p => ({ p, spend: projectSpend(p.id), status: budgetStatus(p, projectSpend(p.id)) }))
+    .filter(r => r.status);
+}
+function budgetAlertCard(): string {
+  const alerts = budgetAlerts();
+  if (!alerts.length) return "";
+  const rows = alerts.map(({ p, spend, status }) => {
+    const chip = status === "over"
+      ? `<span class="attn-chip">Over budget</span>`
+      : `<span class="warn-chip">80% of budget</span>`;
+    const detail = p.budget_hours
+      ? `${spend.hours}h of ${p.budget_hours}h`
+      : `${money(spend.amount)} of ${money(p.budget_amount)}`;
+    return `<li class="md-list-item"><div class="md-list-item-content">
+        <div class="md-list-item-headline">${esc(p.name)} ${chip}</div>
+        <div class="md-list-item-supporting">${p.client_name ? esc(p.client_name) + " · " : ""}${detail}</div>
+      </div></li>`;
+  }).join("");
+  return `<div class="md-card rev-attention" data-enter="2">
+    <div class="md-title-medium rev-chart-title">Budgets need attention</div>
+    <ul class="md-list">${rows}</ul>
+  </div>`;
 }
 
 /* Milestone 13: estimates. */
