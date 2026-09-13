@@ -160,10 +160,13 @@ $("btn-start").addEventListener("click", async () => {
   $("btn-start").disabled = true;
   try {
     const pid = $("in-project").value;
+    const desc = $("in-desc").value.trim();
     await api("/api/timer/start", {
       method: "POST",
-      body: JSON.stringify({ description: $("in-desc").value.trim(), project_id: pid ? Number(pid) : null }),
+      body: JSON.stringify({ description: desc, project_id: pid ? Number(pid) : null }),
     });
+    // remember for the global hotkey (Milestone 16)
+    await chrome.storage.sync.set({ lastTimer: { description: desc, projectId: pid ? Number(pid) : null } });
     $("in-desc").value = "";
     await refresh();
   } catch (e) {

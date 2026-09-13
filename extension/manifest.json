@@ -1,1 +1,30 @@
-{"action":{"default_popup":"popup.html","default_title":"Timekeep"},"description":"Track time against your self-hosted Timekeep server.","manifest_version":3,"name":"Timekeep","optional_host_permissions":["http://*/*","https://*/*"],"permissions":["storage","activeTab"],"version":"0.1.0"}
+{
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Timekeep"
+  },
+  "description": "Track time against your self-hosted Timekeep server.",
+  "manifest_version": 3,
+  "name": "Timekeep",
+  "optional_host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+  "version": "0.1.0",
+  "background": {
+    "service_worker": "bg.js"
+  },
+  "commands": {
+    "toggle-timer": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Y",
+        "mac": "Command+Shift+Y"
+      },
+      "description": "Start or stop the Timekeep timer"
+    }
+  }
+}
