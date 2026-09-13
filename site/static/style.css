@@ -750,6 +750,35 @@ body.app-fixed .cal-gutter-spacer {
 .cal-spacer { flex: 1; }
 .md-text-button.danger { color: var(--md-sys-color-error); }
 
+/* Issue #140: generic M3 dialog (recurring-schedule create form). Same motion
+   language as the calendar dialog: scrim fade + dialog scale/fade on
+   M3 emphasized easing. */
+.dlg-scrim {
+  position: fixed; inset: 0; z-index: 60;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex; align-items: center; justify-content: center; padding: 16px;
+  opacity: 0;
+  transition: opacity var(--motion-duration-short4) var(--motion-easing-standard);
+}
+.dlg-scrim[hidden] { display: none; }
+.dlg-scrim.open { opacity: 1; }
+.dlg {
+  background: var(--md-sys-color-surface-container-high);
+  border-radius: var(--md-sys-shape-corner-extra-large);
+  padding: 24px; width: min(480px, 100%);
+  display: grid; gap: 16px;
+  transform: scale(0.9);
+  opacity: 0;
+  transition: transform var(--motion-duration-medium2) var(--motion-easing-emphasized),
+    opacity var(--motion-duration-short4) var(--motion-easing-standard);
+}
+.dlg-scrim.open .dlg { transform: scale(1); opacity: 1; }
+.dlg h2 { margin: 0; }
+.dlg-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+@media (prefers-reduced-motion: reduce) {
+  .dlg-scrim, .dlg { transition: none; }
+}
+
 /* ---------------- forms / manage ---------------- */
 .form { display: grid; gap: 16px; max-width: 480px; }
 .form .row { display: flex; gap: 8px; align-items: center; }

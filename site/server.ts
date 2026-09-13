@@ -1750,49 +1750,120 @@ function recurringSection(): string {
   }).join("")}</ul>` : `<p class="muted">No recurring schedules yet.</p>`;
   return `<section class="md-card" id="recurring" style="margin-top:16px">
     <div class="md-title-medium rev-chart-title">Recurring</div>
+    <div style="margin:10px 0 2px"><button class="md-filled-button" id="rec-new-btn" type="button">${icon("add")}New schedule</button></div>
     ${rows}
-    <form method="post" action="/recurring" class="manage-form" style="margin-top:12px">
-      <div class="manage-form-row">
-        <div class="md-text-field filled grow">
-          <select name="client_id" required aria-label="Client"><option value="">Client…</option>${clientOptions()}</select>
-          <label>Client</label>
-        </div>
-        <div class="md-text-field filled">
-          <select name="frequency" id="rec-frequency" aria-label="Frequency">
-            <option value="monthly">Monthly</option>
-            <option value="biweekly">Every 2 weeks</option>
-          </select>
-          <label>Frequency</label>
-        </div>
-        <div class="md-text-field filled">
-          <select name="source" id="rec-source" aria-label="Invoice source">
-            <option value="unbilled">Unbilled hours</option>
-            <option value="fixed">Fixed amount</option>
-          </select>
-          <label>Bills</label>
-        </div>
-      </div>
-      <div class="manage-form-row">
-        <div class="md-text-field" id="rec-dom-wrap" style="width:172px;flex:none">
-          <input type="number" name="day_of_month" value="1" min="1" max="28" placeholder=" " aria-label="Day of month">
-          <label>Day of month</label>
-        </div>
-        <div class="md-text-field has-prefix" id="rec-amount-wrap" style="max-width:172px;display:none">
-          <span class="affix prefix" aria-hidden="true">$</span>
-          <input type="number" name="fixed_amount" min="0" step="0.01" placeholder=" " aria-label="Fixed amount">
-          <label>Fixed amount</label>
-        </div>
-        <button class="md-filled-button" type="submit">${icon("add")}Add schedule</button>
-      </div>
-    </form>
-    <script>(function(){
-      var f=document.getElementById('rec-frequency'),s=document.getElementById('rec-source'),
-          dom=document.getElementById('rec-dom-wrap'),amt=document.getElementById('rec-amount-wrap');
-      if(!f||!s)return;
-      function sync(){dom.style.display=f.value==='monthly'?'':'none';amt.style.display=s.value==='fixed'?'':'none';}
-      f.addEventListener('change',sync);s.addEventListener('change',sync);sync();
-    })();</script>
   </section>`;
+}
+
+/** Issue #140: recurring-schedule create form in an M3 dialog, so it is never
+    buried below a long invoices list. The markup lives outside #recurring so
+    the in-place refresh after submit never destroys its bindings. */
+function recurringDialog(): string {
+  return `<div class="dlg-scrim" id="rec-scrim" hidden>
+    <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="rec-dlg-title">
+      <h2 class="md-headline-small" id="rec-dlg-title">New recurring schedule</h2>
+      <form method="post" action="/recurring" id="rec-form" class="manage-form" style="margin:0">
+        <div class="manage-form-row">
+          <div class="md-text-field filled grow">
+            <select name="client_id" required aria-label="Client" id="rec-client"><option value="">Client…</option>${clientOptions()}</select>
+            <label>Client</label>
+          </div>
+          <div class="md-text-field filled">
+            <select name="frequency" id="rec-frequency" aria-label="Frequency">
+              <option value="monthly">Monthly</option>
+              <option value="biweekly">Every 2 weeks</option>
+            </select>
+            <label>Frequency</label>
+          </div>
+          <div class="md-text-field filled">
+            <select name="source" id="rec-source" aria-label="Invoice source">
+              <option value="unbilled">Unbilled hours</option>
+              <option value="fixed">Fixed amount</option>
+            </select>
+            <label>Bills</label>
+          </div>
+        </div>
+        <div class="manage-form-row">
+          <div class="md-text-field" id="rec-dom-wrap" style="width:172px;flex:none">
+            <input type="number" name="day_of_month" value="1" min="1" max="28" placeholder=" " aria-label="Day of month">
+            <label>Day of month</label>
+          </div>
+          <div class="md-text-field has-prefix" id="rec-amount-wrap" style="max-width:172px;display:none">
+            <span class="affix prefix" aria-hidden="true">$</span>
+            <input type="number" name="fixed_amount" min="0" step="0.01" placeholder=" " aria-label="Fixed amount">
+            <label>Fixed amount</label>
+          </div>
+        </div>
+        <div class="dlg-actions">
+          <button class="md-text-button" type="button" id="rec-cancel">Cancel</button>
+          <button class="md-filled-button" type="submit">${icon("add")}Add schedule</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <script>${recurringScript()}</script>`;
+}
+
+/** Inline script for the recurring-schedule dialog: open/close with M3 motion,
+    frequency/source field visibility, and fetch submit with in-place
+    #recurring refresh (native POST fallback without JS). */
+function recurringScript(): string {
+  return `(function(){
+  var scrim=document.getElementById('rec-scrim');
+  if(!scrim) return;
+  var dialog=scrim.querySelector('.dlg');
+  var form=document.getElementById('rec-form');
+  var firstField=document.getElementById('rec-client');
+  var freq=document.getElementById('rec-frequency'), src=document.getElementById('rec-source'),
+      dom=document.getElementById('rec-dom-wrap'), amt=document.getElementById('rec-amount-wrap');
+  function sync(){ dom.style.display=freq.value==='monthly'?'':'none'; amt.style.display=src.value==='fixed'?'':'none'; }
+  freq.addEventListener('change',sync); src.addEventListener('change',sync); sync();
+  /* M3 dialog motion: .open drives scrim fade + dialog scale/fade.
+     Generation counter keeps rapid open/close/open sequences sane. */
+  var gen=0;
+  function open(){
+    gen++;
+    scrim.hidden=false;
+    void scrim.offsetWidth; /* commit unhide so the transition runs */
+    scrim.classList.add('open');
+    if(firstField) firstField.focus();
+    document.addEventListener('keydown',onKey);
+  }
+  function close(){
+    var g=++gen;
+    scrim.classList.remove('open');
+    document.removeEventListener('keydown',onKey);
+    var done=false;
+    var finish=function(){ if(done||g!==gen) return; done=true; scrim.hidden=true; };
+    var onEnd=function(e){
+      if(e.target===dialog&&e.propertyName==='transform'){
+        dialog.removeEventListener('transitionend',onEnd); finish();
+      }
+    };
+    dialog.addEventListener('transitionend',onEnd);
+    setTimeout(finish,400);
+  }
+  function onKey(e){ if(e.key==='Escape') close(); }
+  /* Delegated: the #recurring section is replaced in place after submit, so a
+     directly-bound listener would go stale. */
+  document.addEventListener('click',function(e){
+    if(e.target.closest('#rec-new-btn')) open();
+  });
+  document.getElementById('rec-cancel').addEventListener('click',close);
+  scrim.addEventListener('click',function(e){ if(e.target===scrim) close(); });
+  form.addEventListener('submit',function(e){
+    if(!window.fetch) return; /* no-JS fallback: native POST, 302 to /invoices#recurring */
+    e.preventDefault();
+    fetch('/recurring',{method:'POST',body:new FormData(form)}).then(function(r){
+      if(!r.ok) throw 0;
+      return fetch('/partial/recurring');
+    }).then(function(r){ return r.text(); }).then(function(html){
+      var tmp=document.createElement('template'); tmp.innerHTML=html.trim();
+      document.getElementById('recurring').replaceWith(tmp.content.firstChild);
+      close();
+    }).catch(function(){ form.submit(); });
+  });
+})();`;
 }
 
 /** /invoices — list of invoices with status pills and totals. */
@@ -1977,7 +2048,7 @@ function invoicesPage(): string {
     </div>
     ${rows.length ? `<p class="muted">Outstanding: <strong>${money(outstanding)}</strong></p>` : ""}
     ${recurringNudge()}
-    <div class="scroll-region" data-enter="3">${list}${recurringSection()}</div>`, "invoices", true);
+    <div class="scroll-region" data-enter="3">${list}${recurringSection()}${recurringDialog()}</div>`, "invoices", true);
 }
 
 type NewInvParams = {
@@ -2540,6 +2611,8 @@ Bun.serve({
         return html(weekInner(w || undefined));
       }
       if (path === "/partial/today" && method === "GET") return html(todayPartial());
+      /* Issue #140: in-place refresh of the recurring section after dialog submit. */
+      if (path === "/partial/recurring" && method === "GET") return html(recurringSection());
       if (path === "/timer/start" && method === "POST") {
         if (qRunning.get()) return html(timerPartial(), 409);
         const form = await req.formData();
@@ -2806,6 +2879,9 @@ Bun.serve({
           VALUES (?, ?, ?, ?, ?, ?, ?)`)
           .run(clientId, frequency, source, fixedAmount, dayOfMonth, anchor,
                firstRun(frequency, dayOfMonth, anchor));
+        /* Issue #140: the dialog submits via fetch — answer JSON like POST /entries.
+           Native form posts (no-JS fallback) still get the 302. */
+        if (req.headers.get("sec-fetch-mode") !== "navigate") return json({ ok: true }, 201);
         return new Response(null, { status: 302, headers: { Location: "/invoices#recurring" } });
       }
       m = path.match(/^\/recurring\/(\d+)\/(toggle|delete)$/);
