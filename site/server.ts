@@ -207,11 +207,14 @@ for (const [tbl, col, def] of [
   ["invoices", "stripe_payment_link", "TEXT"],
   ["invoices", "paid_via_stripe", "INTEGER NOT NULL DEFAULT 0"],
   ["invoices", "public_token", "TEXT"],
+  ["clients", "portal_token", "TEXT"],
+  ["invoices", "paid_at", "TEXT"],
 ] as const) {
   try { db.exec(`ALTER TABLE ${tbl} ADD COLUMN ${col} ${def}`); }
   catch { /* column already exists */ }
 }
 db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_invoices_public_token ON invoices(public_token)");
+db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_clients_portal_token ON clients(portal_token)");
 
 type Entry = {
   id: number;
@@ -385,6 +388,23 @@ function ensurePublicToken(id: number): string {
   return getPublicToken(id) ?? mintPublicToken(id);
 }
 
+/** Milestone 12: per-client portal token, minted on demand. */
+function getPortalToken(clientId: number): string | null {
+  return (db.query("SELECT portal_token FROM clients WHERE id = ?").get(clientId) as any)?.portal_token ?? null;
+}
+function ensurePortalToken(clientId: number): string {
+  const existing = getPortalToken(clientId);
+  if (existing) return existing;
+  for (let i = 0; i < 5; i++) {
+    const tok = newPublicToken();
+    try {
+      db.query("UPDATE clients SET portal_token = ? WHERE id = ?").run(tok, clientId);
+      return tok;
+    } catch { /* collision — retry */ }
+  }
+  throw new Error("could not mint portal token");
+}
+
 /** Current public share token for an invoice, or null if none (never mints). */
 function getPublicToken(id: number): string | null {
   return (db.query("SELECT public_token FROM invoices WHERE id = ?").get(id) as any)?.public_token ?? null;
@@ -434,6 +454,52 @@ function publicInvoicePage(inv: Invoice & { items: InvoiceItem[] }): string {
 ${invoiceSheet(inv)}
 ${pay}
 <p class="muted tiny no-print public-foot">Shared securely via Timekeep</p>
+</main>
+</html>`;
+}
+
+/** Milestone 12: public per-client portal — all invoices, statuses, payment history. Read-only. */
+function portalPage(client: any): string {
+  const rows = db.query("SELECT id FROM invoices WHERE client_id = ? ORDER BY issue_date DESC").all(client.id) as any[];
+  const invs = rows.map(r => getInvoice(r.id)!).filter(Boolean);
+  const outstanding = invs.filter(i => i.status !== "paid")
+    .reduce((a, i) => a + invoiceTotals(i.items, i.tax_rate).total, 0);
+  const paid = invs.filter(i => i.status === "paid");
+  const row = (i: any) => {
+    const t = invoiceTotals(i.items, i.tax_rate);
+    const link = `/i/${ensurePublicToken(i.id)}`;
+    return `<li class="md-list-item">
+      <div class="md-list-item-content">
+        <div class="md-list-item-headline"><a href="${link}" class="inv-link">${esc(i.number)}</a> ${statusPill(i.status)}</div>
+        <div class="md-list-item-supporting">issued ${esc(i.issue_date)}${i.due_date ? ` · due ${esc(i.due_date)}` : ""}${i.status === "paid" && i.paid_at ? ` · paid ${esc(i.paid_at)}` : ""}</div>
+      </div>
+      <div class="md-list-item-trailing"><span class="dur">${money(t.total)}</span></div>
+    </li>`;
+  };
+  const open = invs.filter(i => i.status !== "paid");
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>${esc(client.name)} · Client portal · Timekeep</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<main class="page-public-invoice">
+  <div class="portal-head">
+    <p class="md-label-large muted">Client portal</p>
+    <h1 class="md-headline-medium">${esc(client.name)}</h1>
+    <p class="md-title-large">Outstanding balance: <strong>${money(outstanding)}</strong></p>
+  </div>
+  <h2 class="md-title-medium">Open invoices</h2>
+  ${open.length ? `<ul class="md-list">${open.map(row).join("")}</ul>` : `<p class="muted">Nothing open — all caught up.</p>`}
+  <h2 class="md-title-medium">Payment history</h2>
+  ${paid.length ? `<ul class="md-list">${paid.map(row).join("")}</ul>` : `<p class="muted">No payments yet.</p>`}
+  <p class="muted tiny public-foot">Shared securely via Timekeep</p>
 </main>
 </html>`;
 }
@@ -1440,6 +1506,8 @@ function manageCols(): string {
                 <button class="md-text-button" type="submit">Save</button>
               </form>
               <form method="post" action="/clients/${c.id}/delete" class="inline" hx-post="/clients/${c.id}/delete" hx-target="#manage-cols" hx-swap="outerHTML"><button class="md-icon-button danger" hx-confirm="Delete client? Projects keep their entries." aria-label="Delete client ${esc(c.name)}" title="Delete">${icon("delete")}</button></form>
+              <button class="md-text-button" hx-post="/clients/${c.id}/portal-link" hx-target="#portal-link-${c.id}" hx-swap="outerHTML" title="Client portal link">Portal</button>
+              <span id="portal-link-${c.id}"></span>
             </div>
           </li>`).join("")}</ul>` : `<p class="muted">No clients yet.</p>`}
       </section>
@@ -1964,6 +2032,14 @@ Bun.serve({
 
     /* Public client invoice page: no auth, read-only. The token is a
        credential — it is never logged, and unknown tokens 404. */
+    /* Milestone 12: public per-client portal. Token is a credential — never
+       logged, unknown tokens 404. */
+    const portal = path.match(/^\/p\/([A-Za-z0-9_-]{16,64})$/);
+    if (portal && method === "GET") {
+      const c = db.query("SELECT * FROM clients WHERE portal_token = ?").get(portal[1]) as any;
+      return c ? html(portalPage(c)) : html(notFoundPage(false), 404);
+    }
+
     const pub = path.match(/^\/i\/([A-Za-z0-9_-]{16,64})$/);
     if (pub && method === "GET") {
       const idRow = db.query("SELECT id FROM invoices WHERE public_token = ?").get(pub[1]) as { id: number } | null;
@@ -1993,7 +2069,7 @@ Bun.serve({
           if (invoiceId && session.payment_status === "paid") {
             const inv = qInvoice.get(invoiceId) as Invoice | null;
             if (inv && inv.status === "sent") {
-              db.query("UPDATE invoices SET status = 'paid', paid_via_stripe = 1 WHERE id = ?").run(invoiceId);
+              db.query("UPDATE invoices SET status = 'paid', paid_via_stripe = 1, paid_at = date('now') WHERE id = ?").run(invoiceId);
             }
           }
         }
@@ -2322,6 +2398,15 @@ Bun.serve({
     }
 
     if (path === "/manage" && method === "GET") return html(managePage());
+    m = path.match(/^\/clients\/(\d+)\/portal-link$/);
+    if (m && method === "POST") {
+      const id = Number(m[1]);
+      const c = db.query("SELECT id, name FROM clients WHERE id = ?").get(id) as any;
+      if (!c) return new Response("Not found", { status: 404 });
+      const url = `${publicOrigin(req)}/p/${ensurePortalToken(id)}`;
+      const frag = `<span id="portal-link-${id}" class="portal-url"><input readonly value="${esc(url)}" onclick="this.select()" aria-label="Portal link for ${esc(c.name)}"><button class="md-icon-button" title="Copy link" onclick="navigator.clipboard.writeText('${esc(url)}')">${icon("copy")}</button></span>`;
+      return isHtmx(req) ? html(frag) : new Response(null, { status: 302, headers: { Location: "/manage" } });
+    }
     if (path === "/clients" && method === "POST") {
       const form = await req.formData();
       db.query("INSERT INTO clients (name, color, rate) VALUES (?, ?, ?)")
@@ -2521,7 +2606,9 @@ Bun.serve({
       const want = String(form.get("status") || "");
       const ok = !!inv && ((inv.status === "draft" && want === "sent") || (inv.status === "sent" && want === "paid"));
       if (!ok) return new Response("Invalid status transition.", { status: 400 });
-      db.query("UPDATE invoices SET status = ? WHERE id = ?").run(want, inv!.id);
+      db.query(want === "paid"
+        ? "UPDATE invoices SET status = 'paid', paid_at = date('now') WHERE id = ?"
+        : "UPDATE invoices SET status = ? WHERE id = ?").run(...(want === "paid" ? [inv!.id] : [want, inv!.id]));
       if (isHtmx(req)) { const full = getInvoice(inv!.id); if (full) return html(invoiceDetailBody(full, publicOrigin(req))); } // #71
       return new Response(null, { status: 302, headers: { Location: `/invoices/${inv!.id}` } });
     }
