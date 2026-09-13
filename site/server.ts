@@ -1391,11 +1391,36 @@ function periodStart(s: { frequency: string; next_run: string }): string {
   return s.frequency === "biweekly" ? addDays(s.next_run, -14) : addMonths(s.next_run, -1);
 }
 
+/** Milestone 8.3: nudge card when active schedules are due for generation. */
+function recurringNudge(): string {
+  const today = todayStr();
+  const due = (qSchedules.all() as any[]).filter(s => s.active && s.next_run <= today);
+  if (!due.length) return "";
+  const rows = due.map(s => {
+    const what = s.source === "fixed" ? `${money(s.fixed_amount)} fixed` : "unbilled hours";
+    const when = s.frequency === "biweekly" ? "Every 2 weeks" : "Monthly";
+    return `<li class="md-list-item">
+      <div class="md-list-item-content">
+        <div class="md-list-item-headline">${esc(s.client_name)}</div>
+        <div class="md-list-item-supporting">${when} · ${what} · was due ${esc(s.next_run)}</div>
+      </div>
+      <div class="md-list-item-trailing">
+        <form method="post" action="/recurring/${s.id}/generate" class="inline"><button class="md-tonal-button" type="submit">Generate draft</button></form>
+      </div>
+    </li>`;
+  }).join("");
+  const title = due.length === 1 ? "1 recurring draft ready" : `${due.length} recurring drafts ready`;
+  return `<div class="md-card rev-attention" data-enter="2">
+    <div class="md-title-medium rev-chart-title">${title}</div>
+    <ul class="md-list">${rows}</ul>
+  </div>`;
+}
+
 /** Milestone 8: recurring billing schedules, managed from the invoices page. */
 function recurringSection(): string {
   const ss = qSchedules.all() as any[];
   const rows = ss.length ? `<ul class="md-list">${ss.map(s => {
-    const when = s.frequency === "biweekly" ? "Every 2 weeks" : `Monthly · day ${s.day_of_month}`;
+    const when = s.frequency === "biweekly" ? "Every 2 weeks" : `Monthly · day ${s.day_of_month || 1}`;
     const what = s.source === "fixed" ? `${money(s.fixed_amount)} fixed` : "unbilled hours";
     return `<li class="md-list-item">
       <div class="md-list-item-content">
@@ -1478,6 +1503,7 @@ function invoicesPage(): string {
       <a class="md-filled-button" href="/invoices/new">${icon("add")}New invoice</a>
     </div>
     ${rows.length ? `<p class="muted">Outstanding: <strong>${money(outstanding)}</strong></p>` : ""}
+    ${recurringNudge()}
     <div class="scroll-region" data-enter="3">${list}${recurringSection()}</div>`, "invoices", true);
 }
 
