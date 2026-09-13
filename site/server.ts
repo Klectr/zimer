@@ -72,6 +72,20 @@ CREATE TABLE IF NOT EXISTS invoice_items (
   amount REAL NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_items_invoice ON invoice_items(invoice_id);
+/* Milestone 8: recurring billing schedules — drafts only, never auto-sent. */
+CREATE TABLE IF NOT EXISTS recurring_schedules (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  client_id INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  frequency TEXT NOT NULL DEFAULT 'monthly',
+  source TEXT NOT NULL DEFAULT 'unbilled',
+  fixed_amount REAL NOT NULL DEFAULT 0,
+  day_of_month INTEGER,
+  anchor_date TEXT NOT NULL,
+  next_run TEXT NOT NULL,
+  active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+`);
 /* Milestone 11: demo data onboarding — fictional workspace seeding and reset. */
 db.exec(`CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT);`);
 
@@ -185,20 +199,6 @@ function demoBanner(): string {
   return "";
 }
 
-/* Milestone 8: recurring billing schedules — drafts only, never auto-sent. */
-CREATE TABLE IF NOT EXISTS recurring_schedules (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  client_id INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
-  frequency TEXT NOT NULL DEFAULT 'monthly',
-  source TEXT NOT NULL DEFAULT 'unbilled',
-  fixed_amount REAL NOT NULL DEFAULT 0,
-  day_of_month INTEGER,
-  anchor_date TEXT NOT NULL,
-  next_run TEXT NOT NULL,
-  active INTEGER NOT NULL DEFAULT 1,
-  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
-);
-`);
 /* idempotent column additions for DBs created before invoicing landed */
 for (const [tbl, col, def] of [
   ["clients", "rate", "REAL NOT NULL DEFAULT 0"],
