@@ -634,9 +634,10 @@ function timerPartial(): string {
 function todayPartial(): string {
   const [from, to] = dayBounds(todayStr());
   const entries = qRange.all(from, to) as Entry[];
-  if (!entries.length) return `<p class="muted">Nothing tracked today yet.</p>`;
   const total = entries.reduce((a, e) => a + durationSeconds(e.start_time, e.end_time), 0);
-  return `<div class="day-total md-title-small">Today · <strong>${fmtDur(total)}</strong></div>
+  const bar = todayTargetBar(total);
+  if (!entries.length) return `${bar}<p class="muted">Nothing tracked today yet.</p>`;
+  return `${bar}
     <ul class="md-list">${entries.map(entryRow).join("")}</ul>`;
 }
 
@@ -730,19 +731,28 @@ function revenueAttention(): string {
   return `<div class="md-card rev-attention">${title}<ul class="md-list">${rows}</ul></div>`;
 }
 
-/** A3: per-client revenue breakdown. */
+/** A3: per-client revenue breakdown, with an expressive collection-progress
+    bar per row (#89): paid vs invoiced. Ripples while money is outstanding,
+    settles with a sheen when fully paid. */
 function revenueClients(): string {
   const clients = revenueByClient();
   if (!clients.length) return "";
-  const rows = clients.map(c => `
+  const rows = clients.map(c => {
+    const pct = c.invoiced > 0 ? Math.min(100, (c.paid / c.invoiced) * 100) : 0;
+    const met = c.invoiced > 0 && c.outstanding <= 0;
+    const bar = c.invoiced > 0
+      ? `<div class="m3-progress rev-collection">${m3ProgressBar(pct, met, `${esc(c.name)}: ${money(c.paid)} paid of ${money(c.invoiced)} invoiced`)}</div>`
+      : "";
+    return `
     <li class="md-list-item">
       <span class="rev-dot" style="background:${esc(c.color || "#f2c14e")}"></span>
       <div class="md-list-item-content">
         <div class="md-list-item-headline">${esc(c.name)}</div>
         <div class="md-list-item-supporting">${money(c.paid)} paid · ${money(c.outstanding)} outstanding</div>
+        ${bar}
       </div>
       <div class="md-list-item-trailing"><span class="dur">${money(c.invoiced)}</span></div>
-    </li>`).join("");
+    </li>`; }).join("");
   return `<div class="md-card rev-clients-card">
     <div class="md-title-medium rev-chart-title">By client</div>
     <ul class="md-list">${rows}</ul>
@@ -770,17 +780,45 @@ const CAL_HOUR_PX = 52;
     Kept as a constant in this slice; a configurable target is a follow-up. */
 const WEEK_TARGET_SECS = 40 * 3600;
 
+/** Daily hours target: 8h, matching the calendar's under-8h-day pacing (#22). */
+const DAY_TARGET_SECS = 8 * 3600;
+
+/** Shared M3 Expressive determinate progress track (#87). Under target: a
+    wave-masked gold fill that ripples while motion is allowed, a tonal
+    remainder track, and a small gold gap dot. At/over target: settles to a
+    flat full-width gold fill with a one-pass completion sheen. `pct` is
+    clamped 0..100; `met` selects the settled state. */
+function m3ProgressBar(pct: number, met: boolean, ariaLabel: string): string {
+  const bar = met
+    ? `<div class="m3-progress-fill" style="width:${pct.toFixed(1)}%" aria-hidden="true"></div>`
+    : `${pct > 0 ? `<div class="m3-progress-fill-wrap" style="width:calc((100% - 4px) * ${(pct / 100).toFixed(3)})" aria-hidden="true"><div class="m3-progress-fill-wave"></div></div>` : ""}
+       <div class="m3-progress-remainder" aria-hidden="true"></div>
+       <div class="m3-progress-dot" aria-hidden="true"></div>`;
+  return `<div class="m3-progress-track${met ? " complete" : ""}" role="progressbar" aria-valuenow="${Math.round(pct)}"
+      aria-valuemin="0" aria-valuemax="100" aria-label="${ariaLabel}">${bar}</div>`;
+}
+
 /** Slim pacing bar under the week header: tracked hours vs the 40h target. */
 function weekTargetBar(weekTotalSecs: number): string {
   const pct = Math.min(100, (weekTotalSecs / WEEK_TARGET_SECS) * 100);
   const over = weekTotalSecs >= WEEK_TARGET_SECS;
   return `
-    <div class="week-target">
-      <div class="week-target-track" role="progressbar" aria-valuenow="${Math.round(pct)}"
-        aria-valuemin="0" aria-valuemax="100" aria-label="Weekly hours target, 40 hours">
-        <div class="week-target-fill" style="width:${pct.toFixed(1)}%"></div>
-      </div>
-      <div class="md-label-medium muted week-target-label">${fmtDur(weekTotalSecs)} / 40h${over ? ` · <span class="tiny">over target</span>` : ""}</div>
+    <div class="m3-progress week-target">
+      ${m3ProgressBar(pct, over, "Weekly hours target, 40 hours")}
+      <div class="md-label-medium muted m3-progress-label">${fmtDur(weekTotalSecs)} / 40h${over ? ` · <span class="tiny">over target</span>` : ""}</div>
+    </div>`;
+}
+
+/** Today-vs-8h pacing bar at the top of the timer page's today list. Rendered
+    inside todayPartial so it refreshes on every timer start/stop via the
+    existing `timer-updated` trigger. */
+function todayTargetBar(totalSecs: number): string {
+  const pct = Math.min(100, (totalSecs / DAY_TARGET_SECS) * 100);
+  const met = totalSecs >= DAY_TARGET_SECS;
+  return `
+    <div class="m3-progress today-target">
+      ${m3ProgressBar(pct, met, "Today's hours target, 8 hours")}
+      <div class="md-label-medium muted m3-progress-label">Today · ${fmtDur(totalSecs)} / 8h${met ? ` · <span class="tiny">target met</span>` : ""}</div>
     </div>`;
 }
 
