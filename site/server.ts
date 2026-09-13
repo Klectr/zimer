@@ -297,6 +297,7 @@ const ICONS: Record<string, string> = {
   info: `<circle cx="12" cy="12" r="9"/><path d="M12 11.5v5"/><circle cx="12" cy="8" r="1.1" fill="currentColor" stroke="none"/>`,
   play: `<path d="M8 5v14l11-7z" fill="currentColor" stroke="none"/>`,
   stop: `<rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor" stroke="none"/>`,
+  more_vert: `<circle cx="12" cy="5" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="1.6" fill="currentColor" stroke="none"/>`,
 };
 /** Milestone 10: quote a CSV cell when it contains a comma, quote, or newline. */
 function csvCell(v: string): string {
@@ -741,6 +742,7 @@ function layout(title: string, body: string, active?: "timer" | "calendar" | "ma
     ${navItem("/manage", "Clients & projects", "manage", "group")}
   </nav>
   <span class="md-top-app-bar-spacer"></span>
+  ${active === "manage" ? manageOverflow() : ""}
   <a class="md-text-button" href="/logout">Log out</a>
 </header>
 <main${active ? ` class="page-${active}"` : ""}>${body}</main>
@@ -1548,6 +1550,54 @@ function editPage(id: number): string | null {
 
 /* #71: clients + projects columns as a fragment — actions swap #manage-cols
    in place instead of reloading the page. */
+/** Issue #151: backup/export are low-priority actions (M3: "don't clutter your
+    UI with too many buttons — present low-priority actions in overflow
+    menus"). They live behind a more_vert overflow button in the top app bar
+    (manage page only), opening an M3 menu — never as a card below the lists. */
+function manageOverflow(): string {
+  return `<div class="m3-menu-wrap">
+    <button class="md-icon-button" id="backup-overflow-btn" aria-label="More actions"
+      aria-haspopup="menu" aria-expanded="false" aria-controls="backup-menu">${icon("more_vert")}</button>
+    <div class="m3-menu" id="backup-menu" role="menu" aria-label="Backup and export" hidden>
+      <a class="m3-menu-item" role="menuitem" href="/export/entries.csv" download>${icon("download")}<span>Export entries CSV</span></a>
+      <a class="m3-menu-item" role="menuitem" href="/backup" download>${icon("download")}<span>Download backup</span></a>
+    </div>
+  </div>
+  <script>(function(){
+    var btn=document.getElementById('backup-overflow-btn'), menu=document.getElementById('backup-menu');
+    if(!btn||!menu) return;
+    var items=Array.prototype.slice.call(menu.querySelectorAll('.m3-menu-item'));
+    var open_=false;
+    function open(){
+      open_=true; menu.hidden=false; void menu.offsetWidth;
+      menu.classList.add('open'); btn.setAttribute('aria-expanded','true');
+      if(items[0]) items[0].focus();
+      document.addEventListener('keydown',onKey,true);
+      document.addEventListener('pointerdown',onDoc,true);
+    }
+    function close(refocus){
+      if(!open_) return; open_=false;
+      menu.classList.remove('open'); btn.setAttribute('aria-expanded','false');
+      document.removeEventListener('keydown',onKey,true);
+      document.removeEventListener('pointerdown',onDoc,true);
+      var done=false, finish=function(){ if(done) return; done=true; menu.hidden=true; };
+      var onEnd=function(e){ if(e.target===menu&&(e.propertyName==='transform'||e.propertyName==='opacity')){ menu.removeEventListener('transitionend',onEnd); finish(); } };
+      menu.addEventListener('transitionend',onEnd); setTimeout(finish,300);
+      if(refocus) btn.focus();
+    }
+    function onKey(e){
+      var i=items.indexOf(document.activeElement);
+      if(e.key==='Escape'){ e.preventDefault(); close(true); }
+      else if(e.key==='ArrowDown'){ e.preventDefault(); items[(i+1+items.length)%items.length].focus(); }
+      else if(e.key==='ArrowUp'){ e.preventDefault(); items[(i-1+items.length)%items.length].focus(); }
+      else if(e.key==='Home'){ e.preventDefault(); items[0].focus(); }
+      else if(e.key==='End'){ e.preventDefault(); items[items.length-1].focus(); }
+      else if(e.key==='Tab'){ close(false); }
+    }
+    function onDoc(e){ if(!e.target.closest('.m3-menu-wrap')) close(false); }
+    btn.addEventListener('click',function(){ open_?close(true):open(); });
+  })();</script>`;
+}
 function manageCols(): string {
   const clients = db.query("SELECT * FROM clients ORDER BY name").all() as any[];
   const projects = db.query(
@@ -1648,17 +1698,7 @@ function manageCols(): string {
             </div>
           </li>`;}).join("")}</ul>` : `<p class="muted">No projects yet.</p>`}
       </section>
-    </div>
-    <section class="backup-card" aria-label="Database backup">
-      <div class="backup-card-text">
-        <h2 class="md-headline-small">Backup</h2>
-        <p class="md-body-medium">Download the full database as a single file. Keep it somewhere safe — restoring is just swapping this file back in.</p>
-      </div>
-      <div class="backup-card-actions">
-        <a class="md-tonal-button" href="/export/entries.csv" download>${icon("download")}Export entries CSV</a>
-        <a class="md-tonal-button" href="/backup" download>${icon("download")}Download backup</a>
-      </div>
-    </section>`;
+    </div>`;
 }
 
 function managePage(): string {

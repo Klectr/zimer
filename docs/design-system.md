@@ -86,6 +86,13 @@ per-page:
 - **Form actions:** submit rows use `.row.end` — buttons are end-aligned
   (right in LTR), per the M3 dialog/action convention. Confirming action sits
   farthest right when there are several.
+- **Overflow menu:** `.m3-menu` + `.m3-menu-item` — the M3 menu pattern for
+  low-priority screen actions (spec: "don't clutter your UI with too many
+  buttons — present low-priority actions in overflow menus"). 4dp container,
+  `surface-container-high`, 48dp items with 24dp leading icons, scale/fade
+  from the anchor, Esc/outside-tap/arrow-key handling. Opened from a
+  `more_vert` icon button in the top app bar. The Manage page keeps
+  backup/export here.
 
 ## Patterns
 
@@ -130,6 +137,12 @@ per-page:
   so they are nav items with an M3 navigation-bar-style active pill
   (`secondary-container`), not tabs. Below 760px the nav collapses to
   icon-only (labels remain for assistive tech and tooltips).
+- **Secondary actions placement.** Nothing lives below a growing list —
+  lists can be infinitely long, so trailing sections get buried and add
+  clutter. Infrequent/maintenance actions (backup, export) go in a top-app-bar
+  overflow menu on their page, hidden behind one user action instead of
+  competing with content. Page-level primary actions may sit above the list
+  (precedent: recurring schedules above the invoices list, #142).
 - **Fixed viewport, regions own the scroll.** App pages (timer, calendar,
   invoices list, manage) opt in via `layout(..., fixed=true)`: `body.app-fixed`
   is a 100dvh flex column, the page never scrolls, and exactly one region owns
