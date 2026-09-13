@@ -702,7 +702,27 @@ function revenueChart(): string {
 function revenueSection(): string {
   if (revenueTotals().invoiced === 0)
     return `<p class="muted">No invoices yet — revenue will show up here.</p>`;
-  return revenueCards() + revenueChart() + revenueClients();
+  return revenueAttention() + revenueCards() + revenueChart() + revenueClients();
+}
+
+/** Milestone 7: overdue invoices needing attention, most overdue first. */
+function revenueAttention(): string {
+  const overdue = revenueOverdue();
+  const title = `<div class="md-title-medium rev-chart-title">Needs attention</div>`;
+  if (!overdue.length)
+    return `<div class="md-card rev-attention">${title}<p class="muted attn-ok">All caught up — nothing overdue.</p></div>`;
+  const rows = overdue.map(o => `
+    <li class="md-list-item">
+      <a class="attn-link" href="/invoices/${o.id}">
+        <div class="md-list-item-content">
+          <div class="md-list-item-headline">${esc(o.client_name || "Unknown")}</div>
+          <div class="md-list-item-supporting">${esc(o.number)} · Due ${esc(o.due_date || "")}</div>
+        </div>
+        <div class="md-list-item-trailing"><span class="dur">${money(o.total)}</span></div>
+        <span class="attn-chip" data-bucket="${esc(o.bucket)}">${o.days_past_due}d overdue</span>
+      </a>
+    </li>`).join("");
+  return `<div class="md-card rev-attention">${title}<ul class="md-list">${rows}</ul></div>`;
 }
 
 /** A3: per-client revenue breakdown. */
