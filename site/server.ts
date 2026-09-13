@@ -1154,7 +1154,7 @@ function weekInner(weekStr?: string): string {
           tabindex="0" role="button" aria-label="${desc}, ${dur}">
         <div class="cal-entry-desc">${e.project_name ? `<strong>${esc(e.project_name)}</strong> · ` : ""}${desc}</div>
         <div class="cal-entry-dur">${dur}</div>
-        ${running ? "" : `<div class="cal-resize" data-resize="end" title="Drag to resize" aria-hidden="true"></div>`}
+        ${running ? "" : `<div class="cal-resize top" data-resize="start" title="Drag to change start" aria-hidden="true"></div><div class="cal-resize" data-resize="end" title="Drag to resize" aria-hidden="true"></div>`}
       </div>`;
     }).join("");
     const nowLine = isToday
@@ -1407,12 +1407,13 @@ function calScript(): string {
      Delegated on document so it survives in-place #week refreshes. */
   var resize=null;
   document.addEventListener('pointerdown',function(e){
-    var handle=e.target.closest('[data-resize="end"]');
+    var handle=e.target.closest('[data-resize]');
     if(handle){
       var entryEl=handle.closest('.cal-entry');
       var col=entryEl.closest('.cal-day-col');
+      var edge=handle.getAttribute('data-resize'); /* "start" or "end" */
       e.preventDefault(); e.stopPropagation();
-      resize={entry:entryEl,col:col,
+      resize={entry:entryEl,col:col,edge:edge,
         start:toMin(entryEl.dataset.start||'00:00'),
         end:toMin(entryEl.dataset.end||'00:00'),
         date:entryEl.dataset.date, id:entryEl.dataset.id,
@@ -1420,21 +1421,28 @@ function calScript(): string {
       entryEl.classList.add('resizing');
       function rmove(ev){
         var m=minsAt(ev,col);
-        var b=Math.max(resize.start+15,Math.min(m,1439));
-        resize.newEnd=b;
-        place(entryEl,resize.start,b);
+        if(resize.edge==='start'){
+          var a=Math.min(resize.end-15,Math.max(m,0));
+          resize.newStart=a;
+          place(entryEl,a,resize.end);
+        } else {
+          var b=Math.max(resize.start+15,Math.min(m,1439));
+          resize.newEnd=b;
+          place(entryEl,resize.start,b);
+        }
       }
       function rup(){
         window.removeEventListener('pointermove',rmove);
         window.removeEventListener('pointerup',rup);
         entryEl.classList.remove('resizing');
         var r=resize; resize=null;
-        if(r.newEnd==null||r.newEnd===r.end) return; /* no change */
+        var ns=r.newStart!=null?r.newStart:r.start, ne=r.newEnd!=null?r.newEnd:r.end;
+        if(ns===r.start&&ne===r.end) return; /* no change */
         var fd=new URLSearchParams();
         fd.set('description',r.desc);
         fd.set('project_id',r.projectId);
-        fd.set('start_time',r.date+'T'+toHM(r.start));
-        fd.set('end_time',r.date+'T'+toHM(r.newEnd));
+        fd.set('start_time',r.date+'T'+toHM(ns));
+        fd.set('end_time',r.date+'T'+toHM(ne));
         fetch('/entries/'+r.id,{method:'POST',body:fd}).then(function(resp){
           if(!resp.ok) throw new Error('resize failed');
           refreshWeek(r.id);

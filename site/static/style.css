@@ -785,6 +785,8 @@ body.app-fixed .cal-gutter-spacer {
   position: absolute; left: 0; right: 0; bottom: 0; height: 12px;
   cursor: ns-resize; border-radius: 0 0 8px 8px; touch-action: none;
 }
+.cal-resize.top { top: 0; bottom: auto; border-radius: 8px 8px 0 0; }
+.cal-resize.top::after { top: 4px; bottom: auto; }
 .cal-resize::after {
   content: ""; position: absolute; left: 50%; bottom: 4px; transform: translateX(-50%);
   width: 32px; height: 3px; border-radius: 2px;
