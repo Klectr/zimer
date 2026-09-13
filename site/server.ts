@@ -72,6 +72,27 @@ CREATE TABLE IF NOT EXISTS invoice_items (
   amount REAL NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_items_invoice ON invoice_items(invoice_id);
+/* Milestone 13: estimates/quotes that convert to draft invoices. */
+CREATE TABLE IF NOT EXISTS estimates (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  client_id INTEGER REFERENCES clients(id) ON DELETE SET NULL,
+  number TEXT NOT NULL UNIQUE,
+  issue_date TEXT NOT NULL,
+  valid_until TEXT,
+  status TEXT NOT NULL DEFAULT 'draft',
+  notes TEXT NOT NULL DEFAULT '',
+  converted_invoice_id INTEGER REFERENCES invoices(id) ON DELETE SET NULL,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+CREATE TABLE IF NOT EXISTS estimate_items (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  estimate_id INTEGER NOT NULL REFERENCES estimates(id) ON DELETE CASCADE,
+  description TEXT NOT NULL,
+  hours REAL NOT NULL,
+  rate REAL NOT NULL,
+  amount REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_est_items ON estimate_items(estimate_id);
 /* Milestone 8: recurring billing schedules — drafts only, never auto-sent. */
 CREATE TABLE IF NOT EXISTS recurring_schedules (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -257,6 +278,7 @@ const ICONS: Record<string, string> = {
   calendar: `<rect x="3.5" y="5" width="17" height="16" rx="3"/><path d="M3.5 10h17"/><path d="M8 3v4M16 3v4"/>`,
   group: `<circle cx="9" cy="8" r="3.5"/><path d="M3.5 19c.6-3 2.8-4.5 5.5-4.5s4.9 1.5 5.5 4.5"/><circle cx="16.8" cy="9" r="2.7"/><path d="M15.9 14.7c2.5.2 4.2 1.6 4.7 4.3"/>`,
   receipt: `<path d="M6 3.5h12V21l-2-1.4-2 1.4-2-1.4-2 1.4-2-1.4L6 21z"/><path d="M9 8.5h6M9 12.5h6"/>`,
+  doc: `<path d="M7 3.5h7l4 4v13H7z"/><path d="M14 3.5v4h4"/><path d="M9.5 12h5M9.5 15.5h5"/>`,
   download: `<path d="M12 4v11"/><path d="M7.5 11l4.5 4.5L16.5 11"/><path d="M5 20h14"/>`,
   check: `<path d="M5 12.5l4.5 4.5L19 7.5"/>`,
   card: `<rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10.5h18"/><path d="M6.5 14.5h4"/>`,
@@ -704,6 +726,7 @@ function layout(title: string, body: string, active?: "timer" | "calendar" | "ma
     ${navItem("/", "Timer", "timer", "timer")}
     ${navItem("/calendar", "Calendar", "calendar", "calendar")}
     ${navItem("/invoices", "Invoices", "invoices", "receipt")}
+    ${navItem("/estimates", "Estimates", "estimates", "doc")}
     ${navItem("/manage", "Clients & projects", "manage", "group")}
   </nav>
   <span class="md-top-app-bar-spacer"></span>
@@ -1685,6 +1708,99 @@ function recurringSection(): string {
 }
 
 /** /invoices — list of invoices with status pills and totals. */
+/* Milestone 13: estimates. */
+function nextEstimateNumber(): string {
+  const n = (db.query("SELECT COUNT(*) AS n FROM estimates").get() as any).n + 1;
+  return `EST-${String(n).padStart(3, "0")}`;
+}
+function getEstimate(id: number): any | null {
+  const e = db.query(`SELECT e.*, c.name AS client_name FROM estimates e
+    LEFT JOIN clients c ON c.id = e.client_id WHERE e.id = ?`).get(id) as any;
+  if (!e) return null;
+  e.items = db.query("SELECT * FROM estimate_items WHERE estimate_id = ? ORDER BY id").all(id);
+  e.total = (e.items as any[]).reduce((a, it) => a + Number(it.amount || 0), 0);
+  return e;
+}
+function estimatesPage(): string {
+  const rows = db.query(`SELECT e.*, c.name AS client_name,
+      (SELECT COALESCE(SUM(amount),0) FROM estimate_items WHERE estimate_id = e.id) AS total
+    FROM estimates e LEFT JOIN clients c ON c.id = e.client_id ORDER BY e.id DESC`).all() as any[];
+  const list = rows.length ? `<ul class="md-list">${rows.map(r => `<li class="md-list-item">
+      <div class="md-list-item-content">
+        <div class="md-list-item-headline"><a href="/estimates/${r.id}" class="inv-link">${esc(r.number)}</a> ${statusPill(r.status)}</div>
+        <div class="md-list-item-supporting">${r.client_name ? esc(r.client_name) : "<em>No client</em>"} · issued ${esc(r.issue_date)}${r.valid_until ? ` · valid until ${esc(r.valid_until)}` : ""}</div>
+      </div>
+      <div class="md-list-item-trailing"><span class="dur">${money(r.total)}</span></div>
+    </li>`).join("")}</ul>`
+    : `<p class="muted">No estimates yet. Quote a client in seconds.</p>`;
+  return layout("Estimates", `
+    <div class="page-head" data-enter="2">
+      <h2 class="md-headline-small">Estimates</h2>
+      <a class="md-filled-button" href="/estimates/new">${icon("add")}New estimate</a>
+    </div>
+    <div class="scroll-region" data-enter="3">${list}</div>`, "estimates", true);
+}
+function estimateItemRow(): string {
+  return `<div class="est-item-row">
+    <div class="md-text-field filled grow"><input type="text" name="item_desc" placeholder=" " aria-label="Item description"><label>Description</label></div>
+    <div class="md-text-field filled" style="max-width:110px"><input type="number" name="item_hours" min="0" step="0.25" placeholder=" " aria-label="Hours"><label>Hours</label></div>
+    <div class="md-text-field filled has-prefix" style="max-width:130px"><span class="affix prefix" aria-hidden="true">$</span><input type="number" name="item_rate" min="0" step="0.01" placeholder=" " aria-label="Rate"><label>Rate</label></div>
+    <button class="md-icon-button" type="button" title="Remove line" onclick="this.parentElement.remove()">${icon("delete")}</button>
+  </div>`;
+}
+function estimateNewPage(): string {
+  const t = todayStr();
+  return layout("New estimate", `
+    <div class="page-head" data-enter="2">
+      <h2 class="md-headline-small">New estimate</h2>
+      <a class="md-text-button" href="/estimates">Cancel</a>
+    </div>
+    <div class="scroll-region" data-enter="3">
+    <form method="post" action="/estimates" class="form md-card form-card">
+      <div class="two-field">
+        <div class="md-text-field filled"><select name="client_id" aria-label="Client"><option value="">No client…</option>${clientOptions(null)}</select><label>Client</label></div>
+        <div class="md-text-field filled"><input type="text" name="number" value="${nextEstimateNumber()}" required placeholder=" "><label>Estimate number</label></div>
+      </div>
+      <div class="two-field">
+        <div class="md-text-field filled"><input type="date" name="issue_date" value="${t}" required placeholder=" "><label>Issue date</label></div>
+        <div class="md-text-field filled"><input type="date" name="valid_until" value="${addDays(t, 30)}" placeholder=" "><label>Valid until</label></div>
+      </div>
+      <h3 class="md-title-medium">Line items</h3>
+      <div id="est-items">${estimateItemRow()}</div>
+      <div class="row"><button class="md-text-button" type="button" id="est-add">${icon("add")}Add line</button></div>
+      <div class="md-text-field"><input type="text" name="notes" placeholder=" "><label>Notes (optional)</label></div>
+      <div class="row end"><button class="md-filled-button" type="submit">${icon("check")}Create estimate</button></div>
+    </form>
+    </div>
+    <script>(function(){
+      var tpl = ${JSON.stringify(estimateItemRow())};
+      document.getElementById('est-add').addEventListener('click', function(){
+        document.getElementById('est-items').insertAdjacentHTML('beforeend', tpl);
+      });
+    })();</script>`, "estimates", true);
+}
+function estimateDetailPage(e: any): string {
+  const items = (e.items as any[]).map(it => `<li class="md-list-item">
+      <div class="md-list-item-content"><div class="md-list-item-headline">${esc(it.description)}</div>
+      <div class="md-list-item-supporting">${Number(it.hours)}h × ${money(Number(it.rate))}</div></div>
+      <div class="md-list-item-trailing"><span class="dur">${money(Number(it.amount))}</span></div>
+    </li>`).join("");
+  return layout(`Estimate ${esc(e.number)}`, `
+    <div class="page-head" data-enter="2">
+      <h2 class="md-headline-small">Estimate ${esc(e.number)}</h2>
+      <a class="md-text-button" href="/estimates">Back</a>
+    </div>
+    <div class="scroll-region" data-enter="3">
+      <div class="md-card form-card">
+        <p class="md-title-medium">${e.client_name ? esc(e.client_name) : "<em>No client</em>"} ${statusPill(e.status)}</p>
+        <p class="muted">Issued ${esc(e.issue_date)}${e.valid_until ? ` · valid until ${esc(e.valid_until)}` : ""}</p>
+        ${e.notes ? `<p>${esc(e.notes)}</p>` : ""}
+        <ul class="md-list">${items}</ul>
+        <p class="md-title-large">Total: <strong>${money(e.total)}</strong></p>
+      </div>
+    </div>`, "estimates", true);
+}
+
 function invoicesPage(): string {
   const rows = qInvoices.all() as any[];
   const outstanding = rows
@@ -2445,6 +2561,39 @@ Bun.serve({
     }
 
     /* ---- invoicing pages ---- */
+    /* Milestone 13: estimates. */
+    if (path === "/estimates" && method === "GET") return html(estimatesPage());
+    if (path === "/estimates/new" && method === "GET") return html(estimateNewPage());
+    if (path === "/estimates" && method === "POST") {
+      const form = await req.formData();
+      const number = String(form.get("number") || nextEstimateNumber());
+      if (db.query("SELECT 1 FROM estimates WHERE number = ?").get(number))
+        return new Response("Estimate number already exists.", { status: 400 });
+      const descs = form.getAll("item_desc").map(String);
+      const hours = form.getAll("item_hours").map(Number);
+      const rates = form.getAll("item_rate").map(Number);
+      const items = descs.map((d, i) => ({
+        description: d || "Item",
+        hours: round2(hours[i] || 0),
+        rate: round2(rates[i] || 0),
+      })).filter(it => it.hours > 0).map(it => ({ ...it, amount: round2(it.hours * it.rate) }));
+      if (!items.length) return new Response("Add at least one line item with hours.", { status: 400 });
+      const cid = form.get("client_id");
+      const id = Number(db.query(
+        "INSERT INTO estimates (client_id, number, issue_date, valid_until, notes) VALUES (?, ?, ?, ?, ?)")
+        .run(cid ? Number(cid) : null, number, String(form.get("issue_date") || todayStr()),
+              String(form.get("valid_until") || "") || null, String(form.get("notes") || ""))
+        .lastInsertRowid);
+      const ins = db.query("INSERT INTO estimate_items (estimate_id, description, hours, rate, amount) VALUES (?, ?, ?, ?, ?)");
+      for (const it of items) ins.run(id, it.description, it.hours, it.rate, it.amount);
+      return new Response(null, { status: 302, headers: { Location: `/estimates/${id}` } });
+    }
+    const em = path.match(/^\/estimates\/(\d+)$/);
+    if (em && method === "GET") {
+      const e = getEstimate(Number(em[1]));
+      return e ? html(estimateDetailPage(e)) : html(notFoundPage(authedPage(req)), 404);
+    }
+
     if (path === "/invoices" && method === "GET") return html(invoicesPage());
       /* Milestone 8: recurring schedule CRUD (drafts only, never auto-sent). */
       if (path === "/recurring" && method === "POST") {
