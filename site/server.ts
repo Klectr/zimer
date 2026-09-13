@@ -86,6 +86,119 @@ CREATE TABLE IF NOT EXISTS recurring_schedules (
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
 `);
+/* Milestone 11: demo data onboarding — fictional workspace seeding and reset. */
+db.exec(`CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT);`);
+
+function workspaceEmpty(): boolean {
+  const c = (db.query("SELECT COUNT(*) AS n FROM clients").get() as any).n
+    + (db.query("SELECT COUNT(*) AS n FROM time_entries").get() as any).n
+    + (db.query("SELECT COUNT(*) AS n FROM invoices").get() as any).n;
+  return c === 0;
+}
+function demoIds(): any | null {
+  const r = db.query("SELECT value FROM meta WHERE key = 'demo_ids'").get() as any;
+  return r ? JSON.parse(r.value) : null;
+}
+function seedDemoData(): void {
+  const ids: any = { clients: [], projects: [], entries: [], invoices: [] };
+  const insClient = db.query("INSERT INTO clients (name, color, rate) VALUES (?, ?, ?)");
+  const insProject = db.query("INSERT INTO projects (name, client_id) VALUES (?, ?)");
+  const insEntry = db.query("INSERT INTO time_entries (project_id, description, start_time, end_time) VALUES (?, ?, ?, ?)");
+  const demoClients: [string, string, number][] = [
+    ["Acme Studios", "#f2c14e", 120],
+    ["Brightline Co", "#7cc4ff", 95],
+    ["Northwind Traders", "#b39ddb", 150],
+  ];
+  const clientIds: number[] = [];
+  for (const [name, color, rate] of demoClients) {
+    clientIds.push(Number(insClient.run(name, color, rate).lastInsertRowid));
+  }
+  ids.clients = clientIds;
+  const demoProjects: [string, number][] = [
+    ["Brand refresh", clientIds[0]], ["Website rebuild", clientIds[0]],
+    ["Mobile app", clientIds[1]], ["Advisory retainer", clientIds[2]],
+  ];
+  const projectIds: number[] = [];
+  for (const [name, cid] of demoProjects) {
+    projectIds.push(Number(insProject.run(name, cid).lastInsertRowid));
+  }
+  ids.projects = projectIds;
+  /* A week of entries ending yesterday, ~7h/day, mostly billable. */
+  const tasks = [
+    [0, "Logo concepts", "09:00", "12:30"], [0, "Style guide", "13:30", "16:00"],
+    [1, "Homepage build", "09:15", "12:45"], [1, "CMS integration", "13:30", "17:00"],
+    [2, "Onboarding flow", "09:00", "12:00"], [2, "Push notifications", "13:00", "16:30"],
+    [3, "Architecture review", "10:00", "12:00"],
+    [0, "Client feedback round", "09:30", "11:30"],
+    [null, "Inbox zero", "08:30", "09:00"],
+  ];
+  const days = [6, 5, 4, 3, 2];
+  let ti = 0;
+  for (const d of days) {
+    const dt = new Date();
+    dt.setDate(dt.getDate() - d);
+    const day = dt.toISOString().slice(0, 10);
+    for (let k = 0; k < 2 && ti < tasks.length; k++, ti++) {
+      const [pj, desc, st, en] = tasks[ti] as any[];
+      ids.entries.push(Number(insEntry.run(
+        pj === null ? null : projectIds[pj], desc, `${day}T${st}:00`, `${day}T${en}:00`
+      ).lastInsertRowid));
+    }
+  }
+  /* Three invoices: paid, sent, draft. */
+  const invQ = db.query("INSERT INTO invoices (client_id, number, issue_date, due_date, status, tax_rate, notes) VALUES (?, ?, ?, ?, ?, ?, ?)");
+  const itemQ = db.query("INSERT INTO invoice_items (invoice_id, description, hours, rate, amount) VALUES (?, ?, ?, ?, ?)");
+  const mk = (cid: number | null, num: string, issue: string, due: string, status: string,
+              items: [string, number, number][], notes = "") => {
+    const id = Number(invQ.run(cid, num, issue, due, status, 0, notes).lastInsertRowid);
+    for (const [desc, hours, rate] of items) itemQ.run(id, desc, hours, rate, hours * rate);
+    ids.invoices.push(id);
+  };
+  const lastMonth = new Date(); lastMonth.setMonth(lastMonth.getMonth() - 1);
+  const lm = lastMonth.toISOString().slice(0, 10);
+  mk(clientIds[0], "DEMO-001", lm, lm, "paid",
+    [["Brand refresh — design", 24, 120]], "Paid in full. Thank you!");
+  mk(clientIds[1], "DEMO-002", new Date().toISOString().slice(0, 10),
+    new Date(Date.now() + 15 * 864e5).toISOString().slice(0, 10), "sent",
+    [["Mobile app — onboarding flow", 18.5, 95]]);
+  mk(clientIds[2], "DEMO-003", new Date().toISOString().slice(0, 10),
+    new Date(Date.now() + 15 * 864e5).toISOString().slice(0, 10), "draft",
+    [["Advisory retainer — September", 1, 150]], "Demo draft — not a real invoice.");
+  db.query("INSERT OR REPLACE INTO meta (key, value) VALUES ('demo_ids', ?)")
+    .run(JSON.stringify(ids));
+}
+function removeDemoData(): number {
+  const ids = demoIds();
+  if (!ids) return 0;
+  const del = (table: string, list: number[]) => {
+    if (!list.length) return 0;
+    const marks = list.map(() => "?").join(",");
+    return db.query(`DELETE FROM ${table} WHERE id IN (${marks})`).run(...list).changes;
+  };
+  let n = 0;
+  for (const iid of ids.invoices as number[]) n += del("invoice_items", db.query("SELECT id FROM invoice_items WHERE invoice_id = ?").all(iid).map((r: any) => r.id));
+  n += del("invoices", ids.invoices);
+  n += del("time_entries", ids.entries);
+  n += del("projects", ids.projects);
+  n += del("clients", ids.clients);
+  db.query("DELETE FROM meta WHERE key = 'demo_ids'").run();
+  return n;
+}
+/** Demo banner: load prompt when empty, "viewing demo" + reset when demo present. */
+function demoBanner(): string {
+  if (demoIds()) return `<div class="demo-banner" data-enter="1">
+      ${icon("info")}
+      <span><strong>Demo data.</strong> This workspace is filled with fictional examples — poke around, then remove them when you're ready.</span>
+      <form method="post" action="/demo/reset" class="inline"><button class="md-text-button" type="submit">Remove demo data</button></form>
+    </div>`;
+  if (workspaceEmpty()) return `<div class="demo-banner" data-enter="1">
+      ${icon("info")}
+      <span><strong>New here?</strong> Load a fictional workspace — clients, a week of entries, invoices — and try every page in 30 seconds.</span>
+      <form method="post" action="/demo/load" class="inline"><button class="md-filled-button" type="submit">Load demo data</button></form>
+    </div>`;
+  return "";
+}
+
 /* idempotent column additions for DBs created before invoicing landed */
 for (const [tbl, col, def] of [
   ["clients", "rate", "REAL NOT NULL DEFAULT 0"],
@@ -673,6 +786,7 @@ function todayPartial(): string {
 
 function dashboardPage(): string {
   return layout("Timer", `
+    ${demoBanner()}
     <div class="pane-layout">
       <section class="pane-focus" data-enter="2" aria-label="Timer and today's entries">
         ${timerPartial()}
@@ -2130,6 +2244,17 @@ Bun.serve({
     if (m && method === "DELETE") {
       db.query("DELETE FROM time_entries WHERE id = ?").run(Number(m[1]));
       return new Response("", { status: 200 });
+    }
+
+    if (path === "/demo/load" && method === "POST") {
+      if (demoIds() || !workspaceEmpty()) return new Response("Workspace is not empty.", { status: 400 });
+      seedDemoData();
+      return new Response(null, { status: 302, headers: { Location: "/" } });
+    }
+    if (path === "/demo/reset" && method === "POST") {
+      if (!demoIds()) return new Response("No demo data to remove.", { status: 400 });
+      removeDemoData();
+      return new Response(null, { status: 302, headers: { Location: "/" } });
     }
 
     /* Milestone 9: one-click database backup. Checkpoint WAL so the
