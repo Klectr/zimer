@@ -1344,7 +1344,14 @@ function manageCols(): string {
             </div>
           </li>`).join("")}</ul>` : `<p class="muted">No projects yet.</p>`}
       </section>
-    </div>`;
+    </div>
+    <section class="backup-card" aria-label="Database backup">
+      <div class="backup-card-text">
+        <h2 class="md-headline-small">Backup</h2>
+        <p class="md-body-medium">Download the full database as a single file. Keep it somewhere safe — restoring is just swapping this file back in.</p>
+      </div>
+      <a class="md-filled-tonal-button" href="/backup" download>${icon("download")}Download backup</a>
+    </section>`;
 }
 
 function managePage(): string {
@@ -2106,6 +2113,21 @@ Bun.serve({
     if (m && method === "DELETE") {
       db.query("DELETE FROM time_entries WHERE id = ?").run(Number(m[1]));
       return new Response("", { status: 200 });
+    }
+
+    /* Milestone 9: one-click database backup. Checkpoint WAL so the
+       downloaded file contains the latest writes, then serve it with a
+       timestamped filename. */
+    if (path === "/backup" && method === "GET") {
+      db.exec("PRAGMA wal_checkpoint(TRUNCATE);");
+      const dbPath = join(DATA_DIR, "timekeep.db");
+      const now = new Date();
+      const ts = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}-${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}${String(now.getSeconds()).padStart(2, "0")}`;
+      const bytes = await Bun.file(dbPath).bytes();
+      return new Response(bytes, { status: 200, headers: {
+        "Content-Type": "application/x-sqlite3",
+        "Content-Disposition": `attachment; filename="timekeep-backup-${ts}.db"`,
+      } });
     }
 
     if (path === "/manage" && method === "GET") return html(managePage());
