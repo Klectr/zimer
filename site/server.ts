@@ -1521,7 +1521,10 @@ function invoicesPage(): string {
   return layout("Invoices", `
     <div class="page-head" data-enter="2">
       <h2 class="md-headline-small">Invoices</h2>
-      <a class="md-filled-button" href="/invoices/new">${icon("add")}New invoice</a>
+      <div class="page-head-actions">
+        <a class="md-text-button" href="/export/invoices.csv" download>${icon("download")}Export CSV</a>
+        <a class="md-filled-button" href="/invoices/new">${icon("add")}New invoice</a>
+      </div>
     </div>
     ${rows.length ? `<p class="muted">Outstanding: <strong>${money(outstanding)}</strong></p>` : ""}
     ${recurringNudge()}
@@ -2171,6 +2174,26 @@ Bun.serve({
         out.push(cells.map(csvCell).join(","));
       }
       return csvResponse(out.join("\n"), "timekeep-entries.csv");
+    }
+
+    if (path === "/export/invoices.csv" && method === "GET") {
+      const rows = db.query(`
+        SELECT i.number, i.issue_date, i.due_date, i.status, i.tax_rate,
+               c.name AS client,
+               (SELECT COUNT(*) FROM invoice_items WHERE invoice_id = i.id) AS items,
+               (SELECT COALESCE(SUM(amount), 0) FROM invoice_items WHERE invoice_id = i.id) AS subtotal
+        FROM invoices i LEFT JOIN clients c ON c.id = i.client_id
+        ORDER BY i.issue_date DESC`).all() as any[];
+      const out = ["number,client,issue_date,due_date,status,items,subtotal,tax,total"];
+      for (const r of rows) {
+        const subtotal = Number(r.subtotal || 0);
+        const tax = subtotal * Number(r.tax_rate || 0) / 100;
+        const cells = [r.number, r.client || "", r.issue_date, r.due_date || "",
+          r.status, String(r.items), subtotal.toFixed(2), tax.toFixed(2),
+          (subtotal + tax).toFixed(2)];
+        out.push(cells.map(csvCell).join(","));
+      }
+      return csvResponse(out.join("\n"), "timekeep-invoices.csv");
     }
 
     if (path === "/manage" && method === "GET") return html(managePage());
