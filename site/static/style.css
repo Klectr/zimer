@@ -1102,3 +1102,11 @@ body.app-fixed .cal-gutter-spacer {
   padding: 4px 12px; border-radius: 999px;
   font-size: 12px; font-weight: 500;
 }
+/* Milestone 14.2: budget warning chip (tonal warning, not error). */
+.warn-chip {
+  display: inline-block; flex: none; white-space: nowrap;
+  background: var(--md-tertiary-container, #3a2f10);
+  color: var(--md-on-tertiary-container, #f2e3b3);
+  padding: 4px 12px; border-radius: 999px;
+  font-size: 12px; font-weight: 500;
+}
