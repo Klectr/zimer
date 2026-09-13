@@ -720,8 +720,9 @@ function layout(title: string, body: string, active?: "timer" | "calendar" | "ma
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
 <link rel="stylesheet" href="/static/style.css">
 <script src="/static/motion.js" defer></script>
+<script src="/static/shortcut.js" defer></script>
 </head>
-<body${fixed ? ' class="app-fixed"' : ""}>
+<body${fixed ? ' class="app-fixed"' : ""} data-timer-running="${qRunning.get() ? 1 : 0}">
 <header class="md-top-app-bar" data-enter="1">
   <span class="md-top-app-bar-title">${icon("timer")}<span>Timekeep</span></span>
   <nav class="md-top-nav" aria-label="Primary">
