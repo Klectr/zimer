@@ -230,6 +230,8 @@ for (const [tbl, col, def] of [
   ["invoices", "public_token", "TEXT"],
   ["clients", "portal_token", "TEXT"],
   ["invoices", "paid_at", "TEXT"],
+  ["projects", "budget_hours", "REAL"],
+  ["projects", "budget_amount", "REAL"],
 ] as const) {
   try { db.exec(`ALTER TABLE ${tbl} ADD COLUMN ${col} ${def}`); }
   catch { /* column already exists */ }
@@ -1491,7 +1493,7 @@ function editPage(id: number): string | null {
 function manageCols(): string {
   const clients = db.query("SELECT * FROM clients ORDER BY name").all() as any[];
   const projects = db.query(
-    `SELECT p.*, c.name AS client_name, c.color AS client_color FROM projects p
+    `SELECT p.*, c.name AS client_name, c.color AS client_color, c.rate AS client_rate FROM projects p
      LEFT JOIN clients c ON c.id = p.client_id ORDER BY p.name`).all() as any[];
   return `<div class="two-col" id="manage-cols">
       <section>
@@ -1550,15 +1552,32 @@ function manageCols(): string {
             <button class="md-filled-button" type="submit">${icon("add")}Add</button>
           </div>
         </form>
-        ${projects.length ? `<ul class="md-list">${projects.map(p => `<li class="md-list-item" style="min-height:56px">
+        ${projects.length ? `<ul class="md-list">${projects.map(p => {
+          const spend = projectSpend(p.id);
+          const bits: string[] = [];
+          if (p.budget_hours) bits.push(`${spend.hours}h / ${p.budget_hours}h`);
+          if (p.budget_amount) bits.push(`${money(spend.amount)} / ${money(p.budget_amount)}`);
+          if (!bits.length && spend.hours > 0) bits.push(`${spend.hours}h logged`);
+          return `<li class="md-list-item" style="min-height:56px">
             <div class="md-list-item-content">
               <div class="md-list-item-headline">${p.client_color ? `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${esc(p.client_color)};margin-right:8px"></span>` : ""}${esc(p.name)}</div>
               ${p.client_name ? `<div class="md-list-item-supporting">${esc(p.client_name)}</div>` : ""}
+              ${bits.length ? `<div class="md-list-item-supporting budget-spend">${bits.join(" · ")}</div>` : ""}
             </div>
             <div class="md-list-item-trailing">
+              <form method="post" action="/projects/${p.id}/budget" class="inline budget-form" hx-post="/projects/${p.id}/budget" hx-target="#manage-cols" hx-swap="outerHTML" title="Budget">
+                <div class="md-text-field filled compact" style="width:84px">
+                  <input type="number" name="budget_hours" value="${p.budget_hours || ""}" min="0" step="0.25" placeholder="0" aria-label="Hours budget for ${esc(p.name)}">
+                </div>
+                <div class="md-text-field filled compact has-prefix" style="width:104px">
+                  <span class="affix prefix" aria-hidden="true">$</span>
+                  <input type="number" name="budget_amount" value="${p.budget_amount || ""}" min="0" step="0.01" placeholder="0" aria-label="Amount budget for ${esc(p.name)}">
+                </div>
+                <button class="md-text-button" type="submit">Set</button>
+              </form>
               <form method="post" action="/projects/${p.id}/delete" class="inline" hx-post="/projects/${p.id}/delete" hx-target="#manage-cols" hx-swap="outerHTML"><button class="md-icon-button danger" hx-confirm="Delete project? Entries keep their history." aria-label="Delete project ${esc(p.name)}" title="Delete">${icon("delete")}</button></form>
             </div>
-          </li>`).join("")}</ul>` : `<p class="muted">No projects yet.</p>`}
+          </li>`;}).join("")}</ul>` : `<p class="muted">No projects yet.</p>`}
       </section>
     </div>
     <section class="backup-card" aria-label="Database backup">
@@ -1708,6 +1727,18 @@ function recurringSection(): string {
 }
 
 /** /invoices — list of invoices with status pills and totals. */
+/* Milestone 14: project budget spend (finished entries only). */
+function projectSpend(projectId: number): { hours: number; amount: number; rate: number } {
+  const row = db.query(`
+    SELECT COALESCE(SUM((strftime('%s', end_time) - strftime('%s', start_time)) / 3600.0), 0) AS hours,
+           COALESCE(MAX(c.rate), 0) AS rate
+    FROM time_entries e LEFT JOIN projects p ON p.id = e.project_id
+    LEFT JOIN clients c ON c.id = p.client_id
+    WHERE e.project_id = ? AND e.end_time IS NOT NULL`).get(projectId) as any;
+  const hours = round2(row.hours || 0);
+  return { hours, rate: Number(row.rate || 0), amount: round2(hours * Number(row.rate || 0)) };
+}
+
 /* Milestone 13: estimates. */
 function nextEstimateNumber(): string {
   const n = (db.query("SELECT COUNT(*) AS n FROM estimates").get() as any).n + 1;
@@ -2554,6 +2585,15 @@ Bun.serve({
       db.query("INSERT INTO projects (name, client_id) VALUES (?, ?)")
         .run(String(form.get("name")), cid ? Number(cid) : null);
       if (isHtmx(req)) return html(manageCols()); // #71: swap in place
+      return new Response(null, { status: 302, headers: { Location: "/manage" } });
+    }
+    const pb = path.match(/^\/projects\/(\d+)\/budget$/);
+    if (pb && method === "POST") {
+      const form = await req.formData();
+      const bh = Number(form.get("budget_hours") || 0), ba = Number(form.get("budget_amount") || 0);
+      db.query("UPDATE projects SET budget_hours = ?, budget_amount = ? WHERE id = ?")
+        .run(bh > 0 ? bh : null, ba > 0 ? ba : null, Number(pb[1]));
+      if (isHtmx(req)) return html(manageCols());
       return new Response(null, { status: 302, headers: { Location: "/manage" } });
     }
     m = path.match(/^\/projects\/(\d+)\/delete$/);

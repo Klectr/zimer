@@ -780,6 +780,9 @@ body.app-fixed .cal-gutter-spacer {
 /* Milestone 13: estimate line-item rows. */
 .est-item-row { display: flex; gap: 12px; align-items: center; margin-bottom: 8px; }
 .est-item-row .grow { flex: 1; }
+/* Milestone 14: project budget editor + spend display. */
+.budget-form { display: inline-flex; align-items: center; gap: 6px; margin-right: 8px; }
+.budget-spend { color: var(--md-on-surface-variant, #b0b0b0); }
 /* Milestone 11: demo onboarding banner. */
 .demo-banner {
   display: flex; align-items: center; gap: 12px;
