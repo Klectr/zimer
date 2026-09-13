@@ -61,6 +61,7 @@ async function refresh() {
     } else {
       stopTicking();
       await loadProjects();
+      await maybeSuggest();
     }
   } catch (e) {
     $("main-error").textContent = e.message;
@@ -212,6 +213,50 @@ $("btn-add-rule").addEventListener("click", async () => {
   await saveRules(rules);
   $("rule-pattern").value = "";
   await renderRules();
+});
+
+/* Milestone 15.2: one-tap suggestion from the active tab. Never auto-starts. */
+let suggestedRuleId = null;
+async function maybeSuggest() {
+  const panel = $("suggest-panel");
+  panel.classList.add("hidden");
+  suggestedRuleId = null;
+  const rules = await getRules();
+  if (!rules.length) return;
+  const { title, url } = await activeTabInfo();
+  if (!title && !url) return;
+  const rule = matchRule(rules, title, url);
+  if (!rule) return;
+  const projects = await api("/api/projects").catch(() => []);
+  const p = projects.find((x) => String(x.id) === String(rule.projectId));
+  if (!p) return; // project gone from server — leave the rule alone
+  suggestedRuleId = rule.id;
+  $("suggest-text").innerHTML = `Start <strong>${escapeHtml(p.name)}</strong>${p.client_name ? ` (${escapeHtml(p.client_name)})` : ""}?`;
+  $("suggest-desc").textContent = title || url;
+  panel.classList.remove("hidden");
+}
+$("btn-suggest-start").addEventListener("click", async () => {
+  $("main-error").textContent = "";
+  const rules = await getRules();
+  const rule = rules.find((r) => r.id === suggestedRuleId);
+  if (!rule) return;
+  const { title } = await activeTabInfo();
+  $("btn-suggest-start").disabled = true;
+  try {
+    await api("/api/timer/start", {
+      method: "POST",
+      body: JSON.stringify({ description: (title || "").slice(0, 200), project_id: Number(rule.projectId) }),
+    });
+    await refresh();
+  } catch (e) {
+    $("main-error").textContent = e.message;
+  } finally {
+    $("btn-suggest-start").disabled = false;
+  }
+});
+$("btn-suggest-dismiss").addEventListener("click", () => {
+  $("suggest-panel").classList.add("hidden");
+  suggestedRuleId = null;
 });
 
 /* init */
