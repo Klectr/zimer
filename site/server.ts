@@ -232,6 +232,7 @@ for (const [tbl, col, def] of [
   ["invoices", "paid_at", "TEXT"],
   ["projects", "budget_hours", "REAL"],
   ["projects", "budget_amount", "REAL"],
+  ["clients", "rounding_minutes", "INTEGER"],
 ] as const) {
   try { db.exec(`ALTER TABLE ${tbl} ADD COLUMN ${col} ${def}`); }
   catch { /* column already exists */ }
@@ -1580,6 +1581,14 @@ function manageCols(): string {
                 </div>
                 <button class="md-text-button" type="submit">Save</button>
               </form>
+              <form method="post" action="/clients/${c.id}/rounding" class="inline" hx-post="/clients/${c.id}/rounding" hx-target="#manage-cols" hx-swap="outerHTML" title="Billable rounding">
+                <div class="md-text-field filled compact" style="width:118px">
+                  <select name="rounding_minutes" aria-label="Rounding rule for ${esc(c.name)}" onchange="this.form.requestSubmit()">
+                    <option value="0"${!c.rounding_minutes ? " selected" : ""}>No rounding</option>
+                    ${[6, 15, 30, 60].map(n => `<option value="${n}"${c.rounding_minutes === n ? " selected" : ""}>${n} min</option>`).join("")}
+                  </select>
+                </div>
+              </form>
               <form method="post" action="/clients/${c.id}/delete" class="inline" hx-post="/clients/${c.id}/delete" hx-target="#manage-cols" hx-swap="outerHTML"><button class="md-icon-button danger" hx-confirm="Delete client? Projects keep their entries." aria-label="Delete client ${esc(c.name)}" title="Delete">${icon("delete")}</button></form>
               <button class="md-text-button" hx-post="/clients/${c.id}/portal-link" hx-target="#portal-link-${c.id}" hx-swap="outerHTML" title="Client portal link">Portal</button>
               <span id="portal-link-${c.id}"></span>
@@ -1780,6 +1789,15 @@ function recurringSection(): string {
 }
 
 /** /invoices — list of invoices with status pills and totals. */
+/* Milestone 18: round a duration UP to the next increment (per-entry billing).
+   minutes <= 0 or null => no rounding. */
+function roundUpSeconds(secs: number, minutes: number | null | undefined): number {
+  const m = Number(minutes) || 0;
+  if (m <= 0 || secs <= 0) return secs;
+  const inc = m * 60;
+  return Math.ceil(secs / inc) * inc;
+}
+
 /* Milestone 14: project budget spend (finished entries only). */
 function projectSpend(projectId: number): { hours: number; amount: number; rate: number } {
   const row = db.query(`
@@ -2663,6 +2681,15 @@ Bun.serve({
       db.query("UPDATE clients SET rate = ? WHERE id = ?")
         .run(Number(form.get("rate") || 0), Number(m[1]));
       if (isHtmx(req)) return html(manageCols()); // #71: swap in place
+      return new Response(null, { status: 302, headers: { Location: "/manage" } });
+    }
+    m = path.match(/^\/clients\/(\d+)\/rounding$/);
+    if (m && method === "POST") {
+      const form = await req.formData();
+      const mins = Number(form.get("rounding_minutes") || 0);
+      db.query("UPDATE clients SET rounding_minutes = ? WHERE id = ?")
+        .run(mins > 0 ? mins : null, Number(m[1]));
+      if (isHtmx(req)) return html(manageCols());
       return new Response(null, { status: 302, headers: { Location: "/manage" } });
     }
     m = path.match(/^\/clients\/(\d+)\/delete$/);
