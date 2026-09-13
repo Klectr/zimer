@@ -157,6 +157,17 @@ const ICONS: Record<string, string> = {
   play: `<path d="M8 5v14l11-7z" fill="currentColor" stroke="none"/>`,
   stop: `<rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor" stroke="none"/>`,
 };
+/** Milestone 10: quote a CSV cell when it contains a comma, quote, or newline. */
+function csvCell(v: string): string {
+  return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+}
+function csvResponse(body: string, filename: string): Response {
+  return new Response("\ufeff" + body + "\n", { status: 200, headers: {
+    "Content-Type": "text/csv; charset=utf-8",
+    "Content-Disposition": `attachment; filename="${filename}"`,
+  } });
+}
+
 function icon(name: keyof typeof ICONS): string {
   return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]}</svg>`;
 }
@@ -1350,7 +1361,10 @@ function manageCols(): string {
         <h2 class="md-headline-small">Backup</h2>
         <p class="md-body-medium">Download the full database as a single file. Keep it somewhere safe — restoring is just swapping this file back in.</p>
       </div>
-      <a class="md-filled-tonal-button" href="/backup" download>${icon("download")}Download backup</a>
+      <div class="backup-card-actions">
+        <a class="md-filled-tonal-button" href="/export/entries.csv" download>${icon("download")}Export entries CSV</a>
+        <a class="md-filled-tonal-button" href="/backup" download>${icon("download")}Download backup</a>
+      </div>
     </section>`;
 }
 
@@ -2128,6 +2142,35 @@ Bun.serve({
         "Content-Type": "application/x-sqlite3",
         "Content-Disposition": `attachment; filename="timekeep-backup-${ts}.db"`,
       } });
+    }
+
+    /* Milestone 10: CSV exports — accountant-friendly columns, UTF-8 BOM so
+       Excel detects the encoding. */
+    if (path === "/export/entries.csv" && method === "GET") {
+      const rows = db.query(`
+        SELECT e.description, e.start_time, e.end_time,
+               p.name AS project, c.name AS client, c.rate AS rate
+        FROM time_entries e
+        LEFT JOIN projects p ON p.id = e.project_id
+        LEFT JOIN clients c ON c.id = p.client_id
+        ORDER BY e.start_time`).all() as any[];
+      const out = ["date,client,project,description,start,end,hours,billable,rate,amount"];
+      for (const r of rows) {
+        const start = new Date(r.start_time);
+        const end = r.end_time ? new Date(r.end_time) : null;
+        const hours = end ? (end.getTime() - start.getTime()) / 3600000 : 0;
+        const billable = r.project ? "yes" : "no";
+        const rate = Number(r.rate || 0);
+        const amount = (hours * rate).toFixed(2);
+        const cells = [
+          start.toISOString().slice(0, 10), r.client || "", r.project || "",
+          r.description || "", start.toISOString().slice(11, 16),
+          end ? end.toISOString().slice(11, 16) : "",
+          hours.toFixed(2), billable, rate.toFixed(2), amount,
+        ];
+        out.push(cells.map(csvCell).join(","));
+      }
+      return csvResponse(out.join("\n"), "timekeep-entries.csv");
     }
 
     if (path === "/manage" && method === "GET") return html(managePage());
