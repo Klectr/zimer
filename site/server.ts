@@ -1154,6 +1154,7 @@ function weekInner(weekStr?: string): string {
           tabindex="0" role="button" aria-label="${desc}, ${dur}">
         <div class="cal-entry-desc">${e.project_name ? `<strong>${esc(e.project_name)}</strong> · ` : ""}${desc}</div>
         <div class="cal-entry-dur">${dur}</div>
+        ${running ? "" : `<div class="cal-resize" data-resize="end" title="Drag to resize" aria-hidden="true"></div>`}
       </div>`;
     }).join("");
     const nowLine = isToday
@@ -1402,8 +1403,47 @@ function calScript(): string {
     el.style.top=(a/60*HOUR)+'px';
     el.style.height=Math.max((b-a)/60*HOUR,10)+'px';
   }
-  /* #65: delegated on document so drag-to-create survives in-place #week refreshes. */
+  /* Milestone 17: drag the bottom edge of a finished entry to resize it.
+     Delegated on document so it survives in-place #week refreshes. */
+  var resize=null;
   document.addEventListener('pointerdown',function(e){
+    var handle=e.target.closest('[data-resize="end"]');
+    if(handle){
+      var entryEl=handle.closest('.cal-entry');
+      var col=entryEl.closest('.cal-day-col');
+      e.preventDefault(); e.stopPropagation();
+      resize={entry:entryEl,col:col,
+        start:toMin(entryEl.dataset.start||'00:00'),
+        end:toMin(entryEl.dataset.end||'00:00'),
+        date:entryEl.dataset.date, id:entryEl.dataset.id,
+        desc:entryEl.dataset.desc||'', projectId:entryEl.dataset.projectId||''};
+      entryEl.classList.add('resizing');
+      function rmove(ev){
+        var m=minsAt(ev,col);
+        var b=Math.max(resize.start+15,Math.min(m,1439));
+        resize.newEnd=b;
+        place(entryEl,resize.start,b);
+      }
+      function rup(){
+        window.removeEventListener('pointermove',rmove);
+        window.removeEventListener('pointerup',rup);
+        entryEl.classList.remove('resizing');
+        var r=resize; resize=null;
+        if(r.newEnd==null||r.newEnd===r.end) return; /* no change */
+        var fd=new URLSearchParams();
+        fd.set('description',r.desc);
+        fd.set('project_id',r.projectId);
+        fd.set('start_time',r.date+'T'+toHM(r.start));
+        fd.set('end_time',r.date+'T'+toHM(r.newEnd));
+        fetch('/entries/'+r.id,{method:'POST',body:fd}).then(function(resp){
+          if(!resp.ok) throw new Error('resize failed');
+          refreshWeek(r.id);
+        }).catch(function(){ refreshWeek(null); /* revert on failure */ });
+      }
+      window.addEventListener('pointermove',rmove);
+      window.addEventListener('pointerup',rup);
+      return;
+    }
     var entryEl=e.target.closest('.cal-entry');
     if(entryEl){ openEdit(entryEl); return; }
     var col=e.target.closest('.cal-day-col');
