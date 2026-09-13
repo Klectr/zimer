@@ -86,13 +86,15 @@ per-page:
 - **Form actions:** submit rows use `.row.end` — buttons are end-aligned
   (right in LTR), per the M3 dialog/action convention. Confirming action sits
   farthest right when there are several.
-- **Overflow menu:** `.m3-menu` + `.m3-menu-item` — the M3 menu pattern for
-  low-priority screen actions (spec: "don't clutter your UI with too many
-  buttons — present low-priority actions in overflow menus"). 4dp container,
-  `surface-container-high`, 48dp items with 24dp leading icons, scale/fade
-  from the anchor, Esc/outside-tap/arrow-key handling. Opened from a
-  `more_vert` icon button in the top app bar. The Manage page keeps
-  backup/export here.
+- **Account menu:** `.m3-menu` + `.m3-menu-item` + `.m3-menu-divider` — the
+  M3 menu pattern for global low-priority actions (spec: "don't clutter your
+  UI with too many buttons — present low-priority actions in overflow
+  menus"). Opened from a circular `.avatar-button` (40dp, DiceBear-generated
+  avatar in `site/static/avatar.svg`) in the top app bar, on every page. Menu
+  holds Export entries CSV, Download backup, a divider, then Log out. 4dp
+  container, `surface-container-high`, 48dp items with 24dp leading icons,
+  scale/fade from the anchor, Esc/outside-tap/arrow-key handling with focus
+  restoration.
 
 ## Patterns
 
@@ -139,8 +141,8 @@ per-page:
   icon-only (labels remain for assistive tech and tooltips).
 - **Secondary actions placement.** Nothing lives below a growing list —
   lists can be infinitely long, so trailing sections get buried and add
-  clutter. Infrequent/maintenance actions (backup, export) go in a top-app-bar
-  overflow menu on their page, hidden behind one user action instead of
+  clutter. Infrequent/maintenance actions (backup, export) go in the global
+  top-app-bar account menu, hidden behind one user action instead of
   competing with content. Page-level primary actions may sit above the list
   (precedent: recurring schedules above the invoices list, #142).
 - **Fixed viewport, regions own the scroll.** App pages (timer, calendar,
