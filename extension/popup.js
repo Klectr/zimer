@@ -77,6 +77,58 @@ async function loadProjects() {
   } catch { /* leave the empty default */ }
 }
 
+/* Milestone 15: autotracker — rule-based project suggestions. Rules live in
+   chrome.storage.sync as [{id, pattern, projectId, projectName}]. Matching is a
+   pure function so it can be unit-tested outside the browser. */
+function matchRule(rules, title, url) {
+  const hay = `${title || ""} ${url || ""}`.toLowerCase();
+  return (rules || []).find((r) => r.pattern && hay.includes(String(r.pattern).toLowerCase())) || null;
+}
+async function getRules() {
+  const s = await chrome.storage.sync.get(["rules"]);
+  return Array.isArray(s.rules) ? s.rules : [];
+}
+async function saveRules(rules) {
+  await chrome.storage.sync.set({ rules });
+}
+async function activeTabInfo() {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    return tab ? { title: tab.title || "", url: tab.url || "" } : { title: "", url: "" };
+  } catch { return { title: "", url: "" }; }
+}
+function domainOf(url) {
+  try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return ""; }
+}
+async function renderRules() {
+  const rules = await getRules();
+  const projects = await api("/api/projects").catch(() => []);
+  const pmap = Object.fromEntries(projects.map((p) => [String(p.id), p]));
+  const list = $("rules-list");
+  list.innerHTML = rules.length ? "" : `<div class="muted tiny">No rules yet — add one for the site you're on.</div>`;
+  for (const r of rules) {
+    const p = pmap[String(r.projectId)];
+    const label = p ? `${escapeHtml(p.name)}${p.client_name ? ` (${escapeHtml(p.client_name)})` : ""}` : escapeHtml(r.projectName || "Unknown project");
+    const row = document.createElement("div");
+    row.className = "rule-row";
+    row.innerHTML = `<span class="rule-pat">${escapeHtml(r.pattern)}</span><span class="rule-proj">${label}</span>`;
+    const del = document.createElement("button");
+    del.className = "ghost tiny-btn";
+    del.textContent = "Delete";
+    del.addEventListener("click", async () => {
+      await saveRules((await getRules()).filter((x) => x.id !== r.id));
+      await renderRules();
+    });
+    row.appendChild(del);
+    list.appendChild(row);
+  }
+  // project picker for the add form
+  const sel = $("rule-project");
+  sel.innerHTML = projects.map((p) =>
+    `<option value="${p.id}">${escapeHtml(p.name)}${p.client_name ? ` (${escapeHtml(p.client_name)})` : ""}</option>`
+  ).join("");
+}
+
 function escapeHtml(s) {
   return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
@@ -136,6 +188,30 @@ $("btn-settings").addEventListener("click", () => {
   $("site-url").value = siteUrl;
   $("api-token").value = token;
   show("setup");
+});
+
+$("btn-rules").addEventListener("click", async () => {
+  const panel = $("rules-panel");
+  panel.classList.toggle("hidden");
+  if (!panel.classList.contains("hidden")) {
+    const { url } = await activeTabInfo();
+    if (!$("rule-pattern").value) $("rule-pattern").value = domainOf(url);
+    await renderRules();
+  }
+});
+$("btn-add-rule").addEventListener("click", async () => {
+  $("rules-error").textContent = "";
+  const pattern = $("rule-pattern").value.trim();
+  const projectId = $("rule-project").value;
+  if (!pattern || !projectId) { $("rules-error").textContent = "Pattern and project are required."; return; }
+  const projects = await api("/api/projects").catch(() => []);
+  const p = projects.find((x) => String(x.id) === String(projectId));
+  const rules = await getRules();
+  rules.push({ id: "r" + Date.now().toString(36), pattern, projectId: Number(projectId),
+               projectName: p ? p.name : "" });
+  await saveRules(rules);
+  $("rule-pattern").value = "";
+  await renderRules();
 });
 
 /* init */
