@@ -780,6 +780,22 @@ body.app-fixed .cal-gutter-spacer {
 /* Milestone 13: estimate line-item rows. */
 .est-item-row { display: flex; gap: 12px; align-items: center; margin-bottom: 8px; }
 .est-item-row .grow { flex: 1; }
+/* Milestone 17: bottom-edge resize handle for calendar entries. */
+.cal-resize {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 12px;
+  cursor: ns-resize; border-radius: 0 0 8px 8px; touch-action: none;
+}
+.cal-resize::after {
+  content: ""; position: absolute; left: 50%; bottom: 4px; transform: translateX(-50%);
+  width: 32px; height: 3px; border-radius: 2px;
+  background: currentColor; opacity: 0; transition: opacity 150ms cubic-bezier(0.05, 0.7, 0.1, 1);
+}
+.cal-entry:hover .cal-resize::after, .cal-entry:focus-visible .cal-resize::after { opacity: 0.55; }
+.cal-entry.resizing { z-index: 5; transition: none; }
+.cal-entry.resizing .cal-resize::after { opacity: 0.9; }
+@media (prefers-reduced-motion: reduce) {
+  .cal-resize::after { transition: none; }
+}
 /* Milestone 16.2: M3 snackbar for the global timer shortcut. */
 .tk-snackbar {
   position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(16px);
