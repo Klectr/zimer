@@ -2048,7 +2048,7 @@ function invoicesPage(): string {
     </div>
     ${rows.length ? `<p class="muted">Outstanding: <strong>${money(outstanding)}</strong></p>` : ""}
     ${recurringNudge()}
-    <div class="scroll-region" data-enter="3">${list}${recurringSection()}${recurringDialog()}</div>`, "invoices", true);
+    <div class="scroll-region" data-enter="3">${recurringSection()}${recurringDialog()}${list}</div>`, "invoices", true);
 }
 
 type NewInvParams = {
