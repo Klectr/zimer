@@ -772,6 +772,11 @@ body.app-fixed .cal-gutter-spacer {
 .backup-card .md-filled-tonal-button { flex-shrink: 0; }
 .backup-card-actions { display: flex; gap: 12px; flex-shrink: 0; flex-wrap: wrap; }
 .page-head-actions { display: flex; gap: 8px; align-items: center; }
+/* Milestone 12: client portal. */
+.portal-head { margin: 8px 0 24px; }
+.portal-head h1 { margin: 4px 0 12px; }
+.portal-url { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; }
+.portal-url input { width: 260px; }
 /* Milestone 11: demo onboarding banner. */
 .demo-banner {
   display: flex; align-items: center; gap: 12px;
