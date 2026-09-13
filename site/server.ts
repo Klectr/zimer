@@ -401,11 +401,16 @@ function daysBetween(a: string, b: string): number {
   return Math.round((p(b).getTime() - p(a).getTime()) / 86400000);
 }
 
+/** Milestone 7: an invoice is overdue when sent with a past due date. */
+function isOverdue(r: { status: string; due_date: string | null }): boolean {
+  return r.status === "sent" && !!r.due_date && (r.due_date as string) < todayStr();
+}
+
 /** Milestone 7: overdue invoices — sent, with a past due_date — tax-inclusive, most overdue first. */
 function revenueOverdue() {
   const today = todayStr();
   return (qRevenueRows.all() as RevenueRow[])
-    .filter(r => r.status === "sent" && !!r.due_date && (r.due_date as string) < today)
+    .filter(r => isOverdue(r))
     .map(r => {
       const days = daysBetween(r.due_date as string, today);
       return {
@@ -1308,9 +1313,10 @@ function invoicesPage(): string {
     .filter(r => r.status !== "paid")
     .reduce((a, r) => a + r.subtotal * (1 + (r.tax_rate || 0) / 100), 0);
   const list = rows.length ? `<ul class="md-list">${rows.map(r => {
+    const od = isOverdue(r) ? daysBetween(r.due_date as string, todayStr()) : 0;
     return `<li class="md-list-item">
       <div class="md-list-item-content">
-        <div class="md-list-item-headline"><a href="/invoices/${r.id}" class="inv-link">${esc(r.number)}</a> ${statusPill(r.status)}</div>
+        <div class="md-list-item-headline"><a href="/invoices/${r.id}" class="inv-link">${esc(r.number)}</a> ${statusPill(r.status)}${od ? ` <span class="attn-chip">${od}d overdue</span>` : ""}</div>
         <div class="md-list-item-supporting">${r.client_name ? esc(r.client_name) : "<em>No client</em>"} · issued ${esc(r.issue_date)}${r.due_date ? ` · due ${esc(r.due_date)}` : ""}</div>
       </div>
       <div class="md-list-item-trailing"><span class="dur">${money(round2(r.subtotal * (1 + (r.tax_rate || 0) / 100)))}</span></div>
