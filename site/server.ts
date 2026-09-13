@@ -669,13 +669,20 @@ function unbilledEntries(clientId: number, from: string, to: string) {
      ORDER BY e.start_time`).all(clientId, from, to) as any[];
 }
 
-/** Group entries by project into draft line items. */
-function groupToLineItems(entries: any[], rate: number) {
+/** Client's rounding rule in minutes, or null for exact billing. */
+function clientRounding(clientId: number): number | null {
+  const c = db.query("SELECT rounding_minutes FROM clients WHERE id = ?").get(clientId) as any;
+  return c && c.rounding_minutes ? Number(c.rounding_minutes) : null;
+}
+
+/** Group entries by project into draft line items.
+    roundingMin: per-entry round-up increment (Milestone 18); null/0 = exact. */
+function groupToLineItems(entries: any[], rate: number, roundingMin?: number | null) {
   const groups = new Map<number, { project: string; ids: number[]; secs: number }>();
   for (const e of entries) {
     const g = groups.get(e.project_id) ?? { project: e.project_name, ids: [], secs: 0 };
     g.ids.push(e.id);
-    g.secs += durationSeconds(e.start_time, e.end_time);
+    g.secs += roundUpSeconds(durationSeconds(e.start_time, e.end_time), roundingMin);
     groups.set(e.project_id, g);
   }
   return [...groups.values()].map(g => {
@@ -2044,11 +2051,14 @@ function invoiceNewPage(p: NewInvParams, preview?: { items: any[]; emptyMsg?: st
 }
 
 /* #71: step-2 card as a fragment — the preview action swaps #invoice-step2 in place. */
-function invoiceStep2(p: NewInvParams, preview?: { items: any[]; emptyMsg?: string }): string {
+function invoiceStep2(p: NewInvParams, preview?: { items: any[]; emptyMsg?: string; rounding?: number | null }): string {
   if (!preview) return "";
   if (preview.emptyMsg) {
     return `<div class="md-card form-card"><h3 class="md-title-medium">2 · Line items</h3><p class="muted">${esc(preview.emptyMsg)}</p></div>`;
   }
+  const roundingNote = preview.rounding
+    ? `<div class="form-info">${icon("info")}<p>Hours rounded up to ${preview.rounding}-minute increments per this client's billing rule.</p></div>`
+    : "";
   const rows = preview.items.map((it, i) => `
       <tr>
         <td><input type="text" name="g${i}_desc" value="${esc(it.description)}" class="cell-input" aria-label="Item description"></td>
@@ -2061,6 +2071,7 @@ function invoiceStep2(p: NewInvParams, preview?: { items: any[]; emptyMsg?: stri
   return `
     <div class="md-card form-card">
       <h3 class="md-title-medium">2 · Review line items</h3>
+      ${roundingNote}
       <form method="post" action="/invoices" class="form">
         <input type="hidden" name="client_id" value="${esc(p.client_id)}">
         <input type="hidden" name="number" value="${esc(p.number)}">
@@ -2431,7 +2442,7 @@ Bun.serve({
               return json({ error: "client_id, from, to required (or items[])" }, 400);
             items = groupToLineItems(
               unbilledEntries(Number(body.client_id), String(body.from), String(body.to)),
-              Number(body.rate) || 0);
+              Number(body.rate) || 0, clientRounding(Number(body.client_id)));
           }
           const clean = items
             .map(it => ({
@@ -2821,7 +2832,7 @@ Bun.serve({
           items.push({ description: `${label} · ${from} – ${to}`, hours: 1, rate: s.fixed_amount, amount: round2(s.fixed_amount), entry_ids: [] });
         } else {
           const entries = unbilledEntries(s.client_id, from + "T00:00:00", to + "T00:00:00");
-          items.push(...groupToLineItems(entries, s.client_rate || 0));
+          items.push(...groupToLineItems(entries, s.client_rate || 0, clientRounding(s.client_id)));
           if (!items.length) notes = `No unbilled hours for ${from} to ${to}.`;
         }
         const inv = db.query(
@@ -2859,9 +2870,10 @@ Bun.serve({
         return html(invoiceNewPage(p), 400);
       }
       const entries = unbilledEntries(Number(p.client_id), p.from + "T00:00:00", p.to + "T00:00:00");
+      const rounding = clientRounding(Number(p.client_id));
       const preview = !entries.length
         ? { items: [], emptyMsg: "No unbilled, finished entries on this client's projects in that range." }
-        : { items: groupToLineItems(entries, Number(p.rate) || 0) };
+        : { items: groupToLineItems(entries, Number(p.rate) || 0, rounding), rounding };
       if (isHtmx(req)) return html(invoiceStep2(p, preview)); // #71: swap step 2 in place
       return html(invoiceNewPage(p, preview));
     }
