@@ -1797,6 +1797,9 @@ function estimateDetailPage(e: any): string {
         ${e.notes ? `<p>${esc(e.notes)}</p>` : ""}
         <ul class="md-list">${items}</ul>
         <p class="md-title-large">Total: <strong>${money(e.total)}</strong></p>
+        ${e.converted_invoice_id
+          ? `<p><a class="md-text-button" href="/invoices/${e.converted_invoice_id}">View converted invoice</a></p>`
+          : `<form method="post" action="/estimates/${e.id}/convert" class="inline"><button class="md-filled-button" type="submit">${icon("receipt")}Convert to invoice</button></form>`}
       </div>
     </div>`, "estimates", true);
 }
@@ -2592,6 +2595,27 @@ Bun.serve({
     if (em && method === "GET") {
       const e = getEstimate(Number(em[1]));
       return e ? html(estimateDetailPage(e)) : html(notFoundPage(authedPage(req)), 404);
+    }
+    /* Milestone 13.2: one-click estimate -> draft invoice conversion. */
+    const cv = path.match(/^\/estimates\/(\d+)\/convert$/);
+    if (cv && method === "POST") {
+      const e = getEstimate(Number(cv[1]));
+      if (!e) return new Response("Not found", { status: 404 });
+      if (e.converted_invoice_id)
+        return new Response(null, { status: 302, headers: { Location: `/invoices/${e.converted_invoice_id}` } });
+      const inv = db.query(
+        `INSERT INTO invoices (client_id, number, issue_date, due_date, tax_rate, notes)
+         VALUES (?, ?, ?, ?, 0, ?) RETURNING id`)
+        .get(e.client_id, nextInvoiceNumber(), todayStr(), addDays(todayStr(), 15),
+             `Converted from estimate ${e.number}.${e.notes ? " " + e.notes : ""}`) as any;
+      const insItem = db.query(
+        "INSERT INTO invoice_items (invoice_id, description, hours, rate, amount) VALUES (?, ?, ?, ?, ?)");
+      db.transaction(() => {
+        for (const it of e.items as any[]) insItem.run(inv.id, it.description, it.hours, it.rate, it.amount);
+      })();
+      db.query("UPDATE estimates SET status = 'converted', converted_invoice_id = ? WHERE id = ?")
+        .run(inv.id, e.id);
+      return new Response(null, { status: 302, headers: { Location: `/invoices/${inv.id}` } });
     }
 
     if (path === "/invoices" && method === "GET") return html(invoicesPage());
