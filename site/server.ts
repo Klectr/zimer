@@ -72,6 +72,19 @@ CREATE TABLE IF NOT EXISTS invoice_items (
   amount REAL NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_items_invoice ON invoice_items(invoice_id);
+/* Milestone 8: recurring billing schedules — drafts only, never auto-sent. */
+CREATE TABLE IF NOT EXISTS recurring_schedules (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  client_id INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  frequency TEXT NOT NULL DEFAULT 'monthly',
+  source TEXT NOT NULL DEFAULT 'unbilled',
+  fixed_amount REAL NOT NULL DEFAULT 0,
+  day_of_month INTEGER,
+  anchor_date TEXT NOT NULL,
+  next_run TEXT NOT NULL,
+  active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
 `);
 /* idempotent column additions for DBs created before invoicing landed */
 for (const [tbl, col, def] of [
@@ -224,6 +237,12 @@ const qInvoices = db.query(
   `SELECT i.*, c.name AS client_name, c.color AS client_color,
           COALESCE((SELECT SUM(amount) FROM invoice_items WHERE invoice_id = i.id), 0) AS subtotal
    FROM invoices i LEFT JOIN clients c ON c.id = i.client_id ORDER BY i.issue_date DESC, i.id DESC`);
+
+/** Milestone 8: recurring schedules with client name/rate. */
+const qSchedules = db.query(
+  `SELECT s.*, c.name AS client_name, c.rate AS client_rate
+   FROM recurring_schedules s JOIN clients c ON c.id = s.client_id
+   ORDER BY s.next_run, s.id`);
 
 function getInvoice(id: number): (Invoice & { items: InvoiceItem[] }) | null {
   const inv = qInvoice.get(id) as Invoice | null;
@@ -1344,6 +1363,98 @@ function clientOptions(selected: number | null = null): string {
   ).join("");
 }
 
+/** Milestone 8: add n months to a YYYY-MM-DD date, clamped to month length. */
+function addMonths(dateStr: string, n: number): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const base = new Date(y, m - 1 + n, 1);
+  const last = new Date(base.getFullYear(), base.getMonth() + 1, 0).getDate();
+  const day = Math.min(d, last);
+  return `${base.getFullYear()}-${String(base.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+/** Milestone 8: first run date for a new schedule anchored at `from` (YYYY-MM-DD). */
+function firstRun(frequency: string, dayOfMonth: number | null, from: string): string {
+  if (frequency === "biweekly") return addDays(from, 14);
+  const dom = Math.min(Math.max(dayOfMonth || 1, 1), 28);
+  const [y, mo] = from.split("-").map(Number);
+  const cand = `${y}-${String(mo).padStart(2, "0")}-${String(dom).padStart(2, "0")}`;
+  return cand > from ? cand : addMonths(cand, 1);
+}
+
+/** Milestone 8: advance a schedule's next_run one period. */
+function advanceRun(s: { frequency: string; next_run: string }): string {
+  return s.frequency === "biweekly" ? addDays(s.next_run, 14) : addMonths(s.next_run, 1);
+}
+
+/** Milestone 8: start of the billing period ending at next_run. */
+function periodStart(s: { frequency: string; next_run: string }): string {
+  return s.frequency === "biweekly" ? addDays(s.next_run, -14) : addMonths(s.next_run, -1);
+}
+
+/** Milestone 8: recurring billing schedules, managed from the invoices page. */
+function recurringSection(): string {
+  const ss = qSchedules.all() as any[];
+  const rows = ss.length ? `<ul class="md-list">${ss.map(s => {
+    const when = s.frequency === "biweekly" ? "Every 2 weeks" : `Monthly · day ${s.day_of_month}`;
+    const what = s.source === "fixed" ? `${money(s.fixed_amount)} fixed` : "unbilled hours";
+    return `<li class="md-list-item">
+      <div class="md-list-item-content">
+        <div class="md-list-item-headline">${esc(s.client_name)}${s.active ? "" : ` <span class="pill pill-draft">Paused</span>`}</div>
+        <div class="md-list-item-supporting">${when} · ${what} · next run ${esc(s.next_run)}</div>
+      </div>
+      <div class="md-list-item-trailing">
+        <form method="post" action="/recurring/${s.id}/toggle" class="inline"><button class="md-icon-button" aria-label="${s.active ? "Pause" : "Resume"} schedule for ${esc(s.client_name)}" title="${s.active ? "Pause" : "Resume"}">${icon(s.active ? "stop" : "play")}</button></form>
+        <form method="post" action="/recurring/${s.id}/delete" class="inline"><button class="md-icon-button danger" aria-label="Delete schedule for ${esc(s.client_name)}" title="Delete">${icon("delete")}</button></form>
+      </div>
+    </li>`;
+  }).join("")}</ul>` : `<p class="muted">No recurring schedules yet.</p>`;
+  return `<section class="md-card" id="recurring" style="margin-top:16px">
+    <div class="md-title-medium rev-chart-title">Recurring</div>
+    ${rows}
+    <form method="post" action="/recurring" class="manage-form" style="margin-top:12px">
+      <div class="manage-form-row">
+        <div class="md-text-field filled grow">
+          <select name="client_id" required aria-label="Client"><option value="">Client…</option>${clientOptions()}</select>
+          <label>Client</label>
+        </div>
+        <div class="md-text-field filled">
+          <select name="frequency" id="rec-frequency" aria-label="Frequency">
+            <option value="monthly">Monthly</option>
+            <option value="biweekly">Every 2 weeks</option>
+          </select>
+          <label>Frequency</label>
+        </div>
+        <div class="md-text-field filled">
+          <select name="source" id="rec-source" aria-label="Invoice source">
+            <option value="unbilled">Unbilled hours</option>
+            <option value="fixed">Fixed amount</option>
+          </select>
+          <label>Bills</label>
+        </div>
+      </div>
+      <div class="manage-form-row">
+        <div class="md-text-field" id="rec-dom-wrap" style="width:172px;flex:none">
+          <input type="number" name="day_of_month" value="1" min="1" max="28" placeholder=" " aria-label="Day of month">
+          <label>Day of month</label>
+        </div>
+        <div class="md-text-field has-prefix" id="rec-amount-wrap" style="max-width:172px;display:none">
+          <span class="affix prefix" aria-hidden="true">$</span>
+          <input type="number" name="fixed_amount" min="0" step="0.01" placeholder=" " aria-label="Fixed amount">
+          <label>Fixed amount</label>
+        </div>
+        <button class="md-filled-button" type="submit">${icon("add")}Add schedule</button>
+      </div>
+    </form>
+    <script>(function(){
+      var f=document.getElementById('rec-frequency'),s=document.getElementById('rec-source'),
+          dom=document.getElementById('rec-dom-wrap'),amt=document.getElementById('rec-amount-wrap');
+      if(!f||!s)return;
+      function sync(){dom.style.display=f.value==='monthly'?'':'none';amt.style.display=s.value==='fixed'?'':'none';}
+      f.addEventListener('change',sync);s.addEventListener('change',sync);sync();
+    })();</script>
+  </section>`;
+}
+
 /** /invoices — list of invoices with status pills and totals. */
 function invoicesPage(): string {
   const rows = qInvoices.all() as any[];
@@ -1366,7 +1477,7 @@ function invoicesPage(): string {
       <a class="md-filled-button" href="/invoices/new">${icon("add")}New invoice</a>
     </div>
     ${rows.length ? `<p class="muted">Outstanding: <strong>${money(outstanding)}</strong></p>` : ""}
-    <div class="scroll-region" data-enter="3">${list}</div>`, "invoices", true);
+    <div class="scroll-region" data-enter="3">${list}${recurringSection()}</div>`, "invoices", true);
 }
 
 type NewInvParams = {
@@ -2010,6 +2121,33 @@ Bun.serve({
 
     /* ---- invoicing pages ---- */
     if (path === "/invoices" && method === "GET") return html(invoicesPage());
+      /* Milestone 8: recurring schedule CRUD (drafts only, never auto-sent). */
+      if (path === "/recurring" && method === "POST") {
+        const form = await req.formData();
+        const clientId = Number(form.get("client_id") || 0);
+        if (!clientId || !db.query("SELECT 1 FROM clients WHERE id = ?").get(clientId))
+          return new Response("Pick a client.", { status: 400 });
+        const frequency = String(form.get("frequency")) === "biweekly" ? "biweekly" : "monthly";
+        const source = String(form.get("source")) === "fixed" ? "fixed" : "unbilled";
+        const dayOfMonth = frequency === "monthly"
+          ? Math.min(Math.max(Number(form.get("day_of_month") || 1), 1), 28) : null;
+        const fixedAmount = source === "fixed" ? Math.max(Number(form.get("fixed_amount") || 0), 0) : 0;
+        const anchor = todayStr();
+        db.query(`INSERT INTO recurring_schedules
+          (client_id, frequency, source, fixed_amount, day_of_month, anchor_date, next_run)
+          VALUES (?, ?, ?, ?, ?, ?, ?)`)
+          .run(clientId, frequency, source, fixedAmount, dayOfMonth, anchor,
+               firstRun(frequency, dayOfMonth, anchor));
+        return new Response(null, { status: 302, headers: { Location: "/invoices#recurring" } });
+      }
+      m = path.match(/^\/recurring\/(\d+)\/(toggle|delete)$/);
+      if (m && method === "POST") {
+        const s = db.query("SELECT * FROM recurring_schedules WHERE id = ?").get(Number(m[1])) as any;
+        if (!s) return new Response("Not found", { status: 404 });
+        if (m[2] === "toggle") db.query("UPDATE recurring_schedules SET active = 1 - active WHERE id = ?").run(s.id);
+        else db.query("DELETE FROM recurring_schedules WHERE id = ?").run(s.id);
+        return new Response(null, { status: 302, headers: { Location: "/invoices#recurring" } });
+      }
     if (path === "/invoices/new" && method === "GET") return html(invoiceNewPage(defaultNewInvParams()));
     if (path === "/invoices/preview" && method === "POST") {
       const form = await req.formData();
