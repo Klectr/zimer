@@ -32,7 +32,11 @@
     const running = document.body.dataset.timerRunning === "1";
     const path = running ? "/timer/stop" : "/timer/start";
     try {
-      const res = await fetch(path, { method: "POST", headers: { "HX-Request": "true" } });
+      const res = await fetch(path, {
+        method: "POST",
+        headers: { "HX-Request": "true" },
+        body: new FormData(), // keeps req.formData() on the route happy
+      });
       if (!res.ok) throw new Error("toggle failed");
       document.body.dataset.timerRunning = running ? "0" : "1";
       refreshCard();
