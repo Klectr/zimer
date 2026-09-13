@@ -682,19 +682,28 @@ function revenueSection(): string {
   return revenueCards() + revenueChart() + revenueClients();
 }
 
-/** A3: per-client revenue breakdown. */
+/** A3: per-client revenue breakdown, with an expressive collection-progress
+    bar per row (#89): paid vs invoiced. Ripples while money is outstanding,
+    settles with a sheen when fully paid. */
 function revenueClients(): string {
   const clients = revenueByClient();
   if (!clients.length) return "";
-  const rows = clients.map(c => `
+  const rows = clients.map(c => {
+    const pct = c.invoiced > 0 ? Math.min(100, (c.paid / c.invoiced) * 100) : 0;
+    const met = c.invoiced > 0 && c.outstanding <= 0;
+    const bar = c.invoiced > 0
+      ? `<div class="m3-progress rev-collection">${m3ProgressBar(pct, met, `${esc(c.name)}: ${money(c.paid)} paid of ${money(c.invoiced)} invoiced`)}</div>`
+      : "";
+    return `
     <li class="md-list-item">
       <span class="rev-dot" style="background:${esc(c.color || "#f2c14e")}"></span>
       <div class="md-list-item-content">
         <div class="md-list-item-headline">${esc(c.name)}</div>
         <div class="md-list-item-supporting">${money(c.paid)} paid · ${money(c.outstanding)} outstanding</div>
+        ${bar}
       </div>
       <div class="md-list-item-trailing"><span class="dur">${money(c.invoiced)}</span></div>
-    </li>`).join("");
+    </li>`; }).join("");
   return `<div class="md-card rev-clients-card">
     <div class="md-title-medium rev-chart-title">By client</div>
     <ul class="md-list">${rows}</ul>

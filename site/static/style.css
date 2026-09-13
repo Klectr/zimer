@@ -869,6 +869,8 @@ body.app-fixed .cal-gutter-spacer {
 }
 @keyframes m3-progress-fill { from { width: 0; } }
 .m3-progress-label { white-space: nowrap; }
+/* Collection progress bar under each revenue "By client" row (#89). */
+.rev-collection { margin-top: 8px; }
 /* The today bar lives inside #today-list, which HTMX re-renders on every
    timer start/stop: suppress the grow-in sweep there so the bar doesn't
    re-sweep on each swap. The wave ripple and completion sheen still run. */
