@@ -775,6 +775,35 @@ body.app-fixed .cal-gutter-spacer {
 .dlg-scrim.open .dlg { transform: scale(1); opacity: 1; }
 .dlg h2 { margin: 0; }
 .dlg-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+/* Issue #151: M3 menu for the manage-page overflow (backup/export). M3 menu
+   specs: 4dp container corners, surface-container-high, 48dp items with
+   24dp leading icons, opens with scale/fade from the anchor. */
+.m3-menu-wrap { position: relative; display: inline-flex; flex: none; }
+.m3-menu {
+  position: absolute; top: calc(100% + 4px); right: 0; z-index: 60;
+  min-width: 200px; max-width: 280px; padding: 8px 0; margin: 0;
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
+  border-radius: 4px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
+  opacity: 0; transform: scale(0.92); transform-origin: top right;
+  transition: opacity var(--motion-duration-short4) var(--motion-easing-standard),
+    transform var(--motion-duration-short4) var(--motion-easing-emphasized);
+}
+.m3-menu[hidden] { display: none; }
+.m3-menu.open { opacity: 1; transform: none; }
+.m3-menu-item {
+  display: flex; align-items: center; gap: 12px;
+  min-height: 48px; padding: 6px 12px;
+  color: inherit; text-decoration: none; white-space: nowrap;
+  font-size: 14px; font-weight: 500; line-height: 20px;
+}
+.m3-menu-item svg { width: 24px; height: 24px; flex: none; opacity: 0.87; }
+.m3-menu-item:hover { background: rgb(255 255 255 / 0.08); }
+.m3-menu-item:focus-visible { outline: none; background: rgb(255 255 255 / 0.12); }
+@media (prefers-reduced-motion: reduce) {
+  .m3-menu { transition: none; }
+}
 @media (prefers-reduced-motion: reduce) {
   .dlg-scrim, .dlg { transition: none; }
 }
@@ -790,16 +819,6 @@ body.app-fixed .cal-gutter-spacer {
 .manage-form-spacer { flex: 1; }
 .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
 
-/* Milestone 9: database backup card on the Manage page. */
-.backup-card {
-  margin-top: 24px; padding: 20px 24px; border-radius: 16px;
-  background: var(--md-surface-container-low, #1e1e22);
-  display: flex; align-items: center; justify-content: space-between; gap: 16px;
-}
-.backup-card-text h2 { margin: 0 0 4px; }
-.backup-card-text p { margin: 0; opacity: .75; max-width: 56ch; }
-.backup-card .md-tonal-button { flex-shrink: 0; }
-.backup-card-actions { display: flex; gap: 12px; flex-shrink: 0; flex-wrap: wrap; }
 .page-head-actions { display: flex; gap: 8px; align-items: center; }
 /* Milestone 12: client portal. */
 .portal-head { margin: 8px 0 24px; }
