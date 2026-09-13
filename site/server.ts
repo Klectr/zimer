@@ -1403,6 +1403,7 @@ function recurringSection(): string {
         <div class="md-list-item-supporting">${when} · ${what} · next run ${esc(s.next_run)}</div>
       </div>
       <div class="md-list-item-trailing">
+        <form method="post" action="/recurring/${s.id}/generate" class="inline"><button class="md-text-button" type="submit">Generate</button></form>
         <form method="post" action="/recurring/${s.id}/toggle" class="inline"><button class="md-icon-button" aria-label="${s.active ? "Pause" : "Resume"} schedule for ${esc(s.client_name)}" title="${s.active ? "Pause" : "Resume"}">${icon(s.active ? "stop" : "play")}</button></form>
         <form method="post" action="/recurring/${s.id}/delete" class="inline"><button class="md-icon-button danger" aria-label="Delete schedule for ${esc(s.client_name)}" title="Delete">${icon("delete")}</button></form>
       </div>
@@ -2147,6 +2148,41 @@ Bun.serve({
         if (m[2] === "toggle") db.query("UPDATE recurring_schedules SET active = 1 - active WHERE id = ?").run(s.id);
         else db.query("DELETE FROM recurring_schedules WHERE id = ?").run(s.id);
         return new Response(null, { status: 302, headers: { Location: "/invoices#recurring" } });
+      }
+      /* Milestone 8.2: one-click draft from a schedule. Drafts only, never auto-sent. */
+      m = path.match(/^\/recurring\/(\d+)\/generate$/);
+      if (m && method === "POST") {
+        const s = db.query(
+          `SELECT s.*, c.rate AS client_rate FROM recurring_schedules s
+           JOIN clients c ON c.id = s.client_id WHERE s.id = ?`).get(Number(m[1])) as any;
+        if (!s) return new Response("Not found", { status: 404 });
+        if (!s.active) return new Response("Schedule is paused.", { status: 400 });
+        const from = periodStart(s), to = s.next_run;
+        const items: { description: string; hours: number; rate: number; amount: number; entry_ids: number[] }[] = [];
+        let notes = "";
+        if (s.source === "fixed") {
+          const label = s.frequency === "biweekly" ? "Biweekly retainer" : "Monthly retainer";
+          items.push({ description: `${label} · ${from} – ${to}`, hours: 1, rate: s.fixed_amount, amount: round2(s.fixed_amount), entry_ids: [] });
+        } else {
+          const entries = unbilledEntries(s.client_id, from + "T00:00:00", to + "T00:00:00");
+          items.push(...groupToLineItems(entries, s.client_rate || 0));
+          if (!items.length) notes = `No unbilled hours for ${from} to ${to}.`;
+        }
+        const inv = db.query(
+          `INSERT INTO invoices (client_id, number, issue_date, due_date, tax_rate, notes)
+           VALUES (?, ?, ?, ?, 0, ?) RETURNING id`)
+          .get(s.client_id, nextInvoiceNumber(), todayStr(), addDays(todayStr(), 15), notes) as any;
+        const insItem = db.query(
+          "INSERT INTO invoice_items (invoice_id, description, hours, rate, amount) VALUES (?, ?, ?, ?, ?)");
+        const linkEntry = db.query("UPDATE time_entries SET invoice_id = ? WHERE id = ?");
+        db.transaction(() => {
+          for (const it of items) {
+            insItem.run(inv.id, it.description, it.hours, it.rate, it.amount);
+            for (const eid of it.entry_ids) linkEntry.run(inv.id, eid);
+          }
+        })();
+        db.query("UPDATE recurring_schedules SET next_run = ? WHERE id = ?").run(advanceRun(s), s.id);
+        return new Response(null, { status: 302, headers: { Location: `/invoices/${inv.id}` } });
       }
     if (path === "/invoices/new" && method === "GET") return html(invoiceNewPage(defaultNewInvParams()));
     if (path === "/invoices/preview" && method === "POST") {
