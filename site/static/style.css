@@ -781,10 +781,9 @@ body.app-fixed .cal-gutter-spacer {
 .est-item-row { display: flex; gap: 12px; align-items: center; margin-bottom: 8px; }
 .est-item-row .grow { flex: 1; }
 /* Milestone 17: bottom-edge resize handle for calendar entries. */
-.cal-entry { touch-action: none; }
 .cal-resize {
   position: absolute; left: 0; right: 0; bottom: 0; height: 12px;
-  cursor: ns-resize; border-radius: 0 0 8px 8px;
+  cursor: ns-resize; border-radius: 0 0 8px 8px; touch-action: none;
 }
 .cal-resize::after {
   content: ""; position: absolute; left: 50%; bottom: 4px; transform: translateX(-50%);
