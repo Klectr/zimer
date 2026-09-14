@@ -11,6 +11,10 @@ import { mkdirSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve, normalize, sep } from "node:path";
 import { invoicePdf, isInvoiceTemplate, templateList } from "./pdf.ts";
 import { stripeConfigured, createPaymentLink, verifyWebhookSignature } from "./stripe.ts";
+/* Milestone 20: modularization — leaf modules live in site/lib/. */
+import type { Entry, Invoice, InvoiceItem, RevenueRow, NewInvParams } from "./lib/types.ts";
+import { esc, fmtTime, fmtDate, durationSeconds, fmtDur, dayBounds, todayStr, entryToJson, round2, money, csvCell, csvResponse, statusPill, daysBetween, mondayOf, addDays, addMonths } from "./lib/format.ts";
+import { ICONS, icon } from "./lib/icons.ts";
 
 const PORT = Number(process.env.PORT || 3000);
 const DATA_DIR = process.env.DATA_DIR || resolve(import.meta.dir, "data");
@@ -240,17 +244,7 @@ for (const [tbl, col, def] of [
 db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_invoices_public_token ON invoices(public_token)");
 db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_clients_portal_token ON clients(portal_token)");
 
-type Entry = {
-  id: number;
-  project_id: number | null;
-  description: string;
-  start_time: string;
-  end_time: string | null;
-  project_name: string | null;
-  client_name: string | null;
-  client_color: string | null;
-  invoice_id: number | null;
-};
+/* Milestone 20: Entry type lives in lib/types.ts. */
 
 const ENTRY_SELECT = `
   SELECT e.id, e.project_id, e.description, e.start_time, e.end_time, e.invoice_id,
@@ -263,101 +257,7 @@ const qRunning = db.query(`${ENTRY_SELECT} WHERE e.end_time IS NULL ORDER BY e.s
 const qOne = db.query(`${ENTRY_SELECT} WHERE e.id = ?`);
 const qRange = db.query(`${ENTRY_SELECT} WHERE e.start_time >= ? AND e.start_time < ? ORDER BY e.start_time DESC`);
 
-/* ---------------- helpers ---------------- */
-function esc(s: string | null | undefined): string {
-  return String(s ?? "")
-    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-}
-
-function fmtTime(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-}
-
-/* ---------------- icons: inline SVG, M3 outlined 24px style, no icon font ---------------- */
-const ICONS: Record<string, string> = {
-  timer: `<circle cx="12" cy="13" r="8"/><path d="M12 9.5V13l2.5 1.5"/><path d="M9.5 2.5h5"/><path d="M12 2.5V5.5"/>`,
-  calendar: `<rect x="3.5" y="5" width="17" height="16" rx="3"/><path d="M3.5 10h17"/><path d="M8 3v4M16 3v4"/>`,
-  group: `<circle cx="9" cy="8" r="3.5"/><path d="M3.5 19c.6-3 2.8-4.5 5.5-4.5s4.9 1.5 5.5 4.5"/><circle cx="16.8" cy="9" r="2.7"/><path d="M15.9 14.7c2.5.2 4.2 1.6 4.7 4.3"/>`,
-  receipt: `<path d="M6 3.5h12V21l-2-1.4-2 1.4-2-1.4-2 1.4-2-1.4L6 21z"/><path d="M9 8.5h6M9 12.5h6"/>`,
-  doc: `<path d="M7 3.5h7l4 4v13H7z"/><path d="M14 3.5v4h4"/><path d="M9.5 12h5M9.5 15.5h5"/>`,
-  download: `<path d="M12 4v11"/><path d="M7.5 11l4.5 4.5L16.5 11"/><path d="M5 20h14"/>`,
-  check: `<path d="M5 12.5l4.5 4.5L19 7.5"/>`,
-  card: `<rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10.5h18"/><path d="M6.5 14.5h4"/>`,
-  add: `<path d="M12 5v14M5 12h14"/>`,
-  chevron_left: `<path d="M14.5 6l-6 6 6 6"/>`,
-  chevron_right: `<path d="M9.5 6l6 6-6 6"/>`,
-  arrow_left: `<path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/>`,
-  copy: `<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/>`,
-  refresh: `<path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 3.5V8h-4.5"/>`,
-  delete: `<path d="M4 7h16"/><path d="M10 7V4.5h4V7"/><path d="M6.5 7l.9 13a1 1 0 0 0 1 .9h7.2a1 1 0 0 0 1-.9l.9-13"/><path d="M10 11v6M14 11v6"/>`,
-  edit: `<path d="M4 20h4l11-11a1.8 1.8 0 0 0-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/>`,
-  palette: `<path d="M12 3.5a8.5 8.5 0 1 0 0 17c1.4 0 1.9-.8 1.9-1.7 0-1.3-1.1-1.7-1.1-2.8 0-1.1.9-2 2.2-2h2.1a3.9 3.9 0 0 0 3.9-3.9c0-3.6-4-6.6-9-6.6z"/><circle cx="7.6" cy="11.4" r="1.2" fill="currentColor" stroke="none"/><circle cx="10.4" cy="7.6" r="1.2" fill="currentColor" stroke="none"/><circle cx="14.8" cy="7.6" r="1.2" fill="currentColor" stroke="none"/>`,
-  info: `<circle cx="12" cy="12" r="9"/><path d="M12 11.5v5"/><circle cx="12" cy="8" r="1.1" fill="currentColor" stroke="none"/>`,
-  play: `<path d="M8 5v14l11-7z" fill="currentColor" stroke="none"/>`,
-  stop: `<rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor" stroke="none"/>`,
-  logout: `<path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z" fill="currentColor" stroke="none"/>`,
-};
-/** Milestone 10: quote a CSV cell when it contains a comma, quote, or newline. */
-function csvCell(v: string): string {
-  return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
-}
-function csvResponse(body: string, filename: string): Response {
-  return new Response("\ufeff" + body + "\n", { status: 200, headers: {
-    "Content-Type": "text/csv; charset=utf-8",
-    "Content-Disposition": `attachment; filename="${filename}"`,
-  } });
-}
-
-function icon(name: keyof typeof ICONS): string {
-  return `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]}</svg>`;
-}
-
-function fmtDate(iso: string): string {
-  return new Date(iso).toLocaleDateString([], { month: "short", day: "numeric" });
-}
-
-function durationSeconds(startIso: string, endIso: string | null): number {
-  const end = endIso ? new Date(endIso).getTime() : Date.now();
-  return Math.max(0, Math.round((end - new Date(startIso).getTime()) / 1000));
-}
-
-function fmtDur(totalSecs: number): string {
-  const h = Math.floor(totalSecs / 3600);
-  const m = Math.floor((totalSecs % 3600) / 60);
-  const s = totalSecs % 60;
-  if (h > 0) return `${h}h ${String(m).padStart(2, "0")}m`;
-  if (m > 0) return `${m}m ${String(s).padStart(2, "0")}s`;
-  return `${s}s`;
-}
-
-/** Local-day bounds as ISO strings: YYYY-MM-DD in server-local time. */
-function dayBounds(dateStr: string): [string, string] {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  const start = new Date(y, m - 1, d, 0, 0, 0);
-  const end = new Date(y, m - 1, d + 1, 0, 0, 0);
-  return [start.toISOString(), end.toISOString()];
-}
-
-function todayStr(): string {
-  const n = new Date();
-  return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`;
-}
-
-function entryToJson(e: Entry) {
-  return {
-    id: e.id,
-    project_id: e.project_id,
-    description: e.description,
-    start_time: e.start_time,
-    end_time: e.end_time,
-    duration_seconds: durationSeconds(e.start_time, e.end_time),
-    project_name: e.project_name,
-    client_name: e.client_name,
-    client_color: e.client_color,
-  };
-}
+/* Milestone 20: helpers live in lib/format.ts, icons in lib/icons.ts. */
 
 const json = (data: unknown, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json" } });
@@ -368,19 +268,7 @@ const html = (body: string, status = 200, extra: Record<string, string> = {}) =>
 const isHtmx = (req: Request) => req.headers.get("hx-request") === "true";
 
 /* ---------------- invoicing helpers ---------------- */
-const round2 = (n: number) => Math.round(n * 100) / 100;
-
-function money(n: number): string {
-  return "$" + round2(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-type InvoiceItem = { id: number; description: string; hours: number; rate: number; amount: number };
-type Invoice = {
-  id: number; client_id: number | null; number: string; issue_date: string; due_date: string | null;
-  status: string; tax_rate: number; notes: string; template: string; created_at: string;
-  stripe_payment_link: string | null; paid_via_stripe: number; public_token: string | null;
-  client_name: string | null; client_color: string | null;
-};
+/* Milestone 20: round2/money live in lib/format.ts; Invoice types in lib/types.ts. */
 
 const qInvoice = db.query(
   `SELECT i.*, c.name AS client_name, c.color AS client_color
@@ -564,12 +452,7 @@ async function stripeLinkFor(id: number): Promise<{ url?: string; error?: string
 }
 
 /* ---------------- revenue (milestone 1) ---------------- */
-type RevenueRow = {
-  id: number; number: string; due_date: string | null;
-  status: string; tax_rate: number; issue_date: string;
-  client_id: number | null; client_name: string | null; client_color: string | null;
-  subtotal: number;
-};
+/* Milestone 20: RevenueRow type lives in lib/types.ts. */
 
 const qRevenueRows = db.query(
   `SELECT i.id, i.number, i.due_date, i.status, i.tax_rate, i.issue_date, i.client_id,
@@ -630,11 +513,7 @@ function revenueByClient() {
     .sort((a, b) => b.invoiced - a.invoiced);
 }
 
-/** Whole days between two YYYY-MM-DD dates (local). */
-function daysBetween(a: string, b: string): number {
-  const p = (s: string) => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
-  return Math.round((p(b).getTime() - p(a).getTime()) / 86400000);
-}
+/* Milestone 20: daysBetween lives in lib/format.ts. */
 
 /** Milestone 7: an invoice is overdue when sent with a past due date. */
 function isOverdue(r: { status: string; due_date: string | null }): boolean {
@@ -692,10 +571,7 @@ function groupToLineItems(entries: any[], rate: number, roundingMin?: number | n
   });
 }
 
-function statusPill(status: string): string {
-  const label = status[0].toUpperCase() + status.slice(1);
-  return `<span class="pill pill-${esc(status)}">${esc(label)}</span>`;
-}
+/* Milestone 20: statusPill lives in lib/format.ts. */
 
 /* ---------------- auth ---------------- */
 function tokensEqual(a: string, b: string): boolean {
@@ -1005,19 +881,7 @@ function revenueClients(): string {
   </div>`;
 }
 
-/** Monday of the week containing dateStr (or today). Returns YYYY-MM-DD. */
-function mondayOf(dateStr?: string): string {
-  const base = dateStr ? new Date(dateStr + "T12:00:00") : new Date();
-  const day = (base.getDay() + 6) % 7; // 0 = Monday
-  const mon = new Date(base.getFullYear(), base.getMonth(), base.getDate() - day);
-  return `${mon.getFullYear()}-${String(mon.getMonth() + 1).padStart(2, "0")}-${String(mon.getDate()).padStart(2, "0")}`;
-}
-
-function addDays(dateStr: string, n: number): string {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  const dt = new Date(y, m - 1, d + n);
-  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
-}
+/* Milestone 20: mondayOf/addDays live in lib/format.ts. */
 
 /** Pixels per hour in the calendar time grid. */
 const CAL_HOUR_PX = 52;
@@ -1719,14 +1583,7 @@ function clientOptions(selected: number | null = null): string {
   ).join("");
 }
 
-/** Milestone 8: add n months to a YYYY-MM-DD date, clamped to month length. */
-function addMonths(dateStr: string, n: number): string {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  const base = new Date(y, m - 1 + n, 1);
-  const last = new Date(base.getFullYear(), base.getMonth() + 1, 0).getDate();
-  const day = Math.min(d, last);
-  return `${base.getFullYear()}-${String(base.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-}
+/* Milestone 20: addMonths lives in lib/format.ts. */
 
 /** Milestone 8: first run date for a new schedule anchored at `from` (YYYY-MM-DD). */
 function firstRun(frequency: string, dayOfMonth: number | null, from: string): string {
@@ -2093,10 +1950,7 @@ function invoicesPage(): string {
     <div class="scroll-region" data-enter="3">${recurringSection()}${recurringDialog()}${list}</div>`, "invoices", true);
 }
 
-type NewInvParams = {
-  client_id: string; from: string; to: string; rate: string;
-  number: string; issue_date: string; due_date: string; tax_rate: string; notes: string;
-};
+/* Milestone 20: NewInvParams type lives in lib/types.ts. */
 
 function defaultNewInvParams(): NewInvParams {
   const t = todayStr();
