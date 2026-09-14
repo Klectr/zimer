@@ -507,19 +507,37 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     }
     /* #215: on load (and after week-nav swaps), center the now-line in the
        scroll viewport when it's visible. Entry create/edit/delete keeps the
-       user's scroll untouched. Instant jump, no smooth scrolling. */
-    function centerOnNow(){
+       user's scroll untouched. #219: the initial-load centering smooth-scrolls
+       (eased, ~600ms); week-nav swaps stay instant. */
+    function centerOnNow(smooth){
       var line=document.querySelector('[data-now]');
       var sc=document.querySelector('.cal-scroll');
       if(!line||line.hidden||!sc) return;
       var lr=line.getBoundingClientRect(),sr=sc.getBoundingClientRect();
-      sc.scrollTop=Math.max(0,sc.scrollTop+(lr.top-sr.top)-sr.height/2);
+      var target=Math.max(0,sc.scrollTop+(lr.top-sr.top)-sr.height/2);
+      var reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if(!smooth||reduce){ sc.scrollTop=target; return; }
+      /* eased scrollTop animation; user input (wheel/touch) cancels it so the
+         page never fights an in-progress gesture */
+      var start=sc.scrollTop,dist=target-start,t0=null,DUR=600,cancelled=false;
+      function cancel(){ cancelled=true;
+        sc.removeEventListener('wheel',cancel); sc.removeEventListener('touchstart',cancel); }
+      sc.addEventListener('wheel',cancel,{passive:true});
+      sc.addEventListener('touchstart',cancel,{passive:true});
+      function step(t){
+        if(cancelled) return;
+        if(t0===null) t0=t;
+        var p=Math.min(1,(t-t0)/DUR),e=p<.5?4*p*p*p:1-Math.pow(-2*p+2,3)/2;
+        sc.scrollTop=start+dist*e;
+        if(p<1) requestAnimationFrame(step); else cancel();
+      }
+      requestAnimationFrame(step);
     }
     placeNow();
     /* Center after the entrance animations settle (columns rise up to ~590ms);
        measuring mid-animation lands the scroll ~12px off. Week-nav swaps
        suppress the entrance (#week.no-enter), so that path stays immediate. */
-    setTimeout(centerOnNow, 650);
+    setTimeout(function(){ centerOnNow(true); }, 650);
     setInterval(placeNow,30000);
     document.body.addEventListener('htmx:afterSwap',function(e){
       if(e.detail&&e.detail.target&&e.detail.target.id==='week'){ placeNow(); centerOnNow(); }
