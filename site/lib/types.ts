@@ -1,0 +1,34 @@
+/** Shared domain types. Dependency-free: every other module may import from here. */
+
+export type Entry = {
+  id: number;
+  project_id: number | null;
+  description: string;
+  start_time: string;
+  end_time: string | null;
+  project_name: string | null;
+  client_name: string | null;
+  client_color: string | null;
+  invoice_id: number | null;
+};
+
+export type InvoiceItem = { id: number; description: string; hours: number; rate: number; amount: number };
+
+export type Invoice = {
+  id: number; client_id: number | null; number: string; issue_date: string; due_date: string | null;
+  status: string; tax_rate: number; notes: string; template: string; created_at: string;
+  stripe_payment_link: string | null; paid_via_stripe: number; public_token: string | null;
+  client_name: string | null; client_color: string | null;
+};
+
+export type RevenueRow = {
+  id: number; number: string; due_date: string | null;
+  status: string; tax_rate: number; issue_date: string;
+  client_id: number | null; client_name: string | null; client_color: string | null;
+  subtotal: number;
+};
+
+export type NewInvParams = {
+  client_id: string; from: string; to: string; rate: string;
+  number: string; issue_date: string; due_date: string; tax_rate: string; notes: string;
+};
