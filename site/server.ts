@@ -28,6 +28,7 @@ import { createCalendarViews } from "./views/calendar.ts";
 import { createManageViews } from "./views/manage.ts";
 import { createInvoiceViews } from "./views/invoices.ts";
 import { createEstimateViews } from "./views/estimates.ts";
+import { createApiRouter } from "./routes/api.ts";
 
 const PORT = Number(process.env.PORT || 3000);
 const DATA_DIR = process.env.DATA_DIR || resolve(import.meta.dir, "data");
@@ -340,6 +341,14 @@ const { loginPage, publicInvoicePage, portalPage } = createPublicViews({
   db, getInvoice, invoiceTotals, invoiceSheet, ensurePublicToken,
 });
 
+/** Milestone 20: JSON API routes live in routes/api.ts. */
+const { handleApi } = createApiRouter({
+  db, qRunning, qOne, qRange, qInvoice, qInvoices, TOKEN, authedApi, json,
+  entryToJson, groupToLineItems, unbilledEntries, clientRounding, getInvoice,
+  invoiceTotals, nextInvoiceNumber, stripeLinkFor, verifyWebhookSignature,
+  isInvoiceTemplate, revenueTotals, revenueMonthly, revenueByClient, revenueOverdue,
+});
+
 
 
 
@@ -400,214 +409,9 @@ Bun.serve({
       return inv ? html(publicInvoicePage(inv)) : html(notFoundPage(false), 404);
     }
 
-    /* ---- JSON API ---- */
-    if (path.startsWith("/api/")) {
-      /* ---- Stripe webhook: no Bearer auth — verified by signature instead.
-         Reads the raw body; signature is checked before any DB access. ---- */
-      if (path === "/api/stripe/webhook" && method === "POST") {
-        const secret = process.env.STRIPE_WEBHOOK_SECRET || "";
-        if (!secret) return json({ error: "webhook not configured" }, 503);
-        const payload = await req.text();
-        if (!verifyWebhookSignature(payload, req.headers.get("stripe-signature"), secret))
-          return json({ error: "invalid signature" }, 400);
-        let event: any;
-        try {
-          event = JSON.parse(payload);
-        } catch {
-          return json({ error: "invalid payload" }, 400);
-        }
-        if (event.type === "checkout.session.completed") {
-          const session = event.data?.object || {};
-          const invoiceId = Number(session.metadata?.invoice_id || 0);
-          if (invoiceId && session.payment_status === "paid") {
-            const inv = qInvoice.get(invoiceId) as Invoice | null;
-            if (inv && inv.status === "sent") {
-              db.query("UPDATE invoices SET status = 'paid', paid_via_stripe = 1, paid_at = date('now') WHERE id = ?").run(invoiceId);
-            }
-          }
-        }
-        return json({ received: true });
-      }
-      try {
-        if (!authedApi(req, TOKEN)) return json({ error: "unauthorized" }, 401);
-        const body = (await req.json().catch(() => ({}))) as any;
-
-        if (path === "/api/status" && method === "GET") {
-          const running = qRunning.get() as Entry | null;
-          return json({ running: running ? entryToJson(running) : null });
-        }
-        if (path === "/api/timer/start" && method === "POST") {
-          if (qRunning.get()) return json({ error: "a timer is already running" }, 409);
-          const projectId = body.project_id ? Number(body.project_id) : null;
-          const r = db.query(
-            "INSERT INTO time_entries (project_id, description, start_time) VALUES (?, ?, ?) RETURNING id")
-            .get(projectId, String(body.description || ""), new Date().toISOString()) as any;
-          return json(entryToJson(qOne.get(r.id) as Entry), 201);
-        }
-        if (path === "/api/timer/stop" && method === "POST") {
-          const running = qRunning.get() as Entry | null;
-          if (!running) return json({ error: "no timer running" }, 404);
-          db.query("UPDATE time_entries SET end_time = ? WHERE id = ?")
-            .run(new Date().toISOString(), running.id);
-          return json(entryToJson(qOne.get(running.id) as Entry));
-        }
-        if (path === "/api/entries" && method === "GET") {
-          const from = url.searchParams.get("from") || new Date(0).toISOString();
-          const to = url.searchParams.get("to") || new Date().toISOString();
-          return json((qRange.all(from, to) as Entry[]).map(entryToJson));
-        }
-        let m = path.match(/^\/api\/entries\/(\d+)$/);
-        if (m) {
-          const id = Number(m[1]);
-          if (method === "PATCH") {
-            const cur = qOne.get(id) as Entry | null;
-            if (!cur) return json({ error: "not found" }, 404);
-            db.query(`UPDATE time_entries SET description = ?, project_id = ?, start_time = ?, end_time = ? WHERE id = ?`)
-              .run(
-                body.description !== undefined ? String(body.description) : cur.description,
-                body.project_id !== undefined ? (body.project_id ? Number(body.project_id) : null) : cur.project_id,
-                body.start_time || cur.start_time,
-                body.end_time !== undefined ? (body.end_time || null) : cur.end_time,
-                id);
-            return json(entryToJson(qOne.get(id) as Entry));
-          }
-          if (method === "DELETE") {
-            db.query("DELETE FROM time_entries WHERE id = ?").run(id);
-            return new Response(null, { status: 204 });
-          }
-        }
-        if (path === "/api/clients" && method === "GET")
-          return json(db.query("SELECT * FROM clients ORDER BY name").all());
-        if (path === "/api/clients" && method === "POST") {
-          if (!body.name) return json({ error: "name required" }, 400);
-          const r = db.query("INSERT INTO clients (name, color, rate) VALUES (?, ?, ?) RETURNING *")
-            .get(String(body.name), String(body.color || "#f2c14e"), Number(body.rate) || 0) as any;
-          return json(r, 201);
-        }
-        m = path.match(/^\/api\/clients\/(\d+)$/);
-        if (m && method === "DELETE") {
-          db.query("DELETE FROM clients WHERE id = ?").run(Number(m[1]));
-          return new Response(null, { status: 204 });
-        }
-        if (path === "/api/projects" && method === "GET")
-          return json(db.query(
-            `SELECT p.id, p.name, p.client_id, c.name AS client_name, c.color AS client_color
-             FROM projects p LEFT JOIN clients c ON c.id = p.client_id ORDER BY p.name`).all());
-        if (path === "/api/projects" && method === "POST") {
-          if (!body.name) return json({ error: "name required" }, 400);
-          const r = db.query("INSERT INTO projects (name, client_id) VALUES (?, ?) RETURNING *")
-            .get(String(body.name), body.client_id ? Number(body.client_id) : null) as any;
-          return json(r, 201);
-        }
-        m = path.match(/^\/api\/projects\/(\d+)$/);
-        if (m && method === "DELETE") {
-          db.query("DELETE FROM projects WHERE id = ?").run(Number(m[1]));
-          return new Response(null, { status: 204 });
-        }
-        /* ---- invoicing API ---- */
-        if (path === "/api/invoices" && method === "GET") {
-          const rows = qInvoices.all() as any[];
-          return json(rows.map(r => ({
-            ...r,
-            total: round2(r.subtotal * (1 + (r.tax_rate || 0) / 100)),
-          })));
-        }
-        if (path === "/api/invoices" && method === "POST") {
-          const number = String(body.number || nextInvoiceNumber());
-          if (db.query("SELECT 1 FROM invoices WHERE number = ?").get(number))
-            return json({ error: "invoice number already exists" }, 400);
-          let items: { description: string; hours: number; rate: number; entry_ids?: number[] }[];
-          if (Array.isArray(body.items)) {
-            items = body.items;
-          } else {
-            if (!body.client_id || !body.from || !body.to)
-              return json({ error: "client_id, from, to required (or items[])" }, 400);
-            items = groupToLineItems(
-              unbilledEntries(Number(body.client_id), String(body.from), String(body.to)),
-              Number(body.rate) || 0, clientRounding(Number(body.client_id)));
-          }
-          const clean = items
-            .map(it => ({
-              description: String(it.description || "Time"),
-              hours: round2(Number(it.hours) || 0),
-              rate: round2(Number(it.rate) || 0),
-              entry_ids: Array.isArray(it.entry_ids) ? it.entry_ids.map(Number).filter(n => n > 0) : [],
-            }))
-            .filter(it => it.hours > 0);
-          if (!clean.length) return json({ error: "no billable line items" }, 400);
-          const inv = db.query(
-            `INSERT INTO invoices (client_id, number, issue_date, due_date, tax_rate, notes)
-             VALUES (?, ?, ?, ?, ?, ?) RETURNING id`)
-            .get(
-              body.client_id ? Number(body.client_id) : null,
-              number,
-              String(body.issue_date || todayStr()),
-              body.due_date ? String(body.due_date) : null,
-              Number(body.tax_rate) || 0,
-              String(body.notes || "")) as any;
-          const insItem = db.query(
-            "INSERT INTO invoice_items (invoice_id, description, hours, rate, amount) VALUES (?, ?, ?, ?, ?)");
-          const linkEntry = db.query("UPDATE time_entries SET invoice_id = ? WHERE id = ?");
-          db.transaction(() => {
-            for (const it of clean) {
-              insItem.run(inv.id, it.description, it.hours, it.rate, round2(it.hours * it.rate));
-              for (const eid of it.entry_ids) linkEntry.run(inv.id, eid);
-            }
-          })();
-          const full = getInvoice(inv.id)!;
-          return json({ ...full, ...invoiceTotals(full.items, full.tax_rate) }, 201);
-        }
-        m = path.match(/^\/api\/invoices\/(\d+)$/);
-        if (m) {
-          const id = Number(m[1]);
-          if (method === "GET") {
-            const inv = getInvoice(id);
-            if (!inv) return json({ error: "not found" }, 404);
-            return json({ ...inv, ...invoiceTotals(inv.items, inv.tax_rate) });
-          }
-          if (method === "PATCH") {
-            const inv = qInvoice.get(id) as Invoice | null;
-            if (!inv) return json({ error: "not found" }, 404);
-            if (body.template !== undefined) {
-              const tpl = String(body.template);
-              if (!isInvoiceTemplate(tpl)) return json({ error: "unknown template" }, 400);
-              db.query("UPDATE invoices SET template = ? WHERE id = ?").run(tpl, id);
-            }
-            if (body.status !== undefined) {
-              const want = String(body.status);
-              const ok = (inv.status === "draft" && want === "sent") ||
-                         (inv.status === "sent" && want === "paid");
-              if (!ok) return json({ error: "invalid status transition (draft → sent → paid)" }, 400);
-              db.query("UPDATE invoices SET status = ? WHERE id = ?").run(want, id);
-            }
-            const full = getInvoice(id)!;
-            return json({ ...full, ...invoiceTotals(full.items, full.tax_rate) });
-          }
-          if (method === "DELETE") {
-            const inv = qInvoice.get(id) as Invoice | null;
-            if (!inv) return json({ error: "not found" }, 404);
-            if (inv.status !== "draft") return json({ error: "only draft invoices can be deleted" }, 400);
-            db.transaction(() => {
-              db.query("UPDATE time_entries SET invoice_id = NULL WHERE invoice_id = ?").run(id);
-              db.query("DELETE FROM invoices WHERE id = ?").run(id);
-            })();
-            return new Response(null, { status: 204 });
-          }
-        }
-        m = path.match(/^\/api\/invoices\/(\d+)\/stripe-link$/);
-        if (m && method === "POST") {
-          const r = await stripeLinkFor(Number(m[1]));
-          return r.url ? json({ url: r.url }) : json({ error: r.error }, r.status);
-        }
-        /* ---- revenue API (milestone 1) ---- */
-        if (path === "/api/revenue" && method === "GET")
-          return json({ totals: revenueTotals(), by_month: revenueMonthly(), by_client: revenueByClient(), overdue: revenueOverdue() });
-        return json({ error: "not found" }, 404);
-      } catch (err) {
-        console.error(`[timekeep] API ${method} ${path} threw:`, err);
-        return json({ error: "internal" }, 500);
-      }
-    }
+    /* ---- JSON API (milestone 20: routes/api.ts) ---- */
+    const apiResp = await handleApi(req, url, path, method);
+    if (apiResp) return apiResp;
 
     /* ---- pages ---- */
     try {
