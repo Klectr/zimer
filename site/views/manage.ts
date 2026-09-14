@@ -58,7 +58,7 @@ export function createManageViews(deps: ManageViewDeps) {
                     <input type="number" name="rate" value="${c.rate || ""}" min="0" step="0.01" placeholder="0" aria-label="Hourly rate for ${esc(c.name)}">
                     <span class="affix suffix" aria-hidden="true">/hr</span>
                   </div>
-                  <button class="md-text-button" type="submit">Save</button>
+                  <button class="md-icon-button" type="submit" title="Save" aria-label="Save hourly rate for ${esc(c.name)}">${icon("save")}</button>
                 </form>
                 <form method="post" action="/clients/${c.id}/delete" class="inline" hx-post="/clients/${c.id}/delete" hx-target="#manage-cols" hx-swap="outerHTML"><button class="md-icon-button danger" hx-confirm="Delete client? Projects keep their entries." aria-label="Delete client ${esc(c.name)}" title="Delete">${icon("delete")}</button></form>
               </div>
