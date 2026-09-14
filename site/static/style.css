@@ -832,6 +832,15 @@ body.app-fixed .cal-gutter-spacer {
 .manage-form-row .grow { flex: 1; min-width: 140px; }
 .manage-form-spacer { flex: 1; }
 .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.two-col > * { min-width: 0; } /* grid items default to min-width:auto — long
+  nowrap headlines would blow the column out and cause horizontal scroll */
+/* Manage rows carry several inline controls (rate + save + rounding +
+   delete + portal, or budget inputs). Let the row wrap so the controls drop
+   under the name instead of crushing it or forcing a horizontal scroll. */
+#manage-cols .md-list-item { flex-wrap: wrap; row-gap: 4px; }
+#manage-cols .md-list-item-content { flex: 1 1 160px; }
+#manage-cols .md-list-item-trailing { flex: 1 1 auto; flex-wrap: wrap; justify-content: flex-end; row-gap: 8px; }
+#manage-cols .md-list-item-trailing > * { flex: none; } /* controls keep natural width, wrap as units */
 
 .page-head-actions { display: flex; gap: 8px; align-items: center; }
 /* Milestone 12: client portal. */
