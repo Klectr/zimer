@@ -15,12 +15,6 @@ export function statusPill(status: string): string {
   return `<span class="pill pill-${esc(status)}">${esc(label)}</span>`;
 }
 
-/** Payment-state pill for the invoice document itself (#222): the document
- *  only ever communicates Unpaid vs Paid — draft/sent are internal workflow. */
-export function payPill(paid: boolean): string {
-  return paid ? `<span class="pill pill-paid">Paid</span>`
-              : `<span class="pill pill-unpaid">Unpaid</span>`;
-}
 
 /** Milestone 10: quote a CSV cell when it contains a comma, quote, or newline. */
 export function csvCell(v: string): string {
