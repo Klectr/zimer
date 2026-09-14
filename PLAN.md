@@ -96,3 +96,17 @@ bun server.ts            # -> http://localhost:3000, token printed on first run
 `PORT`, `DATA_DIR`, `TIMEKEEP_TOKEN` env vars. For a server: run under systemd
 (or `docker` later), put Caddy/nginx in front for HTTPS, point the extension at
 your URL. Back up `data/timekeep.db` — that's everything.
+
+## Code structure
+
+`site/server.ts` is a thin bootstrap (~115 lines): env, database, domain wiring,
+then route dispatch (`handleApi` → `handleWeb` → 404). Everything else is a
+module with an explicit dependency interface:
+
+- `site/lib/` — leaf utilities: `format`, `icons`, `types`, `http`, `auth`,
+  `revenue`, `recurring`, `budgets`, `demo`, `domain` (shared invoice/estimate/
+  token/Stripe helpers via `createDomain`)
+- `site/views/` — page fragments: `layout`, `public`, `timer`, `calendar`,
+  `manage`, `invoices`, `estimates` (each a `createXViews(deps)` factory)
+- `site/routes/` — `api` (`createApiRouter` → `handleApi`) and `web`
+  (`createWebRouter` → `handleWeb`)
