@@ -20,9 +20,9 @@ export interface CalendarViewDeps {
 }
 
 export function createCalendarViews(deps: CalendarViewDeps) {
-  /** Night = 8 PM – 8 AM. Star scatter per night band, as [left%, top%] pairs. */
-  const NIGHT_STARS_AM = [[12, 6], [68, 14], [34, 28], [82, 42], [55, 55], [20, 68], [74, 82], [42, 92]];
-  const NIGHT_STARS_PM = [[30, 12], [70, 32], [48, 58], [16, 80]];
+  /** Night = 7 PM – 6 AM. Star scatter per night band, as [left%, top%] pairs. */
+  const NIGHT_STARS_AM = [[12, 8], [68, 20], [34, 40], [82, 58], [50, 78], [22, 90]];
+  const NIGHT_STARS_PM = [[30, 10], [70, 28], [48, 50], [16, 72], [62, 90]];
   /** Wavy horizon where day meets night: filled with the same translucent
       purple so it composites seamlessly with the band. */
   const WAVE_AM = `<svg class="cal-wave cal-wave-am" viewBox="0 0 120 12" preserveAspectRatio="none" aria-hidden="true"><path d="M0 0H120V5Q105 11 90 5T60 5T30 5T0 5Z"/></svg>`;
@@ -162,7 +162,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
 
     const hourLabels = Array.from({ length: 24 }, (_, h) => {
       const ampm = h === 0 ? "12 AM" : h < 12 ? `${h} AM` : h === 12 ? "12 PM" : `${h - 12} PM`;
-      const night = h < 8 || h >= 20;
+      const night = h < 6 || h >= 19;
       return `<span class="cal-hour-label${night ? " night" : ""}" style="top:${(h * calHourPx - 8).toFixed(0)}px">${ampm}</span>`;
     }).join("");
 
