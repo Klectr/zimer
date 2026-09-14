@@ -130,7 +130,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       return `<div class="md-card form-card"><h3 class="md-title-medium">2 · Line items</h3><p class="muted">${esc(preview.emptyMsg)}</p></div>`;
     }
     const roundingNote = preview.rounding
-      ? `<div class="form-info">${icon("info")}<p>Hours rounded up to ${preview.rounding}-minute increments per this client's billing rule.</p></div>`
+      ? `<div class="form-info">${icon("info")}<p>Entry durations are rounded up to ${preview.rounding}-minute increments.</p></div>`
       : "";
     const rows = preview.items.map((it, i) => `
         <tr>

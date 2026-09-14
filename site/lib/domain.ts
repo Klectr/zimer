@@ -1,5 +1,5 @@
-/** Shared domain helpers: invoices numbering, line-item grouping,
- *  billable rounding, public/portal tokens, Stripe payment links, project
+/** Shared domain helpers: invoice numbering, line-item grouping (fixed
+ *  5-minute billable rounding), public/portal tokens, Stripe payment links, project
  *  options, progress bars, and the budget alert card. Wired once in
  *  server.ts and injected into the route and view factories that need them. */
 
@@ -134,20 +134,17 @@ export function createDomain(deps: DomainDeps) {
        ORDER BY e.start_time`).all(clientId, from, to) as any[];
   }
 
-  /** Client's rounding rule in minutes, or null for exact billing. */
-  function clientRounding(clientId: number): number | null {
-    const c = db.query("SELECT rounding_minutes FROM clients WHERE id = ?").get(clientId) as any;
-    return c && c.rounding_minutes ? Number(c.rounding_minutes) : null;
-  }
+  /** Fixed billable rounding, minutes. Every invoice rounds each entry's
+      duration UP to the next increment (issue #199). */
+  const ROUNDING_MINUTES = 5;
 
-  /** Group entries by project into draft line items.
-      roundingMin: per-entry round-up increment (Milestone 18); null/0 = exact. */
-  function groupToLineItems(entries: any[], rate: number, roundingMin?: number | null) {
+  /** Group entries by project into draft line items. */
+  function groupToLineItems(entries: any[], rate: number) {
     const groups = new Map<number, { project: string; ids: number[]; secs: number }>();
     for (const e of entries) {
       const g = groups.get(e.project_id) ?? { project: e.project_name, ids: [], secs: 0 };
       g.ids.push(e.id);
-      g.secs += roundUpSeconds(durationSeconds(e.start_time, e.end_time), roundingMin);
+      g.secs += roundUpSeconds(durationSeconds(e.start_time, e.end_time), ROUNDING_MINUTES);
       groups.set(e.project_id, g);
     }
     return [...groups.values()].map(g => {
@@ -218,8 +215,8 @@ export function createDomain(deps: DomainDeps) {
 
 
   /** /invoices — list of invoices with status pills and totals. */
-  /* Milestone 18: round a duration UP to the next increment (per-entry billing).
-     minutes <= 0 or null => no rounding. */
+  /* Issue #199: round a duration UP to the next increment (per-entry billing).
+     Fixed 5-minute increments; minutes <= 0 or null => no rounding. */
   function roundUpSeconds(secs: number, minutes: number | null | undefined): number {
     const m = Number(minutes) || 0;
     if (m <= 0 || secs <= 0) return secs;
@@ -250,7 +247,7 @@ export function createDomain(deps: DomainDeps) {
 
   return {
     getInvoice, invoiceTotals, nextInvoiceNumber, stripeLinkFor,
-    unbilledEntries, clientRounding, groupToLineItems,
+    unbilledEntries, groupToLineItems,
     projectOptions, m3ProgressBar, weekTargetBar, budgetAlertCard,
     newPublicToken, ensurePublicToken, getPublicToken, mintPublicToken,
     getPortalToken, ensurePortalToken,

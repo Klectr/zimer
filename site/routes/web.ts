@@ -52,8 +52,7 @@ export interface WebDeps {
   nextInvoiceNumber: () => string;
   stripeLinkFor: (id: number) => Promise<{ url?: string; error?: string; status?: number }>;
   unbilledEntries: (clientId: number, from: string, to: string) => any[];
-  clientRounding: (clientId: number) => number | null;
-  groupToLineItems: (entries: any[], rate: number, roundingMin?: number | null) => any[];
+  groupToLineItems: (entries: any[], rate: number) => any[];
   ensurePublicToken: (id: number) => string;
   getPublicToken: (id: number) => string | null;
   mintPublicToken: (id: number) => string;
@@ -78,7 +77,7 @@ export function createWebRouter(deps: WebDeps) {
     calendarPage, editPage, manageCols, managePage, invoicesPage, invoiceNewPage,
     defaultNewInvParams, invoiceStep2, invoiceDetailPage, invoiceDetailBody, invoiceDoc,
     getInvoice, invoiceTotals,
-    nextInvoiceNumber, stripeLinkFor, unbilledEntries, clientRounding,
+    nextInvoiceNumber, stripeLinkFor, unbilledEntries,
     groupToLineItems, ensurePublicToken, getPublicToken, mintPublicToken, getPortalToken,
     ensurePortalToken, invoicePdf, isInvoiceTemplate, stripeConfigured,
     workspaceEmpty, demoIds, seedDemoData, removeDemoData, entryToJson,
@@ -303,15 +302,6 @@ export function createWebRouter(deps: WebDeps) {
           if (isHtmx(req)) return html(manageCols()); // #71: swap in place
           return new Response(null, { status: 302, headers: { Location: "/manage" } });
         }
-        m = path.match(/^\/clients\/(\d+)\/rounding$/);
-        if (m && method === "POST") {
-          const form = await req.formData();
-          const mins = Number(form.get("rounding_minutes") || 0);
-          db.query("UPDATE clients SET rounding_minutes = ? WHERE id = ?")
-            .run(mins > 0 ? mins : null, Number(m[1]));
-          if (isHtmx(req)) return html(manageCols());
-          return new Response(null, { status: 302, headers: { Location: "/manage" } });
-        }
         m = path.match(/^\/clients\/(\d+)\/delete$/);
         if (m && method === "POST") {
           db.query("DELETE FROM clients WHERE id = ?").run(Number(m[1]));
@@ -363,10 +353,9 @@ export function createWebRouter(deps: WebDeps) {
             return html(invoiceNewPage(p), 400);
           }
           const entries = unbilledEntries(Number(p.client_id), p.from + "T00:00:00", p.to + "T00:00:00");
-          const rounding = clientRounding(Number(p.client_id));
           const preview = !entries.length
             ? { items: [], emptyMsg: "No unbilled, finished entries on this client's projects in that range." }
-            : { items: groupToLineItems(entries, Number(p.rate) || 0, rounding), rounding };
+            : { items: groupToLineItems(entries, Number(p.rate) || 0), rounding: 5 };
           if (isHtmx(req)) return html(invoiceStep2(p, preview)); // #71: swap step 2 in place
           return html(invoiceNewPage(p, preview));
         }
