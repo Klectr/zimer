@@ -297,26 +297,23 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
           </form>
         </span>
       </div>`;
-    const stripeLine = inv.status === "sent" ? `
+    /* #231: the Stripe payment row is gone from our UI — the public invoice
+       page is the payment surface (it already renders Pay when a link
+       exists). The link is still auto-created server-side on send. If that
+       fails we show a one-line warning with a retry, so a missing Pay button
+       can never fail silently. */
+    const stripeWarn = (inv.status === "sent" && stripeConfigured() && !inv.stripe_payment_link) ? `
       <div class="share-line">
-        <span class="share-label">Stripe payment</span>
-        ${inv.stripe_payment_link ? `
-        <span class="share-url" title="${esc(inv.stripe_payment_link)}">${esc(inv.stripe_payment_link)}</span>
-        <span class="share-icons">
-          ${copyBtn(inv.stripe_payment_link)}
-          ${actBtn(`/invoices/${inv.id}/stripe-link`, "refresh", "Regenerate payment link (replaces the old one)")}
-        </span>` : stripeConfigured() ? `
-        <span class="share-url muted">Couldn't create the link</span>
+        <span class="share-label warn">Payment link</span>
+        <span class="share-url">Couldn't create it — the client won't see a Pay button</span>
         <span class="share-icons">
           ${actBtn(`/invoices/${inv.id}/stripe-link`, "refresh", "Retry payment link")}
-        </span>` : `
-        <span class="share-url muted">Set STRIPE_SECRET_KEY to collect via Stripe</span>`}
+        </span>
       </div>` : "";
     const shareLines = `
-      <section class="share-lines no-print" aria-label="Share and collect">
-        <div class="md-title-small share-lines-title">Share &amp; collect</div>
+      <section class="share-lines no-print" aria-label="Share">
         ${clientLine}
-        ${stripeLine}
+        ${stripeWarn}
         ${copyScript}
       </section>`;
     return `<div id="invoice-detail">
