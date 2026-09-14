@@ -17,9 +17,8 @@ export interface ApiDeps {
   authedApi: (req: Request, token: string) => boolean;
   json: (data: unknown, status?: number) => Response;
   entryToJson: (e: Entry) => any;
-  groupToLineItems: (groups: any[], rate: number, roundingMinutes: number | null) => any[];
+  groupToLineItems: (groups: any[], rate: number) => any[];
   unbilledEntries: (clientId: number, from: string, to: string) => any[];
-  clientRounding: (clientId: number) => number | null;
   getInvoice: (id: number) => (Invoice & { items: InvoiceItem[] }) | null;
   invoiceTotals: (items: InvoiceItem[], taxRate: number) => { subtotal: number; tax: number; total: number };
   nextInvoiceNumber: () => string;
@@ -35,7 +34,7 @@ export interface ApiDeps {
 export function createApiRouter(deps: ApiDeps) {
   const {
     db, qRunning, qOne, qRange, qInvoice, qInvoices, TOKEN, authedApi, json,
-    entryToJson, groupToLineItems, unbilledEntries, clientRounding, getInvoice,
+    entryToJson, groupToLineItems, unbilledEntries, getInvoice,
     invoiceTotals, nextInvoiceNumber, stripeLinkFor, verifyWebhookSignature,
     isInvoiceTemplate, revenueTotals, revenueMonthly, revenueByClient, revenueOverdue,
   } = deps;
@@ -166,7 +165,7 @@ export function createApiRouter(deps: ApiDeps) {
                   return json({ error: "client_id, from, to required (or items[])" }, 400);
                 items = groupToLineItems(
                   unbilledEntries(Number(body.client_id), String(body.from), String(body.to)),
-                  Number(body.rate) || 0, clientRounding(Number(body.client_id)));
+                  Number(body.rate) || 0);
               }
               const clean = items
                 .map(it => ({

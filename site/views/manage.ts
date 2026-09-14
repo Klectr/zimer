@@ -63,14 +63,6 @@ export function createManageViews(deps: ManageViewDeps) {
                   </div>
                   <button class="md-text-button" type="submit">Save</button>
                 </form>
-                <form method="post" action="/clients/${c.id}/rounding" class="inline" hx-post="/clients/${c.id}/rounding" hx-target="#manage-cols" hx-swap="outerHTML" title="Billable rounding">
-                  <div class="md-text-field filled compact auto-width">
-                    <select name="rounding_minutes" aria-label="Rounding rule for ${esc(c.name)}" onchange="this.form.requestSubmit()">
-                      <option value="0"${!c.rounding_minutes ? " selected" : ""}>No rounding</option>
-                      ${[6, 15, 30, 60].map(n => `<option value="${n}"${c.rounding_minutes === n ? " selected" : ""}>${n} min</option>`).join("")}
-                    </select>
-                  </div>
-                </form>
                 <form method="post" action="/clients/${c.id}/delete" class="inline" hx-post="/clients/${c.id}/delete" hx-target="#manage-cols" hx-swap="outerHTML"><button class="md-icon-button danger" hx-confirm="Delete client? Projects keep their entries." aria-label="Delete client ${esc(c.name)}" title="Delete">${icon("delete")}</button></form>
                 <button class="md-text-button" hx-post="/clients/${c.id}/portal-link" hx-target="#portal-link-${c.id}" hx-swap="outerHTML" title="Client portal link">Portal</button>
                 <span id="portal-link-${c.id}"></span>

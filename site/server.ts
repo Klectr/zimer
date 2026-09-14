@@ -47,7 +47,7 @@ const { layout, notFoundPage, errorPage } = createLayoutViews(qRunning);
 
 const {
   getInvoice, invoiceTotals, nextInvoiceNumber, stripeLinkFor,
-  unbilledEntries, clientRounding, groupToLineItems,
+  unbilledEntries, groupToLineItems,
   projectOptions, m3ProgressBar, weekTargetBar, budgetAlertCard,
   ensurePublicToken, getPublicToken, mintPublicToken, getPortalToken, ensurePortalToken,
 } = createDomain({ db, qInvoice, qInvoiceItems, TOKEN, budgetAlerts });
@@ -75,7 +75,7 @@ const { loginPage, publicInvoicePage, portalPage } = createPublicViews({
 });
 const { handleApi } = createApiRouter({
   db, qRunning, qOne, qRange, qInvoice, qInvoices, TOKEN, authedApi, json,
-  entryToJson, groupToLineItems, unbilledEntries, clientRounding, getInvoice,
+  entryToJson, groupToLineItems, unbilledEntries, getInvoice,
   invoiceTotals, nextInvoiceNumber, stripeLinkFor, verifyWebhookSignature,
   isInvoiceTemplate, revenueTotals, revenueMonthly, revenueByClient, revenueOverdue,
 });
@@ -87,7 +87,7 @@ const { handleWeb } = createWebRouter({
   calendarPage, editPage, manageCols, managePage, invoicesPage, invoiceNewPage,
   defaultNewInvParams, invoiceStep2, invoiceDetailPage, invoiceDetailBody, invoiceDoc,
   getInvoice, invoiceTotals,
-  nextInvoiceNumber, stripeLinkFor, unbilledEntries, clientRounding,
+  nextInvoiceNumber, stripeLinkFor, unbilledEntries,
   groupToLineItems, ensurePublicToken, getPublicToken, mintPublicToken, getPortalToken,
   ensurePortalToken, invoicePdf, isInvoiceTemplate, stripeConfigured,
   workspaceEmpty, demoIds, seedDemoData, removeDemoData, entryToJson,

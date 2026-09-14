@@ -54,6 +54,10 @@ CREATE INDEX IF NOT EXISTS idx_items_invoice ON invoice_items(invoice_id);
 /* Issue #197: estimates removed — drop the orphaned tables so
    existing databases are cleaned up. */
 db.exec(`DROP TABLE IF EXISTS estimate_items; DROP TABLE IF EXISTS estimates;`);
+/* Issue #199: per-client rounding removed in favor of a fixed 5-minute rule —
+   drop the orphaned column so existing databases are cleaned up. */
+try { db.exec("ALTER TABLE clients DROP COLUMN rounding_minutes"); }
+catch { /* column already gone */ }
 /* Issue #195: recurring invoices removed — drop the orphaned table so
    existing databases are cleaned up. */
 db.exec(`DROP TABLE IF EXISTS recurring_schedules;`);
@@ -73,7 +77,6 @@ db.exec(`DROP TABLE IF EXISTS recurring_schedules;`);
     ["invoices", "paid_at", "TEXT"],
     ["projects", "budget_hours", "REAL"],
     ["projects", "budget_amount", "REAL"],
-    ["clients", "rounding_minutes", "INTEGER"],
   ] as const) {
     try { db.exec(`ALTER TABLE ${tbl} ADD COLUMN ${col} ${def}`); }
     catch { /* column already exists */ }
