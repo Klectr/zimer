@@ -316,15 +316,6 @@ export function createWebRouter(deps: WebDeps) {
           if (isHtmx(req)) return html(manageCols()); // #71: swap in place
           return new Response(null, { status: 302, headers: { Location: "/manage" } });
         }
-        const pb = path.match(/^\/projects\/(\d+)\/budget$/);
-        if (pb && method === "POST") {
-          const form = await req.formData();
-          const bh = Number(form.get("budget_hours") || 0), ba = Number(form.get("budget_amount") || 0);
-          db.query("UPDATE projects SET budget_hours = ?, budget_amount = ? WHERE id = ?")
-            .run(bh > 0 ? bh : null, ba > 0 ? ba : null, Number(pb[1]));
-          if (isHtmx(req)) return html(manageCols());
-          return new Response(null, { status: 302, headers: { Location: "/manage" } });
-        }
         m = path.match(/^\/projects\/(\d+)\/delete$/);
         if (m && method === "POST") {
           db.query("DELETE FROM projects WHERE id = ?").run(Number(m[1]));

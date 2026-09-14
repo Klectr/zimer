@@ -17,7 +17,6 @@ import { json, html, isHtmx, publicOrigin } from "./lib/http.ts";
 import { getToken, tokensEqual, authedApi, authedPage } from "./lib/auth.ts";
 import { createDb } from "./db.ts";
 import { createRevenue } from "./lib/revenue.ts";
-import { createBudgets } from "./lib/budgets.ts";
 import { workspaceEmpty, demoIds, seedDemoData, removeDemoData, demoBanner } from "./lib/demo.ts";
 import { createDomain, CAL_HOUR_PX, DAY_TARGET_SECS } from "./lib/domain.ts";
 import { createLayoutViews } from "./views/layout.ts";
@@ -42,18 +41,17 @@ const {
 } = createDb(DATA_DIR);
 const { revenueTotals, revenueMonthly, revenueByClient, isOverdue, revenueOverdue } =
   createRevenue(qRevenueRows);
-const { projectSpend, budgetStatus, budgetAlerts } = createBudgets(db);
 const { layout, notFoundPage, errorPage } = createLayoutViews(qRunning);
 
 const {
   getInvoice, invoiceTotals, nextInvoiceNumber, stripeLinkFor,
   unbilledEntries, groupToLineItems,
-  projectOptions, m3ProgressBar, weekTargetBar, budgetAlertCard,
+  projectOptions, m3ProgressBar, weekTargetBar,
   ensurePublicToken, getPublicToken, mintPublicToken, getPortalToken, ensurePortalToken,
-} = createDomain({ db, qInvoice, qInvoiceItems, TOKEN, budgetAlerts });
+} = createDomain({ db, qInvoice, qInvoiceItems, TOKEN });
 
 const { timerPartial, todayPartial, dashboardPage } = createTimerViews({
-  db, qRunning, qRange, layout, demoBanner, budgetAlertCard, projectOptions,
+  db, qRunning, qRange, layout, demoBanner, projectOptions,
   revenueTotals, revenueMonthly, revenueByClient, revenueOverdue, m3ProgressBar,
   dayTargetSecs: DAY_TARGET_SECS,
 });
@@ -62,7 +60,7 @@ const { weekInner, weekGrid, calendarPage, editPage } = createCalendarViews({
   calHourPx: CAL_HOUR_PX,
 });
 const { manageCols, managePage, clientOptions } =
-  createManageViews({ db, layout, projectSpend, budgetStatus });
+  createManageViews({ db, layout });
 const {
   invoicesPage, defaultNewInvParams, invoiceNewPage, invoiceStep2, invoiceSheet,
   invoiceDoc, invoiceDetailBody, invoiceDetailPage,

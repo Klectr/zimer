@@ -1,20 +1,17 @@
 /** Manage views: clients + projects columns (in-place fragment) and the
- *  manage page shell. Budget spend helpers come from lib/budgets.ts via
- *  injection. */
+ *  manage page shell. */
 
 import type { Database } from "bun:sqlite";
-import { esc, money } from "../lib/format.ts";
+import { esc } from "../lib/format.ts";
 import { icon } from "../lib/icons.ts";
 
 export interface ManageViewDeps {
   db: Database;
   layout: (title: string, body: string, active?: "timer" | "calendar" | "manage" | "invoices", fixed?: boolean) => string;
-  projectSpend: (projectId: number) => { hours: number; amount: number; rate: number };
-  budgetStatus: (p: any, spend: { hours: number; amount: number }) => "warn" | "over" | null;
 }
 
 export function createManageViews(deps: ManageViewDeps) {
-  const { db, layout, projectSpend, budgetStatus } = deps;
+  const { db, layout } = deps;
 
   /* #71: clients + projects columns as a fragment — actions swap #manage-cols
      in place instead of reloading the page. */
@@ -86,31 +83,12 @@ export function createManageViews(deps: ManageViewDeps) {
             </div>
           </form>
           ${projects.length ? `<ul class="md-list">${projects.map(p => {
-            const spend = projectSpend(p.id);
-            const bs = budgetStatus(p, spend);
-            const chip = bs === "over" ? ` <span class="attn-chip">Over budget</span>`
-              : bs === "warn" ? ` <span class="warn-chip">80% of budget</span>` : "";
-            const bits: string[] = [];
-            if (p.budget_hours) bits.push(`${spend.hours}h / ${p.budget_hours}h`);
-            if (p.budget_amount) bits.push(`${money(spend.amount)} / ${money(p.budget_amount)}`);
-            if (!bits.length && spend.hours > 0) bits.push(`${spend.hours}h logged`);
             return `<li class="md-list-item" style="min-height:56px">
               <div class="md-list-item-content">
-                <div class="md-list-item-headline">${p.client_color ? `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${esc(p.client_color)};margin-right:8px"></span>` : ""}${esc(p.name)}${chip}</div>
+                <div class="md-list-item-headline">${p.client_color ? `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${esc(p.client_color)};margin-right:8px"></span>` : ""}${esc(p.name)}</div>
                 ${p.client_name ? `<div class="md-list-item-supporting">${esc(p.client_name)}</div>` : ""}
-                ${bits.length ? `<div class="md-list-item-supporting budget-spend">${bits.join(" · ")}</div>` : ""}
               </div>
               <div class="md-list-item-trailing">
-                <form method="post" action="/projects/${p.id}/budget" class="inline budget-form" hx-post="/projects/${p.id}/budget" hx-target="#manage-cols" hx-swap="outerHTML" title="Budget">
-                  <div class="md-text-field filled compact" style="width:84px">
-                    <input type="number" name="budget_hours" value="${p.budget_hours || ""}" min="0" step="0.25" placeholder="0" aria-label="Hours budget for ${esc(p.name)}">
-                  </div>
-                  <div class="md-text-field filled compact has-prefix" style="width:104px">
-                    <span class="affix prefix" aria-hidden="true">$</span>
-                    <input type="number" name="budget_amount" value="${p.budget_amount || ""}" min="0" step="0.01" placeholder="0" aria-label="Amount budget for ${esc(p.name)}">
-                  </div>
-                  <button class="md-text-button" type="submit">Set</button>
-                </form>
                 <form method="post" action="/projects/${p.id}/delete" class="inline" hx-post="/projects/${p.id}/delete" hx-target="#manage-cols" hx-swap="outerHTML"><button class="md-icon-button danger" hx-confirm="Delete project? Entries keep their history." aria-label="Delete project ${esc(p.name)}" title="Delete">${icon("delete")}</button></form>
               </div>
             </li>`;}).join("")}</ul>` : `<p class="muted">No projects yet.</p>`}

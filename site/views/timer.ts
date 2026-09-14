@@ -1,7 +1,7 @@
 /** Timer page views: dashboard, timer card, today's entries, today-vs-8h
  *  pacing bar, and the revenue pane (cards, 12-month chart, per-client
  *  breakdown, overdue attention). Domain data arrives through injected
- *  helpers; layout, demo banner, and budget card come from their owning
+ *  helpers; layout and demo banner come from their owning
  *  slices, so every call site keeps working unchanged. */
 
 import type { Database, Statement } from "bun:sqlite";
@@ -15,7 +15,6 @@ export interface TimerViewDeps {
   qRange: Statement;
   layout: (title: string, body: string, active?: "timer" | "calendar" | "manage" | "invoices", fixed?: boolean) => string;
   demoBanner: (db: Database) => string;
-  budgetAlertCard: () => string;
   projectOptions: (selected?: number | null) => string;
   revenueTotals: () => { invoiced: number; paid: number; outstanding: number };
   revenueMonthly: () => { label: string; invoiced: number; paid: number }[];
@@ -26,7 +25,7 @@ export interface TimerViewDeps {
 }
 
 export function createTimerViews(deps: TimerViewDeps) {
-  const { db, qRunning, qRange, layout, demoBanner, budgetAlertCard, projectOptions,
+  const { db, qRunning, qRange, layout, demoBanner, projectOptions,
     revenueTotals, revenueMonthly, revenueByClient, revenueOverdue, m3ProgressBar, dayTargetSecs } = deps;
 
   function entryRow(e: Entry, i = 0): string {
@@ -122,7 +121,6 @@ export function createTimerViews(deps: TimerViewDeps) {
           <div class="scroll-region">
             <h2 class="md-headline-small">Revenue</h2>
             ${revenueSection()}
-            ${budgetAlertCard()}
           </div>
         </aside>
       </div>`, "timer", true);
