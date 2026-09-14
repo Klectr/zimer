@@ -368,6 +368,10 @@ input[type="number"] {
 /* compact (40dp) field for dense rows */
 .md-text-field.compact input { height: 40px; padding-top: 8px; padding-bottom: 8px; font-size: 14px; }
 .md-text-field.compact .affix { font-size: 14px; }
+/* auto-width: size the field to its content (e.g. a select sized to its
+   longest option) instead of a fragile fixed pixel width. */
+.md-text-field.auto-width { display: inline-block; width: auto; }
+.md-text-field.auto-width select { width: auto; }
 
 /* color control: tonal container with palette icon, label, and swatch */
 .md-color-control {
@@ -839,8 +843,13 @@ body.app-fixed .cal-gutter-spacer {
    under the name instead of crushing it or forcing a horizontal scroll. */
 #manage-cols .md-list-item { flex-wrap: wrap; row-gap: 4px; }
 #manage-cols .md-list-item-content { flex: 1 1 160px; }
-#manage-cols .md-list-item-trailing { flex: 1 1 auto; flex-wrap: wrap; justify-content: flex-end; row-gap: 8px; }
+#manage-cols .md-list-item-trailing { flex: 1 1 auto; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 8px; }
 #manage-cols .md-list-item-trailing > * { flex: none; } /* controls keep natural width, wrap as units */
+#manage-cols .rate-form, #manage-cols .budget-form { margin-right: 0; }
+/* Portal link reveal: full-width line under the controls, URL truncated,
+   copy button pinned at the end. */
+#manage-cols .portal-url { flex: 1 1 100%; display: flex; align-items: center; gap: 8px; margin: 4px 0 0; }
+#manage-cols .portal-url input { flex: 1; min-width: 0; width: auto; }
 
 .page-head-actions { display: flex; gap: 8px; align-items: center; }
 /* Milestone 12: client portal. */
