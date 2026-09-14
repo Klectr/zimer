@@ -196,7 +196,10 @@ export function createCalendarViews(deps: CalendarViewDeps) {
             <div class="cal-gutter cal-hours">${hourLabels}</div>
           </div>
           ${days.join("")}
-          <div class="cal-now" id="cal-now" hidden></div>
+          {/* data-now, not id: htmx's settle restores server attributes on
+              swapped nodes whose id already exists in the DOM, which would
+              wipe placeNow()'s positioning ~20ms after every week swap. */}
+          <div class="cal-now" data-now hidden></div>
         </div>
       </div>
     </div>
@@ -284,7 +287,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     var delBtn=document.getElementById('cal-delete');
     var mode='create', editId=null, dayStr='';
     /* grid owns the scroll: land near the current time when today is in view */
-    var scroller=document.querySelector('.cal-scroll'), nowEl=document.getElementById('cal-now');
+    var scroller=document.querySelector('.cal-scroll'), nowEl=document.querySelector('[data-now]');
     if(scroller&&nowEl){var r=nowEl.getBoundingClientRect(),s=scroller.getBoundingClientRect();
       scroller.scrollTop=Math.max(0,r.top-s.top+scroller.scrollTop-scroller.clientHeight*0.35);}
     function toMin(t){var p=t.split(':');return (+p[0])*60+(+p[1]);}
@@ -322,8 +325,8 @@ export function createCalendarViews(deps: CalendarViewDeps) {
        entry gets a one-time highlight. */
     /* Week-nav buttons (#77) swap #week via HTMX: suppress the load-entrance
        animations for the swap, same as refreshWeek above. Unlike refreshWeek,
-       grid scroll is intentionally NOT preserved — a fresh week starts at the
-       top, matching full-load behavior. */
+       grid scroll is intentionally NOT preserved — a fresh week centers the
+       now-line when today is visible (#215), else starts at the top. */
     document.body.addEventListener('htmx:beforeSwap',function(e){
       if(e.detail && e.detail.target && e.detail.target.id==='week')
         document.getElementById('week').classList.add('no-enter');
@@ -486,7 +489,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       for(var i=0;i<t.length;i++) t[i].classList.remove('today');
       var nm=document.querySelectorAll('.cal-day-num.today');
       for(var i=0;i<nm.length;i++) nm[i].classList.remove('today');
-      var line=document.getElementById('cal-now');
+      var line=document.querySelector('[data-now]');
       var col=document.querySelector('.cal-day-col[data-date="'+today+'"]');
       if(!col){ if(line) line.hidden=true; return; }
       var day=col.closest('.cal-day');
@@ -502,10 +505,24 @@ export function createCalendarViews(deps: CalendarViewDeps) {
         run[i].style.height=Math.max(((nowMin-sm)/60)*HOUR,26).toFixed(1)+'px';
       }
     }
+    /* #215: on load (and after week-nav swaps), center the now-line in the
+       scroll viewport when it's visible. Entry create/edit/delete keeps the
+       user's scroll untouched. Instant jump, no smooth scrolling. */
+    function centerOnNow(){
+      var line=document.querySelector('[data-now]');
+      var sc=document.querySelector('.cal-scroll');
+      if(!line||line.hidden||!sc) return;
+      var lr=line.getBoundingClientRect(),sr=sc.getBoundingClientRect();
+      sc.scrollTop=Math.max(0,sc.scrollTop+(lr.top-sr.top)-sr.height/2);
+    }
     placeNow();
+    /* Center after the entrance animations settle (columns rise up to ~590ms);
+       measuring mid-animation lands the scroll ~12px off. Week-nav swaps
+       suppress the entrance (#week.no-enter), so that path stays immediate. */
+    setTimeout(centerOnNow, 650);
     setInterval(placeNow,30000);
     document.body.addEventListener('htmx:afterSwap',function(e){
-      if(e.detail&&e.detail.target&&e.detail.target.id==='week') placeNow();
+      if(e.detail&&e.detail.target&&e.detail.target.id==='week'){ placeNow(); centerOnNow(); }
     });
   })();`;
   }
