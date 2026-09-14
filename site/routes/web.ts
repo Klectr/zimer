@@ -1,6 +1,6 @@
 /** Web routes: static files, login/logout, public invoice + portal pages,
  *  and every authenticated page and form action (timer, calendar, manage,
- *  invoices, estimates, CSV export, backup, demo data).
+ *  invoices, CSV export, backup, demo data).
  *  Returns null when nothing matched so the caller can fall through. */
 
 import { join, normalize, sep } from "node:path";
@@ -47,13 +47,9 @@ export interface WebDeps {
   invoiceDetailPage: (inv: Invoice & { items: InvoiceItem[] }, origin: string) => string;
   invoiceDetailBody: (inv: Invoice & { items: InvoiceItem[] }, origin: string) => string;
   invoiceDoc: (inv: Invoice & { items: InvoiceItem[] }) => string;
-  estimatesPage: () => string;
-  estimateNewPage: () => string;
-  estimateDetailPage: (e: any) => string;
   getInvoice: (id: number) => (Invoice & { items: InvoiceItem[] }) | null;
   invoiceTotals: (items: InvoiceItem[], taxRate: number) => { subtotal: number; tax: number; total: number };
   nextInvoiceNumber: () => string;
-  nextEstimateNumber: () => string;
   stripeLinkFor: (id: number) => Promise<{ url?: string; error?: string; status?: number }>;
   unbilledEntries: (clientId: number, from: string, to: string) => any[];
   clientRounding: (clientId: number) => number | null;
@@ -81,22 +77,12 @@ export function createWebRouter(deps: WebDeps) {
     dashboardPage, timerPartial, todayPartial, weekInner,
     calendarPage, editPage, manageCols, managePage, invoicesPage, invoiceNewPage,
     defaultNewInvParams, invoiceStep2, invoiceDetailPage, invoiceDetailBody, invoiceDoc,
-    estimatesPage, estimateNewPage, estimateDetailPage, getInvoice, invoiceTotals,
-    nextInvoiceNumber, nextEstimateNumber, stripeLinkFor, unbilledEntries, clientRounding,
+    getInvoice, invoiceTotals,
+    nextInvoiceNumber, stripeLinkFor, unbilledEntries, clientRounding,
     groupToLineItems, ensurePublicToken, getPublicToken, mintPublicToken, getPortalToken,
     ensurePortalToken, invoicePdf, isInvoiceTemplate, stripeConfigured,
     workspaceEmpty, demoIds, seedDemoData, removeDemoData, entryToJson,
   } = deps;
-
-  /** Estimate with items + total, or null. Web-only helper. */
-  function getEstimate(id: number): any | null {
-    const e = db.query(`SELECT e.*, c.name AS client_name FROM estimates e
-      LEFT JOIN clients c ON c.id = e.client_id WHERE e.id = ?`).get(id) as any;
-    if (!e) return null;
-    e.items = db.query("SELECT * FROM estimate_items WHERE estimate_id = ? ORDER BY id").all(id);
-    e.total = (e.items as any[]).reduce((a, it) => a + Number(it.amount || 0), 0);
-    return e;
-  }
 
   /** Serve a web request, or null when the path is not a web route. */
   async function handleWeb(req: Request, url: URL, path: string, method: string): Promise<Response | null> {
@@ -357,60 +343,6 @@ export function createWebRouter(deps: WebDeps) {
         }
 
         /* ---- invoicing pages ---- */
-        /* Milestone 13: estimates. */
-        if (path === "/estimates" && method === "GET") return html(estimatesPage());
-        if (path === "/estimates/new" && method === "GET") return html(estimateNewPage());
-        if (path === "/estimates" && method === "POST") {
-          const form = await req.formData();
-          const number = String(form.get("number") || nextEstimateNumber());
-          if (db.query("SELECT 1 FROM estimates WHERE number = ?").get(number))
-            return new Response("Estimate number already exists.", { status: 400 });
-          const descs = form.getAll("item_desc").map(String);
-          const hours = form.getAll("item_hours").map(Number);
-          const rates = form.getAll("item_rate").map(Number);
-          const items = descs.map((d, i) => ({
-            description: d || "Item",
-            hours: round2(hours[i] || 0),
-            rate: round2(rates[i] || 0),
-          })).filter(it => it.hours > 0).map(it => ({ ...it, amount: round2(it.hours * it.rate) }));
-          if (!items.length) return new Response("Add at least one line item with hours.", { status: 400 });
-          const cid = form.get("client_id");
-          const id = Number(db.query(
-            "INSERT INTO estimates (client_id, number, issue_date, valid_until, notes) VALUES (?, ?, ?, ?, ?)")
-            .run(cid ? Number(cid) : null, number, String(form.get("issue_date") || todayStr()),
-                  String(form.get("valid_until") || "") || null, String(form.get("notes") || ""))
-            .lastInsertRowid);
-          const ins = db.query("INSERT INTO estimate_items (estimate_id, description, hours, rate, amount) VALUES (?, ?, ?, ?, ?)");
-          for (const it of items) ins.run(id, it.description, it.hours, it.rate, it.amount);
-          return new Response(null, { status: 302, headers: { Location: `/estimates/${id}` } });
-        }
-        const em = path.match(/^\/estimates\/(\d+)$/);
-        if (em && method === "GET") {
-          const e = getEstimate(Number(em[1]));
-          return e ? html(estimateDetailPage(e)) : html(notFoundPage(authedPage(req, TOKEN)), 404);
-        }
-        /* Milestone 13.2: one-click estimate -> draft invoice conversion. */
-        const cv = path.match(/^\/estimates\/(\d+)\/convert$/);
-        if (cv && method === "POST") {
-          const e = getEstimate(Number(cv[1]));
-          if (!e) return new Response("Not found", { status: 404 });
-          if (e.converted_invoice_id)
-            return new Response(null, { status: 302, headers: { Location: `/invoices/${e.converted_invoice_id}` } });
-          const inv = db.query(
-            `INSERT INTO invoices (client_id, number, issue_date, due_date, tax_rate, notes)
-             VALUES (?, ?, ?, ?, 0, ?) RETURNING id`)
-            .get(e.client_id, nextInvoiceNumber(), todayStr(), addDays(todayStr(), 15),
-                 `Converted from estimate ${e.number}.${e.notes ? " " + e.notes : ""}`) as any;
-          const insItem = db.query(
-            "INSERT INTO invoice_items (invoice_id, description, hours, rate, amount) VALUES (?, ?, ?, ?, ?)");
-          db.transaction(() => {
-            for (const it of e.items as any[]) insItem.run(inv.id, it.description, it.hours, it.rate, it.amount);
-          })();
-          db.query("UPDATE estimates SET status = 'converted', converted_invoice_id = ? WHERE id = ?")
-            .run(inv.id, e.id);
-          return new Response(null, { status: 302, headers: { Location: `/invoices/${inv.id}` } });
-        }
-
         if (path === "/invoices" && method === "GET") return html(invoicesPage());
         if (path === "/invoices/new" && method === "GET") return html(invoiceNewPage(defaultNewInvParams()));
         if (path === "/invoices/preview" && method === "POST") {

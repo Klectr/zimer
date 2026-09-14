@@ -50,28 +50,10 @@ CREATE TABLE IF NOT EXISTS invoice_items (
   amount REAL NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_items_invoice ON invoice_items(invoice_id);
-/* Milestone 13: estimates/quotes that convert to draft invoices. */
-CREATE TABLE IF NOT EXISTS estimates (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  client_id INTEGER REFERENCES clients(id) ON DELETE SET NULL,
-  number TEXT NOT NULL UNIQUE,
-  issue_date TEXT NOT NULL,
-  valid_until TEXT,
-  status TEXT NOT NULL DEFAULT 'draft',
-  notes TEXT NOT NULL DEFAULT '',
-  converted_invoice_id INTEGER REFERENCES invoices(id) ON DELETE SET NULL,
-  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
-);
-CREATE TABLE IF NOT EXISTS estimate_items (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  estimate_id INTEGER NOT NULL REFERENCES estimates(id) ON DELETE CASCADE,
-  description TEXT NOT NULL,
-  hours REAL NOT NULL,
-  rate REAL NOT NULL,
-  amount REAL NOT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_est_items ON estimate_items(estimate_id);
 `);
+/* Issue #197: estimates removed — drop the orphaned tables so
+   existing databases are cleaned up. */
+db.exec(`DROP TABLE IF EXISTS estimate_items; DROP TABLE IF EXISTS estimates;`);
 /* Issue #195: recurring invoices removed — drop the orphaned table so
    existing databases are cleaned up. */
 db.exec(`DROP TABLE IF EXISTS recurring_schedules;`);
