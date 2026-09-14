@@ -6,8 +6,8 @@
  */
 
 import { Database } from "bun:sqlite";
-import { randomBytes, timingSafeEqual } from "node:crypto";
-import { mkdirSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import { randomBytes } from "node:crypto";
+import { mkdirSync } from "node:fs";
 import { join, resolve, normalize, sep } from "node:path";
 import { invoicePdf, isInvoiceTemplate, templateList } from "./pdf.ts";
 import { stripeConfigured, createPaymentLink, verifyWebhookSignature } from "./stripe.ts";
@@ -15,6 +15,8 @@ import { stripeConfigured, createPaymentLink, verifyWebhookSignature } from "./s
 import type { Entry, Invoice, InvoiceItem, RevenueRow, NewInvParams } from "./lib/types.ts";
 import { esc, fmtTime, fmtDate, durationSeconds, fmtDur, dayBounds, todayStr, entryToJson, round2, money, csvCell, csvResponse, statusPill, daysBetween, mondayOf, addDays, addMonths } from "./lib/format.ts";
 import { ICONS, icon } from "./lib/icons.ts";
+import { json, html, isHtmx, publicOrigin } from "./lib/http.ts";
+import { getToken, tokensEqual, authedApi, authedPage } from "./lib/auth.ts";
 
 const PORT = Number(process.env.PORT || 3000);
 const DATA_DIR = process.env.DATA_DIR || resolve(import.meta.dir, "data");
@@ -22,16 +24,8 @@ const STATIC_DIR = resolve(import.meta.dir, "static");
 mkdirSync(DATA_DIR, { recursive: true });
 
 /* ---------------- token ---------------- */
-function getToken(): string {
-  if (process.env.TIMEKEEP_TOKEN) return process.env.TIMEKEEP_TOKEN;
-  const p = join(DATA_DIR, ".token");
-  if (existsSync(p)) return readFileSync(p, "utf8").trim();
-  const t = randomBytes(32).toString("hex");
-  writeFileSync(p, t, { mode: 0o600 });
-  console.log(`\n  Generated API token (the extension + login page need it):\n\n    ${t}\n`);
-  return t;
-}
-const TOKEN = getToken();
+/* Milestone 20: token minting + auth checks live in lib/auth.ts. */
+const TOKEN = getToken(DATA_DIR);
 
 /* ---------------- db ---------------- */
 const db = new Database(join(DATA_DIR, "timekeep.db"), { create: true });
@@ -259,13 +253,7 @@ const qRange = db.query(`${ENTRY_SELECT} WHERE e.start_time >= ? AND e.start_tim
 
 /* Milestone 20: helpers live in lib/format.ts, icons in lib/icons.ts. */
 
-const json = (data: unknown, status = 200) =>
-  new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json" } });
-const html = (body: string, status = 200, extra: Record<string, string> = {}) =>
-  new Response(body, { status, headers: { "Content-Type": "text/html; charset=utf-8", ...extra } });
-/* #71: same-page actions swap in place via HTMX instead of full reloads.
-   HTMX sends HX-Request: true; no-JS clients keep the 302 fallback. */
-const isHtmx = (req: Request) => req.headers.get("hx-request") === "true";
+/* Milestone 20: json/html/isHtmx live in lib/http.ts. */
 
 /* ---------------- invoicing helpers ---------------- */
 /* Milestone 20: round2/money live in lib/format.ts; Invoice types in lib/types.ts. */
@@ -336,13 +324,7 @@ function mintPublicToken(id: number): string {
   throw new Error("could not mint public token");
 }
 
-/** Best-effort public origin for share links (honors reverse-proxy headers). */
-function publicOrigin(req: Request): string {
-  const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || `localhost:${PORT}`;
-  const proto = req.headers.get("x-forwarded-proto")
-    || (/^(localhost|127\.|10\.|192\.168\.)/.test(host) ? "http" : "https");
-  return `${proto}://${host}`;
-}
+/* Milestone 20: publicOrigin lives in lib/http.ts. */
 
 /** Public client invoice page: no auth, read-only, no actions or navigation. */
 function publicInvoicePage(inv: Invoice & { items: InvoiceItem[] }): string {
@@ -573,22 +555,7 @@ function groupToLineItems(entries: any[], rate: number, roundingMin?: number | n
 
 /* Milestone 20: statusPill lives in lib/format.ts. */
 
-/* ---------------- auth ---------------- */
-function tokensEqual(a: string, b: string): boolean {
-  const ab = Buffer.from(a), bb = Buffer.from(b);
-  return ab.length === bb.length && timingSafeEqual(ab, bb);
-}
-
-function authedApi(req: Request): boolean {
-  const h = req.headers.get("authorization") || "";
-  return h.startsWith("Bearer ") && tokensEqual(h.slice(7).trim(), TOKEN);
-}
-
-function authedPage(req: Request): boolean {
-  const m = (req.headers.get("cookie") || "").match(/(?:^|;\s*)tk=([^;]+)/);
-  if (!m) return false;
-  try { return tokensEqual(decodeURIComponent(m[1]), TOKEN); } catch { return false; }
-}
+/* Milestone 20: auth lives in lib/auth.ts. */
 
 /* ---------------- views ---------------- */
 function layout(title: string, body: string, active?: "timer" | "calendar" | "manage" | "invoices", fixed?: boolean): string {
@@ -2242,7 +2209,7 @@ Bun.serve({
       const p = normalize(join(STATIC_DIR, path.slice("/static/".length)));
       if (!p.startsWith(STATIC_DIR + sep) && p !== STATIC_DIR) return new Response("Forbidden", { status: 403 });
       const f = Bun.file(p);
-      if (!(await f.exists())) return html(notFoundPage(authedPage(req)), 404);
+      if (!(await f.exists())) return html(notFoundPage(authedPage(req, TOKEN)), 404);
       return new Response(f);
     }
     if (path === "/login") {
@@ -2314,7 +2281,7 @@ Bun.serve({
         return json({ received: true });
       }
       try {
-        if (!authedApi(req)) return json({ error: "unauthorized" }, 401);
+        if (!authedApi(req, TOKEN)) return json({ error: "unauthorized" }, 401);
         const body = (await req.json().catch(() => ({}))) as any;
 
         if (path === "/api/status" && method === "GET") {
@@ -2496,7 +2463,7 @@ Bun.serve({
 
     /* ---- pages ---- */
     try {
-      if (!authedPage(req)) {
+      if (!authedPage(req, TOKEN)) {
         return new Response(null, { status: 302, headers: { Location: "/login" } });
       }
 
@@ -2540,7 +2507,7 @@ Bun.serve({
       let m = path.match(/^\/entries\/(\d+)\/edit$/);
       if (m && method === "GET") {
         const page = editPage(Number(m[1]));
-        return page ? html(page) : html(notFoundPage(authedPage(req)), 404);
+        return page ? html(page) : html(notFoundPage(authedPage(req, TOKEN)), 404);
       }
     m = path.match(/^\/entries\/(\d+)$/);
     if (m && method === "POST") {
@@ -2643,7 +2610,7 @@ Bun.serve({
       const id = Number(pm[1]);
       const c = db.query("SELECT id, name FROM clients WHERE id = ?").get(id) as any;
       if (!c) return new Response("Not found", { status: 404 });
-      const url = `${publicOrigin(req)}/p/${ensurePortalToken(id)}`;
+      const url = `${publicOrigin(req, PORT)}/p/${ensurePortalToken(id)}`;
       const frag = `<span id="portal-link-${id}" class="portal-url"><input readonly value="${esc(url)}" onclick="this.select()" aria-label="Portal link for ${esc(c.name)}"><button class="md-icon-button" title="Copy link" onclick="navigator.clipboard.writeText('${esc(url)}')">${icon("copy")}</button></span>`;
       return isHtmx(req) ? html(frag) : new Response(null, { status: 302, headers: { Location: "/manage" } });
     }
@@ -2733,7 +2700,7 @@ Bun.serve({
     const em = path.match(/^\/estimates\/(\d+)$/);
     if (em && method === "GET") {
       const e = getEstimate(Number(em[1]));
-      return e ? html(estimateDetailPage(e)) : html(notFoundPage(authedPage(req)), 404);
+      return e ? html(estimateDetailPage(e)) : html(notFoundPage(authedPage(req, TOKEN)), 404);
     }
     /* Milestone 13.2: one-click estimate -> draft invoice conversion. */
     const cv = path.match(/^\/estimates\/(\d+)\/convert$/);
@@ -2888,12 +2855,12 @@ Bun.serve({
     m = path.match(/^\/invoices\/(\d+)$/);
     if (m && method === "GET") {
       const inv = getInvoice(Number(m[1]));
-      return inv ? html(invoiceDetailPage(inv, publicOrigin(req))) : html(notFoundPage(authedPage(req)), 404);
+      return inv ? html(invoiceDetailPage(inv, publicOrigin(req, PORT))) : html(notFoundPage(authedPage(req, TOKEN)), 404);
     }
     m = path.match(/^\/invoices\/(\d+)\.pdf$/);
     if (m && method === "GET") {
       const inv = getInvoice(Number(m[1]));
-      if (!inv) return html(notFoundPage(authedPage(req)), 404);
+      if (!inv) return html(notFoundPage(authedPage(req, TOKEN)), 404);
       const t = invoiceTotals(inv.items, inv.tax_rate);
       const pdf = invoicePdf({
         number: inv.number,
@@ -2925,7 +2892,7 @@ Bun.serve({
       db.query(want === "paid"
         ? "UPDATE invoices SET status = 'paid', paid_at = date('now') WHERE id = ?"
         : "UPDATE invoices SET status = ? WHERE id = ?").run(...(want === "paid" ? [inv!.id] : [want, inv!.id]));
-      if (isHtmx(req)) { const full = getInvoice(inv!.id); if (full) return html(invoiceDetailBody(full, publicOrigin(req))); } // #71
+      if (isHtmx(req)) { const full = getInvoice(inv!.id); if (full) return html(invoiceDetailBody(full, publicOrigin(req, PORT))); } // #71
       return new Response(null, { status: 302, headers: { Location: `/invoices/${inv!.id}` } });
     }
     m = path.match(/^\/invoices\/(\d+)\/template$/);
@@ -2935,13 +2902,13 @@ Bun.serve({
       if (!isInvoiceTemplate(tpl)) return new Response("Unknown template.", { status: 400 });
       db.query("UPDATE invoices SET template = ? WHERE id = ?").run(tpl, Number(m[1]));
       const inv = getInvoice(Number(m[1]));
-      return inv ? html(invoiceDoc(inv)) : html(notFoundPage(authedPage(req)), 404);
+      return inv ? html(invoiceDoc(inv)) : html(notFoundPage(authedPage(req, TOKEN)), 404);
     }
     m = path.match(/^\/invoices\/(\d+)\/stripe-link$/);
     if (m && method === "POST") {
       const r = await stripeLinkFor(Number(m[1]));
       if (r.url) {
-        if (isHtmx(req)) { const full = getInvoice(Number(m[1])); if (full) return html(invoiceDetailBody(full, publicOrigin(req))); } // #71
+        if (isHtmx(req)) { const full = getInvoice(Number(m[1])); if (full) return html(invoiceDetailBody(full, publicOrigin(req, PORT))); } // #71
         return new Response(null, { status: 302, headers: { Location: `/invoices/${m[1]}` } });
       }
       return new Response(r.error || "Stripe error", { status: r.status || 500 });
@@ -2949,19 +2916,19 @@ Bun.serve({
     m = path.match(/^\/invoices\/(\d+)\/public-token\/regenerate$/);
     if (m && method === "POST") {
       mintPublicToken(Number(m[1]));
-      if (isHtmx(req)) { const full = getInvoice(Number(m[1])); if (full) return html(invoiceDetailBody(full, publicOrigin(req))); } // #71
+      if (isHtmx(req)) { const full = getInvoice(Number(m[1])); if (full) return html(invoiceDetailBody(full, publicOrigin(req, PORT))); } // #71
       return new Response(null, { status: 302, headers: { Location: `/invoices/${m[1]}` } });
     }
     m = path.match(/^\/invoices\/(\d+)\/public-token\/revoke$/);
     if (m && method === "POST") {
       db.query("UPDATE invoices SET public_token = NULL WHERE id = ?").run(Number(m[1]));
-      if (isHtmx(req)) { const full = getInvoice(Number(m[1])); if (full) return html(invoiceDetailBody(full, publicOrigin(req))); } // #71
+      if (isHtmx(req)) { const full = getInvoice(Number(m[1])); if (full) return html(invoiceDetailBody(full, publicOrigin(req, PORT))); } // #71
       return new Response(null, { status: 302, headers: { Location: `/invoices/${m[1]}` } });
     }
     m = path.match(/^\/invoices\/(\d+)\/delete$/);
     if (m && method === "POST") {
       const inv = qInvoice.get(Number(m[1])) as Invoice | null;
-      if (!inv) return html(notFoundPage(authedPage(req)), 404);
+      if (!inv) return html(notFoundPage(authedPage(req, TOKEN)), 404);
       if (inv.status !== "draft") return new Response("Only draft invoices can be deleted.", { status: 400 });
       db.transaction(() => {
         db.query("UPDATE time_entries SET invoice_id = NULL WHERE invoice_id = ?").run(inv.id);
@@ -2970,10 +2937,10 @@ Bun.serve({
       return new Response(null, { status: 302, headers: { Location: "/invoices" } });
     }
 
-      return html(notFoundPage(authedPage(req)), 404);
+      return html(notFoundPage(authedPage(req, TOKEN)), 404);
     } catch (err) {
       console.error(`[timekeep] page ${method} ${path} threw:`, err);
-      return html(errorPage(authedPage(req)), 500);
+      return html(errorPage(authedPage(req, TOKEN)), 500);
     }
   },
 });
