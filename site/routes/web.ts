@@ -8,6 +8,7 @@ import type { Database, Statement } from "bun:sqlite";
 import { addDays, esc, round2, todayStr } from "../lib/format.ts";
 import type { Entry, Invoice, InvoiceItem } from "../lib/types.ts";
 import type { PdfInvoice } from "../pdf.ts";
+import { getMeta, setMeta } from "../db.ts";
 
 export interface WebDeps {
   db: Database;
@@ -39,6 +40,7 @@ export interface WebDeps {
   editPage: (id: number) => string | null;
   manageCols: () => string;
   managePage: () => string;
+  bizProfileSection: () => string;
   invoicesPage: () => string;
   invoiceNewPage: (p: any, preview?: any) => string;
   defaultNewInvParams: () => any;
@@ -71,7 +73,7 @@ export function createWebRouter(deps: WebDeps) {
     DATA_DIR, STATIC_DIR, TOKEN, authedPage, tokensEqual, html, json, csvResponse, isHtmx,
     publicOrigin, PORT, loginPage, publicInvoicePage, notFoundPage, errorPage,
     dashboardPage, timerPartial, todayPartial, weekInner,
-    calendarPage, editPage, manageCols, managePage, invoicesPage, invoiceNewPage,
+    calendarPage, editPage, manageCols, managePage, bizProfileSection, invoicesPage, invoiceNewPage,
     defaultNewInvParams, invoiceStep2, invoiceDetailPage, invoiceDetailBody, invoiceDoc,
     getInvoice, invoiceTotals,
     nextInvoiceNumber, stripeLinkFor, unbilledEntries,
@@ -267,6 +269,15 @@ export function createWebRouter(deps: WebDeps) {
         }
 
         if (path === "/manage" && method === "GET") return html(managePage());
+        /* #233: business profile for the Modern PDF template's FROM block. */
+        if (path === "/business-profile" && method === "POST") {
+          const form = await req.formData();
+          setMeta(db, "business_name", String(form.get("business_name") || "").trim());
+          setMeta(db, "business_email", String(form.get("business_email") || "").trim());
+          setMeta(db, "business_address", String(form.get("business_address") || "").trim());
+          if (isHtmx(req)) return html(bizProfileSection());
+          return new Response(null, { status: 302, headers: { Location: "/manage" } });
+        }
         if (path === "/clients" && method === "POST") {
           const form = await req.formData();
           db.query("INSERT INTO clients (name, color, rate) VALUES (?, ?, ?)")
@@ -389,6 +400,9 @@ export function createWebRouter(deps: WebDeps) {
             })),
             subtotal: t.subtotal, tax: t.tax, taxRate: inv.tax_rate, total: t.total,
             notes: inv.notes,
+            fromName: getMeta(db, "business_name") || undefined,
+            fromEmail: getMeta(db, "business_email") || undefined,
+            fromAddress: getMeta(db, "business_address") || undefined,
           }, inv.template);
           const filename = inv.number.replace(/[^A-Za-z0-9._-]+/g, "_") + ".pdf";
           return new Response(pdf, {

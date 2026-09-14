@@ -124,3 +124,14 @@ db.exec(`DROP TABLE IF EXISTS recurring_schedules;`);
 }
 
 export type DbBundle = ReturnType<typeof createDb>;
+
+/* #233: tiny key/value helpers over the meta table (business profile, etc.). */
+export function getMeta(db: Database, key: string): string {
+  const row = db.query("SELECT value FROM meta WHERE key = ?").get(key) as { value: string } | null;
+  return row?.value ?? "";
+}
+
+export function setMeta(db: Database, key: string, value: string): void {
+  db.query("INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
+    .run(key, value);
+}
