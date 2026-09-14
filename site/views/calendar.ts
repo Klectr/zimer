@@ -133,8 +133,9 @@ export function createCalendarViews(deps: CalendarViewDeps) {
           ${running ? "" : `<div class="cal-resize top" data-resize="start" title="Drag to change start" aria-hidden="true"></div><div class="cal-resize" data-resize="end" title="Drag to resize" aria-hidden="true"></div>`}
         </div>`;
       }).join("");
-      const nowLine = isToday
-        ? `<div class="cal-now" id="cal-now" style="top:${((nowMin / 60) * calHourPx).toFixed(1)}px"></div>` : "";
+      /* #213: "now" is a client concept (the server may be in another
+         timezone). The line is placed by placeNow() in calScript. */
+      const nowLine = "";
       // #69: day stats live in an M3 plain tooltip on the header (hover / focus / long-press),
       // not in the layout — the header stays two lines so time slots sit higher.
       const tip = total > 0 ? `${fmtDur(total)} total · ${fmtDur(billable)} billable` : "";
@@ -195,6 +196,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
             <div class="cal-gutter cal-hours">${hourLabels}</div>
           </div>
           ${days.join("")}
+          <div class="cal-now" id="cal-now" hidden></div>
         </div>
       </div>
     </div>
@@ -344,6 +346,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
           var el=weekEl.querySelector('.cal-entry[data-id="'+highlightId+'"]');
           if(el) el.classList.add('cal-flash');
         }
+        placeNow();
       }).catch(function(){ location.reload(); /* last resort: never leave stale data */ });
     }
     document.getElementById('cal-save').addEventListener('click',function(){
@@ -467,13 +470,43 @@ export function createCalendarViews(deps: CalendarViewDeps) {
         if(tipEl){ tipEl.classList.remove('tip-show'); tipEl=null; }
       },{passive:true});
     });
-    // keep the now-line pinned to the current time
-    function tickNow(){
-      var el=document.getElementById('cal-now'); if(!el) return;
-      var n=new Date();
-      el.style.top=((n.getHours()*60+n.getMinutes())/60*HOUR)+'px';
+    /* #213: the server's clock may be in another timezone (e.g. a UTC VPS),
+       so every "right now" presentation follows the viewer's local time:
+       the now-line (column + position), the .today highlight, and running
+       entry extents. Runs on load, every 30s, and after each in-place
+       week refresh. */
+    function clientToday(){
+      var n=new Date();var p=function(x){return String(x).padStart(2,'0');};
+      return n.getFullYear()+'-'+p(n.getMonth()+1)+'-'+p(n.getDate());
     }
-    setInterval(tickNow,60000);
+    function placeNow(){
+      var today=clientToday();
+      var n=new Date();var nowMin=n.getHours()*60+n.getMinutes();
+      var t=document.querySelectorAll('.cal-day.today');
+      for(var i=0;i<t.length;i++) t[i].classList.remove('today');
+      var nm=document.querySelectorAll('.cal-day-num.today');
+      for(var i=0;i<nm.length;i++) nm[i].classList.remove('today');
+      var line=document.getElementById('cal-now');
+      var col=document.querySelector('.cal-day-col[data-date="'+today+'"]');
+      if(!col){ if(line) line.hidden=true; return; }
+      var day=col.closest('.cal-day');
+      day.classList.add('today');
+      var num=day.querySelector('.cal-day-num'); if(num) num.classList.add('today');
+      day.classList.remove('paced-short'); /* the viewer's today is never "past" */
+      if(line){ col.appendChild(line);
+        line.style.top=((nowMin/60)*HOUR).toFixed(1)+'px'; line.hidden=false; }
+      var run=col.querySelectorAll('.cal-entry.running');
+      for(var i=0;i<run.length;i++){
+        var st=run[i].getAttribute('data-start'); if(!st) continue;
+        var pp=st.split(':'),sm=(+pp[0])*60+(+pp[1]);
+        run[i].style.height=Math.max(((nowMin-sm)/60)*HOUR,26).toFixed(1)+'px';
+      }
+    }
+    placeNow();
+    setInterval(placeNow,30000);
+    document.body.addEventListener('htmx:afterSwap',function(e){
+      if(e.detail&&e.detail.target&&e.detail.target.id==='week') placeNow();
+    });
   })();`;
   }
 
