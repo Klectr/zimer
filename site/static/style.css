@@ -1088,10 +1088,22 @@ body.app-fixed .cal-gutter-spacer {
 .template-bold .md-table thead th { font-weight: 700; color: var(--md-sys-color-on-surface); }
 .template-bold .md-table tfoot tr.grand td { font-size: 20px; }
 
-/* ---------------- Stripe (milestone 3) ---------------- */
-.stripe-row { display: flex; align-items: center; gap: 10px; margin: 4px 0 16px; flex-wrap: wrap; }
-.link-input { flex: 1; min-width: 200px; background: var(--md-sys-color-surface-container-highest); color: inherit;
-  border: none; border-radius: 8px; padding: 8px 12px; font: inherit; font-size: 13px; }
+/* ---------------- Share & collect (invoice detail, #227) ---------------- */
+.share-card { background: var(--md-sys-color-surface-container); border-radius: 20px;
+  padding: 20px 20px 8px; margin: 4px 0 20px; }
+.share-card-title { margin-bottom: 4px; }
+.share-row { display: grid; grid-template-columns: 40px 1fr; gap: 12px; padding: 14px 0; }
+.share-licon { color: var(--md-sys-color-on-surface-variant); padding-top: 2px; }
+.share-licon svg { width: 22px; height: 22px; }
+.share-body { min-width: 0; }
+.share-sub { color: var(--md-sys-color-on-surface-variant); margin: 2px 0 12px; }
+.share-field { display: flex; align-items: center; gap: 2px;
+  background: var(--md-sys-color-surface-container-highest); border-radius: 12px; padding: 2px 2px 2px 14px; }
+.share-field .link-input { flex: 1; min-width: 0; background: transparent; border: none;
+  border-radius: 0; padding: 10px 4px; color: inherit; font: inherit; font-size: 13px; }
+.share-field .md-icon-button { width: 40px; height: 40px; }
+.share-field .md-icon-button.copied { color: var(--md-sys-color-primary); }
+.share-actions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 10px; }
 .stripe-paid-chip { display: inline-block; margin-left: 8px; background: rgba(99,91,255,.18); color: #b3aeff;
   padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 500; vertical-align: middle; }
 

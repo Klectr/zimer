@@ -365,6 +365,7 @@ export function createWebRouter(deps: WebDeps) {
               for (const eid of it.entry_ids) linkEntry.run(inv.id, eid);
             }
           })();
+          mintPublicToken(inv.id); /* #227: client link exists from birth */
           return new Response(null, { status: 302, headers: { Location: `/invoices/${inv.id}` } });
         }
         m = path.match(/^\/invoices\/(\d+)$/);
@@ -407,6 +408,10 @@ export function createWebRouter(deps: WebDeps) {
           db.query(want === "paid"
             ? "UPDATE invoices SET status = 'paid', paid_at = date('now') WHERE id = ?"
             : "UPDATE invoices SET status = ? WHERE id = ?").run(...(want === "paid" ? [inv!.id] : [want, inv!.id]));
+          /* #227: a sent invoice collects by default — create the Stripe payment
+             link now. A Stripe failure never blocks the status transition; the
+             detail page offers a retry. */
+          if (want === "sent" && stripeConfigured()) { await stripeLinkFor(inv!.id); }
           if (isHtmx(req)) { const full = getInvoice(inv!.id); if (full) return html(invoiceDetailBody(full, publicOrigin(req, PORT))); } // #71
           return new Response(null, { status: 302, headers: { Location: `/invoices/${inv!.id}` } });
         }

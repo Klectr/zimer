@@ -74,7 +74,7 @@ const { loginPage, publicInvoicePage } = createPublicViews({
 const { handleApi } = createApiRouter({
   db, qRunning, qOne, qRange, qInvoice, qInvoices, TOKEN, authedApi, json,
   entryToJson, groupToLineItems, unbilledEntries, getInvoice,
-  invoiceTotals, nextInvoiceNumber, stripeLinkFor, verifyWebhookSignature,
+  invoiceTotals, nextInvoiceNumber, mintPublicToken, stripeLinkFor, verifyWebhookSignature,
   isInvoiceTemplate, revenueTotals, revenueMonthly, revenueByClient, revenueOverdue,
 });
 const { handleWeb } = createWebRouter({
