@@ -196,9 +196,9 @@ export function createCalendarViews(deps: CalendarViewDeps) {
             <div class="cal-gutter cal-hours">${hourLabels}</div>
           </div>
           ${days.join("")}
-          {/* data-now, not id: htmx's settle restores server attributes on
-              swapped nodes whose id already exists in the DOM, which would
-              wipe placeNow()'s positioning ~20ms after every week swap. */}
+          <!-- data-now, not id: htmx's settle restores server attributes on
+               swapped nodes whose id already exists in the DOM, which would
+               wipe placeNow()'s positioning ~20ms after every week swap. -->
           <div class="cal-now" data-now hidden></div>
         </div>
       </div>
