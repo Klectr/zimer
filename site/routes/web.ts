@@ -1,4 +1,4 @@
-/** Web routes: static files, login/logout, public invoice + portal pages,
+/** Web routes: static files, login/logout, public invoice pages,
  *  and every authenticated page and form action (timer, calendar, manage,
  *  invoices, CSV export, backup, demo data).
  *  Returns null when nothing matched so the caller can fall through. */
@@ -29,7 +29,6 @@ export interface WebDeps {
   PORT: number;
   loginPage: () => string;
   publicInvoicePage: (inv: Invoice & { items: InvoiceItem[] }) => string;
-  portalPage: (client: any) => string;
   notFoundPage: (authed: boolean) => string;
   errorPage: (authed: boolean) => string;
   dashboardPage: () => string;
@@ -56,8 +55,6 @@ export interface WebDeps {
   ensurePublicToken: (id: number) => string;
   getPublicToken: (id: number) => string | null;
   mintPublicToken: (id: number) => string;
-  getPortalToken: (clientId: number) => string | null;
-  ensurePortalToken: (clientId: number) => string;
   invoicePdf: (inv: PdfInvoice) => Uint8Array;
   isInvoiceTemplate: (t: string) => boolean;
   stripeConfigured: () => boolean;
@@ -72,14 +69,14 @@ export function createWebRouter(deps: WebDeps) {
   const {
     db, qRunning, qOne, qRange, qInvoice, qInvoices,
     DATA_DIR, STATIC_DIR, TOKEN, authedPage, tokensEqual, html, json, csvResponse, isHtmx,
-    publicOrigin, PORT, loginPage, publicInvoicePage, portalPage, notFoundPage, errorPage,
+    publicOrigin, PORT, loginPage, publicInvoicePage, notFoundPage, errorPage,
     dashboardPage, timerPartial, todayPartial, weekInner,
     calendarPage, editPage, manageCols, managePage, invoicesPage, invoiceNewPage,
     defaultNewInvParams, invoiceStep2, invoiceDetailPage, invoiceDetailBody, invoiceDoc,
     getInvoice, invoiceTotals,
     nextInvoiceNumber, stripeLinkFor, unbilledEntries,
-    groupToLineItems, ensurePublicToken, getPublicToken, mintPublicToken, getPortalToken,
-    ensurePortalToken, invoicePdf, isInvoiceTemplate, stripeConfigured,
+    groupToLineItems, ensurePublicToken, getPublicToken, mintPublicToken,
+    invoicePdf, isInvoiceTemplate, stripeConfigured,
     workspaceEmpty, demoIds, seedDemoData, removeDemoData, entryToJson,
   } = deps;
 
@@ -118,13 +115,6 @@ export function createWebRouter(deps: WebDeps) {
 
         /* Public client invoice page: no auth, read-only. The token is a
            credential — it is never logged, and unknown tokens 404. */
-        /* Milestone 12: public per-client portal. Token is a credential — never
-           logged, unknown tokens 404. */
-        const portal = path.match(/^\/p\/([A-Za-z0-9_-]{16,64})$/);
-        if (portal && method === "GET") {
-          const c = db.query("SELECT * FROM clients WHERE portal_token = ?").get(portal[1]) as any;
-          return c ? html(portalPage(c)) : html(notFoundPage(false), 404);
-        }
 
         const pub = path.match(/^\/i\/([A-Za-z0-9_-]{16,64})$/);
         if (pub && method === "GET") {
@@ -277,15 +267,6 @@ export function createWebRouter(deps: WebDeps) {
         }
 
         if (path === "/manage" && method === "GET") return html(managePage());
-        const pm = path.match(/^\/clients\/(\d+)\/portal-link$/);
-        if (pm && method === "POST") {
-          const id = Number(pm[1]);
-          const c = db.query("SELECT id, name FROM clients WHERE id = ?").get(id) as any;
-          if (!c) return new Response("Not found", { status: 404 });
-          const url = `${publicOrigin(req, PORT)}/p/${ensurePortalToken(id)}`;
-          const frag = `<span id="portal-link-${id}" class="portal-url"><input readonly value="${esc(url)}" onclick="this.select()" aria-label="Portal link for ${esc(c.name)}"><button class="md-icon-button" title="Copy link" onclick="navigator.clipboard.writeText('${esc(url)}')">${icon("copy")}</button></span>`;
-          return isHtmx(req) ? html(frag) : new Response(null, { status: 302, headers: { Location: "/manage" } });
-        }
         if (path === "/clients" && method === "POST") {
           const form = await req.formData();
           db.query("INSERT INTO clients (name, color, rate) VALUES (?, ?, ?)")

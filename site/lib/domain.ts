@@ -1,5 +1,5 @@
 /** Shared domain helpers: invoice numbering, line-item grouping (fixed
- *  5-minute billable rounding), public/portal tokens, Stripe payment links, project
+ *  5-minute billable rounding), public invoice tokens, Stripe payment links, project
  *  options and progress bars. Wired once in
  *  server.ts and injected into the route and view factories that need them. */
 
@@ -46,23 +46,6 @@ export function createDomain(deps: DomainDeps) {
   /** Mint and persist a public share token for an invoice if it lacks one. */
   function ensurePublicToken(id: number): string {
     return getPublicToken(id) ?? mintPublicToken(id);
-  }
-
-  /** Milestone 12: per-client portal token, minted on demand. */
-  function getPortalToken(clientId: number): string | null {
-    return (db.query("SELECT portal_token FROM clients WHERE id = ?").get(clientId) as any)?.portal_token ?? null;
-  }
-  function ensurePortalToken(clientId: number): string {
-    const existing = getPortalToken(clientId);
-    if (existing) return existing;
-    for (let i = 0; i < 5; i++) {
-      const tok = newPublicToken();
-      try {
-        db.query("UPDATE clients SET portal_token = ? WHERE id = ?").run(tok, clientId);
-        return tok;
-      } catch { /* collision — retry */ }
-    }
-    throw new Error("could not mint portal token");
   }
 
   /** Current public share token for an invoice, or null if none (never mints). */
@@ -229,6 +212,5 @@ export function createDomain(deps: DomainDeps) {
     unbilledEntries, groupToLineItems,
     projectOptions, m3ProgressBar, weekTargetBar,
     newPublicToken, ensurePublicToken, getPublicToken, mintPublicToken,
-    getPortalToken, ensurePortalToken,
   };
 }

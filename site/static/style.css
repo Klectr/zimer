@@ -836,25 +836,16 @@ body.app-fixed .cal-gutter-spacer {
 .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
 .two-col > * { min-width: 0; } /* grid items default to min-width:auto — long
   nowrap headlines would blow the column out and cause horizontal scroll */
-/* Manage rows carry several inline controls (rate + save + delete +
-   portal). Let the row wrap so the controls drop under the name instead
+/* Manage rows carry several inline controls (rate + save + delete).
+   Let the row wrap so the controls drop under the name instead
    of crushing it or forcing a horizontal scroll. */
 #manage-cols .md-list-item { flex-wrap: wrap; row-gap: 4px; }
 #manage-cols .md-list-item-content { flex: 1 1 160px; }
 #manage-cols .md-list-item-trailing { flex: 1 1 auto; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 8px; }
 #manage-cols .md-list-item-trailing > * { flex: none; } /* controls keep natural width, wrap as units */
 #manage-cols .rate-form { margin-right: 0; }
-/* Portal link reveal: full-width line under the controls, URL truncated,
-   copy button pinned at the end. */
-#manage-cols .portal-url { flex: 1 1 100%; display: flex; align-items: center; gap: 8px; margin: 4px 0 0; }
-#manage-cols .portal-url input { flex: 1; min-width: 0; width: auto; }
 
 .page-head-actions { display: flex; gap: 8px; align-items: center; }
-/* Milestone 12: client portal. */
-.portal-head { margin: 8px 0 24px; }
-.portal-head h1 { margin: 4px 0 12px; }
-.portal-url { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; }
-.portal-url input { width: 260px; }
 /* Milestone 17: bottom-edge resize handle for calendar entries. */
 .cal-resize {
   position: absolute; left: 0; right: 0; bottom: 0; height: 12px;
