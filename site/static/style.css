@@ -937,6 +937,7 @@ body.app-fixed .cal-gutter-spacer {
 .pill-draft { background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container); }
 .pill-sent { background: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container); }
 .pill-paid { background: #1f3d2b; color: #b8e6c5; }
+.pill-unpaid { background: var(--md-sys-color-error-container); color: var(--md-sys-color-on-error-container); }
 
 .two-field { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 @media (max-width: 560px) { .two-field { grid-template-columns: 1fr; } }

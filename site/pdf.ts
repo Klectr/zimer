@@ -102,7 +102,7 @@ function drawClassic(inv: PdfInvoice, doc: PdfDoc) {
   doc.y -= 30;
   const dates = `Issued ${fmtDate(inv.issueDate)}${inv.dueDate ? `  |  Due ${fmtDate(inv.dueDate)}` : ""}`;
   doc.text(M, doc.y, 11, dates, false, true);
-  doc.rtext(RIGHT, doc.y, 10, `Status: ${inv.status.toUpperCase()}`, true);
+  doc.rtext(RIGHT, doc.y, 10, `Status: ${(inv.status === "paid" ? "PAID" : "UNPAID")}`, true);
   doc.y -= 18;
   doc.rule(doc.y);
   doc.y -= 28;
@@ -195,7 +195,7 @@ function drawMinimal(inv: PdfInvoice, doc: PdfDoc) {
   doc.y -= 20;
   const dates = `Issued ${fmtDate(inv.issueDate)}${inv.dueDate ? `  ·  Due ${fmtDate(inv.dueDate)}` : ""}`;
   doc.text(M, doc.y, 10, dates, false, true);
-  doc.rtext(RIGHT, doc.y, 10, inv.status.toUpperCase(), false, true);
+  doc.rtext(RIGHT, doc.y, 10, (inv.status === "paid" ? "PAID" : "UNPAID"), false, true);
   doc.y -= 14;
   doc.rule(doc.y, 0.5);
   doc.y -= 26;
@@ -282,7 +282,7 @@ function drawBold(inv: PdfInvoice, doc: PdfDoc) {
   doc.y -= 36;
   const dates = `Issued ${fmtDate(inv.issueDate)}${inv.dueDate ? `  |  Due ${fmtDate(inv.dueDate)}` : ""}`;
   doc.text(M, doc.y, 11, dates, true, true);
-  doc.rtext(RIGHT, doc.y, 11, inv.status.toUpperCase(), true, true);
+  doc.rtext(RIGHT, doc.y, 11, (inv.status === "paid" ? "PAID" : "UNPAID"), true, true);
   doc.y -= 16;
   doc.rule(doc.y, 2.5);
   doc.y -= 28;

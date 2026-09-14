@@ -3,7 +3,7 @@
  *  invoiceSheet is also returned so the public-views factory can reuse it. */
 
 import type { Database, Statement } from "bun:sqlite";
-import { addDays, daysBetween, esc, money, round2, todayStr } from "../lib/format.ts";
+import { addDays, daysBetween, esc, money, payPill, round2, todayStr } from "../lib/format.ts";
 import { icon } from "../lib/icons.ts";
 import type { Invoice, InvoiceItem, NewInvParams } from "../lib/types.ts";
 
@@ -205,7 +205,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
             <div class="md-title-large">${esc(inv.number)}</div>
             <div class="muted">${client}</div>
           </div>
-          <div class="inv-meta">${statusPill(inv.status)}${paidChip}</div>
+          <div class="inv-meta">${payPill(inv.status === "paid")}${paidChip}</div>
         </div>
         <div class="muted tiny inv-dates-min">Issued ${esc(inv.issue_date)}${inv.due_date ? ` · due ${esc(inv.due_date)}` : ""}</div>` : inv.template === "bold" ? `
         <div class="inv-head-bold">
@@ -214,7 +214,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
             <div class="md-title-medium">${esc(inv.number)}</div>
             <div class="muted">${client}</div>
           </div>
-          <div class="inv-meta">${statusPill(inv.status)}${paidChip}</div>
+          <div class="inv-meta">${payPill(inv.status === "paid")}${paidChip}</div>
         </div>
         ${datesClassic}` : `
         <div class="inv-head">
@@ -222,7 +222,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
             <div class="md-headline-small">Invoice ${esc(inv.number)}</div>
             <div class="muted">${client}</div>
           </div>
-          <div class="inv-meta">${statusPill(inv.status)}${paidChip}</div>
+          <div class="inv-meta">${payPill(inv.status === "paid")}${paidChip}</div>
         </div>
         ${datesClassic}`;
     return `<div class="md-card invoice-sheet template-${esc(inv.template)}" id="invoice-sheet">
