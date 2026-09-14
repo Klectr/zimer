@@ -11,10 +11,11 @@ export const html = (body: string, status = 200, extra: Record<string, string> =
    HTMX sends HX-Request: true; no-JS clients keep the 302 fallback. */
 export const isHtmx = (req: Request) => req.headers.get("hx-request") === "true";
 
-/** Best-effort public origin for share links (honors reverse-proxy headers). */
+/** Best-effort public origin for share links (honors reverse-proxy headers).
+ *  Without proxy headers, trust the request's actual protocol (#225) — never
+ *  guess from the host (a Tailscale IP is not localhost, but it is plain HTTP). */
 export function publicOrigin(req: Request, port: number): string {
   const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || `localhost:${port}`;
-  const proto = req.headers.get("x-forwarded-proto")
-    || (/^(localhost|127\.|10\.|192\.168\.)/.test(host) ? "http" : "https");
+  const proto = req.headers.get("x-forwarded-proto") || new URL(req.url).protocol.replace(/:$/, "");
   return `${proto}://${host}`;
 }
