@@ -158,7 +158,7 @@ export function createDomain(deps: DomainDeps) {
 
 
 
-  /* Milestone 20: mondayOf/addDays live in lib/format.ts. */
+  /* Milestone 20: sundayOf/addDays live in lib/format.ts. */
 
   /** Shared M3 Expressive determinate progress track (#87). Under target: a
       wave-masked gold fill that ripples while motion is allowed, a tonal

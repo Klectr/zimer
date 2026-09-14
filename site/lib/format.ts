@@ -15,6 +15,7 @@ export function statusPill(status: string): string {
   return `<span class="pill pill-${esc(status)}">${esc(label)}</span>`;
 }
 
+
 /** Milestone 10: quote a CSV cell when it contains a comma, quote, or newline. */
 export function csvCell(v: string): string {
   return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
@@ -57,12 +58,12 @@ export function dayBounds(dateStr: string): [string, string] {
   return [start.toISOString(), end.toISOString()];
 }
 
-/** Monday of the week containing dateStr (or today). Returns YYYY-MM-DD. */
-export function mondayOf(dateStr?: string): string {
+/** Sunday of the week containing dateStr (or today). Returns YYYY-MM-DD. */
+export function sundayOf(dateStr?: string): string {
   const base = dateStr ? new Date(dateStr + "T12:00:00") : new Date();
-  const day = (base.getDay() + 6) % 7; // 0 = Monday
-  const mon = new Date(base.getFullYear(), base.getMonth(), base.getDate() - day);
-  return `${mon.getFullYear()}-${String(mon.getMonth() + 1).padStart(2, "0")}-${String(mon.getDate()).padStart(2, "0")}`;
+  const day = base.getDay(); // 0 = Sunday
+  const sun = new Date(base.getFullYear(), base.getMonth(), base.getDate() - day);
+  return `${sun.getFullYear()}-${String(sun.getMonth() + 1).padStart(2, "0")}-${String(sun.getDate()).padStart(2, "0")}`;
 }
 
 export function addDays(dateStr: string, n: number): string {
