@@ -23,6 +23,10 @@ export function createCalendarViews(deps: CalendarViewDeps) {
   /** Night = 8 PM – 8 AM. Star scatter per night band, as [left%, top%] pairs. */
   const NIGHT_STARS_AM = [[12, 6], [68, 14], [34, 28], [82, 42], [55, 55], [20, 68], [74, 82], [42, 92]];
   const NIGHT_STARS_PM = [[30, 12], [70, 32], [48, 58], [16, 80]];
+  /** Wavy horizon where day meets night: filled with the same translucent
+      purple so it composites seamlessly with the band. */
+  const WAVE_AM = `<svg class="cal-wave cal-wave-am" viewBox="0 0 120 12" preserveAspectRatio="none" aria-hidden="true"><path d="M0 0H120V5Q105 11 90 5T60 5T30 5T0 5Z"/></svg>`;
+  const WAVE_PM = `<svg class="cal-wave cal-wave-pm" viewBox="0 0 120 12" preserveAspectRatio="none" aria-hidden="true"><path d="M0 12H120V7Q105 1 90 7T60 7T30 7T0 7Z"/></svg>`;
   function nightStars(list: number[][]): string {
     return list.map(([x, y], i) =>
       `<span class="cal-star" style="left:${x}%;top:${y}%;animation-delay:${(i * 0.6).toFixed(1)}s">✦</span>`
@@ -142,7 +146,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
           <div class="md-label-large muted">${esc(wd)}</div>
           <div class="cal-day-num${isToday ? " today" : ""}">${d}</div>
         </div>
-        <div class="cal-day-col" data-date="${day}"><div class="cal-night cal-night-am" aria-hidden="true">${nightStars(NIGHT_STARS_AM)}</div><div class="cal-night cal-night-pm" aria-hidden="true">${nightStars(NIGHT_STARS_PM)}</div>${entryHtml}${nowLine}</div>
+        <div class="cal-day-col" data-date="${day}"><div class="cal-night cal-night-am" aria-hidden="true">${WAVE_AM}${nightStars(NIGHT_STARS_AM)}</div><div class="cal-night cal-night-pm" aria-hidden="true">${WAVE_PM}${nightStars(NIGHT_STARS_PM)}</div>${entryHtml}${nowLine}</div>
       </div>`);
     }
 
