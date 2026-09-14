@@ -20,6 +20,15 @@ export interface CalendarViewDeps {
 }
 
 export function createCalendarViews(deps: CalendarViewDeps) {
+  /** Night = 8 PM – 8 AM. Star scatter per night band, as [left%, top%] pairs. */
+  const NIGHT_STARS_AM = [[12, 6], [68, 14], [34, 28], [82, 42], [55, 55], [20, 68], [74, 82], [42, 92]];
+  const NIGHT_STARS_PM = [[30, 12], [70, 32], [48, 58], [16, 80]];
+  function nightStars(list: number[][]): string {
+    return list.map(([x, y], i) =>
+      `<span class="cal-star" style="left:${x}%;top:${y}%;animation-delay:${(i * 0.6).toFixed(1)}s">✦</span>`
+    ).join("");
+  }
+
   const { db, qOne, qRange, entrySelect: ENTRY_SELECT, layout, projectOptions, weekTargetBar, calHourPx } = deps;
 
   /** Inner HTML of the #week section (everything that changes when entries do).
@@ -133,7 +142,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
           <div class="md-label-large muted">${esc(wd)}</div>
           <div class="cal-day-num${isToday ? " today" : ""}">${d}</div>
         </div>
-        <div class="cal-day-col" data-date="${day}">${entryHtml}${nowLine}</div>
+        <div class="cal-day-col" data-date="${day}"><div class="cal-night cal-night-am" aria-hidden="true">${nightStars(NIGHT_STARS_AM)}</div><div class="cal-night cal-night-pm" aria-hidden="true">${nightStars(NIGHT_STARS_PM)}</div>${entryHtml}${nowLine}</div>
       </div>`);
     }
 
@@ -149,7 +158,8 @@ export function createCalendarViews(deps: CalendarViewDeps) {
 
     const hourLabels = Array.from({ length: 24 }, (_, h) => {
       const ampm = h === 0 ? "12 AM" : h < 12 ? `${h} AM` : h === 12 ? "12 PM" : `${h - 12} PM`;
-      return `<span class="cal-hour-label" style="top:${(h * calHourPx - 8).toFixed(0)}px">${ampm}</span>`;
+      const night = h < 8 || h >= 20;
+      return `<span class="cal-hour-label${night ? " night" : ""}" style="top:${(h * calHourPx - 8).toFixed(0)}px">${ampm}</span>`;
     }).join("");
 
     const weekLabel = new Date(mon + "T12:00:00").toLocaleDateString([], { month: "short", day: "numeric" });

@@ -647,6 +647,8 @@ body.app-fixed .cal-gutter-spacer {
   position: absolute; right: 8px; transform: translateY(-50%);
   font-size: 11px; color: var(--md-sys-color-on-surface-variant); white-space: nowrap;
 }
+/* Night hours (8 PM – 8 AM) read lavender in the gutter. */
+.cal-hour-label.night { color: #b9a8e8; }
 .cal-day { display: flex; flex-direction: column; min-width: 0; }
 /* Grid entrance (#49): columns stagger in left→right inside the #48 region
    entrance; per-column delay rendered inline by weekGrid. */
@@ -707,6 +709,27 @@ body.app-fixed .cal-gutter-spacer {
    days are never tinted. Background only, so no layout shift. */
 .cal-day.paced-short .cal-day-col {
   background-color: var(--md-sys-color-surface-container);
+}
+/* Night bands (8 PM – 8 AM): deep purple with stars. Translucent so the hour
+   lines show through; behind entries; pointer-events none so drag-create
+   still works over them. */
+.cal-night {
+  position: absolute; left: 0; right: 0; pointer-events: none; overflow: hidden;
+  background: color-mix(in srgb, #4a2b8f 48%, transparent);
+}
+.cal-night-am { top: 0; height: calc(var(--cal-hour) * 8);
+  border-radius: var(--md-sys-shape-corner-medium) var(--md-sys-shape-corner-medium) 0 0; }
+.cal-night-pm { top: calc(var(--cal-hour) * 20); height: calc(var(--cal-hour) * 4);
+  border-radius: 0 0 var(--md-sys-shape-corner-medium) var(--md-sys-shape-corner-medium); }
+.cal-star {
+  position: absolute; color: #d9cdf7; font-size: 10px; line-height: 1;
+  opacity: .55; animation: cal-twinkle 3.2s ease-in-out infinite;
+}
+.cal-star:nth-child(3n) { font-size: 8px; opacity: .4; }
+.cal-star:nth-child(4n) { font-size: 12px; opacity: .65; }
+@keyframes cal-twinkle { 50% { opacity: .22; } }
+@media (prefers-reduced-motion: reduce) {
+  .cal-star { animation: none; }
 }
 .cal-entry {
   position: absolute; left: 4px; right: 4px; border-radius: var(--md-sys-shape-corner-small);
