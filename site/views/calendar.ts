@@ -4,7 +4,7 @@
  *  call site keeps working unchanged. */
 
 import type { Database, Statement } from "bun:sqlite";
-import { addDays, durationSeconds, esc, fmtDur, mondayOf, todayStr } from "../lib/format.ts";
+import { addDays, durationSeconds, esc, fmtDur, sundayOf, todayStr } from "../lib/format.ts";
 import { icon } from "../lib/icons.ts";
 import type { Entry } from "../lib/types.ts";
 
@@ -38,13 +38,13 @@ export function createCalendarViews(deps: CalendarViewDeps) {
   /** Inner HTML of the #week section (everything that changes when entries do).
       Served full-page via weekGrid() and in-place via GET /partial/week (#65). */
   function weekInner(weekStr?: string): string {
-    const mon = mondayOf(weekStr);
-    const prev = addDays(mon, -7), next = addDays(mon, 7);
-    const isThisWeek = mon === mondayOf();
+    const sun = sundayOf(weekStr);
+    const prev = addDays(sun, -7), next = addDays(sun, 7);
+    const isThisWeek = sun === sundayOf();
     const today = todayStr();
 
     // Fetch the whole week in one query, then bucket entries by local day.
-    const [wFrom, wTo] = [mon + "T00:00:00", addDays(mon, 7) + "T00:00:00"];
+    const [wFrom, wTo] = [sun + "T00:00:00", addDays(sun, 7) + "T00:00:00"];
     const rows = db.query(
       `${ENTRY_SELECT} WHERE e.start_time >= ? AND e.start_time < ? ORDER BY e.start_time`).all(wFrom, wTo) as Entry[];
     const byDay = new Map<string, Entry[]>();
@@ -89,7 +89,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     let weekBillable = 0;
     const days: string[] = [];
     for (let i = 0; i < 7; i++) {
-      const day = addDays(mon, i);
+      const day = addDays(sun, i);
       const [y, m, d] = day.split("-").map(Number);
       const dt = new Date(y, m - 1, d);
       const wd = dt.toLocaleDateString([], { weekday: "short" });
@@ -152,7 +152,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     }
 
     // Week-over-week delta vs the immediately preceding week.
-    const prevRows = qRange.all(addDays(mon, -7) + "T00:00:00", mon + "T00:00:00") as Entry[];
+    const prevRows = qRange.all(addDays(sun, -7) + "T00:00:00", sun + "T00:00:00") as Entry[];
     const prevTotal = prevRows.reduce((a, e) => a + durationSeconds(e.start_time, e.end_time), 0);
     const deltaHtml = (() => {
       if (prevTotal <= 0) return `<span class="muted">—</span>`;
@@ -167,7 +167,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       return `<span class="cal-hour-label${night ? " night" : ""}" style="top:${(h * calHourPx - 8).toFixed(0)}px">${ampm}</span>`;
     }).join("");
 
-    const weekLabel = new Date(mon + "T12:00:00").toLocaleDateString([], { month: "short", day: "numeric" });
+    const weekLabel = new Date(sun + "T12:00:00").toLocaleDateString([], { month: "short", day: "numeric" });
 
     return `
     <div class="cal-pane-layout">
