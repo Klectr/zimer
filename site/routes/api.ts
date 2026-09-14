@@ -22,6 +22,7 @@ export interface ApiDeps {
   getInvoice: (id: number) => (Invoice & { items: InvoiceItem[] }) | null;
   invoiceTotals: (items: InvoiceItem[], taxRate: number) => { subtotal: number; tax: number; total: number };
   nextInvoiceNumber: () => string;
+  mintPublicToken: (id: number) => string;
   stripeLinkFor: (id: number) => Promise<{ url?: string; error?: string; status?: number }>;
   verifyWebhookSignature: (payload: string, sig: string | null, secret: string) => boolean;
   isInvoiceTemplate: (t: string) => boolean;
@@ -35,7 +36,7 @@ export function createApiRouter(deps: ApiDeps) {
   const {
     db, qRunning, qOne, qRange, qInvoice, qInvoices, TOKEN, authedApi, json,
     entryToJson, groupToLineItems, unbilledEntries, getInvoice,
-    invoiceTotals, nextInvoiceNumber, stripeLinkFor, verifyWebhookSignature,
+    invoiceTotals, nextInvoiceNumber, mintPublicToken, stripeLinkFor, verifyWebhookSignature,
     isInvoiceTemplate, revenueTotals, revenueMonthly, revenueByClient, revenueOverdue,
   } = deps;
 
@@ -195,6 +196,7 @@ export function createApiRouter(deps: ApiDeps) {
                   for (const eid of it.entry_ids) linkEntry.run(inv.id, eid);
                 }
               })();
+              mintPublicToken(inv.id); /* #227: client link exists from birth */
               const full = getInvoice(inv.id)!;
               return json({ ...full, ...invoiceTotals(full.items, full.tax_rate) }, 201);
             }

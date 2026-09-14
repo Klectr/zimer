@@ -253,42 +253,88 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     const t = invoiceTotals(inv.items, inv.tax_rate);
     const token = getPublicToken(inv.id);
     const clientLink = token ? `${origin}/i/${token}` : null;
-    const shareSection = clientLink ? `
-      <div class="stripe-row no-print">
-        <span class="md-label-medium muted">Client link</span>
-        <input class="link-input" id="client-link-url" readonly value="${esc(clientLink)}" onclick="this.select()" aria-label="Client invoice link">
-        <button class="md-text-button" id="copy-client-link" type="button">${icon("copy")}<span>Copy</span></button>
-        <form method="post" action="/invoices/${inv.id}/public-token/regenerate" class="inline" hx-post="/invoices/${inv.id}/public-token/regenerate" ${hxDetail}>
-          <button class="md-text-button" type="submit" title="Create a new link (invalidates the old one)">${icon("refresh")}Regenerate</button>
-        </form>
-        <form method="post" action="/invoices/${inv.id}/public-token/revoke" class="inline" hx-post="/invoices/${inv.id}/public-token/revoke" ${hxDetail}>
-          <button class="md-text-button danger" type="submit" hx-confirm="Revoke the client link? The current URL will stop working.">Revoke</button>
-        </form>
-        <script>(function(){var b=document.getElementById('copy-client-link');if(!b)return;var lbl=b.querySelector('span');b.addEventListener('click',function(){var i=document.getElementById('client-link-url');i.select();var done=function(){lbl.textContent='Copied';setTimeout(function(){lbl.textContent='Copy';},1500);};if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(i.value).then(done,done);}else{document.execCommand('copy');done();}});})();</script>
-      </div>` : `
-      <div class="stripe-row no-print">
-        <span class="md-label-medium muted">Client link</span>
-        <form method="post" action="/invoices/${inv.id}/public-token/regenerate" class="inline" hx-post="/invoices/${inv.id}/public-token/regenerate" ${hxDetail}>
-          <button class="md-text-button" type="submit">${icon("add")}Create client link</button>
-        </form>
+    /* #227: one M3 "Share & collect" card — tonal container, list rows with
+       leading icons, headline + supporting text, read-only filled URL fields
+       with trailing copy icon-buttons, quiet text-button actions. The copy
+       handler is delegated and id-free so htmx swaps stay safe. */
+    const copyScript = `<script>(function(){
+      function wire(card){
+        if (card.dataset.copyWired) return;
+        card.dataset.copyWired = "1";
+        card.addEventListener("click", function(ev){
+          var btn = ev.target.closest("[data-copy]");
+          if (!btn) return;
+          var input = btn.closest(".share-field").querySelector("input");
+          if (!input) return;
+          input.select();
+          var done = function(){
+            btn.classList.add("copied");
+            setTimeout(function(){ btn.classList.remove("copied"); }, 1200);
+          };
+          if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(input.value).then(done, done);
+          else { try { document.execCommand("copy"); } catch (e) {} done(); }
+        });
+      }
+      document.querySelectorAll(".share-card").forEach(wire);
+    })();</script>`;
+    const linkField = (url: string, label: string) => `
+      <div class="share-field">
+        <input class="link-input" readonly value="${esc(url)}" onclick="this.select()" aria-label="${label}">
+        <button class="md-icon-button" type="button" data-copy title="Copy link" aria-label="Copy link">${icon("copy")}</button>
       </div>`;
-    const stripeSection = inv.status !== "sent" ? "" : `
-      <div class="stripe-row no-print">
-        ${inv.stripe_payment_link ? `
-          <span class="md-label-medium muted">Payment link</span>
-          <input class="link-input" id="stripe-link-url" readonly value="${esc(inv.stripe_payment_link)}" onclick="this.select()" aria-label="Stripe payment link">
-          <button class="md-text-button" id="copy-stripe-link" type="button">${icon("copy")}<span>Copy</span></button>
-          <form method="post" action="/invoices/${inv.id}/stripe-link" class="inline" hx-post="/invoices/${inv.id}/stripe-link" ${hxDetail}>
-            <button class="md-text-button" type="submit" title="Create a new payment link (replaces the old one)">${icon("refresh")}Regenerate</button>
-          </form>
-          <script>(function(){var b=document.getElementById('copy-stripe-link');if(!b)return;var lbl=b.querySelector('span');b.addEventListener('click',function(){var i=document.getElementById('stripe-link-url');i.select();var done=function(){lbl.textContent='Copied';setTimeout(function(){lbl.textContent='Copy';},1500);};if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(i.value).then(done,done);}else{document.execCommand('copy');done();}});})();</script>`
-        : stripeConfigured() ? `
-          <form method="post" action="/invoices/${inv.id}/stripe-link" class="inline" hx-post="/invoices/${inv.id}/stripe-link" ${hxDetail}>
-            <button class="md-filled-button" type="submit">${icon("card")}Collect via Stripe</button>
-          </form>
-          <span class="muted tiny">Creates a Stripe payment link for ${money(t.total)}.</span>` : `
-          <span class="muted tiny">Set STRIPE_SECRET_KEY to collect via Stripe.</span>`}
+    const clientRow = `
+      <div class="share-row">
+        <span class="share-licon">${icon("link")}</span>
+        <div class="share-body">
+          <div class="md-body-large">Client link</div>
+          ${clientLink ? `
+          <div class="md-body-medium muted share-sub">Anyone with this link can view the invoice</div>
+          ${linkField(clientLink, "Client invoice link")}
+          <div class="share-actions">
+            <form method="post" action="/invoices/${inv.id}/public-token/regenerate" class="inline" hx-post="/invoices/${inv.id}/public-token/regenerate" ${hxDetail}>
+              <button class="md-text-button" type="submit" title="Create a new link (invalidates the old one)">${icon("refresh")}<span>Regenerate</span></button>
+            </form>
+            <form method="post" action="/invoices/${inv.id}/public-token/revoke" class="inline" hx-post="/invoices/${inv.id}/public-token/revoke" ${hxDetail}>
+              <button class="md-text-button danger" type="submit" hx-confirm="Revoke the client link? The current URL will stop working."><span>Revoke</span></button>
+            </form>
+          </div>` : `
+          <div class="md-body-medium muted share-sub">No active link — create one to share this invoice</div>
+          <div class="share-actions">
+            <form method="post" action="/invoices/${inv.id}/public-token/regenerate" class="inline" hx-post="/invoices/${inv.id}/public-token/regenerate" ${hxDetail}>
+              <button class="md-tonal-button" type="submit">${icon("add")}<span>Create client link</span></button>
+            </form>
+          </div>`}
+        </div>
       </div>`;
+    const stripeRow = inv.status !== "sent" ? "" : `
+      <div class="share-row">
+        <span class="share-licon">${icon("card")}</span>
+        <div class="share-body">
+          <div class="md-body-large">Stripe payment</div>
+          ${inv.stripe_payment_link ? `
+          <div class="md-body-medium muted share-sub">Clients pay ${money(t.total)} securely via Stripe</div>
+          ${linkField(inv.stripe_payment_link, "Stripe payment link")}
+          <div class="share-actions">
+            <form method="post" action="/invoices/${inv.id}/stripe-link" class="inline" hx-post="/invoices/${inv.id}/stripe-link" ${hxDetail}>
+              <button class="md-text-button" type="submit" title="Create a new payment link (replaces the old one)">${icon("refresh")}<span>Regenerate</span></button>
+            </form>
+          </div>` : stripeConfigured() ? `
+          <div class="md-body-medium muted share-sub">No payment link yet — create one for ${money(t.total)}</div>
+          <div class="share-actions">
+            <form method="post" action="/invoices/${inv.id}/stripe-link" class="inline" hx-post="/invoices/${inv.id}/stripe-link" ${hxDetail}>
+              <button class="md-tonal-button" type="submit">${icon("card")}<span>Create payment link</span></button>
+            </form>
+          </div>` : `
+          <div class="md-body-medium muted share-sub">Set STRIPE_SECRET_KEY to collect via Stripe.</div>`}
+        </div>
+      </div>`;
+    const shareSection = `
+      <section class="share-card no-print" aria-label="Share and collect">
+        <div class="md-title-small share-card-title">Share &amp; collect</div>
+        ${clientRow}
+        ${stripeRow}
+        ${copyScript}
+      </section>`;
     return `<div id="invoice-detail">
       <div class="page-head no-print">
         <a class="md-text-button" href="/invoices">${icon("arrow_left")}Invoices</a>
@@ -304,7 +350,6 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
         </div>
       </div>
       ${shareSection}
-      ${stripeSection}
       ${invoiceDoc(inv)}</div>`;
   }
 

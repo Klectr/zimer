@@ -88,6 +88,7 @@ export function createDomain(deps: DomainDeps) {
     if (!stripeConfigured()) return { error: "STRIPE_SECRET_KEY not configured", status: 503 };
     const full = getInvoice(id)!;
     const t = invoiceTotals(full.items, full.tax_rate);
+    if (t.total <= 0) return { error: "invoice total must be greater than zero", status: 400 };
     try {
       const link = await createPaymentLink({
         invoiceId: id,
