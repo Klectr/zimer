@@ -19,6 +19,8 @@ import { getToken, tokensEqual, authedApi, authedPage } from "./lib/auth.ts";
 import { createDb } from "./db.ts";
 import { createRevenue } from "./lib/revenue.ts";
 import { firstRun, advanceRun, periodStart } from "./lib/recurring.ts";
+import { createBudgets } from "./lib/budgets.ts";
+import { workspaceEmpty, demoIds, seedDemoData, removeDemoData, demoBanner } from "./lib/demo.ts";
 
 const PORT = Number(process.env.PORT || 3000);
 const DATA_DIR = process.env.DATA_DIR || resolve(import.meta.dir, "data");
@@ -32,7 +34,7 @@ const TOKEN = getToken(DATA_DIR);
 /* ---------------- db ---------------- */
 /* Milestone 20: database layer lives in site/db.ts — init, migrations, demo, prepared queries. */
 const {
-  db, workspaceEmpty, demoIds, seedDemoData, removeDemoData, demoBanner,
+  db,
   ENTRY_SELECT,
   qRunning, qOne, qRange, qInvoice, qInvoiceItems, qInvoices, qSchedules, qRevenueRows,
 } = createDb(DATA_DIR);
@@ -40,6 +42,9 @@ const {
 /* Milestone 20: revenue domain logic lives in lib/revenue.ts. */
 const { revenueTotal, revenueTotals, revenueMonthly, revenueByClient, isOverdue, revenueOverdue } =
   createRevenue(qRevenueRows);
+
+/* Milestone 20: budget helpers live in lib/budgets.ts. */
+const { projectSpend, budgetStatus, budgetAlerts } = createBudgets(db);
 
 /* ---------------- invoicing helpers ---------------- */
 
@@ -417,7 +422,7 @@ function todayPartial(): string {
 
 function dashboardPage(): string {
   return layout("Timer", `
-    ${demoBanner()}
+    ${demoBanner(db)}
     <div class="pane-layout">
       <section class="pane-focus" data-enter="2" aria-label="Timer and today's entries">
         ${timerPartial()}
@@ -1410,36 +1415,6 @@ function roundUpSeconds(secs: number, minutes: number | null | undefined): numbe
   return Math.ceil(secs / inc) * inc;
 }
 
-/* Milestone 14: project budget spend (finished entries only). */
-function projectSpend(projectId: number): { hours: number; amount: number; rate: number } {
-  const row = db.query(`
-    SELECT COALESCE(SUM((strftime('%s', end_time) - strftime('%s', start_time)) / 3600.0), 0) AS hours,
-           COALESCE(MAX(c.rate), 0) AS rate
-    FROM time_entries e LEFT JOIN projects p ON p.id = e.project_id
-    LEFT JOIN clients c ON c.id = p.client_id
-    WHERE e.project_id = ? AND e.end_time IS NOT NULL`).get(projectId) as any;
-  const hours = round2(row.hours || 0);
-  return { hours, rate: Number(row.rate || 0), amount: round2(hours * Number(row.rate || 0)) };
-}
-
-/* Milestone 14.2: budget status — null when under 80% of every budget. */
-function budgetStatus(p: any, spend: { hours: number; amount: number }): "warn" | "over" | null {
-  const ratios: number[] = [];
-  if (p.budget_hours) ratios.push(spend.hours / p.budget_hours);
-  if (p.budget_amount) ratios.push(spend.amount / p.budget_amount);
-  if (!ratios.length) return null;
-  const worst = Math.max(...ratios);
-  return worst >= 1 ? "over" : worst >= 0.8 ? "warn" : null;
-}
-/** Projects at >=80% of any budget, for the dashboard attention card. */
-function budgetAlerts(): any[] {
-  const rows = db.query(`SELECT p.*, c.name AS client_name FROM projects p
-    LEFT JOIN clients c ON c.id = p.client_id
-    WHERE p.budget_hours IS NOT NULL OR p.budget_amount IS NOT NULL`).all() as any[];
-  return rows
-    .map(p => ({ p, spend: projectSpend(p.id), status: budgetStatus(p, projectSpend(p.id)) }))
-    .filter(r => r.status);
-}
 function budgetAlertCard(): string {
   const alerts = budgetAlerts();
   if (!alerts.length) return "";
@@ -2198,13 +2173,13 @@ Bun.serve({
     }
 
     if (path === "/demo/load" && method === "POST") {
-      if (demoIds() || !workspaceEmpty()) return new Response("Workspace is not empty.", { status: 400 });
-      seedDemoData();
+      if (demoIds(db) || !workspaceEmpty(db)) return new Response("Workspace is not empty.", { status: 400 });
+      seedDemoData(db);
       return new Response(null, { status: 302, headers: { Location: "/" } });
     }
     if (path === "/demo/reset" && method === "POST") {
-      if (!demoIds()) return new Response("No demo data to remove.", { status: 400 });
-      removeDemoData();
+      if (!demoIds(db)) return new Response("No demo data to remove.", { status: 400 });
+      removeDemoData(db);
       return new Response(null, { status: 302, headers: { Location: "/" } });
     }
 
