@@ -1,4 +1,4 @@
-/** Shared domain helpers: invoices, estimates numbering, line-item grouping,
+/** Shared domain helpers: invoices numbering, line-item grouping,
  *  billable rounding, public/portal tokens, Stripe payment links, project
  *  options, progress bars, and the budget alert card. Wired once in
  *  server.ts and injected into the route and view factories that need them. */
@@ -248,15 +248,9 @@ export function createDomain(deps: DomainDeps) {
     </div>`;
   }
 
-  /* Milestone 13: estimates. */
-  function nextEstimateNumber(): string {
-    const n = (db.query("SELECT COUNT(*) AS n FROM estimates").get() as any).n + 1;
-    return `EST-${String(n).padStart(3, "0")}`;
-  }
-
   return {
     getInvoice, invoiceTotals, nextInvoiceNumber, stripeLinkFor,
-    unbilledEntries, clientRounding, groupToLineItems, nextEstimateNumber,
+    unbilledEntries, clientRounding, groupToLineItems,
     projectOptions, m3ProgressBar, weekTargetBar, budgetAlertCard,
     newPublicToken, ensurePublicToken, getPublicToken, mintPublicToken,
     getPortalToken, ensurePortalToken,

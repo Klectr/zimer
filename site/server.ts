@@ -26,7 +26,6 @@ import { createTimerViews } from "./views/timer.ts";
 import { createCalendarViews } from "./views/calendar.ts";
 import { createManageViews } from "./views/manage.ts";
 import { createInvoiceViews } from "./views/invoices.ts";
-import { createEstimateViews } from "./views/estimates.ts";
 import { createApiRouter } from "./routes/api.ts";
 import { createWebRouter } from "./routes/web.ts";
 
@@ -48,7 +47,7 @@ const { layout, notFoundPage, errorPage } = createLayoutViews(qRunning);
 
 const {
   getInvoice, invoiceTotals, nextInvoiceNumber, stripeLinkFor,
-  unbilledEntries, clientRounding, groupToLineItems, nextEstimateNumber,
+  unbilledEntries, clientRounding, groupToLineItems,
   projectOptions, m3ProgressBar, weekTargetBar, budgetAlertCard,
   ensurePublicToken, getPublicToken, mintPublicToken, getPortalToken, ensurePortalToken,
 } = createDomain({ db, qInvoice, qInvoiceItems, TOKEN, budgetAlerts });
@@ -71,9 +70,6 @@ const {
   db, qInvoices, layout, clientOptions,
   getPublicToken, stripeConfigured, nextInvoiceNumber, invoiceTotals, templateList, statusPill, isOverdue,
 });
-const { estimatesPage, estimateItemRow, estimateNewPage, estimateDetailPage } = createEstimateViews({
-  db, layout, clientOptions, nextEstimateNumber, statusPill,
-});
 const { loginPage, publicInvoicePage, portalPage } = createPublicViews({
   db, getInvoice, invoiceTotals, invoiceSheet, ensurePublicToken,
 });
@@ -90,8 +86,8 @@ const { handleWeb } = createWebRouter({
   dashboardPage, timerPartial, todayPartial, weekInner,
   calendarPage, editPage, manageCols, managePage, invoicesPage, invoiceNewPage,
   defaultNewInvParams, invoiceStep2, invoiceDetailPage, invoiceDetailBody, invoiceDoc,
-  estimatesPage, estimateNewPage, estimateDetailPage, getInvoice, invoiceTotals,
-  nextInvoiceNumber, nextEstimateNumber, stripeLinkFor, unbilledEntries, clientRounding,
+  getInvoice, invoiceTotals,
+  nextInvoiceNumber, stripeLinkFor, unbilledEntries, clientRounding,
   groupToLineItems, ensurePublicToken, getPublicToken, mintPublicToken, getPortalToken,
   ensurePortalToken, invoicePdf, isInvoiceTemplate, stripeConfigured,
   workspaceEmpty, demoIds, seedDemoData, removeDemoData, entryToJson,

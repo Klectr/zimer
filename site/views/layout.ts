@@ -31,7 +31,6 @@ export function createLayoutViews(qRunning: Statement) {
       ${navItem("/", "Timer", "timer", "timer")}
       ${navItem("/calendar", "Calendar", "calendar", "calendar")}
       ${navItem("/invoices", "Invoices", "invoices", "receipt")}
-      ${navItem("/estimates", "Estimates", "estimates", "doc")}
       ${navItem("/manage", "Clients & projects", "manage", "group")}
     </nav>
     <span class="md-top-app-bar-spacer"></span>
