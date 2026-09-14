@@ -714,9 +714,15 @@ body.app-fixed .cal-gutter-spacer {
    lines show through; behind entries; pointer-events none so drag-create
    still works over them. */
 .cal-night {
-  position: absolute; left: 0; right: 0; pointer-events: none; overflow: hidden;
+  position: absolute; left: 0; right: 0; pointer-events: none;
   background: color-mix(in srgb, #4a2b8f 48%, transparent);
 }
+/* Wavy horizon on the day-facing edge of each night band. The wave fill is
+   the same translucent purple, so it composites seamlessly with the band. */
+.cal-wave { position: absolute; left: 0; width: 100%; height: 12px; display: block; }
+.cal-wave path { fill: color-mix(in srgb, #4a2b8f 48%, transparent); }
+.cal-wave-am { bottom: -10px; }
+.cal-wave-pm { top: -10px; }
 .cal-night-am { top: 0; height: calc(var(--cal-hour) * 8);
   border-radius: var(--md-sys-shape-corner-medium) var(--md-sys-shape-corner-medium) 0 0; }
 .cal-night-pm { top: calc(var(--cal-hour) * 20); height: calc(var(--cal-hour) * 4);
