@@ -14,9 +14,6 @@ export interface InvoiceViewDeps {
   qInvoices: Statement;
   layout: (title: string, body: string, active?: "timer" | "calendar" | "manage" | "invoices", fixed?: boolean) => string;
   clientOptions: (selected?: number | null) => string;
-  recurringNudge: () => string;
-  recurringSection: () => string;
-  recurringDialog: () => string;
   getPublicToken: (id: number) => string | null;
   stripeConfigured: () => boolean;
   nextInvoiceNumber: () => string;
@@ -28,7 +25,7 @@ export interface InvoiceViewDeps {
 
 export function createInvoiceViews(deps: InvoiceViewDeps) {
   const {
-    db, qInvoices, layout, clientOptions, recurringNudge, recurringSection, recurringDialog,
+    db, qInvoices, layout, clientOptions,
     getPublicToken, stripeConfigured, nextInvoiceNumber, invoiceTotals, templateList, statusPill, isOverdue,
   } = deps;
 
@@ -56,8 +53,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
         </div>
       </div>
       ${rows.length ? `<p class="muted">Outstanding: <strong>${money(outstanding)}</strong></p>` : ""}
-      ${recurringNudge()}
-      <div class="scroll-region" data-enter="3">${recurringSection()}${recurringDialog()}${list}</div>`, "invoices", true);
+      <div class="scroll-region" data-enter="3">${list}</div>`, "invoices", true);
   }
 
   /* Milestone 20: NewInvParams type lives in lib/types.ts. */

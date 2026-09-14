@@ -71,20 +71,10 @@ CREATE TABLE IF NOT EXISTS estimate_items (
   amount REAL NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_est_items ON estimate_items(estimate_id);
-/* Milestone 8: recurring billing schedules — drafts only, never auto-sent. */
-CREATE TABLE IF NOT EXISTS recurring_schedules (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  client_id INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
-  frequency TEXT NOT NULL DEFAULT 'monthly',
-  source TEXT NOT NULL DEFAULT 'unbilled',
-  fixed_amount REAL NOT NULL DEFAULT 0,
-  day_of_month INTEGER,
-  anchor_date TEXT NOT NULL,
-  next_run TEXT NOT NULL,
-  active INTEGER NOT NULL DEFAULT 1,
-  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
-);
 `);
+/* Issue #195: recurring invoices removed — drop the orphaned table so
+   existing databases are cleaned up. */
+db.exec(`DROP TABLE IF EXISTS recurring_schedules;`);
   /* Milestone 11: meta table backing demo onboarding (see lib/demo.ts). */
   db.exec(`CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT);`);
 
@@ -129,12 +119,6 @@ CREATE TABLE IF NOT EXISTS recurring_schedules (
           COALESCE((SELECT SUM(amount) FROM invoice_items WHERE invoice_id = i.id), 0) AS subtotal
    FROM invoices i LEFT JOIN clients c ON c.id = i.client_id ORDER BY i.issue_date DESC, i.id DESC`);
 
-  /** Milestone 8: recurring schedules with client name/rate. */
-  const qSchedules = db.query(
-    `SELECT s.*, c.name AS client_name, c.rate AS client_rate
-   FROM recurring_schedules s JOIN clients c ON c.id = s.client_id
-   ORDER BY s.next_run, s.id`);
-
   const qRevenueRows = db.query(
     `SELECT i.id, i.number, i.due_date, i.status, i.tax_rate, i.issue_date, i.client_id,
           c.name AS client_name, c.color AS client_color,
@@ -144,7 +128,7 @@ CREATE TABLE IF NOT EXISTS recurring_schedules (
   return {
     db,
     ENTRY_SELECT,
-    qRunning, qOne, qRange, qInvoice, qInvoiceItems, qInvoices, qSchedules, qRevenueRows,
+    qRunning, qOne, qRange, qInvoice, qInvoiceItems, qInvoices, qRevenueRows,
   };
 }
 

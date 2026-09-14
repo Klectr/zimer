@@ -1,6 +1,6 @@
 /** Web routes: static files, login/logout, public invoice + portal pages,
  *  and every authenticated page and form action (timer, calendar, manage,
- *  invoices, estimates, recurring, CSV export, backup, demo data).
+ *  invoices, estimates, CSV export, backup, demo data).
  *  Returns null when nothing matched so the caller can fall through. */
 
 import { join, normalize, sep } from "node:path";
@@ -16,7 +16,6 @@ export interface WebDeps {
   qRange: Statement;
   qInvoice: Statement;
   qInvoices: Statement;
-  qSchedules: Statement;
   DATA_DIR: string;
   STATIC_DIR: string;
   TOKEN: string;
@@ -37,7 +36,6 @@ export interface WebDeps {
   timerPartial: () => string;
   todayPartial: () => string;
   weekInner: (weekStr?: string) => string;
-  recurringSection: () => string;
   calendarPage: (week?: string) => string;
   editPage: (id: number) => string | null;
   manageCols: () => string;
@@ -73,17 +71,14 @@ export interface WebDeps {
   seedDemoData: (db: Database) => void;
   removeDemoData: (db: Database) => void;
   entryToJson: (e: Entry) => any;
-  firstRun: (frequency: string, dayOfMonth: number, anchor?: string) => string;
-  advanceRun: (s: any) => string;
-  periodStart: (s: any) => string;
 }
 
 export function createWebRouter(deps: WebDeps) {
   const {
-    db, qRunning, qOne, qRange, qInvoice, qInvoices, qSchedules,
+    db, qRunning, qOne, qRange, qInvoice, qInvoices,
     DATA_DIR, STATIC_DIR, TOKEN, authedPage, tokensEqual, html, json, csvResponse, isHtmx,
     publicOrigin, PORT, loginPage, publicInvoicePage, portalPage, notFoundPage, errorPage,
-    dashboardPage, timerPartial, todayPartial, weekInner, recurringSection,
+    dashboardPage, timerPartial, todayPartial, weekInner,
     calendarPage, editPage, manageCols, managePage, invoicesPage, invoiceNewPage,
     defaultNewInvParams, invoiceStep2, invoiceDetailPage, invoiceDetailBody, invoiceDoc,
     estimatesPage, estimateNewPage, estimateDetailPage, getInvoice, invoiceTotals,
@@ -91,7 +86,6 @@ export function createWebRouter(deps: WebDeps) {
     groupToLineItems, ensurePublicToken, getPublicToken, mintPublicToken, getPortalToken,
     ensurePortalToken, invoicePdf, isInvoiceTemplate, stripeConfigured,
     workspaceEmpty, demoIds, seedDemoData, removeDemoData, entryToJson,
-    firstRun, advanceRun, periodStart,
   } = deps;
 
   /** Estimate with items + total, or null. Web-only helper. */
@@ -169,8 +163,6 @@ export function createWebRouter(deps: WebDeps) {
             return html(weekInner(w || undefined));
           }
           if (path === "/partial/today" && method === "GET") return html(todayPartial());
-          /* Issue #140: in-place refresh of the recurring section after dialog submit. */
-          if (path === "/partial/recurring" && method === "GET") return html(recurringSection());
           if (path === "/timer/start" && method === "POST") {
             if (qRunning.get()) return html(timerPartial(), 409);
             const form = await req.formData();
@@ -420,71 +412,6 @@ export function createWebRouter(deps: WebDeps) {
         }
 
         if (path === "/invoices" && method === "GET") return html(invoicesPage());
-          /* Milestone 8: recurring schedule CRUD (drafts only, never auto-sent). */
-          if (path === "/recurring" && method === "POST") {
-            const form = await req.formData();
-            const clientId = Number(form.get("client_id") || 0);
-            if (!clientId || !db.query("SELECT 1 FROM clients WHERE id = ?").get(clientId))
-              return new Response("Pick a client.", { status: 400 });
-            const frequency = String(form.get("frequency")) === "biweekly" ? "biweekly" : "monthly";
-            const source = String(form.get("source")) === "fixed" ? "fixed" : "unbilled";
-            const dayOfMonth = frequency === "monthly"
-              ? Math.min(Math.max(Number(form.get("day_of_month") || 1), 1), 28) : null;
-            const fixedAmount = source === "fixed" ? Math.max(Number(form.get("fixed_amount") || 0), 0) : 0;
-            const anchor = todayStr();
-            db.query(`INSERT INTO recurring_schedules
-              (client_id, frequency, source, fixed_amount, day_of_month, anchor_date, next_run)
-              VALUES (?, ?, ?, ?, ?, ?, ?)`)
-              .run(clientId, frequency, source, fixedAmount, dayOfMonth, anchor,
-                   firstRun(frequency, dayOfMonth, anchor));
-            /* Issue #140: the dialog submits via fetch — answer JSON like POST /entries.
-               Native form posts (no-JS fallback) still get the 302. */
-            if (req.headers.get("sec-fetch-mode") !== "navigate") return json({ ok: true }, 201);
-            return new Response(null, { status: 302, headers: { Location: "/invoices#recurring" } });
-          }
-          m = path.match(/^\/recurring\/(\d+)\/(toggle|delete)$/);
-          if (m && method === "POST") {
-            const s = db.query("SELECT * FROM recurring_schedules WHERE id = ?").get(Number(m[1])) as any;
-            if (!s) return new Response("Not found", { status: 404 });
-            if (m[2] === "toggle") db.query("UPDATE recurring_schedules SET active = 1 - active WHERE id = ?").run(s.id);
-            else db.query("DELETE FROM recurring_schedules WHERE id = ?").run(s.id);
-            return new Response(null, { status: 302, headers: { Location: "/invoices#recurring" } });
-          }
-          /* Milestone 8.2: one-click draft from a schedule. Drafts only, never auto-sent. */
-          m = path.match(/^\/recurring\/(\d+)\/generate$/);
-          if (m && method === "POST") {
-            const s = db.query(
-              `SELECT s.*, c.rate AS client_rate FROM recurring_schedules s
-               JOIN clients c ON c.id = s.client_id WHERE s.id = ?`).get(Number(m[1])) as any;
-            if (!s) return new Response("Not found", { status: 404 });
-            if (!s.active) return new Response("Schedule is paused.", { status: 400 });
-            const from = periodStart(s), to = s.next_run;
-            const items: { description: string; hours: number; rate: number; amount: number; entry_ids: number[] }[] = [];
-            let notes = "";
-            if (s.source === "fixed") {
-              const label = s.frequency === "biweekly" ? "Biweekly retainer" : "Monthly retainer";
-              items.push({ description: `${label} · ${from} – ${to}`, hours: 1, rate: s.fixed_amount, amount: round2(s.fixed_amount), entry_ids: [] });
-            } else {
-              const entries = unbilledEntries(s.client_id, from + "T00:00:00", to + "T00:00:00");
-              items.push(...groupToLineItems(entries, s.client_rate || 0, clientRounding(s.client_id)));
-              if (!items.length) notes = `No unbilled hours for ${from} to ${to}.`;
-            }
-            const inv = db.query(
-              `INSERT INTO invoices (client_id, number, issue_date, due_date, tax_rate, notes)
-               VALUES (?, ?, ?, ?, 0, ?) RETURNING id`)
-              .get(s.client_id, nextInvoiceNumber(), todayStr(), addDays(todayStr(), 15), notes) as any;
-            const insItem = db.query(
-              "INSERT INTO invoice_items (invoice_id, description, hours, rate, amount) VALUES (?, ?, ?, ?, ?)");
-            const linkEntry = db.query("UPDATE time_entries SET invoice_id = ? WHERE id = ?");
-            db.transaction(() => {
-              for (const it of items) {
-                insItem.run(inv.id, it.description, it.hours, it.rate, it.amount);
-                for (const eid of it.entry_ids) linkEntry.run(inv.id, eid);
-              }
-            })();
-            db.query("UPDATE recurring_schedules SET next_run = ? WHERE id = ?").run(advanceRun(s), s.id);
-            return new Response(null, { status: 302, headers: { Location: `/invoices/${inv.id}` } });
-          }
         if (path === "/invoices/new" && method === "GET") return html(invoiceNewPage(defaultNewInvParams()));
         if (path === "/invoices/preview" && method === "POST") {
           const form = await req.formData();
