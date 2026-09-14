@@ -47,7 +47,7 @@ const {
   getInvoice, invoiceTotals, nextInvoiceNumber, stripeLinkFor,
   unbilledEntries, groupToLineItems,
   projectOptions, m3ProgressBar, weekTargetBar,
-  ensurePublicToken, getPublicToken, mintPublicToken, getPortalToken, ensurePortalToken,
+  ensurePublicToken, getPublicToken, mintPublicToken,
 } = createDomain({ db, qInvoice, qInvoiceItems, TOKEN });
 
 const { timerPartial, todayPartial, dashboardPage } = createTimerViews({
@@ -68,8 +68,8 @@ const {
   db, qInvoices, layout, clientOptions,
   getPublicToken, stripeConfigured, nextInvoiceNumber, invoiceTotals, templateList, statusPill, isOverdue,
 });
-const { loginPage, publicInvoicePage, portalPage } = createPublicViews({
-  db, getInvoice, invoiceTotals, invoiceSheet, ensurePublicToken,
+const { loginPage, publicInvoicePage } = createPublicViews({
+  getInvoice, invoiceTotals, invoiceSheet, ensurePublicToken,
 });
 const { handleApi } = createApiRouter({
   db, qRunning, qOne, qRange, qInvoice, qInvoices, TOKEN, authedApi, json,
@@ -80,14 +80,14 @@ const { handleApi } = createApiRouter({
 const { handleWeb } = createWebRouter({
   db, qRunning, qOne, qRange, qInvoice, qInvoices,
   DATA_DIR, STATIC_DIR, TOKEN, authedPage, tokensEqual, html, json, csvResponse, isHtmx,
-  publicOrigin, PORT, loginPage, publicInvoicePage, portalPage, notFoundPage, errorPage,
+  publicOrigin, PORT, loginPage, publicInvoicePage, notFoundPage, errorPage,
   dashboardPage, timerPartial, todayPartial, weekInner,
   calendarPage, editPage, manageCols, managePage, invoicesPage, invoiceNewPage,
   defaultNewInvParams, invoiceStep2, invoiceDetailPage, invoiceDetailBody, invoiceDoc,
   getInvoice, invoiceTotals,
   nextInvoiceNumber, stripeLinkFor, unbilledEntries,
-  groupToLineItems, ensurePublicToken, getPublicToken, mintPublicToken, getPortalToken,
-  ensurePortalToken, invoicePdf, isInvoiceTemplate, stripeConfigured,
+  groupToLineItems, ensurePublicToken, getPublicToken, mintPublicToken,
+  invoicePdf, isInvoiceTemplate, stripeConfigured,
   workspaceEmpty, demoIds, seedDemoData, removeDemoData, entryToJson,
 });
 

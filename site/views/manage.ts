@@ -61,8 +61,6 @@ export function createManageViews(deps: ManageViewDeps) {
                   <button class="md-text-button" type="submit">Save</button>
                 </form>
                 <form method="post" action="/clients/${c.id}/delete" class="inline" hx-post="/clients/${c.id}/delete" hx-target="#manage-cols" hx-swap="outerHTML"><button class="md-icon-button danger" hx-confirm="Delete client? Projects keep their entries." aria-label="Delete client ${esc(c.name)}" title="Delete">${icon("delete")}</button></form>
-                <button class="md-text-button" hx-post="/clients/${c.id}/portal-link" hx-target="#portal-link-${c.id}" hx-swap="outerHTML" title="Client portal link">Portal</button>
-                <span id="portal-link-${c.id}"></span>
               </div>
             </li>`).join("")}</ul>` : `<p class="muted">No clients yet.</p>`}
         </section>

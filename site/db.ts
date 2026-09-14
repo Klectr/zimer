@@ -79,14 +79,16 @@ db.exec(`DROP TABLE IF EXISTS recurring_schedules;`);
     ["invoices", "stripe_payment_link", "TEXT"],
     ["invoices", "paid_via_stripe", "INTEGER NOT NULL DEFAULT 0"],
     ["invoices", "public_token", "TEXT"],
-    ["clients", "portal_token", "TEXT"],
     ["invoices", "paid_at", "TEXT"],
   ] as const) {
     try { db.exec(`ALTER TABLE ${tbl} ADD COLUMN ${col} ${def}`); }
     catch { /* column already exists */ }
   }
   db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_invoices_public_token ON invoices(public_token)");
-  db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_clients_portal_token ON clients(portal_token)");
+  /* Issue #203: client portal removed — drop the orphaned token column/index. */
+  db.exec("DROP INDEX IF EXISTS idx_clients_portal_token");
+  try { db.exec("ALTER TABLE clients DROP COLUMN portal_token"); }
+  catch { /* column already gone */ }
 
   const ENTRY_SELECT = `
   SELECT e.id, e.project_id, e.description, e.start_time, e.end_time, e.invoice_id,
