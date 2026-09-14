@@ -900,7 +900,7 @@ body.app-fixed .cal-gutter-spacer {
   margin: 12px 24px 0; padding: 12px 16px; border-radius: 16px;
   background: var(--md-tertiary-container, #3a2f10); color: var(--md-on-tertiary-container, #f2e3b3);
 }
-.demo-banner svg { flex-shrink: 0; }
+.demo-banner svg { flex: none; width: 24px; height: 24px; }
 .demo-banner span { flex: 1; }
 .demo-banner .md-text-button { color: inherit; }
 @media (prefers-reduced-motion: no-preference) {
