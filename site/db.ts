@@ -58,6 +58,12 @@ db.exec(`DROP TABLE IF EXISTS estimate_items; DROP TABLE IF EXISTS estimates;`);
    drop the orphaned column so existing databases are cleaned up. */
 try { db.exec("ALTER TABLE clients DROP COLUMN rounding_minutes"); }
 catch { /* column already gone */ }
+/* Issue #201: project budgets removed — drop the orphaned columns so
+   existing databases are cleaned up. */
+try { db.exec("ALTER TABLE projects DROP COLUMN budget_hours"); }
+catch { /* column already gone */ }
+try { db.exec("ALTER TABLE projects DROP COLUMN budget_amount"); }
+catch { /* column already gone */ }
 /* Issue #195: recurring invoices removed — drop the orphaned table so
    existing databases are cleaned up. */
 db.exec(`DROP TABLE IF EXISTS recurring_schedules;`);
@@ -75,8 +81,6 @@ db.exec(`DROP TABLE IF EXISTS recurring_schedules;`);
     ["invoices", "public_token", "TEXT"],
     ["clients", "portal_token", "TEXT"],
     ["invoices", "paid_at", "TEXT"],
-    ["projects", "budget_hours", "REAL"],
-    ["projects", "budget_amount", "REAL"],
   ] as const) {
     try { db.exec(`ALTER TABLE ${tbl} ADD COLUMN ${col} ${def}`); }
     catch { /* column already exists */ }

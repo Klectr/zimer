@@ -1,6 +1,6 @@
 /** Shared domain helpers: invoice numbering, line-item grouping (fixed
  *  5-minute billable rounding), public/portal tokens, Stripe payment links, project
- *  options, progress bars, and the budget alert card. Wired once in
+ *  options and progress bars. Wired once in
  *  server.ts and injected into the route and view factories that need them. */
 
 import { randomBytes } from "node:crypto";
@@ -14,7 +14,6 @@ export interface DomainDeps {
   qInvoice: Statement;
   qInvoiceItems: Statement;
   TOKEN: string;
-  budgetAlerts: () => any[];
 }
 
 /** Pixels per hour in the calendar time grid. */
@@ -28,7 +27,7 @@ export const WEEK_TARGET_SECS = 40 * 3600;
 export const DAY_TARGET_SECS = 8 * 3600;
 
 export function createDomain(deps: DomainDeps) {
-  const { db, qInvoice, qInvoiceItems, TOKEN, budgetAlerts } = deps;
+  const { db, qInvoice, qInvoiceItems, TOKEN } = deps;
 
   /* ---------------- invoicing helpers ---------------- */
 
@@ -224,31 +223,11 @@ export function createDomain(deps: DomainDeps) {
     return Math.ceil(secs / inc) * inc;
   }
 
-  function budgetAlertCard(): string {
-    const alerts = budgetAlerts();
-    if (!alerts.length) return "";
-    const rows = alerts.map(({ p, spend, status }) => {
-      const chip = status === "over"
-        ? `<span class="attn-chip">Over budget</span>`
-        : `<span class="warn-chip">80% of budget</span>`;
-      const detail = p.budget_hours
-        ? `${spend.hours}h of ${p.budget_hours}h`
-        : `${money(spend.amount)} of ${money(p.budget_amount)}`;
-      return `<li class="md-list-item"><div class="md-list-item-content">
-          <div class="md-list-item-headline">${esc(p.name)} ${chip}</div>
-          <div class="md-list-item-supporting">${p.client_name ? esc(p.client_name) + " · " : ""}${detail}</div>
-        </div></li>`;
-    }).join("");
-    return `<div class="md-card rev-attention" data-enter="2">
-      <div class="md-title-medium rev-chart-title">Budgets need attention</div>
-      <ul class="md-list">${rows}</ul>
-    </div>`;
-  }
 
   return {
     getInvoice, invoiceTotals, nextInvoiceNumber, stripeLinkFor,
     unbilledEntries, groupToLineItems,
-    projectOptions, m3ProgressBar, weekTargetBar, budgetAlertCard,
+    projectOptions, m3ProgressBar, weekTargetBar,
     newPublicToken, ensurePublicToken, getPublicToken, mintPublicToken,
     getPortalToken, ensurePortalToken,
   };

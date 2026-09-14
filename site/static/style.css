@@ -836,14 +836,14 @@ body.app-fixed .cal-gutter-spacer {
 .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
 .two-col > * { min-width: 0; } /* grid items default to min-width:auto — long
   nowrap headlines would blow the column out and cause horizontal scroll */
-/* Manage rows carry several inline controls (rate + save + rounding +
-   delete + portal, or budget inputs). Let the row wrap so the controls drop
-   under the name instead of crushing it or forcing a horizontal scroll. */
+/* Manage rows carry several inline controls (rate + save + delete +
+   portal). Let the row wrap so the controls drop under the name instead
+   of crushing it or forcing a horizontal scroll. */
 #manage-cols .md-list-item { flex-wrap: wrap; row-gap: 4px; }
 #manage-cols .md-list-item-content { flex: 1 1 160px; }
 #manage-cols .md-list-item-trailing { flex: 1 1 auto; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 8px; }
 #manage-cols .md-list-item-trailing > * { flex: none; } /* controls keep natural width, wrap as units */
-#manage-cols .rate-form, #manage-cols .budget-form { margin-right: 0; }
+#manage-cols .rate-form { margin-right: 0; }
 /* Portal link reveal: full-width line under the controls, URL truncated,
    copy button pinned at the end. */
 #manage-cols .portal-url { flex: 1 1 100%; display: flex; align-items: center; gap: 8px; margin: 4px 0 0; }
@@ -886,9 +886,6 @@ body.app-fixed .cal-gutter-spacer {
 @media (prefers-reduced-motion: reduce) {
   .tk-snackbar { transition: none; }
 }
-/* Milestone 14: project budget editor + spend display. */
-.budget-form { display: inline-flex; align-items: center; gap: 6px; margin-right: 8px; }
-.budget-spend { color: var(--md-on-surface-variant, #b0b0b0); }
 /* Milestone 11: demo onboarding banner. */
 .demo-banner {
   display: flex; align-items: center; gap: 12px;
@@ -1204,14 +1201,6 @@ body.app-fixed .cal-gutter-spacer {
   display: inline-block; flex: none; white-space: nowrap;
   background: var(--md-sys-color-error-container);
   color: var(--md-sys-color-on-error-container);
-  padding: 4px 12px; border-radius: 999px;
-  font-size: 12px; font-weight: 500;
-}
-/* Milestone 14.2: budget warning chip (tonal warning, not error). */
-.warn-chip {
-  display: inline-block; flex: none; white-space: nowrap;
-  background: var(--md-tertiary-container, #3a2f10);
-  color: var(--md-on-tertiary-container, #f2e3b3);
   padding: 4px 12px; border-radius: 999px;
   font-size: 12px; font-weight: 500;
 }
