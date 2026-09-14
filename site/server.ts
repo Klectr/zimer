@@ -17,7 +17,6 @@ import { json, html, isHtmx, publicOrigin } from "./lib/http.ts";
 import { getToken, tokensEqual, authedApi, authedPage } from "./lib/auth.ts";
 import { createDb } from "./db.ts";
 import { createRevenue } from "./lib/revenue.ts";
-import { firstRun, advanceRun, periodStart } from "./lib/recurring.ts";
 import { createBudgets } from "./lib/budgets.ts";
 import { workspaceEmpty, demoIds, seedDemoData, removeDemoData, demoBanner } from "./lib/demo.ts";
 import { createDomain, CAL_HOUR_PX, DAY_TARGET_SECS } from "./lib/domain.ts";
@@ -40,7 +39,7 @@ const TOKEN = getToken(DATA_DIR);
 
 const {
   db, ENTRY_SELECT,
-  qRunning, qOne, qRange, qInvoice, qInvoiceItems, qInvoices, qSchedules, qRevenueRows,
+  qRunning, qOne, qRange, qInvoice, qInvoiceItems, qInvoices, qRevenueRows,
 } = createDb(DATA_DIR);
 const { revenueTotals, revenueMonthly, revenueByClient, isOverdue, revenueOverdue } =
   createRevenue(qRevenueRows);
@@ -63,13 +62,13 @@ const { weekInner, weekGrid, calendarPage, editPage } = createCalendarViews({
   db, qOne, qRange, entrySelect: ENTRY_SELECT, layout, projectOptions, weekTargetBar,
   calHourPx: CAL_HOUR_PX,
 });
-const { manageCols, managePage, clientOptions, recurringNudge, recurringSection, recurringDialog } =
-  createManageViews({ db, qSchedules, layout, projectSpend, budgetStatus });
+const { manageCols, managePage, clientOptions } =
+  createManageViews({ db, layout, projectSpend, budgetStatus });
 const {
   invoicesPage, defaultNewInvParams, invoiceNewPage, invoiceStep2, invoiceSheet,
   invoiceDoc, invoiceDetailBody, invoiceDetailPage,
 } = createInvoiceViews({
-  db, qInvoices, layout, clientOptions, recurringNudge, recurringSection, recurringDialog,
+  db, qInvoices, layout, clientOptions,
   getPublicToken, stripeConfigured, nextInvoiceNumber, invoiceTotals, templateList, statusPill, isOverdue,
 });
 const { estimatesPage, estimateItemRow, estimateNewPage, estimateDetailPage } = createEstimateViews({
@@ -85,10 +84,10 @@ const { handleApi } = createApiRouter({
   isInvoiceTemplate, revenueTotals, revenueMonthly, revenueByClient, revenueOverdue,
 });
 const { handleWeb } = createWebRouter({
-  db, qRunning, qOne, qRange, qInvoice, qInvoices, qSchedules,
+  db, qRunning, qOne, qRange, qInvoice, qInvoices,
   DATA_DIR, STATIC_DIR, TOKEN, authedPage, tokensEqual, html, json, csvResponse, isHtmx,
   publicOrigin, PORT, loginPage, publicInvoicePage, portalPage, notFoundPage, errorPage,
-  dashboardPage, timerPartial, todayPartial, weekInner, recurringSection,
+  dashboardPage, timerPartial, todayPartial, weekInner,
   calendarPage, editPage, manageCols, managePage, invoicesPage, invoiceNewPage,
   defaultNewInvParams, invoiceStep2, invoiceDetailPage, invoiceDetailBody, invoiceDoc,
   estimatesPage, estimateNewPage, estimateDetailPage, getInvoice, invoiceTotals,
@@ -96,7 +95,6 @@ const { handleWeb } = createWebRouter({
   groupToLineItems, ensurePublicToken, getPublicToken, mintPublicToken, getPortalToken,
   ensurePortalToken, invoicePdf, isInvoiceTemplate, stripeConfigured,
   workspaceEmpty, demoIds, seedDemoData, removeDemoData, entryToJson,
-  firstRun, advanceRun, periodStart,
 });
 
 Bun.serve({

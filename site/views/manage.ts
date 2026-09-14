@@ -1,21 +1,20 @@
-/** Manage views: clients + projects columns (in-place fragment), the
- *  manage page shell, and the recurring-billing section/dialog/script.
- *  Budget spend helpers come from lib/budgets.ts via injection. */
+/** Manage views: clients + projects columns (in-place fragment) and the
+ *  manage page shell. Budget spend helpers come from lib/budgets.ts via
+ *  injection. */
 
-import type { Database, Statement } from "bun:sqlite";
-import { esc, money, todayStr } from "../lib/format.ts";
+import type { Database } from "bun:sqlite";
+import { esc, money } from "../lib/format.ts";
 import { icon } from "../lib/icons.ts";
 
 export interface ManageViewDeps {
   db: Database;
-  qSchedules: Statement;
   layout: (title: string, body: string, active?: "timer" | "calendar" | "manage" | "invoices", fixed?: boolean) => string;
   projectSpend: (projectId: number) => { hours: number; amount: number; rate: number };
   budgetStatus: (p: any, spend: { hours: number; amount: number }) => "warn" | "over" | null;
 }
 
 export function createManageViews(deps: ManageViewDeps) {
-  const { db, qSchedules, layout, projectSpend, budgetStatus } = deps;
+  const { db, layout, projectSpend, budgetStatus } = deps;
 
   /* #71: clients + projects columns as a fragment — actions swap #manage-cols
      in place instead of reloading the page. */
@@ -143,166 +142,6 @@ export function createManageViews(deps: ManageViewDeps) {
     ).join("");
   }
 
-  /** Milestone 8.3: nudge card when active schedules are due for generation. */
-  function recurringNudge(): string {
-    const today = todayStr();
-    const due = (qSchedules.all() as any[]).filter(s => s.active && s.next_run <= today);
-    if (!due.length) return "";
-    const rows = due.map(s => {
-      const what = s.source === "fixed" ? `${money(s.fixed_amount)} fixed` : "unbilled hours";
-      const when = s.frequency === "biweekly" ? "Every 2 weeks" : "Monthly";
-      return `<li class="md-list-item">
-        <div class="md-list-item-content">
-          <div class="md-list-item-headline">${esc(s.client_name)}</div>
-          <div class="md-list-item-supporting">${when} · ${what} · was due ${esc(s.next_run)}</div>
-        </div>
-        <div class="md-list-item-trailing">
-          <form method="post" action="/recurring/${s.id}/generate" class="inline"><button class="md-tonal-button" type="submit">Generate draft</button></form>
-        </div>
-      </li>`;
-    }).join("");
-    const title = due.length === 1 ? "1 recurring draft ready" : `${due.length} recurring drafts ready`;
-    return `<div class="md-card rev-attention" data-enter="2">
-      <div class="md-title-medium rev-chart-title">${title}</div>
-      <ul class="md-list">${rows}</ul>
-    </div>`;
-  }
 
-  /** Milestone 8: recurring billing schedules, managed from the invoices page. */
-  function recurringSection(): string {
-    const ss = qSchedules.all() as any[];
-    const rows = ss.length ? `<ul class="md-list">${ss.map(s => {
-      const when = s.frequency === "biweekly" ? "Every 2 weeks" : `Monthly · day ${s.day_of_month || 1}`;
-      const what = s.source === "fixed" ? `${money(s.fixed_amount)} fixed` : "unbilled hours";
-      return `<li class="md-list-item">
-        <div class="md-list-item-content">
-          <div class="md-list-item-headline">${esc(s.client_name)}${s.active ? "" : ` <span class="pill pill-draft">Paused</span>`}</div>
-          <div class="md-list-item-supporting">${when} · ${what} · next run ${esc(s.next_run)}</div>
-        </div>
-        <div class="md-list-item-trailing">
-          <form method="post" action="/recurring/${s.id}/generate" class="inline"><button class="md-text-button" type="submit">Generate</button></form>
-          <form method="post" action="/recurring/${s.id}/toggle" class="inline"><button class="md-icon-button" aria-label="${s.active ? "Pause" : "Resume"} schedule for ${esc(s.client_name)}" title="${s.active ? "Pause" : "Resume"}">${icon(s.active ? "stop" : "play")}</button></form>
-          <form method="post" action="/recurring/${s.id}/delete" class="inline"><button class="md-icon-button danger" aria-label="Delete schedule for ${esc(s.client_name)}" title="Delete">${icon("delete")}</button></form>
-        </div>
-      </li>`;
-    }).join("")}</ul>` : `<p class="muted">No recurring schedules yet.</p>`;
-    return `<section class="md-card" id="recurring" style="margin-top:16px">
-      <div class="md-title-medium rev-chart-title">Recurring</div>
-      <div style="margin:10px 0 2px"><button class="md-filled-button" id="rec-new-btn" type="button">${icon("add")}New schedule</button></div>
-      ${rows}
-    </section>`;
-  }
-
-  /** Issue #140: recurring-schedule create form in an M3 dialog, so it is never
-      buried below a long invoices list. The markup lives outside #recurring so
-      the in-place refresh after submit never destroys its bindings. */
-  function recurringDialog(): string {
-    return `<div class="dlg-scrim" id="rec-scrim" hidden>
-      <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="rec-dlg-title">
-        <h2 class="md-headline-small" id="rec-dlg-title">New recurring schedule</h2>
-        <form method="post" action="/recurring" id="rec-form" class="manage-form" style="margin:0">
-          <div class="manage-form-row">
-            <div class="md-text-field filled grow">
-              <select name="client_id" required aria-label="Client" id="rec-client"><option value="">Client…</option>${clientOptions()}</select>
-              <label>Client</label>
-            </div>
-            <div class="md-text-field filled">
-              <select name="frequency" id="rec-frequency" aria-label="Frequency">
-                <option value="monthly">Monthly</option>
-                <option value="biweekly">Every 2 weeks</option>
-              </select>
-              <label>Frequency</label>
-            </div>
-            <div class="md-text-field filled">
-              <select name="source" id="rec-source" aria-label="Invoice source">
-                <option value="unbilled">Unbilled hours</option>
-                <option value="fixed">Fixed amount</option>
-              </select>
-              <label>Bills</label>
-            </div>
-          </div>
-          <div class="manage-form-row">
-            <div class="md-text-field" id="rec-dom-wrap" style="width:172px;flex:none">
-              <input type="number" name="day_of_month" value="1" min="1" max="28" placeholder=" " aria-label="Day of month">
-              <label>Day of month</label>
-            </div>
-            <div class="md-text-field has-prefix" id="rec-amount-wrap" style="max-width:172px;display:none">
-              <span class="affix prefix" aria-hidden="true">$</span>
-              <input type="number" name="fixed_amount" min="0" step="0.01" placeholder=" " aria-label="Fixed amount">
-              <label>Fixed amount</label>
-            </div>
-          </div>
-          <div class="dlg-actions">
-            <button class="md-text-button" type="button" id="rec-cancel">Cancel</button>
-            <button class="md-filled-button" type="submit">${icon("add")}Add schedule</button>
-          </div>
-        </form>
-      </div>
-    </div>
-    <script>${recurringScript()}</script>`;
-  }
-
-  /** Inline script for the recurring-schedule dialog: open/close with M3 motion,
-      frequency/source field visibility, and fetch submit with in-place
-      #recurring refresh (native POST fallback without JS). */
-  function recurringScript(): string {
-    return `(function(){
-    var scrim=document.getElementById('rec-scrim');
-    if(!scrim) return;
-    var dialog=scrim.querySelector('.dlg');
-    var form=document.getElementById('rec-form');
-    var firstField=document.getElementById('rec-client');
-    var freq=document.getElementById('rec-frequency'), src=document.getElementById('rec-source'),
-        dom=document.getElementById('rec-dom-wrap'), amt=document.getElementById('rec-amount-wrap');
-    function sync(){ dom.style.display=freq.value==='monthly'?'':'none'; amt.style.display=src.value==='fixed'?'':'none'; }
-    freq.addEventListener('change',sync); src.addEventListener('change',sync); sync();
-    /* M3 dialog motion: .open drives scrim fade + dialog scale/fade.
-       Generation counter keeps rapid open/close/open sequences sane. */
-    var gen=0;
-    function open(){
-      gen++;
-      scrim.hidden=false;
-      void scrim.offsetWidth; /* commit unhide so the transition runs */
-      scrim.classList.add('open');
-      if(firstField) firstField.focus();
-      document.addEventListener('keydown',onKey);
-    }
-    function close(){
-      var g=++gen;
-      scrim.classList.remove('open');
-      document.removeEventListener('keydown',onKey);
-      var done=false;
-      var finish=function(){ if(done||g!==gen) return; done=true; scrim.hidden=true; };
-      var onEnd=function(e){
-        if(e.target===dialog&&e.propertyName==='transform'){
-          dialog.removeEventListener('transitionend',onEnd); finish();
-        }
-      };
-      dialog.addEventListener('transitionend',onEnd);
-      setTimeout(finish,400);
-    }
-    function onKey(e){ if(e.key==='Escape') close(); }
-    /* Delegated: the #recurring section is replaced in place after submit, so a
-       directly-bound listener would go stale. */
-    document.addEventListener('click',function(e){
-      if(e.target.closest('#rec-new-btn')) open();
-    });
-    document.getElementById('rec-cancel').addEventListener('click',close);
-    scrim.addEventListener('click',function(e){ if(e.target===scrim) close(); });
-    form.addEventListener('submit',function(e){
-      if(!window.fetch) return; /* no-JS fallback: native POST, 302 to /invoices#recurring */
-      e.preventDefault();
-      fetch('/recurring',{method:'POST',body:new FormData(form)}).then(function(r){
-        if(!r.ok) throw 0;
-        return fetch('/partial/recurring');
-      }).then(function(r){ return r.text(); }).then(function(html){
-        var tmp=document.createElement('template'); tmp.innerHTML=html.trim();
-        document.getElementById('recurring').replaceWith(tmp.content.firstChild);
-        close();
-      }).catch(function(){ form.submit(); });
-    });
-  })();`;
-  }
-
-  return { manageCols, managePage, clientOptions, recurringNudge, recurringSection, recurringDialog };
+  return { manageCols, managePage, clientOptions };
 }
