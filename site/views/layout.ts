@@ -212,5 +212,14 @@ function settingsDialog(): string {
       if(window.__closeAccountMenu) window.__closeAccountMenu();
       open();
     });
+    /* #247: visible save confirmation — the form re-renders silently, so
+       announce success with the shared M3 snackbar. Delegated on body so it
+       survives the #biz-profile outerHTML swap. */
+    document.body.addEventListener('htmx:afterRequest',function(e){
+      var elt=e.detail.elt;
+      if(elt&&elt.id==='biz-profile-form'&&e.detail.successful&&window.tkSnackbar){
+        window.tkSnackbar('Business profile saved');
+      }
+    });
   })();</script>`;
 }

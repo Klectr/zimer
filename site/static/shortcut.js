@@ -22,6 +22,8 @@
     clearTimeout(snackTimer);
     snackTimer = setTimeout(() => bar.classList.remove("show"), 3000);
   }
+  /* #247: shared by the settings dialog (business-profile save confirmation). */
+  window.tkSnackbar = snackbar;
 
   function refreshCard() {
     const card = document.getElementById("timer-card");
