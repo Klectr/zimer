@@ -4,7 +4,7 @@
  *  (#171) and are injected here, so these pages render unchanged. */
 
 import { esc, money } from "../lib/format.ts";
-import { icon } from "../lib/icons.ts";
+import { icon, logo } from "../lib/icons.ts";
 import type { Invoice, InvoiceItem } from "../lib/types.ts";
 
 export interface PublicViewDeps {
@@ -51,10 +51,11 @@ export function createPublicViews(deps: PublicViewDeps) {
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
   <link rel="stylesheet" href="/static/style.css">
+  <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
   <script src="/static/motion.js" defer></script></head>
   <body><main class="login">
   <div class="md-card" style="border-radius:28px;padding:28px">
-  <h1 class="md-headline-small" style="margin-top:0">⏱ Timekeep</h1>
+  <h1 class="md-headline-small" style="margin-top:0;display:flex;align-items:center;gap:12px">${logo(32)}<span>Timekeep</span></h1>
   <form method="post" action="/login" class="form">
   <div class="md-text-field">
     <input type="password" name="token" autocomplete="off" required placeholder=" " aria-label="API token">
