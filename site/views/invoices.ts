@@ -3,12 +3,10 @@
  *  invoiceSheet is also returned so the public-views factory can reuse it. */
 
 import type { Database, Statement } from "bun:sqlite";
-import { addDays, daysBetween, esc, money, payPill, round2, todayStr } from "../lib/format.ts";
+import { addDays, daysBetween, esc, money, round2, todayStr } from "../lib/format.ts";
 import { icon } from "../lib/icons.ts";
 import { getMeta } from "../db.ts";
 import type { Invoice, InvoiceItem, NewInvParams } from "../lib/types.ts";
-
-export interface InvoiceTemplateInfo { id: string; name: string }
 
 export interface InvoiceViewDeps {
   db: Database;
@@ -19,7 +17,6 @@ export interface InvoiceViewDeps {
   stripeConfigured: () => boolean;
   nextInvoiceNumber: () => string;
   invoiceTotals: (items: InvoiceItem[], taxRate: number) => { subtotal: number; tax: number; total: number };
-  templateList: () => InvoiceTemplateInfo[];
   statusPill: (status: string) => string;
   isOverdue: (row: { status: string; due_date?: string | null }) => boolean;
 }
@@ -27,7 +24,7 @@ export interface InvoiceViewDeps {
 export function createInvoiceViews(deps: InvoiceViewDeps) {
   const {
     db, qInvoices, layout, clientOptions,
-    getPublicToken, stripeConfigured, nextInvoiceNumber, invoiceTotals, templateList, statusPill, isOverdue,
+    getPublicToken, stripeConfigured, nextInvoiceNumber, invoiceTotals, statusPill, isOverdue,
   } = deps;
 
   function invoicesPage(): string {
@@ -170,18 +167,6 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
   }
 
   /** /invoices/:id — printable detail with status actions. */
-  /** Template picker + invoice sheet, swapped live by HTMX when the template changes. */
-  function templatePicker(inv: Invoice): string {
-    const opts = templateList().map(t => `
-      <button class="tpl-option${t.id === inv.template ? " selected" : ""}" type="button"
-        hx-post="/invoices/${inv.id}/template" hx-vals='{"template":"${t.id}"}'
-        hx-target="#invoice-doc" hx-swap="outerHTML swap:200ms" aria-pressed="${t.id === inv.template}">${esc(t.name)}</button>`).join("");
-    return `<div class="template-picker no-print">
-      <span class="md-label-medium muted">Template</span>
-      <div class="tpl-options" role="group" aria-label="Invoice template">${opts}</div>
-    </div>`;
-  }
-
   function invoiceSheet(inv: Invoice & { items: InvoiceItem[] }): string {
     const t = invoiceTotals(inv.items, inv.tax_rate);
     const items = inv.items.map(it => `
@@ -194,16 +179,11 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     const client = inv.client_name ? esc(inv.client_name) : "<em>No client</em>";
     const paidChip = inv.paid_via_stripe
       ? ` <span class="stripe-paid-chip" title="Marked paid automatically by a Stripe payment">⚡ Paid via Stripe</span>` : "";
-    const datesClassic = `
-        <div class="inv-dates">
-          <div><span class="muted">Issued</span><br><strong>${esc(inv.issue_date)}</strong></div>
-          ${inv.due_date ? `<div><span class="muted">Due</span><br><strong>${esc(inv.due_date)}</strong></div>` : ""}
-        </div>`;
-    /* #233: modern template — dark band, badge, from/bill-to. Business
-       profile comes from meta; empty profile hides the From block. */
+    /* #233/#239: single invoice design — dark band, badge, from/bill-to.
+       Business profile comes from meta; empty profile hides the From block. */
     const bizName = getMeta(db, "business_name");
     const bizEmail = getMeta(db, "business_email");
-    const headModern = `
+    const head = `
         <div class="inv-modern-band">
           <div class="inv-modern-title">Invoice</div>
           <div class="inv-modern-right">
@@ -218,34 +198,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
             ${bizEmail ? `<div class="muted">${esc(bizEmail)}</div>` : ""}</div>` : ""}
           <div><div class="inv-modern-label">Bill to</div><div><strong>${client}</strong></div></div>
         </div>`;
-    const head = inv.template === "modern" ? headModern : inv.template === "minimal" ? `
-        <div class="inv-head-min">
-          <div>
-            <div class="md-label-medium muted">Invoice</div>
-            <div class="md-title-large">${esc(inv.number)}</div>
-            <div class="muted">${client}</div>
-          </div>
-          <div class="inv-meta">${payPill(inv.status === "paid")}${paidChip}</div>
-        </div>
-        <div class="muted tiny inv-dates-min">Issued ${esc(inv.issue_date)}${inv.due_date ? ` · due ${esc(inv.due_date)}` : ""}</div>` : inv.template === "bold" ? `
-        <div class="inv-head-bold">
-          <div>
-            <div class="inv-bold-title">Invoice</div>
-            <div class="md-title-medium">${esc(inv.number)}</div>
-            <div class="muted">${client}</div>
-          </div>
-          <div class="inv-meta">${payPill(inv.status === "paid")}${paidChip}</div>
-        </div>
-        ${datesClassic}` : `
-        <div class="inv-head">
-          <div>
-            <div class="md-headline-small">Invoice ${esc(inv.number)}</div>
-            <div class="muted">${client}</div>
-          </div>
-          <div class="inv-meta">${payPill(inv.status === "paid")}${paidChip}</div>
-        </div>
-        ${datesClassic}`;
-    return `<div class="md-card invoice-sheet template-${esc(inv.template)}" id="invoice-sheet">
+    return `<div class="md-card invoice-sheet template-modern" id="invoice-sheet">
         ${head}
         <div class="table-wrap"><table class="md-table">
           <thead><tr><th>Description</th><th class="num">Hours</th><th class="num">Rate</th><th class="num">Amount</th></tr></thead>
@@ -261,7 +214,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
   }
 
   function invoiceDoc(inv: Invoice & { items: InvoiceItem[] }): string {
-    return `<div id="invoice-doc">${templatePicker(inv)}${invoiceSheet(inv)}</div>`;
+    return `<div id="invoice-doc">${invoiceSheet(inv)}</div>`;
   }
 
   /* #71: detail body as a fragment — status/Stripe/link actions swap
@@ -363,6 +316,6 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
 
   return {
     invoicesPage, defaultNewInvParams, invoiceNewPage, invoiceStep2,
-    templatePicker, invoiceSheet, invoiceDoc, invoiceDetailBody, invoiceDetailPage,
+    invoiceSheet, invoiceDoc, invoiceDetailBody, invoiceDetailPage,
   };
 }

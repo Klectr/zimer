@@ -25,7 +25,6 @@ export interface ApiDeps {
   mintPublicToken: (id: number) => string;
   stripeLinkFor: (id: number) => Promise<{ url?: string; error?: string; status?: number }>;
   verifyWebhookSignature: (payload: string, sig: string | null, secret: string) => boolean;
-  isInvoiceTemplate: (t: string) => boolean;
   revenueTotals: () => any;
   revenueMonthly: () => any[];
   revenueByClient: () => any[];
@@ -37,7 +36,7 @@ export function createApiRouter(deps: ApiDeps) {
     db, qRunning, qOne, qRange, qInvoice, qInvoices, TOKEN, authedApi, json,
     entryToJson, groupToLineItems, unbilledEntries, getInvoice,
     invoiceTotals, nextInvoiceNumber, mintPublicToken, stripeLinkFor, verifyWebhookSignature,
-    isInvoiceTemplate, revenueTotals, revenueMonthly, revenueByClient, revenueOverdue,
+    revenueTotals, revenueMonthly, revenueByClient, revenueOverdue,
   } = deps;
 
   /** Serve a /api/* request, or null when the path is not an API route. */
@@ -211,11 +210,6 @@ export function createApiRouter(deps: ApiDeps) {
               if (method === "PATCH") {
                 const inv = qInvoice.get(id) as Invoice | null;
                 if (!inv) return json({ error: "not found" }, 404);
-                if (body.template !== undefined) {
-                  const tpl = String(body.template);
-                  if (!isInvoiceTemplate(tpl)) return json({ error: "unknown template" }, 400);
-                  db.query("UPDATE invoices SET template = ? WHERE id = ?").run(tpl, id);
-                }
                 if (body.status !== undefined) {
                   const want = String(body.status);
                   const ok = (inv.status === "draft" && want === "sent") ||
