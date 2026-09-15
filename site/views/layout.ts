@@ -103,17 +103,17 @@ export function createLayoutViews(qRunning: Statement) {
   return { layout, publicShell, notFoundPage, errorPage };
 }
 
-/** Issue #155: global account menu — avatar button in the top app bar (every
+/** Issue #155: global account menu — hamburger button in the top app bar (every
     page), opening an M3 menu with data actions + log out. Replaces the
-    manage-only overflow from #151 and the "Log out" text button. The avatar
-    is the brand mark on a gold disc (site/static/avatar.svg) — #251 replaced
-    the old DiceBear "T" initial, which read as a user's first initial.
+    manage-only overflow from #151 and the "Log out" text button.
+    #251: the DiceBear "T" avatar was replaced with the brand mark; #253
+    replaced that with a plain hamburger icon per Triston — no avatar image.
     #245: the menu gained a Settings item opening the settings modal
     (settingsDialog below); the business profile lives there now. */
 function accountMenu(): string {
   return `<div class="m3-menu-wrap">
-    <button class="avatar-button" id="account-menu-btn" aria-label="Account"
-      aria-haspopup="menu" aria-expanded="false" aria-controls="account-menu"><img src="/static/avatar.svg" alt="" width="40" height="40"></button>
+    <button class="account-menu-button" id="account-menu-btn" aria-label="Account"
+      aria-haspopup="menu" aria-expanded="false" aria-controls="account-menu">${icon("menu")}</button>
     <div class="m3-menu" id="account-menu" role="menu" aria-label="Account" hidden>
       <button class="m3-menu-item" id="settings-menu-item" type="button" role="menuitem">${icon("settings")}<span>Settings</span></button>
       <a class="m3-menu-item" role="menuitem" href="/export/entries.csv" download>${icon("download")}<span>Export entries CSV</span></a>
@@ -162,7 +162,7 @@ function accountMenu(): string {
   })();</script>`;
 }
 
-/** Issue #245: settings modal reached through the app avatar. The shell lives
+/** Issue #245: settings modal reached through the account menu button. The shell lives
     next to the account menu in the app bar; the business-profile form loads
     lazily via htmx on open so layout() needs no db access. Follows the
     .cal-scrim/.cal-dialog motion pattern (scrim fade + dialog scale/fade). */

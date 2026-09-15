@@ -832,19 +832,20 @@ body.app-fixed .cal-gutter-spacer {
    specs: 4dp container corners, surface-container-high, 48dp items with
    24dp leading icons, opens with scale/fade from the anchor. */
 .m3-menu-wrap { position: relative; display: inline-flex; flex: none; }
-/* Issue #155: circular avatar button opening the global account menu. */
-.avatar-button {
+/* Issue #155/#253: circular icon button opening the global account menu. */
+.account-menu-button {
   width: 40px; height: 40px; border-radius: 50%; border: none; padding: 0;
-  overflow: hidden; cursor: pointer; background: transparent; flex: none;
-  position: relative;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent; color: var(--md-sys-color-on-surface-variant);
+  cursor: pointer; flex: none; position: relative;
 }
-.avatar-button img { width: 100%; height: 100%; display: block; }
-.avatar-button::after {
+.account-menu-button svg { width: 24px; height: 24px; display: block; }
+.account-menu-button::after {
   content: ""; position: absolute; inset: 0; border-radius: 50%;
   background: transparent; transition: background var(--motion-duration-short4) var(--motion-easing-standard);
 }
-.avatar-button:hover::after { background: rgb(255 255 255 / 0.08); }
-.avatar-button:focus-visible { outline: 2px solid var(--md-sys-color-primary); outline-offset: 2px; }
+.account-menu-button:hover::after { background: rgb(255 255 255 / 0.08); }
+.account-menu-button:focus-visible { outline: 2px solid var(--md-sys-color-primary); outline-offset: 2px; }
 .m3-menu-divider { height: 1px; margin: 8px 0; background: var(--md-sys-color-outline-variant); }
 .m3-menu {
   position: absolute; top: calc(100% + 4px); right: 0; z-index: 60;
