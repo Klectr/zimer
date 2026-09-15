@@ -18,6 +18,8 @@ export type PdfLineItem = {
   hours: number;
   rate: number;
   amount: number;
+  dateFrom?: string | null; // #243: YYYY-MM-DD, per-line billing dates
+  dateTo?: string | null;
 };
 
 export type PdfInvoice = {
@@ -35,6 +37,9 @@ export type PdfInvoice = {
   fromName?: string; // #233: business profile, shown by the modern template
   fromEmail?: string;
   fromAddress?: string;
+  fromTaxId?: string; // #243: tax ID for 1099-NEC filing, rendered when set
+  terms?: string; // #243: plain-language payment terms near the totals
+  payUrl?: string; // #243: public invoice URL — the payment instruction
 };
 
 /* Widths (units per 1000) for the only glyphs used in right-aligned numerics. */
@@ -77,8 +82,45 @@ function money(n: number): string {
 function fmtDate(ymd: string): string {
   const [y, m, d] = ymd.split("-").map(Number);
   if (!y || !m || !d) return ymd;
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  return `${months[m - 1]} ${d}, ${y}`;
+  return `${MONTHS[m - 1]} ${d}, ${y}`;
+}
+
+/* #243: short date forms for line items ("Sep 11") and ranges. */
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+function fmtDateShort(ymd: string): string {
+  const [y, m, d] = ymd.split("-").map(Number);
+  if (!y || !m || !d) return ymd;
+  return `${MONTHS[m - 1]} ${d}`;
+}
+/** #243: billing period derived from the line-item dates, e.g.
+    "Aug 31 - Sep 11, 2026"; "" when no line carries dates. */
+function billingPeriod(items: PdfLineItem[]): string {
+  const froms = items.map(i => i.dateFrom).filter(Boolean).sort() as string[];
+  if (!froms.length) return "";
+  const tos = items.map(i => i.dateTo || i.dateFrom).filter(Boolean).sort() as string[];
+  const from = froms[0], to = tos[tos.length - 1];
+  return from === to ? fmtDate(from) : `${fmtDateShort(from)} - ${fmtDate(to)}`;
+}
+/** #243: per-line date cell — "Sep 11" or "Aug 31-Sep 11". */
+function lineDate(it: PdfLineItem): string {
+  if (!it.dateFrom) return "";
+  return it.dateTo && it.dateTo !== it.dateFrom
+    ? `${fmtDateShort(it.dateFrom)}-${fmtDateShort(it.dateTo)}`
+    : fmtDateShort(it.dateFrom);
+}
+/** #243: simple word-wrap paragraph for short blocks like payment terms. */
+function para(doc: PdfDoc, text: string, size: number) {
+  let line = "";
+  for (const w of text.split(/\s+/)) {
+    const trial = line ? line + " " + w : w;
+    if (trial.length * size * 0.5 > RIGHT - M && line) {
+      doc.text(M, doc.y, size, line);
+      doc.y -= size + 4;
+      if (doc.y < 80) doc.newPage();
+      line = w;
+    } else line = trial;
+  }
+  if (line) { doc.text(M, doc.y, size, line); doc.y -= size + 4; }
 }
 
 const PAGE_W = 612; // Letter
@@ -236,13 +278,24 @@ function drawModern(inv: PdfInvoice, doc: PdfDoc) {
   doc.text(titleX, PAGE_H - 62, 30, "INVOICE", true, false, WHITE);
   doc.fill(titleX, PAGE_H - 74, 72, 3.5, GOLD);
   doc.rtext(RIGHT, PAGE_H - 52, 15, inv.number, true, WHITE);
-  const dates = `Issued ${fmtDate(inv.issueDate)}${inv.dueDate ? `  |  Due ${fmtDate(inv.dueDate)}` : ""}`;
-  doc.rtext(RIGHT, PAGE_H - 74, 10, dates, false, SOFT);
+  /* #243: the due date is bold — it must be scannable in seconds. */
+  const issuedStr = `Issued ${fmtDate(inv.issueDate)}`;
+  if (inv.dueDate) {
+    const dueStr = `Due ${fmtDate(inv.dueDate)}`;
+    doc.rtext(RIGHT, PAGE_H - 74, 10, dueStr, true, WHITE);
+    const sep = "  |  ";
+    doc.rtext(RIGHT - numWidth(dueStr, 10) - numWidth(sep, 10) - 2, PAGE_H - 74, 10, issuedStr + sep, false, SOFT);
+  } else {
+    doc.rtext(RIGHT, PAGE_H - 74, 10, issuedStr, false, SOFT);
+  }
+  /* #243: billing period derives from the line-item dates. */
+  const period = billingPeriod(inv.items);
+  if (period) doc.rtext(RIGHT, PAGE_H - 90, 10, `Billing period: ${period}`, false, SOFT);
   statusBadge(doc, RIGHT, PAGE_H - 108, inv.status === "paid");
   doc.y = PAGE_H - bandH - 36;
 
   /* ---- from / bill-to ---- */
-  const hasFrom = inv.fromName || inv.fromEmail || inv.fromAddress;
+  const hasFrom = inv.fromName || inv.fromEmail || inv.fromAddress || inv.fromTaxId;
   if (hasFrom) {
     doc.text(M, doc.y, 8.5, "F R O M", true, true);
     doc.y -= 17;
@@ -254,6 +307,8 @@ function drawModern(inv: PdfInvoice, doc: PdfDoc) {
         doc.text(M, doc.y, 10, line.trim(), false, true); doc.y -= 15;
       }
     }
+    /* #243: tax ID — US clients need it for 1099-NEC filing. */
+    if (inv.fromTaxId) { doc.text(M, doc.y, 10, `Tax ID: ${inv.fromTaxId}`, false, true); doc.y -= 15; }
     doc.y -= 20;
   }
   doc.text(M, doc.y, 8.5, "B I L L   T O", true, true);
@@ -262,10 +317,11 @@ function drawModern(inv: PdfInvoice, doc: PdfDoc) {
   doc.y -= 32;
 
   /* ---- line-item table ---- */
-  const C_DESC = M, C_HOURS = 400, C_RATE = 480, C_AMT = RIGHT;
+  const C_DATE = M, C_DESC = 150, C_HOURS = 400, C_RATE = 480, C_AMT = RIGHT;
   const RH = 24;
   const tableHead = () => {
     doc.fill(M, doc.y - 8, RIGHT - M, 24, INK);
+    doc.text(C_DATE + 10, doc.y, 9, "D A T E", true, false, WHITE);
     doc.text(C_DESC + 10, doc.y, 9, "D E S C R I P T I O N", true, false, WHITE);
     doc.text(C_HOURS - capsWidth("H O U R S", 9), doc.y, 9, "H O U R S", true, false, WHITE);
     doc.text(C_RATE - capsWidth("R A T E", 9), doc.y, 9, "R A T E", true, false, WHITE);
@@ -284,7 +340,8 @@ function drawModern(inv: PdfInvoice, doc: PdfDoc) {
       tableHead();
     }
     if (i % 2 === 1) doc.fill(M, doc.y - 8, RIGHT - M, RH, PAPER);
-    const desc = it.description.length > 52 ? it.description.slice(0, 49) + "..." : it.description;
+    const desc = it.description.length > 44 ? it.description.slice(0, 41) + "..." : it.description;
+    doc.text(C_DATE + 10, doc.y - 2, 10, lineDate(it));
     doc.text(C_DESC + 10, doc.y - 2, 10, desc);
     const hours = String(it.hours).replace(/\.0+$/, "").replace(/(\.\d*?)0+$/, "$1");
     doc.rtext(C_HOURS, doc.y - 2, 10, hours);
@@ -308,6 +365,22 @@ function drawModern(inv: PdfInvoice, doc: PdfDoc) {
   if (inv.taxRate) totalRow(`Tax (${inv.taxRate}%)`, money(inv.tax));
   doc.y -= 4;
   totalRow("TOTAL DUE", money(inv.total), true, 14, true);
+
+  /* ---- payment (#243): online payment link + plain-language terms ---- */
+  if (inv.payUrl) {
+    doc.y -= 8;
+    doc.text(M, doc.y, 8.5, "P A Y   O N L I N E", true, true);
+    doc.y -= 15;
+    doc.text(M, doc.y, 10, inv.payUrl);
+    doc.y -= 14;
+  }
+  if (inv.terms?.trim()) {
+    doc.y -= 8;
+    doc.text(M, doc.y, 8.5, "P A Y M E N T   T E R M S", true, true);
+    doc.y -= 15;
+    para(doc, inv.terms.trim(), 10);
+    doc.y -= 8;
+  }
 
   /* ---- notes ---- */
   if (inv.notes.trim()) {

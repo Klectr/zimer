@@ -173,6 +173,9 @@ export function createApiRouter(deps: ApiDeps) {
                   hours: round2(Number(it.hours) || 0),
                   rate: round2(Number(it.rate) || 0),
                   entry_ids: Array.isArray(it.entry_ids) ? it.entry_ids.map(Number).filter(n => n > 0) : [],
+                  /* #243: optional per-line billing dates */
+                  date_from: typeof it.date_from === "string" && it.date_from ? it.date_from : null,
+                  date_to: typeof it.date_to === "string" && it.date_to ? it.date_to : null,
                 }))
                 .filter(it => it.hours > 0);
               if (!clean.length) return json({ error: "no billable line items" }, 400);
@@ -187,11 +190,11 @@ export function createApiRouter(deps: ApiDeps) {
                   Number(body.tax_rate) || 0,
                   String(body.notes || "")) as any;
               const insItem = db.query(
-                "INSERT INTO invoice_items (invoice_id, description, hours, rate, amount) VALUES (?, ?, ?, ?, ?)");
+                "INSERT INTO invoice_items (invoice_id, description, hours, rate, amount, date_from, date_to) VALUES (?, ?, ?, ?, ?, ?, ?)");
               const linkEntry = db.query("UPDATE time_entries SET invoice_id = ? WHERE id = ?");
               db.transaction(() => {
                 for (const it of clean) {
-                  insItem.run(inv.id, it.description, it.hours, it.rate, round2(it.hours * it.rate));
+                  insItem.run(inv.id, it.description, it.hours, it.rate, round2(it.hours * it.rate), it.date_from, it.date_to);
                   for (const eid of it.entry_ids) linkEntry.run(inv.id, eid);
                 }
               })();

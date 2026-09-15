@@ -123,16 +123,21 @@ export function createDomain(deps: DomainDeps) {
 
   /** Group entries by project into draft line items. */
   function groupToLineItems(entries: any[], rate: number) {
-    const groups = new Map<number, { project: string; ids: number[]; secs: number }>();
+    /* #243: track each group's date range — invoice lines carry their
+       billing dates (Date | Description | Hours | Rate | Amount). */
+    const groups = new Map<number, { project: string; ids: number[]; secs: number; from: string; to: string }>();
     for (const e of entries) {
-      const g = groups.get(e.project_id) ?? { project: e.project_name, ids: [], secs: 0 };
+      const day = String(e.start_time).slice(0, 10);
+      const g = groups.get(e.project_id) ?? { project: e.project_name, ids: [], secs: 0, from: day, to: day };
       g.ids.push(e.id);
       g.secs += roundUpSeconds(durationSeconds(e.start_time, e.end_time), ROUNDING_MINUTES);
+      if (day < g.from) g.from = day;
+      if (day > g.to) g.to = day;
       groups.set(e.project_id, g);
     }
     return [...groups.values()].map(g => {
       const hours = round2(g.secs / 3600);
-      return { description: g.project, hours, rate, amount: round2(hours * rate), entry_ids: g.ids };
+      return { description: g.project, hours, rate, amount: round2(hours * rate), entry_ids: g.ids, date_from: g.from, date_to: g.to };
     });
   }
 

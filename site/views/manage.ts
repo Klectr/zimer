@@ -96,11 +96,14 @@ export function createManageViews(deps: ManageViewDeps) {
   }
 
   /* #233: business profile — name/email/address printed in the FROM block
-     of the Modern PDF template. Stored in meta; empty degrades gracefully. */
+     of the Modern PDF template. Stored in meta; empty degrades gracefully.
+     #243 adds the tax ID (client 1099 filing) and payment terms. */
   function bizProfileSection(): string {
     const name = getMeta(db, "business_name");
     const email = getMeta(db, "business_email");
     const address = getMeta(db, "business_address");
+    const taxId = getMeta(db, "business_tax_id");
+    const terms = getMeta(db, "business_payment_terms");
     const field = (fname: string, label: string, val: string, type = "text") => `
             <div class="md-text-field">
               <input type="${type}" name="${fname}" value="${esc(val)}" placeholder=" " aria-label="${label}">
@@ -108,12 +111,16 @@ export function createManageViews(deps: ManageViewDeps) {
             </div>`;
     return `<section id="biz-profile">
           <h2 class="md-headline-small">Business profile</h2>
-          <p class="muted" style="margin:0 0 12px">Shown in the <em>From</em> block on Modern-template invoices.</p>
+          <p class="muted" style="margin:0 0 12px">Shown in the <em>From</em> block on invoices; the tax ID and payment terms print on the invoice too.</p>
           <form method="post" action="/business-profile" class="manage-form" hx-post="/business-profile" hx-target="#biz-profile" hx-swap="outerHTML">
             ${field("business_name", "Business name", name)}
             <div class="manage-form-row">
               ${field("business_email", "Email", email, "email")}
               ${field("business_address", "Address", address)}
+              ${field("business_tax_id", "Tax ID (EIN/SSN)", taxId)}
+            </div>
+            ${field("business_payment_terms", "Payment terms", terms)}
+            <div class="manage-form-row">
               <span class="manage-form-spacer"></span>
               <button class="md-filled-button" type="submit">${icon("save")}Save</button>
             </div>

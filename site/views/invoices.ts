@@ -3,7 +3,7 @@
  *  invoiceSheet is also returned so the public-views factory can reuse it. */
 
 import type { Database, Statement } from "bun:sqlite";
-import { addDays, daysBetween, esc, money, round2, todayStr } from "../lib/format.ts";
+import { addDays, daysBetween, esc, money, round2, shortDateRange, todayStr } from "../lib/format.ts";
 import { icon } from "../lib/icons.ts";
 import { getMeta } from "../db.ts";
 import type { Invoice, InvoiceItem, NewInvParams } from "../lib/types.ts";
@@ -132,11 +132,14 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       : "";
     const rows = preview.items.map((it, i) => `
         <tr>
+          <td>${esc(shortDateRange(it.date_from, it.date_to))}</td>
           <td><input type="text" name="g${i}_desc" value="${esc(it.description)}" class="cell-input" aria-label="Item description"></td>
           <td><input type="number" name="g${i}_hours" value="${it.hours}" min="0" step="0.01" class="cell-input num" aria-label="Hours"></td>
           <td><input type="number" name="g${i}_rate" value="${it.rate}" min="0" step="0.01" class="cell-input num" aria-label="Rate"></td>
           <td class="num">${money(it.amount)}</td>
           <input type="hidden" name="g${i}_ids" value="${it.entry_ids.join(",")}">
+          <input type="hidden" name="g${i}_date_from" value="${esc(it.date_from || "")}">
+          <input type="hidden" name="g${i}_date_to" value="${esc(it.date_to || "")}">
         </tr>`).join("");
     const t = invoiceTotals(preview.items, Number(p.tax_rate) || 0);
     return `
@@ -152,12 +155,12 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
           <input type="hidden" name="notes" value="${esc(p.notes)}">
           <input type="hidden" name="groups" value="${preview.items.length}">
           <div class="table-wrap"><table class="md-table">
-            <thead><tr><th>Description</th><th class="num">Hours</th><th class="num">Rate</th><th class="num">Amount</th></tr></thead>
+            <thead><tr><th>Date</th><th>Description</th><th class="num">Hours</th><th class="num">Rate</th><th class="num">Amount</th></tr></thead>
             <tbody>${rows}</tbody>
             <tfoot>
-              <tr><td colspan="3">Subtotal</td><td class="num">${money(t.subtotal)}</td></tr>
-              <tr><td colspan="3">Tax (${esc(p.tax_rate)}%)</td><td class="num">${money(t.tax)}</td></tr>
-              <tr class="grand"><td colspan="3">Total</td><td class="num">${money(t.total)}</td></tr>
+              <tr><td colspan="4">Subtotal</td><td class="num">${money(t.subtotal)}</td></tr>
+              <tr><td colspan="4">Tax (${esc(p.tax_rate)}%)</td><td class="num">${money(t.tax)}</td></tr>
+              <tr class="grand"><td colspan="4">Total</td><td class="num">${money(t.total)}</td></tr>
             </tfoot>
           </table></div>
           <p class="muted tiny">Amounts recalculate on save. Entries are marked billed when the invoice is created.</p>
@@ -171,6 +174,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     const t = invoiceTotals(inv.items, inv.tax_rate);
     const items = inv.items.map(it => `
       <tr>
+        <td>${esc(shortDateRange(it.date_from, it.date_to))}</td>
         <td>${esc(it.description)}</td>
         <td class="num">${it.hours}</td>
         <td class="num">${money(it.rate)}</td>
@@ -179,36 +183,46 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     const client = inv.client_name ? esc(inv.client_name) : "<em>No client</em>";
     const paidChip = inv.paid_via_stripe
       ? ` <span class="stripe-paid-chip" title="Marked paid automatically by a Stripe payment">⚡ Paid via Stripe</span>` : "";
+    /* #243: billing period derives from the line-item dates. */
+    const froms = inv.items.map(it => it.date_from).filter(Boolean).sort() as string[];
+    const tos = inv.items.map(it => it.date_to || it.date_from).filter(Boolean).sort() as string[];
+    const period = froms.length ? shortDateRange(froms[0], tos[tos.length - 1]) : "";
     /* #233/#239: single invoice design — dark band, badge, from/bill-to.
        Business profile comes from meta; empty profile hides the From block. */
     const bizName = getMeta(db, "business_name");
     const bizEmail = getMeta(db, "business_email");
+    const bizTaxId = getMeta(db, "business_tax_id"); /* #243: for 1099-NEC filing */
+    const terms = getMeta(db, "business_payment_terms") /* #243 */
+      || "Please pay within 30 days. Thank you!";
     const head = `
         <div class="inv-modern-band">
           <div class="inv-modern-title">Invoice</div>
           <div class="inv-modern-right">
             <div class="inv-modern-number">${esc(inv.number)}</div>
-            <div class="inv-modern-dates">Issued ${esc(inv.issue_date)}${inv.due_date ? ` · Due ${esc(inv.due_date)}` : ""}</div>
+            <div class="inv-modern-dates">Issued ${esc(inv.issue_date)}${inv.due_date ? ` · <strong>Due ${esc(inv.due_date)}</strong>` : ""}</div>
+            ${period ? `<div class="inv-modern-dates">Billing period: ${esc(period)}</div>` : ""}
             <span class="inv-modern-badge${inv.status === "paid" ? " paid" : ""}">${inv.status === "paid" ? "Paid" : "Unpaid"}</span>${paidChip}
           </div>
         </div>
         <div class="inv-modern-parties">
-          ${bizName || bizEmail ? `<div><div class="inv-modern-label">From</div>
+          ${bizName || bizEmail || bizTaxId ? `<div><div class="inv-modern-label">From</div>
             ${bizName ? `<div><strong>${esc(bizName)}</strong></div>` : ""}
-            ${bizEmail ? `<div class="muted">${esc(bizEmail)}</div>` : ""}</div>` : ""}
+            ${bizEmail ? `<div class="muted">${esc(bizEmail)}</div>` : ""}
+            ${bizTaxId ? `<div class="muted">Tax ID: ${esc(bizTaxId)}</div>` : ""}</div>` : ""}
           <div><div class="inv-modern-label">Bill to</div><div><strong>${client}</strong></div></div>
         </div>`;
     return `<div class="md-card invoice-sheet template-modern" id="invoice-sheet">
         ${head}
         <div class="table-wrap"><table class="md-table">
-          <thead><tr><th>Description</th><th class="num">Hours</th><th class="num">Rate</th><th class="num">Amount</th></tr></thead>
-          <tbody>${items || `<tr><td colspan="4" class="muted">No line items.</td></tr>`}</tbody>
+          <thead><tr><th>Date</th><th>Description</th><th class="num">Hours</th><th class="num">Rate</th><th class="num">Amount</th></tr></thead>
+          <tbody>${items || `<tr><td colspan="5" class="muted">No line items.</td></tr>`}</tbody>
           <tfoot>
-            <tr><td colspan="3">Subtotal</td><td class="num">${money(t.subtotal)}</td></tr>
-            ${inv.tax_rate ? `<tr><td colspan="3">Tax (${inv.tax_rate}%)</td><td class="num">${money(t.tax)}</td></tr>` : ""}
-            <tr class="grand"><td colspan="3">Total due</td><td class="num">${money(t.total)}</td></tr>
+            <tr><td colspan="4">Subtotal</td><td class="num">${money(t.subtotal)}</td></tr>
+            ${inv.tax_rate ? `<tr><td colspan="4">Tax (${inv.tax_rate}%)</td><td class="num">${money(t.tax)}</td></tr>` : ""}
+            <tr class="grand"><td colspan="4">Total due</td><td class="num">${money(t.total)}</td></tr>
           </tfoot>
         </table></div>
+        <p class="inv-terms">${esc(terms)}</p>
         ${inv.notes ? `<p class="inv-notes">${esc(inv.notes)}</p>` : ""}
       </div>`;
   }

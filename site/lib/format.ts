@@ -51,6 +51,22 @@ export function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
+/* #243: "Sep 11" or "Aug 31 – Sep 11" for invoice line-item dates.
+   Parses YYYY-MM-DD manually — new Date("2026-09-11") is UTC midnight and
+   renders the previous day in US timezones. */
+const SHORT_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+export function shortYmd(ymd: string): string {
+  const [y, m, d] = ymd.split("-").map(Number);
+  if (!y || !m || !d) return ymd;
+  return `${SHORT_MONTHS[m - 1]} ${d}`;
+}
+export function shortDateRange(from: string | null | undefined, to: string | null | undefined): string {
+  if (!from) return "";
+  if (!to || to === from) return shortYmd(from);
+  return `${shortYmd(from)} – ${shortYmd(to)}`;
+}
+
 export function todayStr(): string {
   const n = new Date();
   return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`;
