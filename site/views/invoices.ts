@@ -191,7 +191,6 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
        Business profile comes from meta; empty profile hides the From block. */
     const bizName = getMeta(db, "business_name");
     const bizEmail = getMeta(db, "business_email");
-    const bizTaxId = getMeta(db, "business_tax_id"); /* #243: for 1099-NEC filing */
     const terms = getMeta(db, "business_payment_terms") /* #243 */
       || "Please pay within 30 days. Thank you!";
     const head = `
@@ -205,10 +204,9 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
           </div>
         </div>
         <div class="inv-modern-parties">
-          ${bizName || bizEmail || bizTaxId ? `<div><div class="inv-modern-label">From</div>
+          ${bizName || bizEmail ? `<div><div class="inv-modern-label">From</div>
             ${bizName ? `<div><strong>${esc(bizName)}</strong></div>` : ""}
-            ${bizEmail ? `<div class="muted">${esc(bizEmail)}</div>` : ""}
-            ${bizTaxId ? `<div class="muted">Tax ID: ${esc(bizTaxId)}</div>` : ""}</div>` : ""}
+            ${bizEmail ? `<div class="muted">${esc(bizEmail)}</div>` : ""}</div>` : ""}
           <div><div class="inv-modern-label">Bill to</div><div><strong>${client}</strong></div></div>
         </div>`;
     return `<div class="md-card invoice-sheet template-modern" id="invoice-sheet">

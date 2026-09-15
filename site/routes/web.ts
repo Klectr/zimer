@@ -277,8 +277,7 @@ export function createWebRouter(deps: WebDeps) {
           setMeta(db, "business_name", String(form.get("business_name") || "").trim());
           setMeta(db, "business_email", String(form.get("business_email") || "").trim());
           setMeta(db, "business_address", String(form.get("business_address") || "").trim());
-          /* #243: tax ID (for client 1099 filing) and payment terms */
-          setMeta(db, "business_tax_id", String(form.get("business_tax_id") || "").trim());
+          /* #243: payment terms */
           setMeta(db, "business_payment_terms", String(form.get("business_payment_terms") || "").trim());
           if (isHtmx(req)) return html(bizProfileSection());
           return new Response(null, { status: 302, headers: { Location: "/manage" } });
@@ -412,8 +411,7 @@ export function createWebRouter(deps: WebDeps) {
             fromName: getMeta(db, "business_name") || undefined,
             fromEmail: getMeta(db, "business_email") || undefined,
             fromAddress: getMeta(db, "business_address") || undefined,
-            /* #243: tax ID, payment terms, and the pay-online link */
-            fromTaxId: getMeta(db, "business_tax_id") || undefined,
+            /* #243: payment terms, and the pay-online link */
             terms: getMeta(db, "business_payment_terms") || "Please pay within 30 days. Thank you!",
             payUrl: inv.public_token ? `${publicOrigin(req, PORT)}/i/${inv.public_token}` : undefined,
           });
