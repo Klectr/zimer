@@ -4,7 +4,7 @@
  *  call site keeps working unchanged. */
 
 import type { Database, Statement } from "bun:sqlite";
-import { addDays, durationSeconds, esc, fmtDur, sundayOf, todayStr } from "../lib/format.ts";
+import { addDays, durationSeconds, esc, fmtDur } from "../lib/format.ts";
 import { icon } from "../lib/icons.ts";
 import type { Entry } from "../lib/types.ts";
 
@@ -35,22 +35,75 @@ export function createCalendarViews(deps: CalendarViewDeps) {
 
   const { db, qOne, qRange, entrySelect: ENTRY_SELECT, layout, projectOptions, weekTargetBar, calHourPx } = deps;
 
+  /* #256: the server may be in another timezone (VPS is UTC), so every
+     "local" computation — day bucketing, entry positioning, today highlight,
+     week bounds — is done in the *client's* IANA zone, plumbed through as
+     ?tz= on week requests. Without a valid tz we keep the legacy server-local
+     behavior. */
+  const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const ymdOf = (p: { y: number; m: number; d: number }) =>
+    `${p.y}-${String(p.m).padStart(2, "0")}-${String(p.d).padStart(2, "0")}`;
+  /** Wall-clock parts of an instant in the client's zone. */
+  function tzParts(d: Date, tz: string | null): { y: number; m: number; d: number; hh: number; mm: number } {
+    if (!tz) return { y: d.getFullYear(), m: d.getMonth() + 1, d: d.getDate(), hh: d.getHours(), mm: d.getMinutes() };
+    const p: Record<string, string> = {};
+    for (const x of new Intl.DateTimeFormat("en-US", { timeZone: tz, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).formatToParts(d)) p[x.type] = x.value;
+    return { y: +p.year, m: +p.month, d: +p.day, hh: +p.hour, mm: +p.minute };
+  }
+  /** Validate an IANA zone string; null when absent or invalid. */
+  function validTz(tz: string | null | undefined): string | null {
+    if (!tz || tz.length > 64 || !/^[A-Za-z0-9_+\-]+(\/[A-Za-z0-9_+\-]+)+$/.test(tz)) return null;
+    try { new Intl.DateTimeFormat("en-US", { timeZone: tz }); return tz; } catch { return null; }
+  }
+  /** UTC offset of a zone at an instant, in minutes (CDT = -300). */
+  function zoneOffsetMin(tz: string, at: Date): number {
+    const p: Record<string, string> = {};
+    for (const x of new Intl.DateTimeFormat("en-US", { timeZone: tz, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }).formatToParts(at)) p[x.type] = x.value;
+    const asUTC = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second);
+    return Math.round((asUTC - at.getTime()) / 60000);
+  }
+  /** Sunday of the week containing a YYYY-MM-DD, from the calendar date alone
+      (weekday-safe in every zone, unlike noon-anchored Date parsing). */
+  function sundayOfYmd(dateStr: string): string {
+    const [y, m, d] = dateStr.split("-").map(Number);
+    return addDays(dateStr, -new Date(Date.UTC(y, m - 1, d, 12)).getUTCDay());
+  }
+  const weekdayOf = (y: number, m: number, d: number) => WEEKDAYS[new Date(Date.UTC(y, m - 1, d, 12)).getUTCDay()];
+  /** [from, to] ISO instants covering the client's week starting Sunday `sun`.
+      Both bounds are computed independently so DST-transition weeks stay
+      contiguous with their neighbors. Falls back to the legacy naive-local
+      strings without a tz. */
+  function weekBoundsISO(sun: string, tz: string | null): [string, string] {
+    if (!tz) return [sun + "T00:00:00", addDays(sun, 7) + "T00:00:00"];
+    return [new Date(localMidnightUTC(tz, sun)).toISOString(),
+            new Date(localMidnightUTC(tz, addDays(sun, 7))).toISOString()];
+  }
+  /** UTC instant of 00:00 local on a YYYY-MM-DD in tz. Iterative: the offset
+      is sampled at the guess and refined, converging across DST transitions. */
+  function localMidnightUTC(tz: string, dateStr: string): number {
+    const [y, m, d] = dateStr.split("-").map(Number);
+    let guess = Date.UTC(y, m - 1, d);
+    for (let i = 0; i < 3; i++) guess = Date.UTC(y, m - 1, d) - zoneOffsetMin(tz, new Date(guess)) * 60000;
+    return guess;
+  }
+
   /** Inner HTML of the #week section (everything that changes when entries do).
       Served full-page via weekGrid() and in-place via GET /partial/week (#65). */
-  function weekInner(weekStr?: string): string {
-    const sun = sundayOf(weekStr);
+  function weekInner(weekStr?: string, tzParam?: string): string {
+    const tz = validTz(tzParam);
+    /* "today" in the client's zone — the server may be on a different date. */
+    const today = ymdOf(tzParts(new Date(), tz));
+    const sun = weekStr && /^\d{4}-\d{2}-\d{2}$/.test(weekStr) ? weekStr : sundayOfYmd(today);
     const prev = addDays(sun, -7), next = addDays(sun, 7);
-    const isThisWeek = sun === sundayOf();
-    const today = todayStr();
+    const isThisWeek = sun === sundayOfYmd(today);
 
-    // Fetch the whole week in one query, then bucket entries by local day.
-    const [wFrom, wTo] = [sun + "T00:00:00", addDays(sun, 7) + "T00:00:00"];
+    // Fetch the whole week in one query, then bucket entries by the client's local day.
+    const [wFrom, wTo] = weekBoundsISO(sun, tz);
     const rows = db.query(
       `${ENTRY_SELECT} WHERE e.start_time >= ? AND e.start_time < ? ORDER BY e.start_time`).all(wFrom, wTo) as Entry[];
     const byDay = new Map<string, Entry[]>();
     for (const e of rows) {
-      const d = new Date(e.start_time);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      const key = ymdOf(tzParts(new Date(e.start_time), tz));
       if (!byDay.has(key)) byDay.set(key, []);
       byDay.get(key)!.push(e);
     }
@@ -82,7 +135,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
           </span>`).join("")}
       </div>`;
 
-    const toMin = (iso: string) => { const d = new Date(iso); return d.getHours() * 60 + d.getMinutes(); };
+    const toMin = (iso: string) => { const p = tzParts(new Date(iso), tz); return p.hh * 60 + p.mm; };
     const toHM = (mins: number) => `${String(Math.floor(mins / 60)).padStart(2, "0")}:${String(mins % 60).padStart(2, "0")}`;
 
     let weekTotal = 0;
@@ -91,8 +144,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     for (let i = 0; i < 7; i++) {
       const day = addDays(sun, i);
       const [y, m, d] = day.split("-").map(Number);
-      const dt = new Date(y, m - 1, d);
-      const wd = dt.toLocaleDateString([], { weekday: "short" });
+      const wd = weekdayOf(y, m, d).slice(0, 3);
       const entries = byDay.get(day) ?? [];
       const total = entries.reduce((a, e) => a + durationSeconds(e.start_time, e.end_time), 0);
       /* Billable = entry has a project (hence a client); non-billable = no project. */
@@ -106,7 +158,8 @@ export function createCalendarViews(deps: CalendarViewDeps) {
 
       // Entries render full-width; an entry involved in an overlap gets a top
       // drop shadow so it reads as elevated above the entry beneath it.
-      const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
+      const nowP = tzParts(new Date(), tz);
+      const nowMin = nowP.hh * 60 + nowP.mm;
       const sortedBlocks = entries
         .map((e) => {
           const a = toMin(e.start_time);
@@ -152,7 +205,8 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     }
 
     // Week-over-week delta vs the immediately preceding week.
-    const prevRows = qRange.all(addDays(sun, -7) + "T00:00:00", sun + "T00:00:00") as Entry[];
+    const [pFrom, pTo] = weekBoundsISO(addDays(sun, -7), tz);
+    const prevRows = qRange.all(pFrom, pTo) as Entry[];
     const prevTotal = prevRows.reduce((a, e) => a + durationSeconds(e.start_time, e.end_time), 0);
     const deltaHtml = (() => {
       if (prevTotal <= 0) return `<span class="muted">—</span>`;
@@ -209,9 +263,19 @@ export function createCalendarViews(deps: CalendarViewDeps) {
   /** Full calendar week section: the #week wrapper plus the persistent entry
       dialog and calendar script. The dialog and script live outside #week so an
       in-place week refresh (#65) never destroys dialog bindings or duplicates
-      listeners. */
+      listeners.
+      #256: the grid loads via htmx (tz is appended by calScript's
+      htmx:configRequest) so the first paint is already in the client's zone —
+      a server-rendered grid would flash server-timezone positions. */
   function weekGrid(weekStr?: string): string {
-    return `<div id="week">${weekInner(weekStr)}</div>
+    const q = weekStr && /^\d{4}-\d{2}-\d{2}$/.test(weekStr) ? `?week=${weekStr}` : "";
+    return `<div id="week" hx-get="/partial/week${q}" hx-trigger="load" hx-swap="innerHTML">
+        <div class="skel-stack" aria-hidden="true">
+          <div class="skel skel-row"></div>
+          <div class="skel skel-row"></div>
+          <div class="skel skel-row"></div>
+        </div>
+      </div>
       <div class="cal-scrim" id="cal-scrim" hidden>
         <div class="cal-dialog" role="dialog" aria-modal="true" aria-labelledby="cal-dialog-title">
           <h2 class="md-headline-small" id="cal-dialog-title">New entry</h2>
@@ -252,6 +316,16 @@ export function createCalendarViews(deps: CalendarViewDeps) {
   function calScript(): string {
     return `(function(){
     var HOUR=${calHourPx};
+    /* #256: the client's IANA zone. Appended to every /partial/week request
+       (htmx:configRequest covers nav links; refreshWeek appends it to fetch),
+       and as a ±HH:MM suffix on posted datetimes so the server stores the
+       right instant instead of parsing wall-clock time in its own zone. */
+    var TZ=""; try{ TZ=Intl.DateTimeFormat().resolvedOptions().timeZone||""; }catch(e){}
+    function tzSuffix(){var o=-new Date().getTimezoneOffset();var s=o<0?"-":"+",a=Math.abs(o);
+      return s+String(Math.floor(a/60)).padStart(2,"0")+":"+String(a%60).padStart(2,"0");}
+    document.body.addEventListener("htmx:configRequest",function(e){
+      if(e.detail&&e.detail.path&&e.detail.path.indexOf("/partial/week")===0&&TZ)
+        e.detail.parameters.tz=TZ;});
     var scrim=document.getElementById('cal-scrim');
     var dialog=scrim.querySelector('.cal-dialog');
     /* M3 dialog motion: .open drives scrim fade + dialog scale/fade.
@@ -337,7 +411,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       var st=scroller?scroller.scrollTop:0;
       var wk='';
       try{ wk=new URLSearchParams(location.search).get('week')||''; }catch(e){}
-      fetch('/partial/week?week='+encodeURIComponent(wk)).then(function(r){
+      fetch('/partial/week?week='+encodeURIComponent(wk)+(TZ?'&tz='+encodeURIComponent(TZ):'')).then(function(r){
         if(!r.ok) throw new Error('refresh failed');
         return r.text();
       }).then(function(html){
@@ -358,8 +432,8 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       var fd=new URLSearchParams();
       fd.set('description',desc.value);
       fd.set('project_id',project.value);
-      fd.set('start_time',dayStr+'T'+startI.value);
-      fd.set('end_time',dayStr+'T'+endI.value);
+      fd.set('start_time',dayStr+'T'+startI.value+tzSuffix());
+      fd.set('end_time',dayStr+'T'+endI.value+tzSuffix());
       var url=mode==='create'?'/entries':'/entries/'+editId;
       var hid=mode==='edit'?editId:null;
       fetch(url,{method:'POST',body:fd}).then(function(r){
@@ -424,8 +498,8 @@ export function createCalendarViews(deps: CalendarViewDeps) {
           var fd=new URLSearchParams();
           fd.set('description',r.desc);
           fd.set('project_id',r.projectId);
-          fd.set('start_time',r.date+'T'+toHM(ns));
-          fd.set('end_time',r.date+'T'+toHM(ne));
+          fd.set('start_time',r.date+'T'+toHM(ns)+tzSuffix());
+          fd.set('end_time',r.date+'T'+toHM(ne)+tzSuffix());
           fetch('/entries/'+r.id,{method:'POST',body:fd}).then(function(resp){
             if(!resp.ok) throw new Error('resize failed');
             refreshWeek(r.id);
@@ -549,17 +623,16 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     return layout("Calendar", weekGrid(week), "calendar", true);
   }
 
+  /** #256: datetime-local inputs are prefilled client-side from the ISO instant
+      (data-iso) — the server can't know the client's zone on a full page load.
+      On submit, the offset is appended via hidden inputs (a raw ±HH:MM suffix
+      is not a valid datetime-local value and would be sanitized to ""). */
   function editPage(id: number): string | null {
     const e = qOne.get(id) as Entry | null;
     if (!e) return null;
-    const toLocal = (iso: string) => {
-      const d = new Date(iso);
-      const p = (n: number) => String(n).padStart(2, "0");
-      return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
-    };
     return layout("Edit entry", `
       <h2 class="md-headline-small" data-enter="2">Edit entry</h2>
-      <form method="post" action="/entries/${e.id}" class="form">
+      <form method="post" action="/entries/${e.id}" class="form" id="edit-entry-form">
         <div class="md-text-field">
           <input type="text" name="description" value="${esc(e.description)}" placeholder=" ">
           <label>Description</label>
@@ -569,18 +642,35 @@ export function createCalendarViews(deps: CalendarViewDeps) {
           <label>Project</label>
         </div>
         <div class="md-text-field filled">
-          <input type="datetime-local" name="start_time" value="${toLocal(e.start_time)}" required placeholder=" ">
+          <input type="datetime-local" name="start_time" data-iso="${esc(e.start_time)}" required placeholder=" ">
           <label>Start</label>
         </div>
         <div class="md-text-field filled">
-          <input type="datetime-local" name="end_time" value="${e.end_time ? toLocal(e.end_time) : ""}" placeholder=" ">
+          <input type="datetime-local" name="end_time" data-iso="${esc(e.end_time || "")}" placeholder=" ">
           <label>End (blank = still running)</label>
         </div>
         <div class="row">
           <button class="md-filled-button" type="submit">Save</button>
           <a class="md-text-button" href="/calendar">Cancel</a>
         </div>
-      </form>`);
+      </form>
+      <script>(function(){
+        var p2=function(n){return String(n).padStart(2,"0");};
+        function toLocalInput(iso){var d=new Date(iso);
+          return d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate())+"T"+p2(d.getHours())+":"+p2(d.getMinutes());}
+        var els=document.querySelectorAll('input[type=datetime-local][data-iso]');
+        for(var i=0;i<els.length;i++){var iso=els[i].getAttribute("data-iso");if(iso)els[i].value=toLocalInput(iso);}
+        var form=document.getElementById("edit-entry-form");
+        form.addEventListener("submit",function(ev){
+          ev.preventDefault();
+          var o=-new Date().getTimezoneOffset(),s=o<0?"-":"+",a=Math.abs(o);
+          var suf=s+p2(Math.floor(a/60))+":"+p2(a%60);
+          for(var j=0;j<els.length;j++){if(els[j].value){
+            var h=document.createElement("input");h.type="hidden";h.name=els[j].name;h.value=els[j].value+suf;
+            form.appendChild(h);els[j].disabled=true;}}
+          form.submit();
+        });
+      })();</script>`);
   }
 
   return { weekInner, weekGrid, calendarPage, editPage };

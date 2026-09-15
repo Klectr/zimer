@@ -136,7 +136,8 @@ export function createWebRouter(deps: WebDeps) {
           if (path === "/partial/timer" && method === "GET") return html(timerPartial());
           if (path === "/partial/week" && method === "GET") {
             const w = new URL(req.url).searchParams.get("week") || undefined;
-            return html(weekInner(w || undefined));
+            const tz = new URL(req.url).searchParams.get("tz") || undefined;
+            return html(weekInner(w || undefined, tz || undefined));
           }
           /* #255: the client passes its own day bounds as UTC instants
              (?from=&to=, from client-local midnight); validate strictly,
