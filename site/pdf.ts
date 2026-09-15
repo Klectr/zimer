@@ -10,6 +10,9 @@
  * row. Shared assembly (pages → xref PDF) lives in assemblePdf.
  */
 
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
 export type PdfLineItem = {
   description: string;
   hours: number;
@@ -105,10 +108,95 @@ class PdfDoc {
   rule(yy: number, w = 1) {
     this.cmds.push(`${w} w ${M} ${yy} m ${RIGHT} ${yy} l S`);
   }
+  /** Push a raw content-stream command (for vector art like the logo). */
+  raw(s: string) {
+    this.cmds.push(s);
+  }
   newPage() {
     this.pages.push([]);
     this.y = PAGE_H - M;
   }
+}
+
+/* ---------------- brand logo (#241) ----------------
+ * The logo lives in site/static/logo.svg — the single source of truth.
+ * Its artwork is stroked paths using absolute M/L/C commands plus one filled
+ * circle, which map directly onto PDF path operators (m/l/c + S for strokes,
+ * 4-bezier circle + f for the dot). Parsed once and cached; if the SVG ever
+ * can't be parsed the invoice simply renders without the mark. */
+
+interface LogoCmd { op: string; pts: number[] }
+interface LogoArt { strokeW: number; strokes: LogoCmd[][]; dots: { cx: number; cy: number; r: number }[] }
+
+let logoArt: LogoArt | null | undefined;
+
+function tokenizePath(d: string): LogoCmd[] {
+  const toks = d.match(/[MLCZ]|-?\d*\.?\d+/gi) || [];
+  const cmds: LogoCmd[] = [];
+  const need: Record<string, number> = { M: 2, L: 2, C: 6, Z: 0 };
+  for (const t of toks) {
+    if (/^[MLCZ]$/i.test(t)) cmds.push({ op: t.toUpperCase(), pts: [] });
+    else if (cmds.length) cmds[cmds.length - 1].pts.push(parseFloat(t));
+  }
+  return cmds.filter(c => (need[c.op] ?? -1) === c.pts.length && c.op !== "Z");
+}
+
+function loadLogoArt(): LogoArt | null {
+  if (logoArt !== undefined) return logoArt;
+  logoArt = null;
+  try {
+    const svg = readFileSync(resolve(import.meta.dir, "static", "logo.svg"), "utf8");
+    const strokeW = parseFloat(svg.match(/stroke-width="([\d.]+)"/)?.[1] || "4") || 4;
+    const strokes: LogoCmd[][] = [];
+    for (const m of svg.matchAll(/<path\b[^>]*?d="([^"]*)"[^>]*?>/g)) {
+      const cmds = tokenizePath(m[1]);
+      if (cmds.length) strokes.push(cmds);
+    }
+    const dots: LogoArt["dots"] = [];
+    for (const m of svg.matchAll(/<circle\b[^>]*?>/g)) {
+      const tag = m[0];
+      const num = (n: string) => { const v = tag.match(new RegExp(`${n}="([\\d.]+)"`))?.[1]; return v === undefined ? null : parseFloat(v); };
+      const cx = num("cx"), cy = num("cy"), r = num("r");
+      if (cx !== null && cy !== null && r !== null) dots.push({ cx, cy, r });
+    }
+    if (strokes.length || dots.length) logoArt = { strokeW, strokes, dots };
+  } catch {
+    /* missing/unparseable logo: invoice renders without the mark */
+  }
+  return logoArt;
+}
+
+/** Draw the brand mark with its top-left at (x, topY), `size` pt tall,
+    in the given color. SVG is y-down; PDF is y-up, so Y flips. */
+function drawLogo(doc: PdfDoc, x: number, topY: number, size: number, rgb: [number, number, number]) {
+  const art = loadLogoArt();
+  if (!art) return;
+  const s = size / 64;
+  const X = (v: number) => (x + s * v).toFixed(2);
+  const Y = (v: number) => (topY - s * v).toFixed(2);
+  const col = rgb.map(c => c.toFixed(3)).join(" ");
+  const parts: string[] = ["q"];
+  if (art.strokes.length) {
+    parts.push(`${col} RG ${(art.strokeW * s).toFixed(2)} w 1 J 1 j`);
+    for (const p of art.strokes) {
+      parts.push(p.map(c =>
+        c.pts.map((v, i) => (i % 2 === 0 ? X(v) : Y(v))).join(" ") + " " + c.op.toLowerCase()
+      ).join(" "));
+    }
+    parts.push("S");
+  }
+  for (const d of art.dots) {
+    /* filled circle as 4 cubic beziers (kappa = 0.5523) */
+    const k = 0.5523 * d.r;
+    const seg = (x1: number, y1: number, x2: number, y2: number, x3: number, y3: number, x4: number, y4: number) =>
+      `${X(x1)} ${Y(y1)} m ${X(x2)} ${Y(y2)} ${X(x3)} ${Y(y3)} ${X(x4)} ${Y(y4)} c`;
+    parts.push(`${col} rg ` + seg(d.cx + d.r, d.cy, d.cx + d.r, d.cy + k, d.cx + k, d.cy + d.r, d.cx, d.cy + d.r)
+      + " " + seg(d.cx, d.cy + d.r, d.cx - k, d.cy + d.r, d.cx - d.r, d.cy + k, d.cx - d.r, d.cy)
+      + " " + seg(d.cx - d.r, d.cy, d.cx - d.r, d.cy - k, d.cx - k, d.cy - d.r, d.cx, d.cy - d.r)
+      + " " + seg(d.cx, d.cy - d.r, d.cx + k, d.cy - d.r, d.cx + d.r, d.cy - k, d.cx + d.r, d.cy) + " f");
+  }
+  parts.push("Q");
+  doc.raw(parts.join(" "));
 }
 
 /* ---------------- modern (#233) ----------------
@@ -141,8 +229,12 @@ function drawModern(inv: PdfInvoice, doc: PdfDoc) {
   /* ---- dark header band (page 1) ---- */
   const bandH = 148;
   doc.fill(0, PAGE_H - bandH, PAGE_W, bandH, INK);
-  doc.text(M, PAGE_H - 62, 30, "INVOICE", true, false, WHITE);
-  doc.fill(M, PAGE_H - 74, 72, 3.5, GOLD);
+  /* #241: brand lockup — logo mark left of the title, white on the band */
+  const logoSize = 40;
+  drawLogo(doc, M, PAGE_H - 28, logoSize, WHITE);
+  const titleX = M + logoSize + 14;
+  doc.text(titleX, PAGE_H - 62, 30, "INVOICE", true, false, WHITE);
+  doc.fill(titleX, PAGE_H - 74, 72, 3.5, GOLD);
   doc.rtext(RIGHT, PAGE_H - 52, 15, inv.number, true, WHITE);
   const dates = `Issued ${fmtDate(inv.issueDate)}${inv.dueDate ? `  |  Due ${fmtDate(inv.dueDate)}` : ""}`;
   doc.rtext(RIGHT, PAGE_H - 74, 10, dates, false, SOFT);
