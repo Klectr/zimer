@@ -268,7 +268,10 @@ export function createWebRouter(deps: WebDeps) {
         }
 
         if (path === "/manage" && method === "GET") return html(managePage());
-        /* #233: business profile for the Modern PDF template's FROM block. */
+        /* #233: business profile for the Modern PDF template's FROM block.
+           #245: rendered inside the settings modal (GET) and saved from it
+           (POST); no longer part of the Manage page. */
+        if (path === "/business-profile" && method === "GET") return html(bizProfileSection());
         if (path === "/business-profile" && method === "POST") {
           const form = await req.formData();
           setMeta(db, "business_name", String(form.get("business_name") || "").trim());
