@@ -25,6 +25,8 @@ export const ICONS: Record<string, string> = {
   play: `<path d="M8 5v14l11-7z" fill="currentColor" stroke="none"/>`,
   stop: `<rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor" stroke="none"/>`,
   logout: `<path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z" fill="currentColor" stroke="none"/>`,
+  settings: `<circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/>`,
+  close: `<path d="M6 6l12 12M18 6L6 18"/>`,
 };
 
 export function icon(name: keyof typeof ICONS): string {

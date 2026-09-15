@@ -130,10 +130,12 @@ export function createManageViews(deps: ManageViewDeps) {
 
   function managePage(): string {
     /* #71: data-enter sits on the shell HTMX never replaces, so the entrance
-       plays once per page load and never replays on swaps. */
+       plays once per page load and never replays on swaps.
+       #245: the business profile section moved into the settings modal
+       behind the app avatar; the Manage page is clients & projects only. */
     return layout("Clients & Projects", `
       <div class="scroll-region">
-      <div data-enter="2" id="manage-wrap">${manageCols()}${bizProfileSection()}</div>
+      <div data-enter="2" id="manage-wrap">${manageCols()}</div>
       </div>`, "manage", true);
   }
 
