@@ -757,8 +757,11 @@ body.app-fixed .cal-gutter-spacer {
 #week.no-enter .nudge-chip,
 #week.no-enter .cal-day,
 #week.no-enter .m3-progress-fill,
-#week.no-enter .m3-progress-fill-wrap,
-#week.no-enter .m3-progress-fill-wave { animation: none !important; }
+#week.no-enter .m3-progress-fill-wrap { animation: none !important; }
+/* #263: .m3-progress-fill-wave is deliberately NOT in the list above — the
+   ripple is a perpetual 1.6s loop, not a load-entrance animation, and the
+   no-enter class is never removed after a swap. Suppressing it here froze the
+   wave permanently after the first week-nav swap or entry save. */
 /* One-time highlight on the entry that was just created/updated. */
 .cal-entry.cal-flash { animation: cal-flash 1.2s var(--motion-easing-standard); }
 @keyframes cal-flash {
