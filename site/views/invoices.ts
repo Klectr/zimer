@@ -5,6 +5,7 @@
 import type { Database, Statement } from "bun:sqlite";
 import { addDays, daysBetween, esc, money, payPill, round2, todayStr } from "../lib/format.ts";
 import { icon } from "../lib/icons.ts";
+import { getMeta } from "../db.ts";
 import type { Invoice, InvoiceItem, NewInvParams } from "../lib/types.ts";
 
 export interface InvoiceTemplateInfo { id: string; name: string }
@@ -198,7 +199,26 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
           <div><span class="muted">Issued</span><br><strong>${esc(inv.issue_date)}</strong></div>
           ${inv.due_date ? `<div><span class="muted">Due</span><br><strong>${esc(inv.due_date)}</strong></div>` : ""}
         </div>`;
-    const head = inv.template === "minimal" ? `
+    /* #233: modern template — dark band, badge, from/bill-to. Business
+       profile comes from meta; empty profile hides the From block. */
+    const bizName = getMeta(db, "business_name");
+    const bizEmail = getMeta(db, "business_email");
+    const headModern = `
+        <div class="inv-modern-band">
+          <div class="inv-modern-title">Invoice</div>
+          <div class="inv-modern-right">
+            <div class="inv-modern-number">${esc(inv.number)}</div>
+            <div class="inv-modern-dates">Issued ${esc(inv.issue_date)}${inv.due_date ? ` · Due ${esc(inv.due_date)}` : ""}</div>
+            <span class="inv-modern-badge${inv.status === "paid" ? " paid" : ""}">${inv.status === "paid" ? "Paid" : "Unpaid"}</span>${paidChip}
+          </div>
+        </div>
+        <div class="inv-modern-parties">
+          ${bizName || bizEmail ? `<div><div class="inv-modern-label">From</div>
+            ${bizName ? `<div><strong>${esc(bizName)}</strong></div>` : ""}
+            ${bizEmail ? `<div class="muted">${esc(bizEmail)}</div>` : ""}</div>` : ""}
+          <div><div class="inv-modern-label">Bill to</div><div><strong>${client}</strong></div></div>
+        </div>`;
+    const head = inv.template === "modern" ? headModern : inv.template === "minimal" ? `
         <div class="inv-head-min">
           <div>
             <div class="md-label-medium muted">Invoice</div>

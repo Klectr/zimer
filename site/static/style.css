@@ -1088,6 +1088,35 @@ body.app-fixed .cal-gutter-spacer {
 .template-bold .md-table thead th { font-weight: 700; color: var(--md-sys-color-on-surface); }
 .template-bold .md-table tfoot tr.grand td { font-size: 20px; }
 
+/* ---------------- Modern invoice template (#233) ---------------- */
+.template-modern { overflow: hidden; }
+.inv-modern-band { background: #1c1c1f; color: #fff; margin: -20px -20px 20px; padding: 28px 24px 22px;
+  display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.inv-modern-title { font-size: 30px; line-height: 34px; font-weight: 700; letter-spacing: -0.5px; }
+.inv-modern-title::after { content: ""; display: block; width: 56px; height: 4px; border-radius: 2px;
+  background: #f2c14e; margin-top: 10px; }
+.inv-modern-right { text-align: right; }
+.inv-modern-number { font-size: 17px; font-weight: 700; }
+.inv-modern-dates { color: rgba(255,255,255,.65); font-size: 13px; margin: 6px 0 12px; }
+.inv-modern-badge { display: inline-block; background: #f2c14e; color: #1c1c1f; font-size: 11px; font-weight: 700;
+  letter-spacing: 1px; text-transform: uppercase; padding: 6px 14px; border-radius: 4px; }
+.inv-modern-badge.paid { background: #2e9e4f; color: #fff; }
+.inv-modern-parties { display: flex; gap: 40px; margin: 0 0 20px; }
+.inv-modern-label { font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--md-sys-color-on-surface-variant); margin-bottom: 6px; }
+.template-modern .md-table thead th { background: #1c1c1f; color: #fff; font-weight: 700; font-size: 11px;
+  letter-spacing: 1.5px; text-transform: uppercase; }
+.template-modern .md-table thead th:first-child { border-radius: 8px 0 0 8px; }
+.template-modern .md-table thead th:last-child { border-radius: 0 8px 8px 0; }
+.template-modern .md-table tbody tr { background: transparent; }
+.template-modern .md-table tbody tr:nth-child(even) { background: rgba(127,127,127,.12); }
+.template-modern .md-table tbody tr + tr { border-top: none; }
+.template-modern .md-table tbody td:first-child { border-radius: 0; }
+.template-modern .md-table tbody td:last-child { border-radius: 0; }
+.template-modern .md-table tfoot tr.grand td { background: #fdf3dd; color: #1c1c1f; font-size: 18px; }
+.template-modern .md-table tfoot tr.grand td:first-child { border-radius: 8px 0 0 8px; }
+.template-modern .md-table tfoot tr.grand td:last-child { border-radius: 0 8px 8px 0; }
+
 /* ---------------- Share & collect (invoice detail, #229) ---------------- */
 .share-lines { margin: 28px 0 8px; }
 .share-line { display: flex; align-items: center; gap: 12px; padding: 7px 0; min-width: 0; }

@@ -59,7 +59,7 @@ const { weekInner, weekGrid, calendarPage, editPage } = createCalendarViews({
   db, qOne, qRange, entrySelect: ENTRY_SELECT, layout, projectOptions, weekTargetBar,
   calHourPx: CAL_HOUR_PX,
 });
-const { manageCols, managePage, clientOptions } =
+const { manageCols, managePage, clientOptions, bizProfileSection } =
   createManageViews({ db, layout });
 const {
   invoicesPage, defaultNewInvParams, invoiceNewPage, invoiceStep2, invoiceSheet,
@@ -82,7 +82,7 @@ const { handleWeb } = createWebRouter({
   DATA_DIR, STATIC_DIR, TOKEN, authedPage, tokensEqual, html, json, csvResponse, isHtmx,
   publicOrigin, PORT, loginPage, publicInvoicePage, notFoundPage, errorPage,
   dashboardPage, timerPartial, todayPartial, weekInner,
-  calendarPage, editPage, manageCols, managePage, invoicesPage, invoiceNewPage,
+  calendarPage, editPage, manageCols, managePage, bizProfileSection, invoicesPage, invoiceNewPage,
   defaultNewInvParams, invoiceStep2, invoiceDetailPage, invoiceDetailBody, invoiceDoc,
   getInvoice, invoiceTotals,
   nextInvoiceNumber, stripeLinkFor, unbilledEntries,

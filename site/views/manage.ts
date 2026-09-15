@@ -4,6 +4,7 @@
 import type { Database } from "bun:sqlite";
 import { esc } from "../lib/format.ts";
 import { icon } from "../lib/icons.ts";
+import { getMeta } from "../db.ts";
 
 export interface ManageViewDeps {
   db: Database;
@@ -94,12 +95,38 @@ export function createManageViews(deps: ManageViewDeps) {
       </div>`;
   }
 
+  /* #233: business profile — name/email/address printed in the FROM block
+     of the Modern PDF template. Stored in meta; empty degrades gracefully. */
+  function bizProfileSection(): string {
+    const name = getMeta(db, "business_name");
+    const email = getMeta(db, "business_email");
+    const address = getMeta(db, "business_address");
+    const field = (fname: string, label: string, val: string, type = "text") => `
+            <div class="md-text-field">
+              <input type="${type}" name="${fname}" value="${esc(val)}" placeholder=" " aria-label="${label}">
+              <label>${label}</label>
+            </div>`;
+    return `<section id="biz-profile">
+          <h2 class="md-headline-small">Business profile</h2>
+          <p class="muted" style="margin:0 0 12px">Shown in the <em>From</em> block on Modern-template invoices.</p>
+          <form method="post" action="/business-profile" class="manage-form" hx-post="/business-profile" hx-target="#biz-profile" hx-swap="outerHTML">
+            ${field("business_name", "Business name", name)}
+            <div class="manage-form-row">
+              ${field("business_email", "Email", email, "email")}
+              ${field("business_address", "Address", address)}
+              <span class="manage-form-spacer"></span>
+              <button class="md-filled-button" type="submit">${icon("save")}Save</button>
+            </div>
+          </form>
+        </section>`;
+  }
+
   function managePage(): string {
     /* #71: data-enter sits on the shell HTMX never replaces, so the entrance
        plays once per page load and never replays on swaps. */
     return layout("Clients & Projects", `
       <div class="scroll-region">
-      <div data-enter="2" id="manage-wrap">${manageCols()}</div>
+      <div data-enter="2" id="manage-wrap">${manageCols()}${bizProfileSection()}</div>
       </div>`, "manage", true);
   }
 
@@ -111,5 +138,5 @@ export function createManageViews(deps: ManageViewDeps) {
   }
 
 
-  return { manageCols, managePage, clientOptions };
+  return { manageCols, managePage, clientOptions, bizProfileSection };
 }
