@@ -157,7 +157,7 @@ body {
  * The four destinations are top-level pages, so they live in the app bar as
  * nav items with an M3 navigation-bar-style active pill (secondary-container). */
 .md-top-app-bar-title { display: inline-flex; align-items: center; gap: 10px; }
-.md-top-app-bar-title svg { width: 24px; height: 24px; color: var(--md-sys-color-primary); }
+.md-top-app-bar-title svg { width: 34px; height: 34px; color: var(--md-sys-color-primary); }
 .md-top-nav { display: flex; align-items: center; gap: 4px; margin-left: 20px; }
 .md-top-nav-item {
   display: inline-flex; align-items: center; gap: 8px;
