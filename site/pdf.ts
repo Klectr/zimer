@@ -37,7 +37,6 @@ export type PdfInvoice = {
   fromName?: string; // #233: business profile, shown by the modern template
   fromEmail?: string;
   fromAddress?: string;
-  fromTaxId?: string; // #243: tax ID for 1099-NEC filing, rendered when set
   terms?: string; // #243: plain-language payment terms near the totals
   payUrl?: string; // #243: public invoice URL — the payment instruction
 };
@@ -295,7 +294,7 @@ function drawModern(inv: PdfInvoice, doc: PdfDoc) {
   doc.y = PAGE_H - bandH - 36;
 
   /* ---- from / bill-to ---- */
-  const hasFrom = inv.fromName || inv.fromEmail || inv.fromAddress || inv.fromTaxId;
+  const hasFrom = inv.fromName || inv.fromEmail || inv.fromAddress;
   if (hasFrom) {
     doc.text(M, doc.y, 8.5, "F R O M", true, true);
     doc.y -= 17;
@@ -307,8 +306,6 @@ function drawModern(inv: PdfInvoice, doc: PdfDoc) {
         doc.text(M, doc.y, 10, line.trim(), false, true); doc.y -= 15;
       }
     }
-    /* #243: tax ID — US clients need it for 1099-NEC filing. */
-    if (inv.fromTaxId) { doc.text(M, doc.y, 10, `Tax ID: ${inv.fromTaxId}`, false, true); doc.y -= 15; }
     doc.y -= 20;
   }
   doc.text(M, doc.y, 8.5, "B I L L   T O", true, true);
