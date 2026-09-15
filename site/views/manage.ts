@@ -112,13 +112,11 @@ export function createManageViews(deps: ManageViewDeps) {
     return `<section id="biz-profile">
           <h2 class="md-headline-small">Business profile</h2>
           <p class="muted" style="margin:0 0 12px">Shown in the <em>From</em> block on invoices; the tax ID and payment terms print on the invoice too.</p>
-          <form method="post" action="/business-profile" class="manage-form" hx-post="/business-profile" hx-target="#biz-profile" hx-swap="outerHTML">
+          <form method="post" action="/business-profile" id="biz-profile-form" class="manage-form" hx-post="/business-profile" hx-target="#biz-profile" hx-swap="outerHTML">
             ${field("business_name", "Business name", name)}
-            <div class="manage-form-row">
-              ${field("business_email", "Email", email, "email")}
-              ${field("business_address", "Address", address)}
-              ${field("business_tax_id", "Tax ID (EIN/SSN)", taxId)}
-            </div>
+            ${field("business_email", "Email", email, "email")}
+            ${field("business_address", "Address", address)}
+            ${field("business_tax_id", "Tax ID (EIN/SSN)", taxId)}
             ${field("business_payment_terms", "Payment terms", terms)}
             <div class="manage-form-row">
               <span class="manage-form-spacer"></span>
