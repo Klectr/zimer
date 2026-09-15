@@ -29,6 +29,8 @@ export const ICONS: Record<string, string> = {
      icon. Outlined to match the M3 icon system. */
   settings: `<path d="M 18.90 10.34 L 20.91 10.75 L 20.91 13.25 L 18.90 13.66 A 7.1 7.1 0 0 1 18.05 15.71 L 19.19 17.42 L 17.42 19.19 L 15.71 18.05 A 7.1 7.1 0 0 1 13.66 18.90 L 13.25 20.91 L 10.75 20.91 L 10.34 18.90 A 7.1 7.1 0 0 1 8.29 18.05 L 6.58 19.19 L 4.81 17.42 L 5.95 15.71 A 7.1 7.1 0 0 1 5.10 13.66 L 3.09 13.25 L 3.09 10.75 L 5.10 10.34 A 7.1 7.1 0 0 1 5.95 8.29 L 4.81 6.58 L 6.58 4.81 L 8.29 5.95 A 7.1 7.1 0 0 1 10.34 5.10 L 10.75 3.09 L 13.25 3.09 L 13.66 5.10 A 7.1 7.1 0 0 1 15.71 5.95 L 17.42 4.81 L 19.19 6.58 L 18.05 8.29 A 7.1 7.1 0 0 1 18.90 10.34 Z"/><circle cx="12" cy="12" r="3.1"/>`,
   close: `<path d="M6 6l12 12M18 6L6 18"/>`,
+  /* #253: hamburger for the account-menu button (Lucide-style, three strokes). */
+  menu: `<path d="M4 6h16M4 12h16M4 18h16"/>`,
 };
 
 export function icon(name: keyof typeof ICONS): string {
