@@ -12,7 +12,7 @@ export type Entry = {
   invoice_id: number | null;
 };
 
-export type InvoiceItem = { id: number; description: string; hours: number; rate: number; amount: number };
+export type InvoiceItem = { id: number; description: string; hours: number; rate: number; amount: number; date_from: string | null; date_to: string | null };
 
 export type Invoice = {
   id: number; client_id: number | null; number: string; issue_date: string; due_date: string | null;

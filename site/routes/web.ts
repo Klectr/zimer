@@ -274,6 +274,9 @@ export function createWebRouter(deps: WebDeps) {
           setMeta(db, "business_name", String(form.get("business_name") || "").trim());
           setMeta(db, "business_email", String(form.get("business_email") || "").trim());
           setMeta(db, "business_address", String(form.get("business_address") || "").trim());
+          /* #243: tax ID (for client 1099 filing) and payment terms */
+          setMeta(db, "business_tax_id", String(form.get("business_tax_id") || "").trim());
+          setMeta(db, "business_payment_terms", String(form.get("business_payment_terms") || "").trim());
           if (isHtmx(req)) return html(bizProfileSection());
           return new Response(null, { status: 302, headers: { Location: "/manage" } });
         }
@@ -344,7 +347,7 @@ export function createWebRouter(deps: WebDeps) {
         if (path === "/invoices" && method === "POST") {
           const form = await req.formData();
           const groups = Number(form.get("groups") || 0);
-          const items: { description: string; hours: number; rate: number; amount: number; entry_ids: number[] }[] = [];
+          const items: { description: string; hours: number; rate: number; amount: number; entry_ids: number[]; date_from: string | null; date_to: string | null }[] = [];
           for (let i = 0; i < groups; i++) {
             const hours = round2(Number(form.get(`g${i}_hours`) || 0));
             const rate = round2(Number(form.get(`g${i}_rate`) || 0));
@@ -353,6 +356,9 @@ export function createWebRouter(deps: WebDeps) {
             items.push({
               description: String(form.get(`g${i}_desc`) || "Time"),
               hours, rate, amount: round2(hours * rate), entry_ids: ids,
+              /* #243: per-line billing dates from the grouped entries */
+              date_from: String(form.get(`g${i}_date_from`) || "") || null,
+              date_to: String(form.get(`g${i}_date_to`) || "") || null,
             });
           }
           if (!items.length) return new Response("No line items — nothing to invoice.", { status: 400 });
@@ -367,11 +373,11 @@ export function createWebRouter(deps: WebDeps) {
             .get(clientId, number, String(form.get("issue_date") || todayStr()),
                  dueRaw || null, Number(form.get("tax_rate") || 0), String(form.get("notes") || "")) as any;
           const insItem = db.query(
-            "INSERT INTO invoice_items (invoice_id, description, hours, rate, amount) VALUES (?, ?, ?, ?, ?)");
+            "INSERT INTO invoice_items (invoice_id, description, hours, rate, amount, date_from, date_to) VALUES (?, ?, ?, ?, ?, ?, ?)");
           const linkEntry = db.query("UPDATE time_entries SET invoice_id = ? WHERE id = ?");
           db.transaction(() => {
             for (const it of items) {
-              insItem.run(inv.id, it.description, it.hours, it.rate, it.amount);
+              insItem.run(inv.id, it.description, it.hours, it.rate, it.amount, it.date_from, it.date_to);
               for (const eid of it.entry_ids) linkEntry.run(inv.id, eid);
             }
           })();
@@ -396,12 +402,17 @@ export function createWebRouter(deps: WebDeps) {
             dueDate: inv.due_date,
             items: inv.items.map(it => ({
               description: it.description, hours: it.hours, rate: it.rate, amount: it.amount,
+              dateFrom: it.date_from ?? null, dateTo: it.date_to ?? null, /* #243 */
             })),
             subtotal: t.subtotal, tax: t.tax, taxRate: inv.tax_rate, total: t.total,
             notes: inv.notes,
             fromName: getMeta(db, "business_name") || undefined,
             fromEmail: getMeta(db, "business_email") || undefined,
             fromAddress: getMeta(db, "business_address") || undefined,
+            /* #243: tax ID, payment terms, and the pay-online link */
+            fromTaxId: getMeta(db, "business_tax_id") || undefined,
+            terms: getMeta(db, "business_payment_terms") || "Please pay within 30 days. Thank you!",
+            payUrl: inv.public_token ? `${publicOrigin(req, PORT)}/i/${inv.public_token}` : undefined,
           });
           const filename = inv.number.replace(/[^A-Za-z0-9._-]+/g, "_") + ".pdf";
           return new Response(pdf, {

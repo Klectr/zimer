@@ -51,6 +51,13 @@ CREATE TABLE IF NOT EXISTS invoice_items (
 );
 CREATE INDEX IF NOT EXISTS idx_items_invoice ON invoice_items(invoice_id);
 `);
+/* Issue #243: per-line dates for best-practice invoice line items
+   (Date | Description | Hours | Rate | Amount). Nullable so existing
+   rows degrade gracefully. */
+for (const col of ["date_from", "date_to"]) {
+  try { db.exec(`ALTER TABLE invoice_items ADD COLUMN ${col} TEXT`); }
+  catch { /* column already exists */ }
+}
 /* Issue #197: estimates removed — drop the orphaned tables so
    existing databases are cleaned up. */
 db.exec(`DROP TABLE IF EXISTS estimate_items; DROP TABLE IF EXISTS estimates;`);
