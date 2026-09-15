@@ -5,7 +5,7 @@
 
 import type { Statement } from "bun:sqlite";
 import { esc } from "../lib/format.ts";
-import { ICONS, icon } from "../lib/icons.ts";
+import { ICONS, icon, logo } from "../lib/icons.ts";
 
 export function createLayoutViews(qRunning: Statement) {
   function layout(title: string, body: string, active?: "timer" | "calendar" | "manage" | "invoices", fixed?: boolean): string {
@@ -21,12 +21,13 @@ export function createLayoutViews(qRunning: Statement) {
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
   <link rel="stylesheet" href="/static/style.css">
+  <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
   <script src="/static/motion.js" defer></script>
   <script src="/static/shortcut.js" defer></script>
   </head>
   <body${fixed ? ' class="app-fixed"' : ""} data-timer-running="${qRunning.get() ? 1 : 0}">
   <header class="md-top-app-bar" data-enter="1">
-    <span class="md-top-app-bar-title">${icon("timer")}<span>Timekeep</span></span>
+    <span class="md-top-app-bar-title">${logo()}<span>Timekeep</span></span>
     <nav class="md-top-nav" aria-label="Primary">
       ${navItem("/", "Timer", "timer", "timer")}
       ${navItem("/calendar", "Calendar", "calendar", "calendar")}
@@ -53,6 +54,7 @@ export function createLayoutViews(qRunning: Statement) {
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
   <link rel="stylesheet" href="/static/style.css">
+  <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
   <script src="/static/motion.js" defer></script>
   </head>
   <body>
