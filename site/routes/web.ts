@@ -58,7 +58,6 @@ export interface WebDeps {
   getPublicToken: (id: number) => string | null;
   mintPublicToken: (id: number) => string;
   invoicePdf: (inv: PdfInvoice) => Uint8Array;
-  isInvoiceTemplate: (t: string) => boolean;
   stripeConfigured: () => boolean;
   workspaceEmpty: (db: Database) => boolean;
   demoIds: (db: Database) => number[];
@@ -78,7 +77,7 @@ export function createWebRouter(deps: WebDeps) {
     getInvoice, invoiceTotals,
     nextInvoiceNumber, stripeLinkFor, unbilledEntries,
     groupToLineItems, ensurePublicToken, getPublicToken, mintPublicToken,
-    invoicePdf, isInvoiceTemplate, stripeConfigured,
+    invoicePdf, stripeConfigured,
     workspaceEmpty, demoIds, seedDemoData, removeDemoData, entryToJson,
   } = deps;
 
@@ -403,7 +402,7 @@ export function createWebRouter(deps: WebDeps) {
             fromName: getMeta(db, "business_name") || undefined,
             fromEmail: getMeta(db, "business_email") || undefined,
             fromAddress: getMeta(db, "business_address") || undefined,
-          }, inv.template);
+          });
           const filename = inv.number.replace(/[^A-Za-z0-9._-]+/g, "_") + ".pdf";
           return new Response(pdf, {
             headers: {
@@ -428,15 +427,6 @@ export function createWebRouter(deps: WebDeps) {
           if (want === "sent" && stripeConfigured()) { await stripeLinkFor(inv!.id); }
           if (isHtmx(req)) { const full = getInvoice(inv!.id); if (full) return html(invoiceDetailBody(full, publicOrigin(req, PORT))); } // #71
           return new Response(null, { status: 302, headers: { Location: `/invoices/${inv!.id}` } });
-        }
-        m = path.match(/^\/invoices\/(\d+)\/template$/);
-        if (m && method === "POST") {
-          const form = await req.formData();
-          const tpl = String(form.get("template") || "");
-          if (!isInvoiceTemplate(tpl)) return new Response("Unknown template.", { status: 400 });
-          db.query("UPDATE invoices SET template = ? WHERE id = ?").run(tpl, Number(m[1]));
-          const inv = getInvoice(Number(m[1]));
-          return inv ? html(invoiceDoc(inv)) : html(notFoundPage(authedPage(req, TOKEN)), 404);
         }
         m = path.match(/^\/invoices\/(\d+)\/stripe-link$/);
         if (m && method === "POST") {

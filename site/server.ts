@@ -10,7 +10,7 @@
 
 import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
-import { invoicePdf, isInvoiceTemplate, templateList } from "./pdf.ts";
+import { invoicePdf } from "./pdf.ts";
 import { stripeConfigured, verifyWebhookSignature } from "./stripe.ts";
 import { entryToJson, csvResponse, statusPill } from "./lib/format.ts";
 import { json, html, isHtmx, publicOrigin } from "./lib/http.ts";
@@ -66,7 +66,7 @@ const {
   invoiceDoc, invoiceDetailBody, invoiceDetailPage,
 } = createInvoiceViews({
   db, qInvoices, layout, clientOptions,
-  getPublicToken, stripeConfigured, nextInvoiceNumber, invoiceTotals, templateList, statusPill, isOverdue,
+  getPublicToken, stripeConfigured, nextInvoiceNumber, invoiceTotals, statusPill, isOverdue,
 });
 const { loginPage, publicInvoicePage } = createPublicViews({
   getInvoice, invoiceTotals, invoiceSheet, ensurePublicToken,
@@ -75,7 +75,7 @@ const { handleApi } = createApiRouter({
   db, qRunning, qOne, qRange, qInvoice, qInvoices, TOKEN, authedApi, json,
   entryToJson, groupToLineItems, unbilledEntries, getInvoice,
   invoiceTotals, nextInvoiceNumber, mintPublicToken, stripeLinkFor, verifyWebhookSignature,
-  isInvoiceTemplate, revenueTotals, revenueMonthly, revenueByClient, revenueOverdue,
+  revenueTotals, revenueMonthly, revenueByClient, revenueOverdue,
 });
 const { handleWeb } = createWebRouter({
   db, qRunning, qOne, qRange, qInvoice, qInvoices,
@@ -87,7 +87,7 @@ const { handleWeb } = createWebRouter({
   getInvoice, invoiceTotals,
   nextInvoiceNumber, stripeLinkFor, unbilledEntries,
   groupToLineItems, ensurePublicToken, getPublicToken, mintPublicToken,
-  invoicePdf, isInvoiceTemplate, stripeConfigured,
+  invoicePdf, stripeConfigured,
   workspaceEmpty, demoIds, seedDemoData, removeDemoData, entryToJson,
 });
 
