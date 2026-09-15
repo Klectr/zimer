@@ -138,7 +138,15 @@ export function createWebRouter(deps: WebDeps) {
             const w = new URL(req.url).searchParams.get("week") || undefined;
             return html(weekInner(w || undefined));
           }
-          if (path === "/partial/today" && method === "GET") return html(todayPartial());
+          /* #255: the client passes its own day bounds as UTC instants
+             (?from=&to=, from client-local midnight); validate strictly,
+             fall back to the server's day. */
+          if (path === "/partial/today" && method === "GET") {
+            const from = url.searchParams.get("from") || "", to = url.searchParams.get("to") || "";
+            const iso = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:?\d{2})$/;
+            const ok = iso.test(from) && iso.test(to) && !isNaN(Date.parse(from)) && !isNaN(Date.parse(to));
+            return html(ok ? todayPartial(from, to) : todayPartial());
+          }
           if (path === "/timer/start" && method === "POST") {
             if (qRunning.get()) return html(timerPartial(), 409);
             const form = await req.formData();

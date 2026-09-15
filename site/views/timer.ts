@@ -5,7 +5,7 @@
  *  slices, so every call site keeps working unchanged. */
 
 import type { Database, Statement } from "bun:sqlite";
-import { dayBounds, durationSeconds, esc, fmtDur, fmtTime, money, todayStr } from "../lib/format.ts";
+import { dayBounds, durationSeconds, esc, fmtDur, money, todayStr } from "../lib/format.ts";
 import { icon } from "../lib/icons.ts";
 import type { Entry } from "../lib/types.ts";
 
@@ -30,7 +30,11 @@ export function createTimerViews(deps: TimerViewDeps) {
 
   function entryRow(e: Entry, i = 0): string {
     const dur = fmtDur(durationSeconds(e.start_time, e.end_time));
-    const when = e.end_time ? `${fmtTime(e.start_time)} – ${fmtTime(e.end_time)}` : `${fmtTime(e.start_time)} – now`;
+    /* #255: times are a client concept (the server may be in another
+       timezone — VPS is UTC). Emit the ISO instant and let the client format
+       it; fmtTimes() in dashboardPage fills these in after every swap. */
+    const startTs = `<time data-ts="${esc(e.start_time)}"></time>`;
+    const endTs = e.end_time ? `<time data-ts="${esc(e.end_time)}"></time>` : "now";
     const chip = e.project_name
       ? `<span class="md-chip">${e.client_color ? `<span class="dot" style="background:${esc(e.client_color)}"></span>` : ""}${esc(e.project_name)}</span>`
       : "";
@@ -38,7 +42,7 @@ export function createTimerViews(deps: TimerViewDeps) {
     return `<li class="md-list-item" id="entry-${e.id}" style="animation-delay:${Math.min(i * 30, 300)}ms">
       <div class="md-list-item-content">
         <div class="md-list-item-headline">${desc}</div>
-        <div class="md-list-item-supporting">${chip}<span>${esc(when)}${e.client_name && !e.project_name ? ` · ${esc(e.client_name)}` : ""}</span></div>
+        <div class="md-list-item-supporting">${chip}<span>${startTs} – ${endTs}${e.client_name && !e.project_name ? ` · ${esc(e.client_name)}` : ""}</span></div>
       </div>
       <div class="md-list-item-trailing">
         <span class="dur">${dur}</span>
@@ -90,9 +94,13 @@ export function createTimerViews(deps: TimerViewDeps) {
     </div>`;
   }
 
-  function todayPartial(): string {
-    const [from, to] = dayBounds(todayStr());
-    const entries = qRange.all(from, to) as Entry[];
+  /* #255: "today" is a client concept — the server may be in another timezone.
+     The client passes its own day bounds as UTC instants (?from=&to=, computed
+     from client-local midnight); the server validates them and falls back to
+     its own day. */
+  function todayPartial(from?: string, to?: string): string {
+    const [f, t] = from && to ? [from, to] : dayBounds(todayStr());
+    const entries = qRange.all(f, t) as Entry[];
     const total = entries.reduce((a, e) => a + durationSeconds(e.start_time, e.end_time), 0);
     const bar = todayTargetBar(total);
     if (!entries.length) return `${bar}<p class="muted">Nothing tracked today yet.</p>`;
@@ -115,6 +123,20 @@ export function createTimerViews(deps: TimerViewDeps) {
                 <div class="skel skel-row"></div>
               </div>
             </div>
+            <script>(function(){/* #255: client day bounds + client-side time formatting.
+              Runs at parse time, before htmx's load trigger fires. */
+              var el=document.getElementById('today-list');if(!el)return;
+              var d=new Date();
+              var s=new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime();
+              var from=new Date(s).toISOString(), to=new Date(s+864e5).toISOString();
+              el.setAttribute('hx-get','/partial/today?from='+encodeURIComponent(from)+'&to='+encodeURIComponent(to));
+              window.__tkFmtTimes=function(root){
+                var els=(root||document).querySelectorAll('[data-ts]');
+                for(var i=0;i<els.length;i++){var t=els[i];
+                  t.textContent=new Date(t.getAttribute('data-ts')).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});}};
+              document.body.addEventListener('htmx:afterSwap',function(e){
+                if(e.detail&&e.detail.target&&e.detail.target.id==='today-list')window.__tkFmtTimes(e.detail.target);});
+              window.__tkFmtTimes(el);})();</script>
           </div>
         </section>
         <aside class="pane-supporting" data-enter="3" aria-label="Revenue">
