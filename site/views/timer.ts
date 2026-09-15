@@ -61,12 +61,14 @@ export function createTimerViews(deps: TimerViewDeps) {
     if (running) {
       const proj = running.project_name ? ` · ${esc(running.project_name)}` : "";
       return `<div class="md-card tracking" id="timer-card">
-        <div class="timer-state-label"><span class="live-dot" aria-hidden="true"></span>TRACKING${proj}</div>
+        <div class="timer-top-row">
+          <div class="timer-state-label"><span class="live-dot" aria-hidden="true"></span>TRACKING${proj}</div>
+          <button class="md-extended-fab stop" hx-post="/timer/stop" hx-target="#timer-card" hx-swap="outerHTML swap:200ms">
+            ${icon("stop")}Stop
+          </button>
+        </div>
         <div class="md-title-medium">${running.description ? esc(running.description) : "No description"}</div>
         <div class="timer-elapsed" id="elapsed" data-start="${esc(running.start_time)}">…</div>
-        <button class="md-extended-fab stop" hx-post="/timer/stop" hx-target="#timer-card" hx-swap="outerHTML swap:200ms">
-          ${icon("stop")}Stop
-        </button>
         <script>(function(){var el=document.getElementById('elapsed');if(!el)return;
           var s=new Date(el.dataset.start).getTime();
           function tick(){var d=Math.max(0,Date.now()-s);

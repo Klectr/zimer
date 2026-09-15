@@ -552,6 +552,9 @@ input[type="number"] {
   50% { opacity: 0.35; transform: scale(0.85); }
 }
 .md-card.tracking .timer-state-label { color: var(--md-sys-color-on-primary-container); }
+/* #259: Stop sits top-right on the TRACKING row; elapsed time drops to the
+   bottom-left where Stop used to be. */
+.timer-top-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .timer-elapsed {
   font-size: 45px;
   line-height: 52px;
