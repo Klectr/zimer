@@ -5,7 +5,7 @@
 
 import { join, normalize, sep } from "node:path";
 import type { Database, Statement } from "bun:sqlite";
-import { addDays, esc, round2, todayStr } from "../lib/format.ts";
+import { addDays, esc, isPaymentTermsKey, round2, termsDescription, termsKey, todayStr } from "../lib/format.ts";
 import type { Entry, Invoice, InvoiceItem } from "../lib/types.ts";
 import type { PdfInvoice } from "../pdf.ts";
 import { getMeta, setMeta } from "../db.ts";
@@ -286,8 +286,11 @@ export function createWebRouter(deps: WebDeps) {
           setMeta(db, "business_name", String(form.get("business_name") || "").trim());
           setMeta(db, "business_email", String(form.get("business_email") || "").trim());
           setMeta(db, "business_address", String(form.get("business_address") || "").trim());
-          /* #243: payment terms */
-          setMeta(db, "business_payment_terms", String(form.get("business_payment_terms") || "").trim());
+          /* #243: payment terms. #293: fixed option list — reject anything
+             that isn't a known key. */
+          const gterms = String(form.get("business_payment_terms") || "").trim();
+          if (!isPaymentTermsKey(gterms)) return new Response("Unknown payment terms.", { status: 400 });
+          setMeta(db, "business_payment_terms", gterms);
           if (isHtmx(req)) return html(bizProfileSection());
           return new Response(null, { status: 302, headers: { Location: "/manage" } });
         }
@@ -308,11 +311,13 @@ export function createWebRouter(deps: WebDeps) {
           return new Response(null, { status: 302, headers: { Location: "/manage" } });
         }
         /* #289: per-client payment terms. Blank stores NULL so invoice
-           render falls back to the global business_payment_terms. */
+           render falls back to the global business_payment_terms.
+           #293: fixed option list — blank or a known key, nothing else. */
         m = path.match(/^\/clients\/(\d+)\/terms$/);
         if (m && method === "POST") {
           const form = await req.formData();
           const terms = String(form.get("payment_terms") || "").trim();
+          if (terms !== "" && !isPaymentTermsKey(terms)) return new Response("Unknown payment terms.", { status: 400 });
           db.query("UPDATE clients SET payment_terms = ? WHERE id = ?")
             .run(terms || null, Number(m[1]));
           if (isHtmx(req)) return html(manageCols()); // #71: swap in place
@@ -442,8 +447,9 @@ export function createWebRouter(deps: WebDeps) {
             fromEmail: getMeta(db, "business_email") || undefined,
             fromAddress: getMeta(db, "business_address") || undefined,
             /* #243: payment terms, and the pay-online link.
-               #289: the invoice client's own terms win; global is fallback. */
-            terms: inv.client_payment_terms || getMeta(db, "business_payment_terms") || "Please pay within 30 days. Thank you!",
+               #289: the invoice client's own terms win; global is fallback.
+               #293: fixed list — print the canned description. */
+            terms: termsDescription(termsKey(inv.client_payment_terms, getMeta(db, "business_payment_terms"))),
             payUrl: inv.public_token ? `${publicOrigin(req, PORT)}/i/${inv.public_token}` : undefined,
           });
           const filename = inv.number.replace(/[^A-Za-z0-9._-]+/g, "_") + ".pdf";

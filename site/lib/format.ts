@@ -109,11 +109,43 @@ export function daysBetween(a: string, b: string): number {
   return Math.round((p(b).getTime() - p(a).getTime()) / 86400000);
 }
 
-/** #291: payment-terms text → numeric days, or null when the terms name no
- *  fixed window (pay-when-paid, "Net 30", blank). Strict plain-integer only. */
+/* #293: payment terms are a fixed option list, not free text. Single source
+ *  of truth: key → { label, days (null = no fixed window), description
+ *  printed on invoices }. */
+export const PAYMENT_TERMS = {
+  due_on_receipt: { label: "Due on receipt", days: 0, description: "Payment is due upon receipt of this invoice." },
+  net_7: { label: "Net 7", days: 7, description: "Payment is due within 7 days of the invoice date." },
+  net_15: { label: "Net 15", days: 15, description: "Payment is due within 15 days of the invoice date." },
+  net_30: { label: "Net 30", days: 30, description: "Payment is due within 30 days of the invoice date." },
+  net_45: { label: "Net 45", days: 45, description: "Payment is due within 45 days of the invoice date." },
+  net_60: { label: "Net 60", days: 60, description: "Payment is due within 60 days of the invoice date." },
+  pay_when_paid: { label: "Pay-when-paid", days: null, description: "Due within 5 business days after the client receives customer payment." },
+} as const;
+export type PaymentTermsKey = keyof typeof PAYMENT_TERMS;
+export const DEFAULT_PAYMENT_TERMS: PaymentTermsKey = "net_30";
+
+export function isPaymentTermsKey(v: string | null | undefined): v is PaymentTermsKey {
+  return typeof v === "string" && v.trim() in PAYMENT_TERMS;
+}
+
+/** Effective terms key: client terms → global terms → default. */
+export function termsKey(clientTerms: string | null | undefined, globalTerms: string | null | undefined): PaymentTermsKey {
+  if (isPaymentTermsKey(clientTerms)) return (clientTerms as string).trim() as PaymentTermsKey;
+  if (isPaymentTermsKey(globalTerms)) return (globalTerms as string).trim() as PaymentTermsKey;
+  return DEFAULT_PAYMENT_TERMS;
+}
+
+/** #291: terms key → numeric days, or null when the terms name no fixed
+ *  window (pay-when-paid) or are unknown/blank (can't know → don't flag). */
 export function termsDays(terms: string | null | undefined): number | null {
   const t = (terms ?? "").trim();
-  return /^\d+$/.test(t) ? parseInt(t, 10) : null;
+  return isPaymentTermsKey(t) ? PAYMENT_TERMS[t as PaymentTermsKey].days : null;
+}
+
+/** Canned description printed on the invoice for a terms key. */
+export function termsDescription(terms: string | null | undefined): string {
+  const t = (terms ?? "").trim();
+  return isPaymentTermsKey(t) ? PAYMENT_TERMS[t as PaymentTermsKey].description : PAYMENT_TERMS[DEFAULT_PAYMENT_TERMS].description;
 }
 
 /* ---------------- durations ---------------- */

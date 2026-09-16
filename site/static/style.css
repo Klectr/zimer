@@ -950,6 +950,10 @@ button.m3-menu-item {
 /* #289: per-client payment terms row — same inline form pattern. */
 #manage-cols .terms-form { display: flex; align-items: center; gap: 8px; flex: 1 1 100%; }
 #manage-cols .terms-form .md-text-field { flex: 1; min-width: 120px; }
+/* #293: canned payment-terms description under the dropdown (M3 supporting text). */
+.terms-desc { flex: 1 1 100%; margin: 0; font-size: 12px; line-height: 1.4; }
+#manage-cols .terms-desc { padding: 0 8px 4px 0; }
+#biz-profile .terms-desc { margin-top: 8px; }
 
 .page-head-actions { display: flex; gap: 8px; align-items: center; }
 /* Milestone 17: bottom-edge resize handle for calendar entries. */
