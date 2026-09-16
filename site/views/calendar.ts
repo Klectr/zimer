@@ -170,7 +170,12 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       const entryHtml = sortedBlocks
         .map(({ e, a, b }) => {
         const top = (a / 60) * calHourPx;
-        const h = Math.max(((b - a) / 60) * calHourPx, 26);
+        const trueH = ((b - a) / 60) * calHourPx;
+        /* #275: sub-30-minute entries would be unreadably thin at true scale,
+           but the old 26px floor read too chunky — floor at 22px with compact
+           styling (tighter padding, smaller text, no duration line). */
+        const compact = trueH < 26;
+        const h = Math.max(trueH, 22);
         /* #273: 2px visual inset top and bottom so stacked cards don't touch.
            The positioning slot is unchanged; only the painted card shrinks. */
         const color = e.client_color || "#9aa0a6"; // no-client: neutral gray, distinct from client colors
@@ -178,7 +183,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
         const overlap = sortedBlocks.some((o) => o.e !== e && o.a < b && o.b > a);
         const desc = e.description ? esc(e.description) : "<em>No description</em>";
         const dur = fmtDur(durationSeconds(e.start_time, e.end_time));
-        return `<div class="cal-entry${running ? " running" : ""}${overlap ? " overlap" : ""}"
+        return `<div class="cal-entry${running ? " running" : ""}${overlap ? " overlap" : ""}${compact ? " cal-compact" : ""}"
             style="top:${(top + 2).toFixed(1)}px;height:${(h - 4).toFixed(1)}px;--c:${esc(color)}"
             data-id="${e.id}" data-desc="${esc(e.description)}" data-project-id="${e.project_id ?? ""}"
             data-date="${day}" data-start="${toHM(a)}" data-end="${running ? "" : toHM(Math.min(b, 1439))}"
@@ -460,9 +465,11 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     }
     function place(el,a,b){
       /* #273: same 2px inset as the server render, so resize/drag-preview
-         cards match the painted cards. */
+         cards match the painted cards. #275: keep the compact class in sync
+         while resizing. */
       el.style.top=(a/60*HOUR+2)+'px';
-      el.style.height=Math.max((b-a)/60*HOUR,10)-4+'px';
+      el.style.height=Math.max((b-a)/60*HOUR,22)-4+'px';
+      el.classList.toggle('cal-compact',(b-a)/60*HOUR<26);
     }
     /* Milestone 17: drag the bottom edge of a finished entry to resize it.
        Delegated on document so it survives in-place #week refreshes. */
