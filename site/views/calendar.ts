@@ -185,6 +185,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
            hit areas swallow taps on short entries. Shorter entries stay
            fully tappable and resize via the edit dialog. */
         const resizable = !running && (b - a) >= 60;
+        const desc = e.description ? esc(e.description) : "<em>No description</em>";
         const dur = fmtDur(durationSeconds(e.start_time, e.end_time));
         return `<div class="cal-entry${running ? " running" : ""}${overlap ? " overlap" : ""}${compact ? " cal-compact" : ""}"
             style="top:${(top + 2).toFixed(1)}px;height:${(h - 4).toFixed(1)}px;--c:${esc(color)}"
