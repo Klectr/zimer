@@ -5,9 +5,9 @@
 
 import type { Statement } from "bun:sqlite";
 import type { RevenueRow } from "./types.ts";
-import { round2, todayStr, daysBetween } from "./format.ts";
+import { round2, todayStr, daysBetween, termsDays } from "./format.ts";
 
-export function createRevenue(qRevenueRows: Statement) {
+export function createRevenue(qRevenueRows: Statement, getGlobalTerms: () => string) {
   const revenueTotal = (r: RevenueRow) => round2(r.subtotal * (1 + (r.tax_rate || 0) / 100));
 
   /** A1: top-level revenue totals, tax-inclusive. */
@@ -61,9 +61,13 @@ export function createRevenue(qRevenueRows: Statement) {
       .sort((a, b) => b.invoiced - a.invoiced);
   }
 
-  /** Milestone 7: an invoice is overdue when sent with a past due date. */
-  function isOverdue(r: { status: string; due_date: string | null }): boolean {
-    return r.status === "sent" && !!r.due_date && (r.due_date as string) < todayStr();
+  /** Milestone 7: an invoice is overdue when sent with a past due date.
+   *  #291: only when the effective payment terms name a numeric window —
+   *  pay-when-paid terms define no due date the app can enforce, so they
+   *  never flag. Effective terms = client terms, else the global setting. */
+  function isOverdue(r: { status: string; due_date: string | null; client_payment_terms?: string | null }): boolean {
+    if (r.status !== "sent" || !r.due_date || (r.due_date as string) >= todayStr()) return false;
+    return termsDays(r.client_payment_terms || getGlobalTerms()) !== null;
   }
 
   /** Milestone 7: overdue invoices — sent, with a past due_date — tax-inclusive, most overdue first. */

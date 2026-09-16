@@ -15,7 +15,7 @@ import { stripeConfigured, verifyWebhookSignature } from "./stripe.ts";
 import { entryToJson, csvResponse, statusPill } from "./lib/format.ts";
 import { json, html, isHtmx, publicOrigin } from "./lib/http.ts";
 import { getToken, tokensEqual, authedApi, authedPage } from "./lib/auth.ts";
-import { createDb } from "./db.ts";
+import { createDb, getMeta } from "./db.ts";
 import { createRevenue } from "./lib/revenue.ts";
 import { workspaceEmpty, demoIds, seedDemoData, removeDemoData, demoBanner } from "./lib/demo.ts";
 import { createDomain, CAL_HOUR_PX, DAY_TARGET_SECS } from "./lib/domain.ts";
@@ -40,7 +40,7 @@ const {
   qRunning, qOne, qRange, qInvoice, qInvoiceItems, qInvoices, qRevenueRows,
 } = createDb(DATA_DIR);
 const { revenueTotals, revenueMonthly, revenueByClient, isOverdue, revenueOverdue } =
-  createRevenue(qRevenueRows);
+  createRevenue(qRevenueRows, () => getMeta(db, "business_payment_terms"));
 const { layout, notFoundPage, errorPage } = createLayoutViews(qRunning);
 
 const {
