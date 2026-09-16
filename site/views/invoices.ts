@@ -18,7 +18,7 @@ export interface InvoiceViewDeps {
   nextInvoiceNumber: () => string;
   invoiceTotals: (items: InvoiceItem[], taxRate: number) => { subtotal: number; tax: number; total: number };
   statusPill: (status: string) => string;
-  isOverdue: (row: { status: string; due_date?: string | null }) => boolean;
+  isOverdue: (row: { status: string; due_date?: string | null; client_payment_terms?: string | null }) => boolean;
 }
 
 export function createInvoiceViews(deps: InvoiceViewDeps) {

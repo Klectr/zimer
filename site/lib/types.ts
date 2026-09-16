@@ -26,6 +26,7 @@ export type RevenueRow = {
   id: number; number: string; due_date: string | null;
   status: string; tax_rate: number; issue_date: string;
   client_id: number | null; client_name: string | null; client_color: string | null;
+  client_payment_terms: string | null;
   subtotal: number;
 };
 
