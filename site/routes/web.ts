@@ -123,6 +123,10 @@ export function createWebRouter(deps: WebDeps) {
           const inv = idRow ? getInvoice(idRow.id) : null;
           return inv ? html(publicInvoicePage(inv)) : html(noSuchInvoicePage(), 404);
         }
+        /* Malformed /i/ paths (too short, bad chars): same dead-end. */
+        if (method === "GET" && (path === "/i" || path === "/i/" || path.startsWith("/i/"))) {
+          return html(noSuchInvoicePage(), 404);
+        }
 
         /* ---- JSON API is handled by routes/api.ts via handleApi; web routes continue below. ---- */
 
