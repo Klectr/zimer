@@ -181,6 +181,10 @@ export function createCalendarViews(deps: CalendarViewDeps) {
         const color = e.client_color || "#9aa0a6"; // no-client: neutral gray, distinct from client colors
         const running = !e.end_time;
         const overlap = sortedBlocks.some((o) => o.e !== e && o.a < b && o.b > a);
+        /* #277: resize handles only on entries of 1 hour or more — the 12px
+           hit areas swallow taps on short entries. Shorter entries stay
+           fully tappable and resize via the edit dialog. */
+        const resizable = !running && (b - a) >= 60;
         const desc = e.description ? esc(e.description) : "<em>No description</em>";
         const dur = fmtDur(durationSeconds(e.start_time, e.end_time));
         return `<div class="cal-entry${running ? " running" : ""}${overlap ? " overlap" : ""}${compact ? " cal-compact" : ""}"
@@ -190,7 +194,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
             tabindex="0" role="button" aria-label="${desc}, ${dur}">
           <div class="cal-entry-desc">${e.project_name ? `<strong>${esc(e.project_name)}</strong> · ` : ""}${desc}</div>
           <div class="cal-entry-dur">${dur}</div>
-          ${running ? "" : `<div class="cal-resize top" data-resize="start" title="Drag to change start" aria-hidden="true"></div><div class="cal-resize" data-resize="end" title="Drag to resize" aria-hidden="true"></div>`}
+          ${resizable ? `<div class="cal-resize top" data-resize="start" title="Drag to change start" aria-hidden="true"></div><div class="cal-resize" data-resize="end" title="Drag to resize" aria-hidden="true"></div>` : ""}
         </div>`;
       }).join("");
       /* #213: "now" is a client concept (the server may be in another
