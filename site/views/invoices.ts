@@ -204,6 +204,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     const bizEmail = getMeta(db, "business_email");
     /* #289: the invoice client's own terms win; global business_payment_terms is fallback.
        #293: fixed list — print the canned description. */
+    /* #295 wip: hide the due line when effective terms are pay-when-paid */
     const terms = termsDescription(termsKey(inv.client_payment_terms, getMeta(db, "business_payment_terms")));
     const head = `
         <div class="inv-modern-band">
