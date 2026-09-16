@@ -1,4 +1,4 @@
-/** Manage views: clients + projects columns (in-place fragment) and the
+/** Manage views: clients with nested projects (in-place fragment) and the
  *  manage page shell. */
 
 import type { Database } from "bun:sqlite";
@@ -14,17 +14,56 @@ export interface ManageViewDeps {
 export function createManageViews(deps: ManageViewDeps) {
   const { db, layout } = deps;
 
-  /* #71: clients + projects columns as a fragment — actions swap #manage-cols
-     in place instead of reloading the page. */
-  /** Issue #155: global account menu — hamburger button in the top app bar (every
-      page), opening an M3 menu with data actions + log out. Replaces the
-      manage-only overflow from #151 and the "Log out" text button. */
+  /* #267: projects nest inside their client's list — one column of client
+     sections, trailing "No client" section for unassigned projects.
+     Actions still swap #manage-cols in place. */
   function manageCols(): string {
     const clients = db.query("SELECT * FROM clients ORDER BY name").all() as any[];
-    const projects = db.query(
-      `SELECT p.*, c.name AS client_name, c.color AS client_color, c.rate AS client_rate FROM projects p
-       LEFT JOIN clients c ON c.id = p.client_id ORDER BY p.name`).all() as any[];
-    return `<div class="two-col" id="manage-cols">
+    const projects = db.query("SELECT * FROM projects ORDER BY name").all() as any[];
+    const byClient = new Map<number, any[]>();
+    const unassigned: any[] = [];
+    for (const p of projects) {
+      if (p.client_id == null) unassigned.push(p);
+      else {
+        const list = byClient.get(p.client_id);
+        if (list) list.push(p); else byClient.set(p.client_id, [p]);
+      }
+    }
+    const projectRow = (p: any) => `<li class="md-list-item project-nest" style="min-height:56px">
+              <div class="md-list-item-content"><div class="md-list-item-headline">${esc(p.name)}</div></div>
+              <div class="md-list-item-trailing">
+                <form method="post" action="/projects/${p.id}/delete" class="inline" hx-post="/projects/${p.id}/delete" hx-target="#manage-cols" hx-swap="outerHTML"><button class="md-icon-button danger" hx-confirm="Delete project? Entries keep their history." aria-label="Delete project ${esc(p.name)}" title="Delete">${icon("delete")}</button></form>
+              </div>
+            </li>`;
+    const addProjectRow = (clientId: number | null, label: string) => `<li class="md-list-item add-project-row" style="min-height:56px">
+              <form method="post" action="/projects" class="add-project-form" hx-post="/projects" hx-target="#manage-cols" hx-swap="outerHTML">
+                ${clientId == null ? "" : `<input type="hidden" name="client_id" value="${clientId}">`}
+                <div class="md-text-field compact">
+                  <input type="text" name="name" placeholder=" " required aria-label="${esc(label)}">
+                  <label>New project</label>
+                </div>
+                <button class="md-icon-button" type="submit" title="Add project" aria-label="${esc(label)}">${icon("add")}</button>
+              </form>
+            </li>`;
+    const clientBlock = (c: any) => `<ul class="md-list">
+            <li class="md-list-item" style="min-height:56px">
+              <div class="md-list-item-content"><div class="md-list-item-headline"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${esc(c.color)};margin-right:8px"></span>${esc(c.name)}</div></div>
+              <div class="md-list-item-trailing">
+                <form method="post" action="/clients/${c.id}/rate" class="inline rate-form" hx-post="/clients/${c.id}/rate" hx-target="#manage-cols" hx-swap="outerHTML" title="Hourly rate">
+                  <div class="md-text-field has-prefix has-suffix compact" style="width:104px">
+                    <span class="affix prefix" aria-hidden="true">$</span>
+                    <input type="number" name="rate" value="${c.rate || ""}" min="0" step="0.01" placeholder="0" aria-label="Hourly rate for ${esc(c.name)}">
+                    <span class="affix suffix" aria-hidden="true">/hr</span>
+                  </div>
+                  <button class="md-icon-button" type="submit" title="Save" aria-label="Save hourly rate for ${esc(c.name)}">${icon("save")}</button>
+                </form>
+                <form method="post" action="/clients/${c.id}/delete" class="inline" hx-post="/clients/${c.id}/delete" hx-target="#manage-cols" hx-swap="outerHTML"><button class="md-icon-button danger" hx-confirm="Delete client? Its projects move to No client." aria-label="Delete client ${esc(c.name)}" title="Delete">${icon("delete")}</button></form>
+              </div>
+            </li>
+            ${(byClient.get(c.id) || []).map(projectRow).join("")}
+            ${addProjectRow(c.id, `Add project to ${c.name}`)}
+          </ul>`;
+    return `<div id="manage-cols">
         <section>
           <h2 class="md-headline-small">Clients</h2>
           <form method="post" action="/clients" class="manage-form" hx-post="/clients" hx-target="#manage-cols" hx-swap="outerHTML">
@@ -48,47 +87,12 @@ export function createManageViews(deps: ManageViewDeps) {
               <button class="md-filled-button" type="submit">${icon("add")}Add</button>
             </div>
           </form>
-          ${clients.length ? `<ul class="md-list">${clients.map(c => `<li class="md-list-item" style="min-height:56px">
-              <div class="md-list-item-content"><div class="md-list-item-headline"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${esc(c.color)};margin-right:8px"></span>${esc(c.name)}</div></div>
-              <div class="md-list-item-trailing">
-                <form method="post" action="/clients/${c.id}/rate" class="inline rate-form" hx-post="/clients/${c.id}/rate" hx-target="#manage-cols" hx-swap="outerHTML" title="Hourly rate">
-                  <div class="md-text-field has-prefix has-suffix compact" style="width:104px">
-                    <span class="affix prefix" aria-hidden="true">$</span>
-                    <input type="number" name="rate" value="${c.rate || ""}" min="0" step="0.01" placeholder="0" aria-label="Hourly rate for ${esc(c.name)}">
-                    <span class="affix suffix" aria-hidden="true">/hr</span>
-                  </div>
-                  <button class="md-icon-button" type="submit" title="Save" aria-label="Save hourly rate for ${esc(c.name)}">${icon("save")}</button>
-                </form>
-                <form method="post" action="/clients/${c.id}/delete" class="inline" hx-post="/clients/${c.id}/delete" hx-target="#manage-cols" hx-swap="outerHTML"><button class="md-icon-button danger" hx-confirm="Delete client? Projects keep their entries." aria-label="Delete client ${esc(c.name)}" title="Delete">${icon("delete")}</button></form>
-              </div>
-            </li>`).join("")}</ul>` : `<p class="muted">No clients yet.</p>`}
-        </section>
-        <section>
-          <h2 class="md-headline-small">Projects</h2>
-          <form method="post" action="/projects" class="manage-form" hx-post="/projects" hx-target="#manage-cols" hx-swap="outerHTML">
-            <div class="md-text-field">
-              <input type="text" name="name" placeholder=" " required aria-label="Project name">
-              <label>Project name</label>
-            </div>
-            <div class="manage-form-row">
-              <div class="md-text-field filled grow">
-                <select name="client_id" aria-label="Client"><option value="">No client</option>
-                  ${clients.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join("")}</select>
-                <label>Client</label>
-              </div>
-              <button class="md-filled-button" type="submit">${icon("add")}Add</button>
-            </div>
-          </form>
-          ${projects.length ? `<ul class="md-list">${projects.map(p => {
-            return `<li class="md-list-item" style="min-height:56px">
-              <div class="md-list-item-content">
-                <div class="md-list-item-headline">${p.client_color ? `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${esc(p.client_color)};margin-right:8px"></span>` : ""}${esc(p.name)}</div>
-                ${p.client_name ? `<div class="md-list-item-supporting">${esc(p.client_name)}</div>` : ""}
-              </div>
-              <div class="md-list-item-trailing">
-                <form method="post" action="/projects/${p.id}/delete" class="inline" hx-post="/projects/${p.id}/delete" hx-target="#manage-cols" hx-swap="outerHTML"><button class="md-icon-button danger" hx-confirm="Delete project? Entries keep their history." aria-label="Delete project ${esc(p.name)}" title="Delete">${icon("delete")}</button></form>
-              </div>
-            </li>`;}).join("")}</ul>` : `<p class="muted">No projects yet.</p>`}
+          ${clients.length ? clients.map(clientBlock).join("") : `<p class="muted">No clients yet.</p>`}
+          <h3 class="md-title-medium manage-subhead">No client</h3>
+          <ul class="md-list">
+            ${unassigned.map(projectRow).join("")}
+            ${addProjectRow(null, "Add project with no client")}
+          </ul>
         </section>
       </div>`;
   }
