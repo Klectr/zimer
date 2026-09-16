@@ -26,7 +26,7 @@ export interface WebDeps {
   json: (data: unknown, status?: number) => Response;
   isHtmx: (req: Request) => boolean;
   csvResponse: (filename: string, rows: string[][]) => Response;
-  publicOrigin: (req: Request, port: number) => string;
+  shareOrigin: (req: Request) => string;
   PORT: number;
   loginPage: () => string;
   publicInvoicePage: (inv: Invoice & { items: InvoiceItem[] }) => string;
@@ -70,7 +70,7 @@ export function createWebRouter(deps: WebDeps) {
   const {
     db, qRunning, qOne, qRange, qInvoice, qInvoices,
     DATA_DIR, STATIC_DIR, TOKEN, authedPage, tokensEqual, html, json, csvResponse, isHtmx,
-    publicOrigin, PORT, loginPage, publicInvoicePage, notFoundPage, errorPage,
+    shareOrigin, PORT, loginPage, publicInvoicePage, notFoundPage, errorPage,
     dashboardPage, timerPartial, todayPartial, weekInner,
     calendarPage, editPage, manageCols, managePage, bizProfileSection, invoicesPage, invoiceNewPage,
     defaultNewInvParams, invoiceStep2, invoiceDetailPage, invoiceDetailBody, invoiceDoc,
@@ -424,7 +424,7 @@ export function createWebRouter(deps: WebDeps) {
         m = path.match(/^\/invoices\/(\d+)$/);
         if (m && method === "GET") {
           const inv = getInvoice(Number(m[1]));
-          return inv ? html(invoiceDetailPage(inv, publicOrigin(req, PORT))) : html(notFoundPage(authedPage(req, TOKEN)), 404);
+          return inv ? html(invoiceDetailPage(inv, shareOrigin(req))) : html(notFoundPage(authedPage(req, TOKEN)), 404);
         }
         m = path.match(/^\/invoices\/(\d+)\.pdf$/);
         if (m && method === "GET") {
@@ -455,7 +455,7 @@ export function createWebRouter(deps: WebDeps) {
                #295: pay-when-paid has no fixed due date — suppress the PDF due line. */
             terms: termsDescription(termsKey_),
             hideDue: termsKey_ === "pay_when_paid",
-            payUrl: inv.public_token ? `${publicOrigin(req, PORT)}/i/${inv.public_token}` : undefined,
+            payUrl: inv.public_token ? `${shareOrigin(req)}/i/${inv.public_token}` : undefined,
           });
           const filename = inv.number.replace(/[^A-Za-z0-9._-]+/g, "_") + ".pdf";
           return new Response(pdf, {
@@ -479,14 +479,14 @@ export function createWebRouter(deps: WebDeps) {
              link now. A Stripe failure never blocks the status transition; the
              detail page offers a retry. */
           if (want === "sent" && stripeConfigured()) { await stripeLinkFor(inv!.id); }
-          if (isHtmx(req)) { const full = getInvoice(inv!.id); if (full) return html(invoiceDetailBody(full, publicOrigin(req, PORT))); } // #71
+          if (isHtmx(req)) { const full = getInvoice(inv!.id); if (full) return html(invoiceDetailBody(full, shareOrigin(req))); } // #71
           return new Response(null, { status: 302, headers: { Location: `/invoices/${inv!.id}` } });
         }
         m = path.match(/^\/invoices\/(\d+)\/stripe-link$/);
         if (m && method === "POST") {
           const r = await stripeLinkFor(Number(m[1]));
           if (r.url) {
-            if (isHtmx(req)) { const full = getInvoice(Number(m[1])); if (full) return html(invoiceDetailBody(full, publicOrigin(req, PORT))); } // #71
+            if (isHtmx(req)) { const full = getInvoice(Number(m[1])); if (full) return html(invoiceDetailBody(full, shareOrigin(req))); } // #71
             return new Response(null, { status: 302, headers: { Location: `/invoices/${m[1]}` } });
           }
           return new Response(r.error || "Stripe error", { status: r.status || 500 });
@@ -494,13 +494,13 @@ export function createWebRouter(deps: WebDeps) {
         m = path.match(/^\/invoices\/(\d+)\/public-token\/regenerate$/);
         if (m && method === "POST") {
           mintPublicToken(Number(m[1]));
-          if (isHtmx(req)) { const full = getInvoice(Number(m[1])); if (full) return html(invoiceDetailBody(full, publicOrigin(req, PORT))); } // #71
+          if (isHtmx(req)) { const full = getInvoice(Number(m[1])); if (full) return html(invoiceDetailBody(full, shareOrigin(req))); } // #71
           return new Response(null, { status: 302, headers: { Location: `/invoices/${m[1]}` } });
         }
         m = path.match(/^\/invoices\/(\d+)\/public-token\/revoke$/);
         if (m && method === "POST") {
           db.query("UPDATE invoices SET public_token = NULL WHERE id = ?").run(Number(m[1]));
-          if (isHtmx(req)) { const full = getInvoice(Number(m[1])); if (full) return html(invoiceDetailBody(full, publicOrigin(req, PORT))); } // #71
+          if (isHtmx(req)) { const full = getInvoice(Number(m[1])); if (full) return html(invoiceDetailBody(full, shareOrigin(req))); } // #71
           return new Response(null, { status: 302, headers: { Location: `/invoices/${m[1]}` } });
         }
         m = path.match(/^\/invoices\/(\d+)\/delete$/);
