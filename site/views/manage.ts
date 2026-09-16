@@ -2,7 +2,8 @@
  *  manage page shell. */
 
 import type { Database } from "bun:sqlite";
-import { esc } from "../lib/format.ts";
+import { esc, PAYMENT_TERMS, termsDays, termsDescription, termsKey } from "../lib/format.ts";
+import type { PaymentTermsKey } from "../lib/format.ts";
 import { icon } from "../lib/icons.ts";
 import { getMeta } from "../db.ts";
 
@@ -13,6 +14,17 @@ export interface ManageViewDeps {
 
 export function createManageViews(deps: ManageViewDeps) {
   const { db, layout } = deps;
+
+  /* #293: global terms value for the fallback chain. */
+  const globalTerms = () => getMeta(db, "business_payment_terms");
+
+  /* #293: option list for the payment-terms dropdowns. The canned
+     description rides on data-desc so the helper text can update live. */
+  function termsOptions(selected: string | null): string {
+    return (Object.entries(PAYMENT_TERMS) as [PaymentTermsKey, { label: string; description: string }][]).map(([k, v]) =>
+      `<option value="${k}" data-desc="${esc(v.description)}"${k === selected ? " selected" : ""}>${esc(v.label)}</option>`
+    ).join("");
+  }
 
   /* #271: one flat segmented list instead of a card per client (M3 has no
      nested/indented list pattern — hierarchy is folder-like expand/collapse).
@@ -67,14 +79,18 @@ export function createManageViews(deps: ManageViewDeps) {
                 <form method="post" action="/clients/${c.id}/delete" class="inline" hx-post="/clients/${c.id}/delete" hx-target="#manage-cols" hx-swap="outerHTML"><button class="md-icon-button danger" hx-confirm="Delete client? Its projects move to No client." aria-label="Delete client ${esc(c.name)}" title="Delete">${icon("delete")}</button></form>
               </div>
             </li>
-            <li class="md-list-item collapsible" style="min-height:56px">
+            <li class="md-list-item collapsible" style="min-height:56px;flex-wrap:wrap">
               <form method="post" action="/clients/${c.id}/terms" class="terms-form" hx-post="/clients/${c.id}/terms" hx-target="#manage-cols" hx-swap="outerHTML">
                 <div class="md-text-field compact" style="flex:1;min-width:120px">
-                  <input type="text" name="payment_terms" value="${esc(c.payment_terms || "")}" placeholder=" " aria-label="Payment terms for ${esc(c.name)} (blank uses global terms)">
+                  <select name="payment_terms" class="terms-select" aria-label="Payment terms for ${esc(c.name)}">
+                    <option value="" data-desc="Falls back to the global payment terms."${c.payment_terms ? "" : " selected"}>Use global terms</option>
+                    ${termsOptions(c.payment_terms)}
+                  </select>
                   <label>Payment terms</label>
                 </div>
                 <button class="md-icon-button" type="submit" title="Save" aria-label="Save payment terms for ${esc(c.name)}">${icon("save")}</button>
               </form>
+              <p class="terms-desc muted">${esc(termsDescription(termsKey(c.payment_terms, globalTerms())))}</p>
             </li>
             ${(byClient.get(c.id) || []).map(projectRow).join("")}
             ${addProjectRow(c.id, `Add project to ${c.name}`)}
@@ -133,7 +149,13 @@ export function createManageViews(deps: ManageViewDeps) {
             ${field("business_name", "Business name", name)}
             ${field("business_email", "Email", email, "email")}
             ${field("business_address", "Address", address)}
-            ${field("business_payment_terms", "Payment terms", terms)}
+            <div class="md-text-field">
+              <select name="business_payment_terms" class="terms-select" aria-label="Payment terms">
+                ${termsOptions(terms || null)}
+              </select>
+              <label>Payment terms</label>
+            </div>
+            <p class="terms-desc muted">${esc(termsDescription(termsKey(null, terms)))}</p>
             <div class="manage-form-row">
               <span class="manage-form-spacer"></span>
               <button class="md-filled-button" type="submit">${icon("save")}Save</button>
@@ -195,10 +217,14 @@ export function createManageViews(deps: ManageViewDeps) {
   }
 
   function clientOptions(selected: number | null = null): string {
-    const rows = db.query("SELECT id, name, rate FROM clients ORDER BY name").all() as any[];
-    return rows.map(c =>
-      `<option value="${c.id}" data-rate="${c.rate || 0}"${c.id === selected ? " selected" : ""}>${esc(c.name)}</option>`
-    ).join("");
+    const rows = db.query("SELECT id, name, rate, payment_terms FROM clients ORDER BY name").all() as any[];
+    const g = globalTerms();
+    return rows.map(c => {
+      /* #293: effective terms days ride along so the new-invoice form can
+         derive the due date when the client changes. */
+      const days = termsDays(c.payment_terms || g);
+      return `<option value="${c.id}" data-rate="${c.rate || 0}"${days === null ? "" : ` data-terms-days="${days}"`}${c.id === selected ? " selected" : ""}>${esc(c.name)}</option>`;
+    }).join("");
   }
 
 

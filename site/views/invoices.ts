@@ -3,7 +3,7 @@
  *  invoiceSheet is also returned so the public-views factory can reuse it. */
 
 import type { Database, Statement } from "bun:sqlite";
-import { addDays, daysBetween, esc, money, round2, shortDateRange, todayStr } from "../lib/format.ts";
+import { addDays, daysBetween, esc, money, round2, shortDateRange, termsDescription, termsKey, todayStr } from "../lib/format.ts";
 import { icon } from "../lib/icons.ts";
 import { getMeta } from "../db.ts";
 import type { Invoice, InvoiceItem, NewInvParams } from "../lib/types.ts";
@@ -95,19 +95,30 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
             <div class="md-text-field"><input type="text" name="number" value="${esc(p.number)}" required placeholder=" "><label>Invoice number</label></div>
           </div>
           <div class="two-field">
-            <div class="md-text-field filled"><input type="date" name="issue_date" value="${esc(p.issue_date)}" required placeholder=" "><label>Issue date</label></div>
-            <div class="md-text-field filled"><input type="date" name="due_date" value="${esc(p.due_date)}" placeholder=" "><label>Due date</label></div>
+            <div class="md-text-field filled"><input type="date" name="issue_date" id="inv-issue" value="${esc(p.issue_date)}" required placeholder=" "><label>Issue date</label></div>
+            <div class="md-text-field filled"><input type="date" name="due_date" id="inv-due" value="${esc(p.due_date)}" placeholder=" "><label>Due date</label></div>
           </div>
           <div class="md-text-field"><input type="text" name="notes" value="${esc(p.notes)}" placeholder=" "><label>Notes (optional)</label></div>
           <div class="row end"><button class="md-filled-button" type="submit">Preview line items</button></div>
         </form>
       </div>
       <script>(function(){
-        var sel=document.getElementById('inv-client'), rate=document.getElementById('inv-rate');
+        var sel=document.getElementById('inv-client'), rate=document.getElementById('inv-rate'),
+            issue=document.getElementById('inv-issue'), due=document.getElementById('inv-due');
+        function addDaysStr(ymd,n){var p=ymd.split('-').map(Number);var d=new Date(p[0],p[1]-1,p[2]+n);
+          return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+        /* #293: due date follows the selected client's terms (no HTMX
+           round-trip — the days ride on data-terms-days). */
+        function deriveDue(){
+          var opt=sel.options[sel.selectedIndex];
+          if(opt&&opt.dataset.termsDays&&issue.value&&due) due.value=addDaysStr(issue.value,parseInt(opt.dataset.termsDays,10));
+        }
         sel.addEventListener('change',function(){
           var opt=sel.options[sel.selectedIndex];
           if(opt&&opt.dataset.rate&&!rate.value) rate.value=opt.dataset.rate;
+          deriveDue();
         });
+        if(issue) issue.addEventListener('change',deriveDue);
       })();</script>`;
 
 
@@ -191,10 +202,9 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
        Business profile comes from meta; empty profile hides the From block. */
     const bizName = getMeta(db, "business_name");
     const bizEmail = getMeta(db, "business_email");
-    /* #289: the invoice client's own terms win; global business_payment_terms is fallback. */
-    const terms = inv.client_payment_terms
-      || getMeta(db, "business_payment_terms") /* #243 */
-      || "Please pay within 30 days. Thank you!";
+    /* #289: the invoice client's own terms win; global business_payment_terms is fallback.
+       #293: fixed list — print the canned description. */
+    const terms = termsDescription(termsKey(inv.client_payment_terms, getMeta(db, "business_payment_terms")));
     const head = `
         <div class="inv-modern-band">
           <div class="inv-modern-title">Invoice</div>

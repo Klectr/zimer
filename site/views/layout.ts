@@ -24,6 +24,7 @@ export function createLayoutViews(qRunning: Statement) {
   <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
   <script src="/static/motion.js" defer></script>
   <script src="/static/shortcut.js" defer></script>
+  <script src="/static/terms.js" defer></script>
   </head>
   <body${fixed ? ' class="app-fixed"' : ""} data-timer-running="${qRunning.get() ? 1 : 0}">
   <header class="md-top-app-bar" data-enter="1">

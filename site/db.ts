@@ -98,6 +98,27 @@ db.exec(`DROP TABLE IF EXISTS recurring_schedules;`);
     catch { /* column already exists */ }
   }
   db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_invoices_public_token ON invoices(public_token)");
+  /* Issue #293: payment terms become a fixed option list. Migrate existing
+     free-text values to enum keys. Idempotent — reruns only touch values
+     that still aren't keys. */
+  {
+    const valid = ["due_on_receipt", "net_7", "net_15", "net_30", "net_45", "net_60", "pay_when_paid"];
+    const toKey = (v: string): string => {
+      const t = v.trim();
+      if (valid.includes(t)) return t;
+      if (/pay.when.paid/i.test(t)) return "pay_when_paid";
+      const m = /^(\d+)$/.exec(t);
+      if (m && valid.includes("net_" + m[1])) return "net_" + m[1];
+      return "net_30";
+    };
+    for (const row of db.query("SELECT id, payment_terms FROM clients WHERE payment_terms IS NOT NULL").all() as { id: number; payment_terms: string }[]) {
+      const k = toKey(row.payment_terms);
+      if (k !== row.payment_terms) db.query("UPDATE clients SET payment_terms = ? WHERE id = ?").run(k, row.id);
+    }
+    const g = getMeta(db, "business_payment_terms");
+    if (!g) setMeta(db, "business_payment_terms", "net_30");
+    else if (!valid.includes(g.trim())) setMeta(db, "business_payment_terms", toKey(g));
+  }
   /* Issue #203: client portal removed — drop the orphaned token column/index. */
   db.exec("DROP INDEX IF EXISTS idx_clients_portal_token");
   try { db.exec("ALTER TABLE clients DROP COLUMN portal_token"); }
