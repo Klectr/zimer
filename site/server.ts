@@ -29,6 +29,13 @@ import { createApiRouter } from "./routes/api.ts";
 import { createWebRouter } from "./routes/web.ts";
 
 const PORT = Number(process.env.PORT || 3000);
+/* #297: bind loopback by default — the app is self-hosted behind Tailscale or
+   a reverse proxy; it must never listen on all interfaces unless asked. */
+const HOST = process.env.HOST || "127.0.0.1";
+/* #297: client-facing share links (PDF PAY ONLINE line, copy-link row) use
+   this origin when set, so they print the public URL even when the PDF is
+   downloaded over Tailscale. */
+const PUBLIC_BASE_URL = (process.env.PUBLIC_BASE_URL || "").trim().replace(/\/+$/, "");
 const DATA_DIR = process.env.DATA_DIR || resolve(import.meta.dir, "data");
 const STATIC_DIR = resolve(import.meta.dir, "static");
 mkdirSync(DATA_DIR, { recursive: true });
@@ -80,7 +87,8 @@ const { handleApi } = createApiRouter({
 const { handleWeb } = createWebRouter({
   db, qRunning, qOne, qRange, qInvoice, qInvoices,
   DATA_DIR, STATIC_DIR, TOKEN, authedPage, tokensEqual, html, json, csvResponse, isHtmx,
-  publicOrigin, PORT, loginPage, publicInvoicePage, notFoundPage, errorPage,
+  shareOrigin: (req: Request) => PUBLIC_BASE_URL || publicOrigin(req, PORT),
+  PORT, loginPage, publicInvoicePage, notFoundPage, errorPage,
   dashboardPage, timerPartial, todayPartial, weekInner,
   calendarPage, editPage, manageCols, managePage, bizProfileSection, invoicesPage, invoiceNewPage,
   defaultNewInvParams, invoiceStep2, invoiceDetailPage, invoiceDetailBody, invoiceDoc,
@@ -93,6 +101,7 @@ const { handleWeb } = createWebRouter({
 
 Bun.serve({
   port: PORT,
+  hostname: HOST,
   async fetch(req) {
     const url = new URL(req.url);
     const path = url.pathname;
@@ -103,4 +112,4 @@ Bun.serve({
   },
 });
 
-console.log(`\n  ⏱ Timekeep running → http://localhost:${PORT}\n`);
+console.log(`\n  ⏱ Timekeep running → http://${HOST}:${PORT}\n`);
