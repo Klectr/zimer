@@ -307,6 +307,17 @@ export function createWebRouter(deps: WebDeps) {
           if (isHtmx(req)) return html(manageCols()); // #71: swap in place
           return new Response(null, { status: 302, headers: { Location: "/manage" } });
         }
+        /* #289: per-client payment terms. Blank stores NULL so invoice
+           render falls back to the global business_payment_terms. */
+        m = path.match(/^\/clients\/(\d+)\/terms$/);
+        if (m && method === "POST") {
+          const form = await req.formData();
+          const terms = String(form.get("payment_terms") || "").trim();
+          db.query("UPDATE clients SET payment_terms = ? WHERE id = ?")
+            .run(terms || null, Number(m[1]));
+          if (isHtmx(req)) return html(manageCols()); // #71: swap in place
+          return new Response(null, { status: 302, headers: { Location: "/manage" } });
+        }
         m = path.match(/^\/clients\/(\d+)\/delete$/);
         if (m && method === "POST") {
           /* FK actions in the schema are not enforced (no PRAGMA foreign_keys):
@@ -430,8 +441,9 @@ export function createWebRouter(deps: WebDeps) {
             fromName: getMeta(db, "business_name") || undefined,
             fromEmail: getMeta(db, "business_email") || undefined,
             fromAddress: getMeta(db, "business_address") || undefined,
-            /* #243: payment terms, and the pay-online link */
-            terms: getMeta(db, "business_payment_terms") || "Please pay within 30 days. Thank you!",
+            /* #243: payment terms, and the pay-online link.
+               #289: the invoice client's own terms win; global is fallback. */
+            terms: inv.client_payment_terms || getMeta(db, "business_payment_terms") || "Please pay within 30 days. Thank you!",
             payUrl: inv.public_token ? `${publicOrigin(req, PORT)}/i/${inv.public_token}` : undefined,
           });
           const filename = inv.number.replace(/[^A-Za-z0-9._-]+/g, "_") + ".pdf";

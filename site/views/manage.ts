@@ -67,6 +67,15 @@ export function createManageViews(deps: ManageViewDeps) {
                 <form method="post" action="/clients/${c.id}/delete" class="inline" hx-post="/clients/${c.id}/delete" hx-target="#manage-cols" hx-swap="outerHTML"><button class="md-icon-button danger" hx-confirm="Delete client? Its projects move to No client." aria-label="Delete client ${esc(c.name)}" title="Delete">${icon("delete")}</button></form>
               </div>
             </li>
+            <li class="md-list-item collapsible" style="min-height:56px">
+              <form method="post" action="/clients/${c.id}/terms" class="terms-form" hx-post="/clients/${c.id}/terms" hx-target="#manage-cols" hx-swap="outerHTML">
+                <div class="md-text-field compact" style="flex:1;min-width:120px">
+                  <input type="text" name="payment_terms" value="${esc(c.payment_terms || "")}" placeholder=" " aria-label="Payment terms for ${esc(c.name)} (blank uses global terms)">
+                  <label>Payment terms</label>
+                </div>
+                <button class="md-icon-button" type="submit" title="Save" aria-label="Save payment terms for ${esc(c.name)}">${icon("save")}</button>
+              </form>
+            </li>
             ${(byClient.get(c.id) || []).map(projectRow).join("")}
             ${addProjectRow(c.id, `Add project to ${c.name}`)}
           </ul>`;
