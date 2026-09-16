@@ -127,7 +127,13 @@ export function createApiRouter(deps: ApiDeps) {
             }
             m = path.match(/^\/api\/clients\/(\d+)$/);
             if (m && method === "DELETE") {
-              db.query("DELETE FROM clients WHERE id = ?").run(Number(m[1]));
+              /* Schema FK actions are not enforced (no PRAGMA foreign_keys):
+                 null these out explicitly so nothing dangles. */
+              db.transaction(() => {
+                db.query("UPDATE projects SET client_id = NULL WHERE client_id = ?").run(Number(m[1]));
+                db.query("UPDATE invoices SET client_id = NULL WHERE client_id = ?").run(Number(m[1]));
+                db.query("DELETE FROM clients WHERE id = ?").run(Number(m[1]));
+              })();
               return new Response(null, { status: 204 });
             }
             if (path === "/api/projects" && method === "GET")
@@ -142,7 +148,11 @@ export function createApiRouter(deps: ApiDeps) {
             }
             m = path.match(/^\/api\/projects\/(\d+)$/);
             if (m && method === "DELETE") {
-              db.query("DELETE FROM projects WHERE id = ?").run(Number(m[1]));
+              /* Schema FK is not enforced: null entries explicitly. */
+              db.transaction(() => {
+                db.query("UPDATE time_entries SET project_id = NULL WHERE project_id = ?").run(Number(m[1]));
+                db.query("DELETE FROM projects WHERE id = ?").run(Number(m[1]));
+              })();
               return new Response(null, { status: 204 });
             }
             /* ---- invoicing API ---- */
@@ -229,6 +239,7 @@ export function createApiRouter(deps: ApiDeps) {
                 if (inv.status !== "draft") return json({ error: "only draft invoices can be deleted" }, 400);
                 db.transaction(() => {
                   db.query("UPDATE time_entries SET invoice_id = NULL WHERE invoice_id = ?").run(id);
+                  db.query("DELETE FROM invoice_items WHERE invoice_id = ?").run(id);
                   db.query("DELETE FROM invoices WHERE id = ?").run(id);
                 })();
                 return new Response(null, { status: 204 });

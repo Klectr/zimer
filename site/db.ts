@@ -10,6 +10,9 @@ import { join } from "node:path";
 export function createDb(dataDir: string) {
   const db = new Database(join(dataDir, "timekeep.db"), { create: true });
   db.exec("PRAGMA journal_mode = WAL;");
+  /* NOTE: the ON DELETE actions declared below are NOT enforced by SQLite
+     (no PRAGMA foreign_keys). Delete routes null out / clean up referencing
+     rows explicitly — see the client/project/invoice delete handlers. */
   db.exec(`
 CREATE TABLE IF NOT EXISTS clients (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

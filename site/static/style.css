@@ -909,6 +909,14 @@ button.m3-menu-item {
 #manage-cols .md-list-item-trailing > * { flex: none; } /* controls keep natural width, wrap as units */
 #manage-cols .rate-form { margin-right: 0; }
 
+/* Nested projects (#267): project rows sit inside their client's list,
+   inset by whitespace (no borders); each section ends with a compact
+   inline add-project row. */
+#manage-cols .project-nest { padding-left: 32px; }
+#manage-cols .manage-subhead { margin: 20px 4px 8px; color: var(--md-sys-color-on-surface-variant); }
+#manage-cols .add-project-form { display: flex; align-items: center; gap: 8px; flex: 1 1 100%; }
+#manage-cols .add-project-form .md-text-field { flex: 1; min-width: 120px; }
+
 .page-head-actions { display: flex; gap: 8px; align-items: center; }
 /* Milestone 17: bottom-edge resize handle for calendar entries. */
 .cal-resize {
