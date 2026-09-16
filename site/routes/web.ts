@@ -309,7 +309,13 @@ export function createWebRouter(deps: WebDeps) {
         }
         m = path.match(/^\/clients\/(\d+)\/delete$/);
         if (m && method === "POST") {
-          db.query("DELETE FROM clients WHERE id = ?").run(Number(m[1]));
+          /* FK actions in the schema are not enforced (no PRAGMA foreign_keys):
+             null these out explicitly so nothing dangles. */
+          db.transaction(() => {
+            db.query("UPDATE projects SET client_id = NULL WHERE client_id = ?").run(Number(m[1]));
+            db.query("UPDATE invoices SET client_id = NULL WHERE client_id = ?").run(Number(m[1]));
+            db.query("DELETE FROM clients WHERE id = ?").run(Number(m[1]));
+          })();
           if (isHtmx(req)) return html(manageCols()); // #71: swap in place
           return new Response(null, { status: 302, headers: { Location: "/manage" } });
         }
@@ -323,7 +329,11 @@ export function createWebRouter(deps: WebDeps) {
         }
         m = path.match(/^\/projects\/(\d+)\/delete$/);
         if (m && method === "POST") {
-          db.query("DELETE FROM projects WHERE id = ?").run(Number(m[1]));
+          /* Schema FK is not enforced: null entries explicitly. */
+          db.transaction(() => {
+            db.query("UPDATE time_entries SET project_id = NULL WHERE project_id = ?").run(Number(m[1]));
+            db.query("DELETE FROM projects WHERE id = ?").run(Number(m[1]));
+          })();
           if (isHtmx(req)) return html(manageCols()); // #71: swap in place
           return new Response(null, { status: 302, headers: { Location: "/manage" } });
         }
@@ -477,6 +487,7 @@ export function createWebRouter(deps: WebDeps) {
           if (inv.status !== "draft") return new Response("Only draft invoices can be deleted.", { status: 400 });
           db.transaction(() => {
             db.query("UPDATE time_entries SET invoice_id = NULL WHERE invoice_id = ?").run(inv.id);
+            db.query("DELETE FROM invoice_items WHERE invoice_id = ?").run(inv.id);
             db.query("DELETE FROM invoices WHERE id = ?").run(inv.id);
           })();
           return new Response(null, { status: 302, headers: { Location: "/invoices" } });

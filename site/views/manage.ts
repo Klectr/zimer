@@ -20,10 +20,13 @@ export function createManageViews(deps: ManageViewDeps) {
   function manageCols(): string {
     const clients = db.query("SELECT * FROM clients ORDER BY name").all() as any[];
     const projects = db.query("SELECT * FROM projects ORDER BY name").all() as any[];
+    const clientIds = new Set(clients.map(c => c.id));
     const byClient = new Map<number, any[]>();
     const unassigned: any[] = [];
     for (const p of projects) {
-      if (p.client_id == null) unassigned.push(p);
+      /* Dangling client_id (possible in DBs written before #267, when the
+         unenforced ON DELETE SET NULL left stale ids) counts as unassigned. */
+      if (p.client_id == null || !clientIds.has(p.client_id)) unassigned.push(p);
       else {
         const list = byClient.get(p.client_id);
         if (list) list.push(p); else byClient.set(p.client_id, [p]);
