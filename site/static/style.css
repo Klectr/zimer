@@ -916,10 +916,18 @@ button.m3-menu-item {
 #manage-cols .md-list-item-trailing > * { flex: none; } /* controls keep natural width, wrap as units */
 #manage-cols .rate-form { margin-right: 0; }
 
-/* Nested projects (#267): project rows sit inside their client's list,
-   inset by whitespace (no borders); each section ends with a compact
-   inline add-project row. */
-#manage-cols .project-nest { padding-left: 32px; }
+/* Segmented client list (#271): one filled segment per client instead of a
+   card per client — M3 has no nested/indented list pattern, hierarchy is
+   folder-like expand/collapse. Gaps between segments group; repetitive child
+   rows are separated by whitespace alone (spec-sanctioned), so the
+   full-width per-row dividers are dropped inside segments. */
+#manage-cols .client-seg { margin-bottom: 12px; }
+#manage-cols .client-seg .md-list-item + .md-list-item { border-top: none; }
+#manage-cols .client-seg .collapsible { padding-top: 2px; padding-bottom: 2px; }
+#manage-cols .client-seg .client-row + .collapsible { margin-top: 4px; }
+#manage-cols [data-client-seg].collapsed .collapsible { display: none; }
+#manage-cols .client-expand svg { transition: transform var(--motion-duration-short3) var(--motion-easing-standard); }
+#manage-cols [data-client-seg].collapsed .client-expand svg { transform: rotate(-90deg); }
 #manage-cols .manage-subhead { margin: 20px 4px 8px; color: var(--md-sys-color-on-surface-variant); }
 #manage-cols .add-project-form { display: flex; align-items: center; gap: 8px; flex: 1 1 100%; }
 #manage-cols .add-project-form .md-text-field { flex: 1; min-width: 120px; }
