@@ -14,9 +14,12 @@ export interface ManageViewDeps {
 export function createManageViews(deps: ManageViewDeps) {
   const { db, layout } = deps;
 
-  /* #267: projects nest inside their client's list — one column of client
-     sections, trailing "No client" section for unassigned projects.
-     Actions still swap #manage-cols in place. */
+  /* #271: one flat segmented list instead of a card per client (M3 has no
+     nested/indented list pattern — hierarchy is folder-like expand/collapse).
+     Each client is a segment: client row, then its project rows revealed in
+     place. Repetitive child rows get whitespace separation, not dividers.
+     Expanded/collapsed state is applied client-side from localStorage (see
+     the script in managePage); actions still swap #manage-cols in place. */
   function manageCols(): string {
     const clients = db.query("SELECT * FROM clients ORDER BY name").all() as any[];
     const projects = db.query("SELECT * FROM projects ORDER BY name").all() as any[];
@@ -32,13 +35,13 @@ export function createManageViews(deps: ManageViewDeps) {
         if (list) list.push(p); else byClient.set(p.client_id, [p]);
       }
     }
-    const projectRow = (p: any) => `<li class="md-list-item project-nest" style="min-height:56px">
+    const projectRow = (p: any) => `<li class="md-list-item collapsible" style="min-height:56px">
               <div class="md-list-item-content"><div class="md-list-item-headline">${esc(p.name)}</div></div>
               <div class="md-list-item-trailing">
                 <form method="post" action="/projects/${p.id}/delete" class="inline" hx-post="/projects/${p.id}/delete" hx-target="#manage-cols" hx-swap="outerHTML"><button class="md-icon-button danger" hx-confirm="Delete project? Entries keep their history." aria-label="Delete project ${esc(p.name)}" title="Delete">${icon("delete")}</button></form>
               </div>
             </li>`;
-    const addProjectRow = (clientId: number | null, label: string) => `<li class="md-list-item add-project-row" style="min-height:56px">
+    const addProjectRow = (clientId: number | null, label: string) => `<li class="md-list-item add-project-row collapsible" style="min-height:56px">
               <form method="post" action="/projects" class="add-project-form" hx-post="/projects" hx-target="#manage-cols" hx-swap="outerHTML">
                 ${clientId == null ? "" : `<input type="hidden" name="client_id" value="${clientId}">`}
                 <div class="md-text-field compact">
@@ -48,8 +51,9 @@ export function createManageViews(deps: ManageViewDeps) {
                 <button class="md-icon-button" type="submit" title="Add project" aria-label="${esc(label)}">${icon("add")}</button>
               </form>
             </li>`;
-    const clientBlock = (c: any) => `<ul class="md-list">
-            <li class="md-list-item" style="min-height:56px">
+    const clientSegment = (c: any) => `<ul class="md-list client-seg" data-client-seg="${c.id}">
+            <li class="md-list-item client-row" style="min-height:56px">
+              <button class="md-icon-button client-expand" type="button" aria-expanded="true" aria-label="Collapse projects for ${esc(c.name)}" title="Collapse">${icon("chevron_down")}</button>
               <div class="md-list-item-content"><div class="md-list-item-headline"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${esc(c.color)};margin-right:8px"></span>${esc(c.name)}</div></div>
               <div class="md-list-item-trailing">
                 <form method="post" action="/clients/${c.id}/rate" class="inline rate-form" hx-post="/clients/${c.id}/rate" hx-target="#manage-cols" hx-swap="outerHTML" title="Hourly rate">
@@ -90,9 +94,9 @@ export function createManageViews(deps: ManageViewDeps) {
               <button class="md-filled-button" type="submit">${icon("add")}Add</button>
             </div>
           </form>
-          ${clients.length ? clients.map(clientBlock).join("") : `<p class="muted">No clients yet.</p>`}
+          ${clients.length ? clients.map(clientSegment).join("") : `<p class="muted">No clients yet.</p>`}
           <h3 class="md-title-medium manage-subhead">No client</h3>
-          <ul class="md-list">
+          <ul class="md-list client-seg">
             ${unassigned.map(projectRow).join("")}
             ${addProjectRow(null, "Add project with no client")}
           </ul>
@@ -137,7 +141,48 @@ export function createManageViews(deps: ManageViewDeps) {
     return layout("Clients & Projects", `
       <div class="scroll-region">
       <div data-enter="2" id="manage-wrap">${manageCols()}</div>
-      </div>`, "manage", true);
+      </div>
+      <script>(function(){
+        /* #271: folder-like expand/collapse for client segments. Collapsed
+           ids persist in localStorage; state is reapplied after every
+           #manage-cols HTMX swap. Delegated so it survives swaps; the script
+           lives outside the swapped region. */
+        var KEY = "timekeep.collapsedClients";
+        function read(){ try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch (e) { return []; } }
+        function write(ids){ try { localStorage.setItem(KEY, JSON.stringify(ids)); } catch (e) {} }
+        function apply(){
+          var ids = read();
+          document.querySelectorAll("#manage-cols [data-client-seg]").forEach(function(seg){
+            var id = seg.getAttribute("data-client-seg");
+            var collapsed = ids.indexOf(id) !== -1;
+            seg.classList.toggle("collapsed", collapsed);
+            var btn = seg.querySelector(".client-expand");
+            if (btn) {
+              btn.setAttribute("aria-expanded", String(!collapsed));
+              var name = seg.querySelector(".client-row .md-list-item-headline").textContent.trim();
+              btn.setAttribute("aria-label", (collapsed ? "Expand" : "Collapse") + " projects for " + name);
+              btn.setAttribute("title", collapsed ? "Expand" : "Collapse");
+            }
+          });
+        }
+        document.addEventListener("click", function(e){
+          var btn = e.target.closest ? e.target.closest(".client-expand") : null;
+          if (!btn) return;
+          var seg = btn.closest("[data-client-seg]");
+          if (!seg) return;
+          var id = seg.getAttribute("data-client-seg");
+          var ids = read();
+          var i = ids.indexOf(id);
+          if (i === -1) ids.push(id); else ids.splice(i, 1);
+          write(ids);
+          apply();
+        });
+        document.addEventListener("htmx:afterSwap", function(e){
+          if (e.target && e.target.id === "manage-cols") apply();
+        });
+        if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", apply);
+        else apply();
+      })();</script>`, "manage", true);
   }
 
   function clientOptions(selected: number | null = null): string {

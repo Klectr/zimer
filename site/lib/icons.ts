@@ -13,6 +13,9 @@ export const ICONS: Record<string, string> = {
   add: `<path d="M12 5v14M5 12h14"/>`,
   chevron_left: `<path d="M14.5 6l-6 6 6 6"/>`,
   chevron_right: `<path d="M9.5 6l6 6-6 6"/>`,
+  /* #271: expand/collapse chevron for the segmented client list (M3
+     folder-like hierarchy). */
+  chevron_down: `<path d="M6 9.5l6 6 6-6"/>`,
   arrow_left: `<path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/>`,
   copy: `<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/>`,
   link: `<path d="M10 14a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07L11.4 5.5"/><path d="M14 10a5 5 0 0 0-7.07 0L4.1 12.83a5 5 0 0 0 7.07 7.07l1.42-1.42"/>`,

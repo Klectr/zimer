@@ -117,6 +117,21 @@ per-page:
   is contextual info derived from tracked time, per the spec's supporting-pane
   test. The stat cards reflow inside the narrow pane via container queries
   (`@container (max-width: 480px)`), not viewport queries.
+- **Hierarchical lists (M3).** The spec defines no nested/indented list
+  pattern and no list subheaders — a list's one hierarchy mechanism is
+  folder-like expand/collapse ("List items containing other list items can
+  expand and collapse in a folder-like manner, to reveal or hide content").
+  Grouping is done with segmented gaps and filled items, not nested chrome;
+  cards are for single-topic content ("Don't force content into cards when
+  spacing, headlines, or dividers would create a simpler visual hierarchy").
+  On Manage, clients are segments of one list: a client row (leading expand
+  chevron, color dot + name, inline rate, delete) reveals its project rows
+  in place. Repetitive child rows are separated by whitespace alone, which
+  the spec sanctions; full-width dividers are reserved for separating
+  distinct groups, and the spec warns that too many divider lines read as
+  clutter. "No client" is a section label over its own segment, not a fake
+  parent row. Expanded/collapsed state persists in localStorage and is
+  reapplied after HTMX swaps.
 - **No hard borders.** If you're reaching for `border:`, use a surface tone
   step or whitespace instead.
 - **No horizontal scrolling.** Tables and grids must fit; the calendar page is
