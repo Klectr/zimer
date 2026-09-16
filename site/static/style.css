@@ -1240,6 +1240,7 @@ button.m3-menu-item {
 .error-page { max-width: 560px; margin: 0 auto; padding: 96px 24px; text-align: center; }
 .error-page h1 { margin: 0 0 12px; }
 .error-page p { margin: 0 0 28px; }
+.error-mark { margin-bottom: 20px; }
 .error-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
 
 /* Reduced motion: collapse all motion to instant state changes.

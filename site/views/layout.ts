@@ -101,7 +101,20 @@ export function createLayoutViews(qRunning: Statement) {
   }
 
 
-  return { layout, publicShell, notFoundPage, errorPage };
+  /* Dedicated dead-end for unknown /i/:token links on the public invoice
+     subdomain (#305): same minimal public chrome, but the message names the
+     situation instead of the generic 404. */
+  function noSuchInvoicePage(): string {
+    const body = `
+      <div class="error-page">
+        <div class="error-mark">${logo(40)}</div>
+        <h1 class="md-headline-small">This invoice doesn&rsquo;t exist.</h1>
+        <p class="muted">The link you followed doesn&rsquo;t match any invoice. Check the address, or ask the sender for a fresh link.</p>
+      </div>`;
+    return publicShell("Invoice not found", body);
+  }
+
+  return { layout, publicShell, notFoundPage, noSuchInvoicePage, errorPage };
 }
 
 /** Issue #155: global account menu — hamburger button in the top app bar (every
