@@ -203,15 +203,16 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     const bizName = getMeta(db, "business_name");
     const bizEmail = getMeta(db, "business_email");
     /* #289: the invoice client's own terms win; global business_payment_terms is fallback.
-       #293: fixed list — print the canned description. */
-    /* #295 wip: hide the due line when effective terms are pay-when-paid */
-    const terms = termsDescription(termsKey(inv.client_payment_terms, getMeta(db, "business_payment_terms")));
+       #293: fixed list — print the canned description.
+       #295: pay-when-paid has no fixed due date, so the due line is suppressed. */
+    const termsKey_ = termsKey(inv.client_payment_terms, getMeta(db, "business_payment_terms"));
+    const terms = termsDescription(termsKey_);
     const head = `
         <div class="inv-modern-band">
           <div class="inv-modern-title">Invoice</div>
           <div class="inv-modern-right">
             <div class="inv-modern-number">${esc(inv.number)}</div>
-            <div class="inv-modern-dates">Issued ${esc(inv.issue_date)}${inv.due_date ? ` · <strong>Due ${esc(inv.due_date)}</strong>` : ""}</div>
+            <div class="inv-modern-dates">Issued ${esc(inv.issue_date)}${inv.due_date && termsKey_ !== "pay_when_paid" ? ` · <strong>Due ${esc(inv.due_date)}</strong>` : ""}</div>
             ${period ? `<div class="inv-modern-dates">Billing period: ${esc(period)}</div>` : ""}
             <span class="inv-modern-badge${inv.status === "paid" ? " paid" : ""}">${inv.status === "paid" ? "Paid" : "Unpaid"}</span>${paidChip}
           </div>
