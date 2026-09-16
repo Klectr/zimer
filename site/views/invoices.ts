@@ -191,7 +191,9 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
        Business profile comes from meta; empty profile hides the From block. */
     const bizName = getMeta(db, "business_name");
     const bizEmail = getMeta(db, "business_email");
-    const terms = getMeta(db, "business_payment_terms") /* #243 */
+    /* #289: the invoice client's own terms win; global business_payment_terms is fallback. */
+    const terms = inv.client_payment_terms
+      || getMeta(db, "business_payment_terms") /* #243 */
       || "Please pay within 30 days. Thank you!";
     const head = `
         <div class="inv-modern-band">

@@ -947,6 +947,9 @@ button.m3-menu-item {
 #manage-cols .manage-subhead { margin: 20px 4px 8px; color: var(--md-sys-color-on-surface-variant); }
 #manage-cols .add-project-form { display: flex; align-items: center; gap: 8px; flex: 1 1 100%; }
 #manage-cols .add-project-form .md-text-field { flex: 1; min-width: 120px; }
+/* #289: per-client payment terms row — same inline form pattern. */
+#manage-cols .terms-form { display: flex; align-items: center; gap: 8px; flex: 1 1 100%; }
+#manage-cols .terms-form .md-text-field { flex: 1; min-width: 120px; }
 
 .page-head-actions { display: flex; gap: 8px; align-items: center; }
 /* Milestone 17: bottom-edge resize handle for calendar entries. */
