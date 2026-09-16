@@ -84,6 +84,9 @@ db.exec(`DROP TABLE IF EXISTS recurring_schedules;`);
   /* idempotent column additions for DBs created before invoicing landed */
   for (const [tbl, col, def] of [
     ["clients", "rate", "REAL NOT NULL DEFAULT 0"],
+    /* Issue #289: per-client payment terms (nullable — blank falls back to
+       the global business_payment_terms meta). */
+    ["clients", "payment_terms", "TEXT"],
     ["time_entries", "invoice_id", "INTEGER REFERENCES invoices(id) ON DELETE SET NULL"],
     ["invoices", "template", "TEXT NOT NULL DEFAULT 'classic'"],
     ["invoices", "stripe_payment_link", "TEXT"],
@@ -112,7 +115,8 @@ db.exec(`DROP TABLE IF EXISTS recurring_schedules;`);
   const qRange = db.query(`${ENTRY_SELECT} WHERE e.start_time >= ? AND e.start_time < ? ORDER BY e.start_time DESC`);
 
   const qInvoice = db.query(
-    `SELECT i.*, c.name AS client_name, c.color AS client_color
+    `SELECT i.*, c.name AS client_name, c.color AS client_color,
+            c.payment_terms AS client_payment_terms
    FROM invoices i LEFT JOIN clients c ON c.id = i.client_id WHERE i.id = ?`);
   const qInvoiceItems = db.query("SELECT * FROM invoice_items WHERE invoice_id = ? ORDER BY id");
   const qInvoices = db.query(

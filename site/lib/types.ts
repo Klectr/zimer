@@ -19,6 +19,7 @@ export type Invoice = {
   status: string; tax_rate: number; notes: string; template: string; created_at: string;
   stripe_payment_link: string | null; paid_via_stripe: number; public_token: string | null;
   client_name: string | null; client_color: string | null;
+  client_payment_terms: string | null; /* #289: per-client terms, else global */
 };
 
 export type RevenueRow = {
