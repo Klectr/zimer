@@ -757,6 +757,10 @@ body.app-fixed .cal-gutter-spacer {
   font-size: 12px; line-height: 1.35;
   min-width: 0;
 }
+/* #275: sub-30-minute entries render at the 22px floor — tighter padding,
+   smaller single-line text, and no duration line (no room for two lines). */
+.cal-entry.cal-compact { padding: 2px 8px; font-size: 11px; }
+.cal-entry.cal-compact .cal-entry-dur { display: none; }
 .cal-entry:hover { filter: brightness(1.08); }
 /* In-place week refresh (#65): load-entrance animations are suppressed while
    the #week section is swapped, so saving an entry never replays the page. */
