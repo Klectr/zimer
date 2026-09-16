@@ -758,8 +758,17 @@ body.app-fixed .cal-gutter-spacer {
   min-width: 0;
 }
 /* #275: sub-30-minute entries render at the 22px floor — tighter padding,
-   smaller single-line text, and no duration line (no room for two lines). */
-.cal-entry.cal-compact { padding: 2px 8px; font-size: 11px; }
+   smaller single-line text, and no duration line (no room for two lines).
+   #281: refine into a true single-line pill — the line is vertically
+   centered (flex), full chip rounding like an M3 chip, desc takes the free
+   space with ellipsis. No client dot: the card is already client-colored,
+   which is what the reference app's avatar is for on its monochrome cards. */
+.cal-entry.cal-compact {
+  display: flex; align-items: center;
+  padding: 2px 10px; font-size: 11px; line-height: 1.2;
+  border-radius: 999px;
+}
+.cal-entry.cal-compact .cal-entry-desc { flex: 1; min-width: 0; }
 .cal-entry.cal-compact .cal-entry-dur { display: none; }
 .cal-entry:hover { filter: brightness(1.08); }
 /* In-place week refresh (#65): load-entrance animations are suppressed while
