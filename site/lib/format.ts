@@ -109,6 +109,13 @@ export function daysBetween(a: string, b: string): number {
   return Math.round((p(b).getTime() - p(a).getTime()) / 86400000);
 }
 
+/** #291: payment-terms text → numeric days, or null when the terms name no
+ *  fixed window (pay-when-paid, "Net 30", blank). Strict plain-integer only. */
+export function termsDays(terms: string | null | undefined): number | null {
+  const t = (terms ?? "").trim();
+  return /^\d+$/.test(t) ? parseInt(t, 10) : null;
+}
+
 /* ---------------- durations ---------------- */
 export function durationSeconds(startIso: string, endIso: string | null): number {
   const end = endIso ? new Date(endIso).getTime() : Date.now();
