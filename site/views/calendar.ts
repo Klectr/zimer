@@ -171,13 +171,15 @@ export function createCalendarViews(deps: CalendarViewDeps) {
         .map(({ e, a, b }) => {
         const top = (a / 60) * calHourPx;
         const h = Math.max(((b - a) / 60) * calHourPx, 26);
+        /* #273: 2px visual inset top and bottom so stacked cards don't touch.
+           The positioning slot is unchanged; only the painted card shrinks. */
         const color = e.client_color || "#9aa0a6"; // no-client: neutral gray, distinct from client colors
         const running = !e.end_time;
         const overlap = sortedBlocks.some((o) => o.e !== e && o.a < b && o.b > a);
         const desc = e.description ? esc(e.description) : "<em>No description</em>";
         const dur = fmtDur(durationSeconds(e.start_time, e.end_time));
         return `<div class="cal-entry${running ? " running" : ""}${overlap ? " overlap" : ""}"
-            style="top:${top.toFixed(1)}px;height:${h.toFixed(1)}px;--c:${esc(color)}"
+            style="top:${(top + 2).toFixed(1)}px;height:${(h - 4).toFixed(1)}px;--c:${esc(color)}"
             data-id="${e.id}" data-desc="${esc(e.description)}" data-project-id="${e.project_id ?? ""}"
             data-date="${day}" data-start="${toHM(a)}" data-end="${running ? "" : toHM(Math.min(b, 1439))}"
             tabindex="0" role="button" aria-label="${desc}, ${dur}">
@@ -457,8 +459,10 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       return Math.floor(y/HOUR*(60/15))*(15);
     }
     function place(el,a,b){
-      el.style.top=(a/60*HOUR)+'px';
-      el.style.height=Math.max((b-a)/60*HOUR,10)+'px';
+      /* #273: same 2px inset as the server render, so resize/drag-preview
+         cards match the painted cards. */
+      el.style.top=(a/60*HOUR+2)+'px';
+      el.style.height=Math.max((b-a)/60*HOUR,10)-4+'px';
     }
     /* Milestone 17: drag the bottom edge of a finished entry to resize it.
        Delegated on document so it survives in-place #week refreshes. */
