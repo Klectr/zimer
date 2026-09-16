@@ -28,6 +28,7 @@ export type PdfInvoice = {
   clientName: string;
   issueDate: string; // YYYY-MM-DD
   dueDate: string | null; // YYYY-MM-DD
+  hideDue?: boolean; // #295: pay-when-paid has no fixed due date — suppress the due line
   items: PdfLineItem[];
   subtotal: number;
   tax: number;
@@ -279,7 +280,7 @@ function drawModern(inv: PdfInvoice, doc: PdfDoc) {
   doc.rtext(RIGHT, PAGE_H - 52, 15, inv.number, true, WHITE);
   /* #243: the due date is bold — it must be scannable in seconds. */
   const issuedStr = `Issued ${fmtDate(inv.issueDate)}`;
-  if (inv.dueDate) {
+  if (inv.dueDate && !inv.hideDue) {
     const dueStr = `Due ${fmtDate(inv.dueDate)}`;
     doc.rtext(RIGHT, PAGE_H - 74, 10, dueStr, true, WHITE);
     const sep = "  |  ";

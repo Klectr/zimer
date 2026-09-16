@@ -431,6 +431,9 @@ export function createWebRouter(deps: WebDeps) {
           const inv = getInvoice(Number(m[1]));
           if (!inv) return html(notFoundPage(authedPage(req, TOKEN)), 404);
           const t = invoiceTotals(inv.items, inv.tax_rate);
+          /* #289/#293/#295: effective terms key drives the canned description
+             and whether the PDF due line is shown. */
+          const termsKey_ = termsKey(inv.client_payment_terms, getMeta(db, "business_payment_terms"));
           const pdf = invoicePdf({
             number: inv.number,
             status: inv.status,
@@ -448,8 +451,10 @@ export function createWebRouter(deps: WebDeps) {
             fromAddress: getMeta(db, "business_address") || undefined,
             /* #243: payment terms, and the pay-online link.
                #289: the invoice client's own terms win; global is fallback.
-               #293: fixed list — print the canned description. */
-            terms: termsDescription(termsKey(inv.client_payment_terms, getMeta(db, "business_payment_terms"))),
+               #293: fixed list — print the canned description.
+               #295: pay-when-paid has no fixed due date — suppress the PDF due line. */
+            terms: termsDescription(termsKey_),
+            hideDue: termsKey_ === "pay_when_paid",
             payUrl: inv.public_token ? `${publicOrigin(req, PORT)}/i/${inv.public_token}` : undefined,
           });
           const filename = inv.number.replace(/[^A-Za-z0-9._-]+/g, "_") + ".pdf";
