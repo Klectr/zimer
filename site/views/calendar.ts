@@ -168,14 +168,22 @@ export function createCalendarViews(deps: CalendarViewDeps) {
         })
         .sort((x, y) => x.a - y.a);
       const entryHtml = sortedBlocks
-        .map(({ e, a, b }) => {
+        .map(({ e, a, b }, i) => {
         const top = (a / 60) * calHourPx;
         const trueH = ((b - a) / 60) * calHourPx;
         /* #275: sub-30-minute entries would be unreadably thin at true scale,
            but the old 26px floor read too chunky — floor at 22px with compact
            styling (tighter padding, smaller text, no duration line). */
         const compact = trueH < 26;
-        const h = Math.max(trueH, 22);
+        /* #279: a floored short entry overflows its true slot and the next
+           card paints over it, burying the 4px gap — cap the floor at the
+           room before the next entry starts. Back-to-back short entries
+           render at true height (thin but truthful, gap preserved); the
+           floor still applies when there's room. Never shrink below true
+           height, so overlapping entries keep full height. */
+        const nextA = i + 1 < sortedBlocks.length ? sortedBlocks[i + 1].a : Infinity;
+        const roomPx = ((nextA - a) / 60) * calHourPx;
+        const h = Math.min(Math.max(trueH, 22), Math.max(roomPx, trueH));
         /* #273: 2px visual inset top and bottom so stacked cards don't touch.
            The positioning slot is unchanged; only the painted card shrinks. */
         const color = e.client_color || "#9aa0a6"; // no-client: neutral gray, distinct from client colors
