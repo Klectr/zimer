@@ -394,6 +394,13 @@ input[type="number"] {
 /* compact (40dp) field for dense rows */
 .md-text-field.compact input { height: 40px; padding-top: 8px; padding-bottom: 8px; font-size: 14px; }
 .md-text-field.compact .affix { font-size: 14px; }
+/* compact field WITH a floating label (nested add-project rows): compact was
+   built for label-less affix fields, so labeled ones need their own label
+   geometry plus room up top for the floated state. */
+.md-text-field.compact:has(label) input { padding-top: 18px; padding-bottom: 4px; }
+.md-text-field.compact:has(label) label { top: 12px; font-size: 14px; }
+.md-text-field.compact:has(label) input:focus + label,
+.md-text-field.compact:has(label) input:not(:placeholder-shown) + label { top: 5px; font-size: 11px; }
 /* auto-width: size the field to its content (e.g. a select sized to its
    longest option) instead of a fragile fixed pixel width. */
 .md-text-field.auto-width { display: inline-block; width: auto; }
