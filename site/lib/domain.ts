@@ -17,7 +17,7 @@ export interface DomainDeps {
 }
 
 /** Pixels per hour in the calendar time grid. */
-export const CAL_HOUR_PX = 96;
+export const CAL_HOUR_PX = 80;
 
 /** Weekly hours target: 40h matches the ~80h biweekly invoicing pace.
     Kept as a constant in this slice; a configurable target is a follow-up. */

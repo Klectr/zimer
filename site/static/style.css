@@ -762,10 +762,12 @@ body.app-fixed .cal-gutter-spacer {
    #281: refine into a true single-line pill — the line is vertically
    centered (flex), full chip rounding like an M3 chip, desc takes the free
    space with ellipsis. No client dot: the card is already client-colored,
-   which is what the reference app's avatar is for on its monochrome cards. */
+   which is what the reference app's avatar is for on its monochrome cards.
+   #287: 10px text @ 1.2 (12px line) fits the 16px-painted / 12px-content
+   box of a 15-min slot at 80px/hr exactly. */
 .cal-entry.cal-compact {
   display: flex; align-items: center;
-  padding: 2px 10px; font-size: 11px; line-height: 1.2;
+  padding: 2px 10px; font-size: 10px; line-height: 1.2;
   border-radius: 999px;
 }
 .cal-entry.cal-compact .cal-entry-desc { flex: 1; min-width: 0; }
