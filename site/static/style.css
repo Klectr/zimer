@@ -788,9 +788,10 @@ body.app-fixed .cal-gutter-spacer {
   0% { filter: brightness(1.7); }
   100% { filter: brightness(1); }
 }
-/* overlap: soft layered top shadow (tailwind-style), reads as elevation */
+/* overlap: soft layered top shadow (tailwind-style), reads as elevation.
+   #283: tightened — same color, less spread. */
 .cal-entry.overlap {
-  box-shadow: 0 -10px 15px -3px rgb(0 0 0 / 0.3), 0 -4px 6px -4px rgb(0 0 0 / 0.25);
+  box-shadow: 0 -4px 8px -2px rgb(0 0 0 / 0.3), 0 -2px 4px -2px rgb(0 0 0 / 0.25);
 }
 .cal-entry:focus-visible { outline: 2px solid var(--md-sys-color-on-surface); outline-offset: 1px; }
 .cal-entry.running { border: 2px dashed #16161c; }
