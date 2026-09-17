@@ -114,7 +114,18 @@ export function createLayoutViews(qRunning: Statement) {
     return publicShell("Invoice not found", body);
   }
 
-  return { layout, publicShell, notFoundPage, noSuchInvoicePage, errorPage };
+  /* Public 429 page (#308): minimal public chrome, no app nav leaked. */
+  function rateLimitPage(): string {
+    const body = `
+      <div class="error-page">
+        <div class="error-mark">${logo(40)}</div>
+        <h1 class="md-headline-small">Too many requests.</h1>
+        <p class="muted">Please slow down and try again in a bit.</p>
+      </div>`;
+    return publicShell("Too many requests", body);
+  }
+
+  return { layout, publicShell, notFoundPage, noSuchInvoicePage, rateLimitPage, errorPage };
 }
 
 /** Issue #155: global account menu — hamburger button in the top app bar (every

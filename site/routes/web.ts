@@ -9,6 +9,8 @@ import { addDays, esc, isPaymentTermsKey, round2, termsDescription, termsDays, t
 import type { Entry, Invoice, InvoiceItem } from "../lib/types.ts";
 import type { PdfInvoice } from "../pdf.ts";
 import { getMeta, setMeta } from "../db.ts";
+import { clientIp } from "../lib/http.ts";
+import { createRateLimiter } from "../lib/ratelimit.ts";
 
 export interface WebDeps {
   db: Database;
@@ -31,6 +33,7 @@ export interface WebDeps {
   loginPage: () => string;
   publicInvoicePage: (inv: Invoice & { items: InvoiceItem[] }) => string;
   notFoundPage: (authed: boolean) => string;
+  rateLimitPage: () => string;
   errorPage: (authed: boolean) => string;
   dashboardPage: () => string;
   timerPartial: () => string;
@@ -70,7 +73,7 @@ export function createWebRouter(deps: WebDeps) {
   const {
     db, qRunning, qOne, qRange, qInvoice, qInvoices,
     DATA_DIR, STATIC_DIR, TOKEN, authedPage, tokensEqual, html, json, csvResponse, isHtmx,
-    shareOrigin, PORT, loginPage, publicInvoicePage, notFoundPage, noSuchInvoicePage, errorPage,
+    shareOrigin, PORT, loginPage, publicInvoicePage, notFoundPage, noSuchInvoicePage, rateLimitPage, errorPage,
     dashboardPage, timerPartial, todayPartial, weekInner,
     calendarPage, editPage, manageCols, managePage, bizProfileSection, invoicesPage, invoiceNewPage,
     defaultNewInvParams, invoiceStep2, invoiceDetailPage, invoiceDetailBody, invoiceDoc,
@@ -80,6 +83,11 @@ export function createWebRouter(deps: WebDeps) {
     invoicePdf, stripeConfigured,
     workspaceEmpty, demoIds, seedDemoData, removeDemoData, entryToJson,
   } = deps;
+
+  /* #308: rate limits for the public surface — in-memory, per client IP.
+     A page view pulls ~4 subrequests (html, css, logo, motion.js). */
+  const invoiceLimiter = createRateLimiter({ windowMs: 60_000, max: 60 });
+  const loginLimiter = createRateLimiter({ windowMs: 5 * 60_000, max: 10 });
 
   /** Serve a web request, or null when the path is not a web route. */
   async function handleWeb(req: Request, url: URL, path: string, method: string): Promise<Response | null> {
@@ -94,6 +102,11 @@ export function createWebRouter(deps: WebDeps) {
         if (path === "/login") {
           if (method === "GET") return html(loginPage());
           if (method === "POST") {
+            /* #308: slow down token brute-forcing. */
+            const rl = loginLimiter.check(clientIp(req));
+            if (!rl.allowed) {
+              return html(rateLimitPage(), 429, { "Retry-After": String(rl.retryAfterSec) });
+            }
             const form = await req.formData();
             if (tokensEqual(String(form.get("token") || ""), TOKEN)) {
               return new Response(null, {
@@ -119,6 +132,11 @@ export function createWebRouter(deps: WebDeps) {
 
         const pub = path.match(/^\/i\/([A-Za-z0-9_-]{16,64})$/);
         if (pub && method === "GET") {
+          /* #308: rate-limit before the DB lookup. */
+          const rl = invoiceLimiter.check(clientIp(req));
+          if (!rl.allowed) {
+            return html(rateLimitPage(), 429, { "Retry-After": String(rl.retryAfterSec) });
+          }
           const idRow = db.query("SELECT id FROM invoices WHERE public_token = ?").get(pub[1]) as { id: number } | null;
           const inv = idRow ? getInvoice(idRow.id) : null;
           return inv ? html(publicInvoicePage(inv)) : html(noSuchInvoicePage(), 404);
