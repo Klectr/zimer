@@ -11,6 +11,7 @@ import type { PdfInvoice } from "../pdf.ts";
 import { getMeta, setMeta } from "../db.ts";
 import { clientIp } from "../lib/http.ts";
 import { createRateLimiter } from "../lib/ratelimit.ts";
+import { loadChangelog } from "../lib/changelog.ts"; /* #303 */
 
 export interface WebDeps {
   db: Database;
@@ -32,6 +33,7 @@ export interface WebDeps {
   PORT: number;
   loginPage: () => string;
   publicInvoicePage: (inv: Invoice & { items: InvoiceItem[] }) => string;
+  changelogPage: (entries: import("../lib/changelog.ts").ChangelogEntry[]) => string;
   notFoundPage: (authed: boolean) => string;
   rateLimitPage: () => string;
   errorPage: (authed: boolean) => string;
@@ -75,7 +77,7 @@ export function createWebRouter(deps: WebDeps) {
   const {
     db, qRunning, qOne, qRange, qInvoice, qInvoices,
     DATA_DIR, STATIC_DIR, TOKEN, authedPage, tokensEqual, html, json, csvResponse, isHtmx,
-    shareOrigin, PORT, loginPage, publicInvoicePage, notFoundPage, noSuchInvoicePage, rateLimitPage, errorPage,
+    shareOrigin, PORT, loginPage, publicInvoicePage, changelogPage, notFoundPage, noSuchInvoicePage, rateLimitPage, errorPage,
     dashboardPage, timerPartial, todayPartial, weekInner,
     calendarPage, editPage, manageCols, managePage, bizProfileSection, invoicesPage, invoiceNewPage,
     defaultNewInvParams, invoiceStep2, invoiceDetailPage, invoiceDetailBody, invoiceDoc,
@@ -127,6 +129,16 @@ export function createWebRouter(deps: WebDeps) {
             status: 302,
             headers: { Location: "/login", "Set-Cookie": "tk=; HttpOnly; Path=/; Max-Age=0" },
           });
+        }
+
+        /* #303: public changelog — no auth, same rate limit as the public
+           invoice surface. Linked from the public invoice footer. */
+        if (path === "/changelog" && method === "GET") {
+          const rl = invoiceLimiter.check(clientIp(req));
+          if (!rl.allowed) {
+            return html(rateLimitPage(), 429, { "Retry-After": String(rl.retryAfterSec) });
+          }
+          return html(changelogPage(await loadChangelog()));
         }
 
         /* Public client invoice page: no auth, read-only. The token is a
