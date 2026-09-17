@@ -5,7 +5,7 @@
 
 import { join, normalize, sep } from "node:path";
 import type { Database, Statement } from "bun:sqlite";
-import { addDays, esc, isPaymentTermsKey, round2, termsDescription, termsKey, todayStr } from "../lib/format.ts";
+import { addDays, esc, isPaymentTermsKey, round2, termsDescription, termsDays, termsKey, todayStr } from "../lib/format.ts";
 import type { Entry, Invoice, InvoiceItem } from "../lib/types.ts";
 import type { PdfInvoice } from "../pdf.ts";
 import { getMeta, setMeta } from "../db.ts";
@@ -358,9 +358,45 @@ export function createWebRouter(deps: WebDeps) {
           return new Response(null, { status: 302, headers: { Location: "/manage" } });
         }
 
+        /* #299: one-click "invoice this period". /invoices/new?from=YYYY-MM-DD&to=YYYY-MM-DD
+           prefills the range; when exactly one client has finished, unbilled entries in
+           the range, that client is preselected (rate + due date from its payment terms)
+           and step 2 renders immediately with the grouped line items. */
+        function prefillNewInvoice(sp: URLSearchParams): { p: any; preview?: any } {
+          const p: any = defaultNewInvParams();
+          const from = sp.get("from"), to = sp.get("to");
+          const ymd = /^\d{4}-\d{2}-\d{2}$/;
+          if (!from || !to || !ymd.test(from) || !ymd.test(to) || !(from < to)) return { p };
+          p.from = from; p.to = to;
+          const f = from + "T00:00:00", t = to + "T00:00:00";
+          const billable = db.query(`
+            SELECT DISTINCT c.id, c.rate, c.payment_terms
+            FROM time_entries e
+            JOIN projects pr ON pr.id = e.project_id
+            JOIN clients c ON c.id = pr.client_id
+            WHERE e.invoice_id IS NULL AND e.end_time IS NOT NULL
+              AND e.start_time >= ? AND e.start_time < ?`).all(f, t) as any[];
+          if (billable.length !== 1) return { p };
+          const c = billable[0];
+          p.client_id = String(c.id);
+          if (c.rate !== null && c.rate !== "") p.rate = String(c.rate);
+          /* Mirror the client-side deriveDue (#293): due date follows the client's terms. */
+          const days = termsDays(termsKey(c.payment_terms, getMeta(db, "business_payment_terms")));
+          if (days !== null) p.due_date = addDays(p.issue_date, days);
+          const entries = unbilledEntries(Number(c.id), f, t);
+          const preview = entries.length
+            ? { items: groupToLineItems(entries, Number(p.rate) || 0), rounding: 5 }
+            : { items: [], emptyMsg: "No unbilled, finished entries on this client's projects in that range." };
+          return { p, preview };
+        }
+
         /* ---- invoicing pages ---- */
         if (path === "/invoices" && method === "GET") return html(invoicesPage());
-        if (path === "/invoices/new" && method === "GET") return html(invoiceNewPage(defaultNewInvParams()));
+        if (path === "/invoices/new" && method === "GET") {
+          const sp = new URL(req.url).searchParams;
+          const { p, preview } = prefillNewInvoice(sp);
+          return html(invoiceNewPage(p, preview));
+        }
         if (path === "/invoices/preview" && method === "POST") {
           const form = await req.formData();
           const p: NewInvParams = {

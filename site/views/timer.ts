@@ -117,7 +117,10 @@ export function createTimerViews(deps: TimerViewDeps) {
         <section class="pane-focus" data-enter="2" aria-label="Timer and today's entries">
           ${timerPartial()}
           <div class="scroll-region">
-            <h2 class="md-headline-small">Today</h2>
+            <div class="page-head">
+              <h2 class="md-headline-small">Today</h2>
+              <a class="md-text-button" id="invoice-week" href="/invoices/new">${icon("receipt")} Invoice this week</a>
+            </div>
             <div id="today-list" hx-get="/partial/today" hx-trigger="load, timer-updated from:body">
               <div class="skel-stack" aria-hidden="true">
                 <div class="skel skel-row"></div>
@@ -129,6 +132,13 @@ export function createTimerViews(deps: TimerViewDeps) {
               Runs at parse time, before htmx's load trigger fires. */
               var el=document.getElementById('today-list');if(!el)return;
               var d=new Date();
+              /* #299: point "Invoice this week" at the client-local week (Sun–Sat),
+                 matching the calendar's week convention. Server can't know the tz. */
+              var inv=document.getElementById('invoice-week');
+              if(inv){var sun=new Date(d.getFullYear(),d.getMonth(),d.getDate()-d.getDay());
+                var f2=function(x){return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');};
+                var wend=new Date(sun.getFullYear(),sun.getMonth(),sun.getDate()+7);
+                inv.setAttribute('href','/invoices/new?from='+f2(sun)+'&to='+f2(wend));}
               var s=new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime();
               var from=new Date(s).toISOString(), to=new Date(s+864e5).toISOString();
               el.setAttribute('hx-get','/partial/today?from='+encodeURIComponent(from)+'&to='+encodeURIComponent(to));

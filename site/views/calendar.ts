@@ -121,9 +121,9 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     const uninvoiced = rows.reduce(
       (s, e) => s + (e.invoice_id == null ? durationSeconds(e.start_time, e.end_time) : 0), 0);
     const nudgeChip = uninvoiced > 0 ? `
-      <a class="nudge-chip" href="/invoices/new">
+      <a class="nudge-chip" href="/invoices/new?from=${sun}&to=${addDays(sun, 7)}">
         <span class="md-label-large">${fmtDur(uninvoiced)} not yet invoiced</span>
-        <span class="md-label-large nudge-go">→ New invoice</span>
+        <span class="md-label-large nudge-go">${icon("receipt")} Invoice this week</span>
       </a>` : "";
     const clientStrip = clientRows.length === 0 ? "" : `
       <div class="week-clients">
