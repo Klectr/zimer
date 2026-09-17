@@ -1075,9 +1075,10 @@ button.m3-menu-item {
 .page-public-invoice .invoice-sheet { max-width: none; }
 /* #303: public changelog shares the minimal public chrome. */
 .page-changelog { max-width: 720px; margin: 0 auto; padding: 32px 24px 48px; }
-.changelog-title { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.changelog-title { display: flex; align-items: center; gap: 12px; margin-bottom: 8px;
+  color: var(--md-sys-color-primary); } /* branded gold */
 .changelog-release { margin-top: 24px; }
-.changelog-release h2 { margin: 0 0 8px; }
+.changelog-release h2 { margin: 0 0 8px; color: var(--md-sys-color-primary); }
 .changelog-release ul { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
 .public-foot { text-align: center; margin-top: 28px; }
 .public-pay { text-align: center; margin: 28px 0 8px; }
