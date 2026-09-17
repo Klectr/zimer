@@ -199,16 +199,17 @@ export function createCalendarViews(deps: CalendarViewDeps) {
         const resizable = !running && (b - a) >= 60;
         const desc = e.description ? esc(e.description) : "<em>No description</em>";
         const dur = fmtDur(durationSeconds(e.start_time, e.end_time));
-        /* #330: mark time that's already on an invoice. Compact pills have no
-           room for a chip, so they dim instead (see .cal-compact.invoiced). */
+        /* #332: invoiced time dims instead of a chip — the week grid is too
+           dense for a pill on every card. The invoice number lives in the
+           hover tooltip + aria-label. */
         const mark = entryInvoiceMark(e);
         const markA11y = mark ? `, ${mark.label} ${esc(e.invoice_number || "")}` : "";
+        const markTitle = mark ? ` title="${esc(mark.title)}"` : "";
         return `<div class="cal-entry${running ? " running" : ""}${overlap ? " overlap" : ""}${compact ? " cal-compact" : ""}${mark ? " invoiced" : ""}"
             style="top:${(top + 2).toFixed(1)}px;height:${(h - 4).toFixed(1)}px;--c:${esc(color)}"
             data-id="${e.id}" data-desc="${esc(e.description)}" data-project-id="${e.project_id ?? ""}"
             data-date="${day}" data-start="${toHM(a)}" data-end="${running ? "" : toHM(Math.min(b, 1439))}"
-            tabindex="0" role="button" aria-label="${desc}, ${dur}${markA11y}">
-          ${mark && !compact ? `<span class="inv-mark ${mark.cls}" title="${esc(mark.title)}">${mark.label}</span>` : ""}
+            tabindex="0" role="button" aria-label="${desc}, ${dur}${markA11y}"${markTitle}>
           <div class="cal-entry-desc">${e.project_name ? `<strong>${esc(e.project_name)}</strong> · ` : ""}${desc}</div>
           <div class="cal-entry-dur">${dur}</div>
           ${resizable ? `<div class="cal-resize top" data-resize="start" title="Drag to change start" aria-hidden="true"></div><div class="cal-resize" data-resize="end" title="Drag to resize" aria-hidden="true"></div>` : ""}
