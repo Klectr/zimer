@@ -6,6 +6,7 @@ import type { Database, Statement } from "bun:sqlite";
 import { addDays, daysBetween, esc, money, round2, shortDateRange, termsDescription, termsKey, todayStr } from "../lib/format.ts";
 import { icon } from "../lib/icons.ts";
 import { getMeta } from "../db.ts";
+import { workspaceEmpty } from "../lib/demo.ts"; /* #300: empty-state CTA */
 import type { Invoice, InvoiceItem, NewInvParams } from "../lib/types.ts";
 import type { PdfInvoice } from "../pdf.ts";
 
@@ -28,6 +29,21 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     getPublicToken, stripeConfigured, nextInvoiceNumber, invoiceTotals, statusPill, isOverdue,
   } = deps;
 
+  /* #300: first-run empty state — a fresh install gets a one-click path to
+     fictional sample data; everyone else gets straight to a new invoice. */
+  function emptyInvoices(): string {
+    const demoCta = workspaceEmpty(db) ? `
+      <form method="post" action="/demo/load" class="inline">
+        <button class="md-filled-button" type="submit">${icon("info")}<span>Load demo data</span></button>
+      </form>` : "";
+    return `<div class="empty-state" data-enter="3">
+      ${icon("receipt")}
+      <h3 class="md-title-large">No invoices yet</h3>
+      <p class="muted">Turn tracked time into an invoice — or explore first with fictional sample data.</p>
+      <div class="row">${demoCta}<a class="md-tonal-button" href="/invoices/new">${icon("add")}<span>New invoice</span></a></div>
+    </div>`;
+  }
+
   function invoicesPage(): string {
     const rows = qInvoices.all() as any[];
     const outstanding = rows
@@ -42,7 +58,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
         </div>
         <div class="md-list-item-trailing"><span class="dur">${money(round2(r.subtotal * (1 + (r.tax_rate || 0) / 100)))}</span></div>
       </li>`;
-    }).join("")}</ul>` : `<p class="muted">No invoices yet. Create one from your tracked time.</p>`;
+    }).join("")}</ul>` : emptyInvoices();
     return layout("Invoices", `
       <div class="page-head" data-enter="2">
         <h2 class="md-headline-small">Invoices</h2>
