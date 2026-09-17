@@ -61,7 +61,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     return {
       client_id: "", from: addDays(t, -13), to: addDays(t, 1),
       rate: "", number: nextInvoiceNumber(), issue_date: t,
-      due_date: addDays(t, 15), tax_rate: "0", notes: "",
+      due_date: addDays(t, 15), tax_rate: "0", notes: "", internal_notes: "",
     };
   }
 
@@ -99,6 +99,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
             <div class="md-text-field filled"><input type="date" name="due_date" id="inv-due" value="${esc(p.due_date)}" placeholder=" "><label>Due date</label></div>
           </div>
           <div class="md-text-field"><input type="text" name="notes" value="${esc(p.notes)}" placeholder=" "><label>Notes (optional)</label></div>
+          <div class="md-text-field"><input type="text" name="internal_notes" value="${esc(p.internal_notes)}" placeholder=" "><label>Internal notes (only you see this)</label></div>
           <div class="row end"><button class="md-filled-button" type="submit">Preview line items</button></div>
         </form>
       </div>
@@ -164,6 +165,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
           <input type="hidden" name="due_date" value="${esc(p.due_date)}">
           <input type="hidden" name="tax_rate" value="${esc(p.tax_rate)}">
           <input type="hidden" name="notes" value="${esc(p.notes)}">
+          <input type="hidden" name="internal_notes" value="${esc(p.internal_notes)}">
           <input type="hidden" name="groups" value="${preview.items.length}">
           <div class="table-wrap"><table class="md-table">
             <thead><tr><th>Date</th><th>Description</th><th class="num">Hours</th><th class="num">Rate</th><th class="num">Amount</th></tr></thead>
@@ -312,6 +314,13 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
           ${actBtn(`/invoices/${inv.id}/stripe-link`, "refresh", "Retry payment link")}
         </span>
       </div>` : "";
+    /* #302: internal-only notes live outside invoiceDoc (which also feeds the
+       public page and print) — app surface only, never on client surfaces. */
+    const internalBlock = inv.internal_notes ? `
+      <aside class="internal-notes no-print" aria-label="Internal notes">
+        <div class="internal-notes-label">Internal notes</div>
+        <p>${esc(inv.internal_notes)}</p>
+      </aside>` : "";
     const shareLines = `
       <section class="share-lines no-print" aria-label="Share">
         ${clientLine}
@@ -333,6 +342,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
         </div>
       </div>
       ${invoiceDoc(inv)}
+      ${internalBlock}
       ${shareLines}</div>`;
   }
 

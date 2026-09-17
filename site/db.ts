@@ -93,6 +93,9 @@ db.exec(`DROP TABLE IF EXISTS recurring_schedules;`);
     ["invoices", "paid_via_stripe", "INTEGER NOT NULL DEFAULT 0"],
     ["invoices", "public_token", "TEXT"],
     ["invoices", "paid_at", "TEXT"],
+    /* Issue #302: internal-only invoice notes — never rendered on the PDF,
+       HTML sheet, or public /i/ page. */
+    ["invoices", "internal_notes", "TEXT NOT NULL DEFAULT ''"],
   ] as const) {
     try { db.exec(`ALTER TABLE ${tbl} ADD COLUMN ${col} ${def}`); }
     catch { /* column already exists */ }

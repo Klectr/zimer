@@ -427,6 +427,7 @@ export function createWebRouter(deps: WebDeps) {
             due_date: String(form.get("due_date") || ""),
             tax_rate: String(form.get("tax_rate") || "0"),
             notes: String(form.get("notes") || ""),
+            internal_notes: String(form.get("internal_notes") || ""),
           };
           if (!p.client_id || !p.from || !p.to) {
             if (isHtmx(req)) return html(`<div class="md-card form-card"><p class="error">Pick a client and a date range first.</p></div>`, 400); // #71
@@ -463,10 +464,11 @@ export function createWebRouter(deps: WebDeps) {
           const clientId = form.get("client_id") ? Number(form.get("client_id")) : null;
           const dueRaw = String(form.get("due_date") || "");
           const inv = db.query(
-            `INSERT INTO invoices (client_id, number, issue_date, due_date, tax_rate, notes)
-             VALUES (?, ?, ?, ?, ?, ?) RETURNING id`)
+            `INSERT INTO invoices (client_id, number, issue_date, due_date, tax_rate, notes, internal_notes)
+             VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id`)
             .get(clientId, number, String(form.get("issue_date") || todayStr()),
-                 dueRaw || null, Number(form.get("tax_rate") || 0), String(form.get("notes") || "")) as any;
+                 dueRaw || null, Number(form.get("tax_rate") || 0), String(form.get("notes") || ""),
+                 String(form.get("internal_notes") || "")) as any;
           const insItem = db.query(
             "INSERT INTO invoice_items (invoice_id, description, hours, rate, amount, date_from, date_to) VALUES (?, ?, ?, ?, ?, ?, ?)");
           const linkEntry = db.query("UPDATE time_entries SET invoice_id = ? WHERE id = ?");
