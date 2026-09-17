@@ -6,6 +6,7 @@
 import type { Database, Statement } from "bun:sqlite";
 import { addDays, durationSeconds, esc, fmtDur } from "../lib/format.ts";
 import { icon } from "../lib/icons.ts";
+import { workspaceEmpty } from "../lib/demo.ts"; /* #300: first-run hint */
 import type { Entry } from "../lib/types.ts";
 
 export interface CalendarViewDeps {
@@ -261,6 +262,11 @@ export function createCalendarViews(deps: CalendarViewDeps) {
         ${weekTargetBar(weekTotal)}
         ${clientStrip}
         <p class="muted tiny cal-hint">Drag on the grid to log time. Click an entry to edit it.</p>
+        ${workspaceEmpty(db) ? `<div class="cal-first-run">
+          ${icon("info")}
+          <p class="md-label-large"><strong>New here?</strong> Load fictional sample data to explore the calendar.</p>
+          <form method="post" action="/demo/load" class="inline"><button class="md-text-button" type="submit">Load demo data</button></form>
+        </div>` : ""}
       </aside>
       <div class="cal-scroll" data-enter="3">
         <div class="cal-grid" id="cal-body" style="--cal-hour:${calHourPx}px">

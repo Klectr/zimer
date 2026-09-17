@@ -989,7 +989,7 @@ button.m3-menu-item {
 }
 /* Milestone 11: demo onboarding banner. */
 .demo-banner {
-  display: flex; align-items: center; gap: 12px;
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap; /* #300: two CTAs now */
   margin: 12px 0 16px; padding: 12px 16px; border-radius: 16px;
   background: var(--md-tertiary-container, #3a2f10); color: var(--md-on-tertiary-container, #f2e3b3);
 }
@@ -1000,6 +1000,16 @@ button.m3-menu-item {
   .demo-banner { animation: banner-in .45s cubic-bezier(0.05, 0.7, 0.1, 1); }
 }
 @keyframes banner-in { from { opacity: 0; transform: translateY(-8px); } }
+/* #300: first-run empty states — centered icon, headline, copy, actions. */
+.empty-state { text-align: center; padding: 56px 24px; max-width: 440px; margin: 0 auto; }
+.empty-state > svg { width: 48px; height: 48px; color: var(--md-sys-color-on-surface-variant); }
+.empty-state h3 { margin: 16px 0 8px; }
+.empty-state p { margin: 0 0 20px; }
+.empty-state .row { display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap; }
+/* #300: first-run hint inside the calendar supporting pane. */
+.cal-first-run { margin-top: 12px; padding: 12px 14px; border-radius: 12px;
+  background: var(--md-sys-color-surface-container); }
+.cal-first-run p { margin: 8px 0; }
 
 @media (max-width: 900px) {
   .two-col { grid-template-columns: 1fr; }

@@ -61,6 +61,13 @@ export function seedDemoData(db: Database): void {
       ).lastInsertRowid));
     }
   }
+  /* #300: remember the seeded week so the demo banner can link straight into
+     the invoice prefill flow (/invoices/new?from=&to=). `to` is exclusive. */
+  const dayStr = (d: Date) => d.toISOString().slice(0, 10);
+  const fromD = new Date(); fromD.setDate(fromD.getDate() - 6);
+  const toD = new Date(); toD.setDate(toD.getDate() - 1);
+  db.query("INSERT OR REPLACE INTO meta (key, value) VALUES ('demo_from', ?), ('demo_to', ?)")
+    .run(dayStr(fromD), dayStr(toD));
   /* Three invoices: paid, sent, draft. */
   const invQ = db.query("INSERT INTO invoices (client_id, number, issue_date, due_date, status, tax_rate, notes) VALUES (?, ?, ?, ?, ?, ?, ?)");
   const itemQ = db.query("INSERT INTO invoice_items (invoice_id, description, hours, rate, amount) VALUES (?, ?, ?, ?, ?)");
@@ -98,15 +105,29 @@ export function removeDemoData(db: Database): number {
   n += del("projects", ids.projects);
   n += del("clients", ids.clients);
   db.query("DELETE FROM meta WHERE key = 'demo_ids'").run();
+  db.query("DELETE FROM meta WHERE key IN ('demo_from', 'demo_to')").run(); /* #300 */
   return n;
+}
+/** #300: the seeded week, for deep-linking into the invoice prefill flow. */
+export function demoRange(db: Database): { from: string; to: string } | null {
+  const f = db.query("SELECT value FROM meta WHERE key = 'demo_from'").get() as any;
+  const t = db.query("SELECT value FROM meta WHERE key = 'demo_to'").get() as any;
+  return f && t ? { from: f.value, to: t.value } : null;
 }
 /** Demo banner: load prompt when empty, "viewing demo" + reset when demo present. */
 export function demoBanner(db: Database): string {
-  if (demoIds(db)) return `<div class="demo-banner" data-enter="1">
+  if (demoIds(db)) {
+    /* #300: guide the fresh install to a prefilled invoice — the sample week
+       lands on the client picker with the range already filled in. */
+    const r = demoRange(db);
+    const tryIt = r ? `<a class="md-filled-button" href="/invoices/new?from=${r.from}&amp;to=${r.to}">${icon("receipt")}<span>Invoice the sample week</span></a>` : "";
+    return `<div class="demo-banner" data-enter="1">
     ${icon("info")}
     <span><strong>Demo data.</strong> This workspace is filled with fictional examples — poke around, then remove them when you're ready.</span>
+    ${tryIt}
     <form method="post" action="/demo/reset" class="inline"><button class="md-text-button" type="submit">Remove demo data</button></form>
   </div>`;
+  }
   if (workspaceEmpty(db)) return `<div class="demo-banner" data-enter="1">
     ${icon("info")}
     <span><strong>New here?</strong> Load a fictional workspace — clients, a week of entries, invoices — and try every page in 30 seconds.</span>
