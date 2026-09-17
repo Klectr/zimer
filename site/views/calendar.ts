@@ -28,9 +28,12 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       purple so it composites seamlessly with the band. */
   const WAVE_AM = `<svg class="cal-wave cal-wave-am" viewBox="0 0 120 12" preserveAspectRatio="none" aria-hidden="true"><path d="M0 0H120V5Q105 11 90 5T60 5T30 5T0 5Z"/></svg>`;
   const WAVE_PM = `<svg class="cal-wave cal-wave-pm" viewBox="0 0 120 12" preserveAspectRatio="none" aria-hidden="true"><path d="M0 12H120V7Q105 1 90 7T60 7T30 7T0 7Z"/></svg>`;
+  /** #324: each star gets a random twinkle phase (negative delay) and a
+      slightly varied duration, so the night bands shimmer organically
+      instead of twinkling in lockstep across all 7 day columns. */
   function nightStars(list: number[][]): string {
-    return list.map(([x, y], i) =>
-      `<span class="cal-star" style="left:${x}%;top:${y}%;animation-delay:${(i * 0.6).toFixed(1)}s">✦</span>`
+    return list.map(([x, y]) =>
+      `<span class="cal-star" style="left:${x}%;top:${y}%;animation-delay:${(-(Math.random() * 3.2)).toFixed(2)}s;animation-duration:${(2.6 + Math.random() * 1.6).toFixed(2)}s">✦</span>`
     ).join("");
   }
 
