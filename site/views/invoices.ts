@@ -3,7 +3,7 @@
  *  invoiceSheet is also returned so the public-views factory can reuse it. */
 
 import type { Database, Statement } from "bun:sqlite";
-import { addDays, daysBetween, esc, money, round2, shortDateRange, termsDescription, termsKey, todayStr } from "../lib/format.ts";
+import { addDays, daysBetween, esc, fmtDur, money, round2, shortDateRange, termsDescription, termsKey, todayStr } from "../lib/format.ts";
 import { icon } from "../lib/icons.ts";
 import { getMeta } from "../db.ts";
 import { workspaceEmpty } from "../lib/demo.ts"; /* #300: empty-state CTA */
@@ -21,12 +21,14 @@ export interface InvoiceViewDeps {
   invoiceTotals: (items: InvoiceItem[], taxRate: number) => { subtotal: number; tax: number; total: number };
   statusPill: (status: string) => string;
   isOverdue: (row: { status: string; due_date?: string | null; client_payment_terms?: string | null }) => boolean;
+  unbilledByClient: () => { id: number; name: string; secs: number }[];
 }
 
 export function createInvoiceViews(deps: InvoiceViewDeps) {
   const {
     db, qInvoices, layout, clientOptions,
     getPublicToken, stripeConfigured, nextInvoiceNumber, invoiceTotals, statusPill, isOverdue,
+    unbilledByClient,
   } = deps;
 
   /* #300: first-run empty state — a fresh install gets a one-click path to
@@ -68,7 +70,25 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
         </div>
       </div>
       ${rows.length ? `<p class="muted">Outstanding: <strong>${money(outstanding)}</strong></p>` : ""}
-      <div class="scroll-region" data-enter="3">${list}</div>`, "invoices", true);
+      <div class="scroll-region" data-enter="3">${unbilledSection(rows)}${list}</div>`, "invoices", true);
+  }
+
+  /** #328: per-client finished, unbilled time with an "Invoice" shortcut into
+      the "invoice the rest" prefill. Hidden when nothing is unbilled, and when
+      the workspace has no invoices yet (the empty state owns that case). */
+  function unbilledSection(rows: any[]): string {
+    if (!rows.length) return "";
+    const unbilled = unbilledByClient();
+    if (!unbilled.length) return "";
+    return `<h3 class="md-title-medium unbilled-head">Unbilled time</h3>
+      <ul class="md-list">${unbilled.map(u => `
+        <li class="md-list-item">
+          <div class="md-list-item-content">
+            <div class="md-list-item-headline">${esc(u.name)}</div>
+            <div class="md-list-item-supporting">${fmtDur(u.secs)} unbilled</div>
+          </div>
+          <div class="md-list-item-trailing"><a class="md-text-button" href="/invoices/new?client_id=${u.id}">Invoice</a></div>
+        </li>`).join("")}</ul>`;
   }
 
   /* Milestone 20: NewInvParams type lives in lib/types.ts. */
@@ -100,9 +120,9 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
             </select>
             <label>Client</label>
           </div>
-          <div class="two-field">
-            <div class="md-text-field filled"><input type="date" name="from" value="${esc(p.from)}" required placeholder=" "><label>From</label></div>
-            <div class="md-text-field filled"><input type="date" name="to" value="${esc(p.to)}" required placeholder=" "><label>To (exclusive)</label></div>
+          <div class="two-field" id="inv-range">
+            <div class="md-text-field filled"><input type="date" id="inv-from" name="from" value="${esc(p.from)}" required placeholder=" "><label>From</label></div>
+            <div class="md-text-field filled"><input type="date" id="inv-to" name="to" value="${esc(p.to)}" required placeholder=" "><label>To (exclusive)</label></div>
           </div>
           <div class="two-field">
             <div class="md-text-field filled"><input type="number" name="rate" id="inv-rate" value="${esc(p.rate || (selClient ? String(selClient.rate || "") : ""))}" min="0" step="0.01" placeholder=" "><label>Hourly rate ($)</label></div>
@@ -122,7 +142,8 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       </div>
       <script>(function(){
         var sel=document.getElementById('inv-client'), rate=document.getElementById('inv-rate'),
-            issue=document.getElementById('inv-issue'), due=document.getElementById('inv-due');
+            issue=document.getElementById('inv-issue'), due=document.getElementById('inv-due'),
+            rangeEl=document.getElementById('inv-range'), rangeTouched=false;
         function addDaysStr(ymd,n){var p=ymd.split('-').map(Number);var d=new Date(p[0],p[1]-1,p[2]+n);
           return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
         /* #293: due date follows the selected client's terms (no HTMX
@@ -131,10 +152,15 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
           var opt=sel.options[sel.selectedIndex];
           if(opt&&opt.dataset.termsDays&&issue.value&&due) due.value=addDaysStr(issue.value,parseInt(opt.dataset.termsDays,10));
         }
+        /* #328: "invoice the rest" — a hand-edited range is never clobbered.
+           Delegated on the wrapper so it survives the HTMX range swap. */
+        if(rangeEl) rangeEl.addEventListener('change',function(){rangeTouched=true;});
         sel.addEventListener('change',function(){
           var opt=sel.options[sel.selectedIndex];
           if(opt&&opt.dataset.rate&&!rate.value) rate.value=opt.dataset.rate;
           deriveDue();
+          if(sel.value&&!rangeTouched&&window.htmx)
+            window.htmx.ajax('GET','/partial/invoice-rest?client_id='+encodeURIComponent(sel.value),{target:'#inv-range',swap:'innerHTML'});
         });
         if(issue) issue.addEventListener('change',deriveDue);
       })();</script>`;

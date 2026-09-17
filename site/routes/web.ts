@@ -59,6 +59,7 @@ export interface WebDeps {
   stripeLinkFor: (id: number) => Promise<{ url?: string; error?: string; status?: number }>;
   unbilledEntries: (clientId: number, from: string, to: string) => any[];
   groupToLineItems: (entries: any[], rate: number) => any[];
+  clientRestFrom: (clientId: number) => string | null;
   ensurePublicToken: (id: number) => string;
   getPublicToken: (id: number) => string | null;
   mintPublicToken: (id: number) => string;
@@ -83,7 +84,7 @@ export function createWebRouter(deps: WebDeps) {
     defaultNewInvParams, invoiceStep2, invoiceDetailPage, invoiceDetailBody, invoiceDoc,
     getInvoice, invoiceTotals,
     nextInvoiceNumber, stripeLinkFor, unbilledEntries,
-    groupToLineItems, ensurePublicToken, getPublicToken, mintPublicToken,
+    groupToLineItems, clientRestFrom, ensurePublicToken, getPublicToken, mintPublicToken,
     invoicePdf, invoicePdfInput, freezeInvoiceSnapshots, stripeConfigured,
     workspaceEmpty, demoIds, seedDemoData, removeDemoData, entryToJson,
   } = deps;
@@ -184,7 +185,21 @@ export function createWebRouter(deps: WebDeps) {
             const ok = iso.test(from) && iso.test(to) && !isNaN(Date.parse(from)) && !isNaN(Date.parse(to));
             return html(ok ? todayPartial(from, to) : todayPartial());
           }
-          if (path === "/timer/start" && method === "POST") {
+          /* #328: "invoice the rest" for the new-invoice client picker — returns the
+             #inv-range fields with from/to filled from the client's billing
+             history (day after its last invoice through-date, else its earliest
+             unbilled entry, else the default range). */
+          if (path === "/partial/invoice-rest" && method === "GET") {
+            const cid = url.searchParams.get("client_id") || "";
+            let from = defaultNewInvParams().from;
+            if (/^\d+$/.test(cid)) {
+              const restFrom = clientRestFrom(Number(cid));
+              if (restFrom) from = restFrom;
+            }
+            const to = addDays(todayStr(), 1);
+            return html(`<div class="md-text-field filled"><input type="date" id="inv-from" name="from" value="${esc(from)}" required placeholder=" "><label>From</label></div>
+            <div class="md-text-field filled"><input type="date" id="inv-to" name="to" value="${esc(to)}" required placeholder=" "><label>To (exclusive)</label></div>`);
+          }
             if (qRunning.get()) return html(timerPartial(), 409);
             const form = await req.formData();
             const pid = form.get("project_id");
@@ -393,33 +408,51 @@ export function createWebRouter(deps: WebDeps) {
         /* #299: one-click "invoice this period". /invoices/new?from=YYYY-MM-DD&to=YYYY-MM-DD
            prefills the range; when exactly one client has finished, unbilled entries in
            the range, that client is preselected (rate + due date from its payment terms)
-           and step 2 renders immediately with the grouped line items. */
+           and step 2 renders immediately with the grouped line items.
+           #328: ?client_id=N (without from/to) is "invoice the rest" — preselects the
+           client and fills the range from the day after its last invoice through-date
+           (or its earliest unbilled entry) to tomorrow. */
         function prefillNewInvoice(sp: URLSearchParams): { p: any; preview?: any } {
           const p: any = defaultNewInvParams();
           const from = sp.get("from"), to = sp.get("to");
-          const ymd = /^\d{4}-\d{2}-\d{2}$/;
-          if (!from || !to || !ymd.test(from) || !ymd.test(to) || !(from < to)) return { p };
-          p.from = from; p.to = to;
-          const f = from + "T00:00:00", t = to + "T00:00:00";
-          const billable = db.query(`
+          const ymdRe = new RegExp("^\\d{4}-\\d{2}-\\d{2}$");
+          if (from && to && ymdRe.test(from) && ymdRe.test(to) && from < to) {
+            p.from = from; p.to = to;
+            const f = from + "T00:00:00", t = to + "T00:00:00";
+            const billable = db.query(`
             SELECT DISTINCT c.id, c.rate, c.payment_terms
             FROM time_entries e
             JOIN projects pr ON pr.id = e.project_id
             JOIN clients c ON c.id = pr.client_id
             WHERE e.invoice_id IS NULL AND e.end_time IS NOT NULL
               AND e.start_time >= ? AND e.start_time < ?`).all(f, t) as any[];
-          if (billable.length !== 1) return { p };
-          const c = billable[0];
-          p.client_id = String(c.id);
-          if (c.rate !== null && c.rate !== "") p.rate = String(c.rate);
-          /* Mirror the client-side deriveDue (#293): due date follows the client's terms. */
-          const days = termsDays(termsKey(c.payment_terms, getMeta(db, "business_payment_terms")));
-          if (days !== null) p.due_date = addDays(p.issue_date, days);
-          const entries = unbilledEntries(Number(c.id), f, t);
-          const preview = entries.length
-            ? { items: groupToLineItems(entries, Number(p.rate) || 0), rounding: 5 }
-            : { items: [], emptyMsg: "No unbilled, finished entries on this client's projects in that range." };
-          return { p, preview };
+            if (billable.length !== 1) return { p };
+            const c = billable[0];
+            p.client_id = String(c.id);
+            if (c.rate !== null && c.rate !== "") p.rate = String(c.rate);
+            /* Mirror the client-side deriveDue (#293): due date follows the client's terms. */
+            const days = termsDays(termsKey(c.payment_terms, getMeta(db, "business_payment_terms")));
+            if (days !== null) p.due_date = addDays(p.issue_date, days);
+            const entries = unbilledEntries(Number(c.id), f, t);
+            const preview = entries.length
+              ? { items: groupToLineItems(entries, Number(p.rate) || 0), rounding: 5 }
+              : { items: [], emptyMsg: "No unbilled, finished entries on this client's projects in that range." };
+            return { p, preview };
+          }
+          const cid = sp.get("client_id");
+          if (cid && /^\d+$/.test(cid)) {
+            const c = db.query("SELECT id, rate, payment_terms FROM clients WHERE id = ?").get(Number(cid)) as any;
+            if (c) {
+              p.client_id = String(c.id);
+              const restFrom = clientRestFrom(Number(c.id));
+              if (restFrom) p.from = restFrom;
+              p.to = addDays(todayStr(), 1);
+              if (c.rate !== null && c.rate !== "") p.rate = String(c.rate);
+              const days = termsDays(termsKey(c.payment_terms, getMeta(db, "business_payment_terms")));
+              if (days !== null) p.due_date = addDays(p.issue_date, days);
+            }
+          }
+          return { p };
         }
 
         /* ---- invoicing pages ---- */

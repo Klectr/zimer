@@ -1028,6 +1028,8 @@ button.m3-menu-item {
 .page-head .row { display: flex; gap: 8px; align-items: center; }
 .inv-link { color: var(--md-sys-color-primary); text-decoration: none; font-weight: 500; }
 .inv-link:hover { text-decoration: underline; }
+/* #328: "Unbilled time" section head on the invoices page. */
+.unbilled-head { margin: 16px 4px 4px; }
 
 .pill { display: inline-block; padding: 2px 12px; border-radius: var(--md-sys-shape-corner-full);
   font-size: 12px; font-weight: 500; letter-spacing: 0.4px; vertical-align: middle; }

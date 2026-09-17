@@ -52,7 +52,7 @@ const { layout, notFoundPage, noSuchInvoicePage, rateLimitPage, errorPage } = cr
 
 const {
   getInvoice, invoiceTotals, nextInvoiceNumber, stripeLinkFor,
-  unbilledEntries, groupToLineItems,
+  unbilledEntries, groupToLineItems, clientRestFrom, unbilledByClient,
   projectOptions, m3ProgressBar, weekTargetBar,
   ensurePublicToken, getPublicToken, mintPublicToken,
 } = createDomain({ db, qInvoice, qInvoiceItems, TOKEN });
@@ -75,6 +75,7 @@ const {
 } = createInvoiceViews({
   db, qInvoices, layout, clientOptions,
   getPublicToken, stripeConfigured, nextInvoiceNumber, invoiceTotals, statusPill, isOverdue,
+  unbilledByClient,
 });
 /* #301: freeze the rendered document at send time (re-frozen at the paid
    milestone for the status badge). Served verbatim afterwards. */
@@ -104,7 +105,7 @@ const { handleWeb } = createWebRouter({
   defaultNewInvParams, invoiceStep2, invoiceDetailPage, invoiceDetailBody, invoiceDoc,
   getInvoice, invoiceTotals,
   nextInvoiceNumber, stripeLinkFor, unbilledEntries,
-  groupToLineItems, ensurePublicToken, getPublicToken, mintPublicToken,
+  groupToLineItems, clientRestFrom, ensurePublicToken, getPublicToken, mintPublicToken,
   invoicePdf, stripeConfigured,
   invoicePdfInput, freezeInvoiceSnapshots, /* #301 */
   workspaceEmpty, demoIds, seedDemoData, removeDemoData, entryToJson,
