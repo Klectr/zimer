@@ -597,6 +597,9 @@ body.app-fixed main {
  * field, and fields sit flush against this region's clip edge (overflow-y: auto
  * clips the ring otherwise). */
 .scroll-region { flex: 1; min-height: 0; overflow-y: auto; padding: 4px; }
+/* #320: M3 — a simple list reads best in a narrower centered column, not the
+   full 1000px app container. Matches the public invoice page rhythm. */
+main.page-invoices { max-width: 760px; }
 /* ---------------- supporting-pane layout (M3 canonical, timer page) ----------------
  * <840px: single stacked column — timer card stays pinned above, entries + revenue
  * share one scroll region. ≥840px: focus pane (entries) + trailing 360px supporting
