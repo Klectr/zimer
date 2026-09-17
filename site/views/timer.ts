@@ -5,7 +5,7 @@
  *  slices, so every call site keeps working unchanged. */
 
 import type { Database, Statement } from "bun:sqlite";
-import { dayBounds, durationSeconds, entryInvoiceMark, esc, fmtDur, money, todayStr } from "../lib/format.ts";
+import { dayBounds, durationSeconds, entryInvoiceMark, entryIsLocked, esc, fmtDur, money, todayStr } from "../lib/format.ts";
 import { icon } from "../lib/icons.ts";
 import type { Entry } from "../lib/types.ts";
 
@@ -49,10 +49,11 @@ export function createTimerViews(deps: TimerViewDeps) {
       </div>
       <div class="md-list-item-trailing">
         <span class="dur">${dur}</span>
+        ${entryIsLocked(e) ? "" : `
         <a class="md-icon-button" href="/entries/${e.id}/edit" aria-label="Edit entry" title="Edit">${icon("edit")}</a>
         <button class="md-icon-button danger" hx-delete="/entries/${e.id}"
           hx-target="#entry-${e.id}" hx-swap="outerHTML swap:220ms" hx-confirm="Delete this entry?"
-          aria-label="Delete entry" title="Delete">${icon("delete")}</button>
+          aria-label="Delete entry" title="Delete">${icon("delete")}</button>`}
       </div>
     </li>`;
   }

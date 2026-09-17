@@ -3,7 +3,7 @@
  *  path is not an API path so the caller falls through to web routes. */
 
 import type { Database, Statement } from "bun:sqlite";
-import { round2, todayStr } from "../lib/format.ts";
+import { entryIsLocked, round2, todayStr } from "../lib/format.ts";
 import type { Entry, Invoice, InvoiceItem } from "../lib/types.ts";
 
 export interface ApiDeps {
@@ -108,6 +108,8 @@ export function createApiRouter(deps: ApiDeps) {
               if (method === "PATCH") {
                 const cur = qOne.get(id) as Entry | null;
                 if (!cur) return json({ error: "not found" }, 404);
+                if (entryIsLocked(cur)) /* #334 */
+                  return json({ error: "This time is invoiced and can't be edited." }, 403);
                 db.query(`UPDATE time_entries SET description = ?, project_id = ?, start_time = ?, end_time = ? WHERE id = ?`)
                   .run(
                     body.description !== undefined ? String(body.description) : cur.description,
@@ -118,6 +120,9 @@ export function createApiRouter(deps: ApiDeps) {
                 return json(entryToJson(qOne.get(id) as Entry));
               }
               if (method === "DELETE") {
+                const cur = qOne.get(id) as Entry | null; /* #334 */
+                if (cur && entryIsLocked(cur))
+                  return json({ error: "This time is invoiced and can't be deleted." }, 403);
                 db.query("DELETE FROM time_entries WHERE id = ?").run(id);
                 return new Response(null, { status: 204 });
               }

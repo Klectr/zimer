@@ -5,7 +5,7 @@
 
 import { join, normalize, sep } from "node:path";
 import type { Database, Statement } from "bun:sqlite";
-import { addDays, esc, isPaymentTermsKey, round2, termsDescription, termsDays, termsKey, todayStr } from "../lib/format.ts";
+import { addDays, entryIsLocked, esc, isPaymentTermsKey, round2, termsDescription, termsDays, termsKey, todayStr } from "../lib/format.ts";
 import type { Entry, Invoice, InvoiceItem } from "../lib/types.ts";
 import type { PdfInvoice } from "../pdf.ts";
 import { getMeta, setMeta } from "../db.ts";
@@ -236,6 +236,11 @@ export function createWebRouter(deps: WebDeps) {
         m = path.match(/^\/entries\/(\d+)$/);
         if (m && method === "POST") {
           const id = Number(m[1]);
+          /* #334: sent/paid time is a frozen record — edit form and calendar
+             resize both land here. */
+          const cur = qOne.get(id) as Entry | null;
+          if (cur && entryIsLocked(cur))
+            return new Response("This time is invoiced and can't be edited.", { status: 403 });
           const form = await req.formData();
           const endRaw = String(form.get("end_time") || "");
           const pid = form.get("project_id");
@@ -249,6 +254,9 @@ export function createWebRouter(deps: WebDeps) {
           return new Response(null, { status: 302, headers: { Location: "/calendar" } });
         }
         if (m && method === "DELETE") {
+          const cur = qOne.get(Number(m[1])) as Entry | null; /* #334 */
+          if (cur && entryIsLocked(cur))
+            return new Response("This time is invoiced and can't be deleted.", { status: 403 });
           db.query("DELETE FROM time_entries WHERE id = ?").run(Number(m[1]));
           return new Response("", { status: 200 });
         }
