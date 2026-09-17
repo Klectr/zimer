@@ -19,3 +19,18 @@ export function publicOrigin(req: Request, port: number): string {
   const proto = req.headers.get("x-forwarded-proto") || new URL(req.url).protocol.replace(/:$/, "");
   return `${proto}://${host}`;
 }
+
+/** Client IP for rate limiting (#308). X-Real-IP is set by our nginx from the
+ *  connecting IP, so it can't be spoofed. Falls back to the last
+ *  X-Forwarded-For entry (the one our proxy appended), then "unknown" for
+ *  direct connections (local dev). */
+export function clientIp(req: Request): string {
+  const real = req.headers.get("x-real-ip")?.trim();
+  if (real) return real;
+  const xff = req.headers.get("x-forwarded-for");
+  if (xff) {
+    const parts = xff.split(",").map(s => s.trim()).filter(Boolean);
+    if (parts.length) return parts[parts.length - 1];
+  }
+  return "unknown";
+}

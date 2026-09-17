@@ -48,7 +48,7 @@ const {
 } = createDb(DATA_DIR);
 const { revenueTotals, revenueMonthly, revenueByClient, isOverdue, revenueOverdue } =
   createRevenue(qRevenueRows, () => getMeta(db, "business_payment_terms"));
-const { layout, notFoundPage, noSuchInvoicePage, errorPage } = createLayoutViews(qRunning);
+const { layout, notFoundPage, noSuchInvoicePage, rateLimitPage, errorPage } = createLayoutViews(qRunning);
 
 const {
   getInvoice, invoiceTotals, nextInvoiceNumber, stripeLinkFor,
@@ -88,7 +88,7 @@ const { handleWeb } = createWebRouter({
   db, qRunning, qOne, qRange, qInvoice, qInvoices,
   DATA_DIR, STATIC_DIR, TOKEN, authedPage, tokensEqual, html, json, csvResponse, isHtmx,
   shareOrigin: (req: Request) => PUBLIC_BASE_URL || publicOrigin(req, PORT),
-  PORT, loginPage, publicInvoicePage, notFoundPage, noSuchInvoicePage, errorPage,
+  PORT, loginPage, publicInvoicePage, notFoundPage, noSuchInvoicePage, rateLimitPage, errorPage,
   dashboardPage, timerPartial, todayPartial, weekInner,
   calendarPage, editPage, manageCols, managePage, bizProfileSection, invoicesPage, invoiceNewPage,
   defaultNewInvParams, invoiceStep2, invoiceDetailPage, invoiceDetailBody, invoiceDoc,
