@@ -256,41 +256,21 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
        actions at the end, rendered after the invoice. The copy handler is
        delegated and id-free so htmx swaps stay safe. */
     const copyScript = `<script>(function(){
-      /* #310: navigator.clipboard is undefined in non-secure contexts (the app
-         is served over plain HTTP on a Tailscale IP), so fall back to the
-         legacy execCommand path — the old code faked success via else done(). */
-      function legacyCopy(text, cb){
-        try {
-          var ta = document.createElement("textarea");
-          ta.value = text;
-          ta.setAttribute("readonly", "");
-          ta.style.position = "fixed";
-          ta.style.top = "0";
-          ta.style.opacity = "0";
-          document.body.appendChild(ta);
-          ta.select();
-          ta.setSelectionRange(0, ta.value.length);
-          var ok = document.execCommand("copy");
-          document.body.removeChild(ta);
-          cb(!!ok);
-        } catch (e) { cb(false); }
-      }
-      function copyText(text, cb){
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(text).then(function(){ cb(true); }, function(){ legacyCopy(text, cb); });
-        } else legacyCopy(text, cb);
-      }
+      /* #312: clipboard API or nothing. No execCommand fallback — if the
+         platform can't copy (e.g. non-secure context), the button stays
+         silent instead of faking success. */
       function wire(sec){
         if (sec.dataset.copyWired) return;
         sec.dataset.copyWired = "1";
         sec.addEventListener("click", function(ev){
           var btn = ev.target.closest("[data-copy]");
           if (!btn || !btn.dataset.url) return;
-          copyText(btn.dataset.url, function(ok){
-            if (!ok) return;
-            btn.classList.add("copied");
-            setTimeout(function(){ btn.classList.remove("copied"); }, 1200);
-          });
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(btn.dataset.url).then(function(){
+              btn.classList.add("copied");
+              setTimeout(function(){ btn.classList.remove("copied"); }, 1200);
+            }, function(){ /* copy failed: do nothing */ });
+          }
         });
       }
       document.querySelectorAll(".share-lines").forEach(wire);
