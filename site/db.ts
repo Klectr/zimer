@@ -96,6 +96,11 @@ db.exec(`DROP TABLE IF EXISTS recurring_schedules;`);
     /* Issue #302: internal-only invoice notes — never rendered on the PDF,
        HTML sheet, or public /i/ page. */
     ["invoices", "internal_notes", "TEXT NOT NULL DEFAULT ''"],
+    /* Issue #301: immutable invoices — rendered output frozen at send time
+       (re-frozen at the paid milestone for the status badge). Served verbatim
+       afterwards, so re-downloads are byte-identical. */
+    ["invoices", "pdf_snapshot", "BLOB"],
+    ["invoices", "html_snapshot", "TEXT"],
   ] as const) {
     try { db.exec(`ALTER TABLE ${tbl} ADD COLUMN ${col} ${def}`); }
     catch { /* column already exists */ }

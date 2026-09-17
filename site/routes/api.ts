@@ -29,6 +29,8 @@ export interface ApiDeps {
   revenueMonthly: () => any[];
   revenueByClient: () => any[];
   revenueOverdue: () => any[];
+  freezeInvoiceSnapshots: (id: number, origin: string) => void; /* #301 */
+  shareOrigin: (req: Request) => string; /* #301 */
 }
 
 export function createApiRouter(deps: ApiDeps) {
@@ -37,6 +39,7 @@ export function createApiRouter(deps: ApiDeps) {
     entryToJson, groupToLineItems, unbilledEntries, getInvoice,
     invoiceTotals, nextInvoiceNumber, mintPublicToken, stripeLinkFor, verifyWebhookSignature,
     revenueTotals, revenueMonthly, revenueByClient, revenueOverdue,
+    freezeInvoiceSnapshots, shareOrigin,
   } = deps;
 
   /** Serve a /api/* request, or null when the path is not an API route. */
@@ -64,6 +67,8 @@ export function createApiRouter(deps: ApiDeps) {
                 const inv = qInvoice.get(invoiceId) as Invoice | null;
                 if (inv && inv.status === "sent") {
                   db.query("UPDATE invoices SET status = 'paid', paid_via_stripe = 1, paid_at = date('now') WHERE id = ?").run(invoiceId);
+                  /* #301: re-freeze so the Paid badge is part of the record. */
+                  freezeInvoiceSnapshots(invoiceId, shareOrigin(req));
                 }
               }
             }
@@ -190,15 +195,16 @@ export function createApiRouter(deps: ApiDeps) {
                 .filter(it => it.hours > 0);
               if (!clean.length) return json({ error: "no billable line items" }, 400);
               const inv = db.query(
-                `INSERT INTO invoices (client_id, number, issue_date, due_date, tax_rate, notes)
-                 VALUES (?, ?, ?, ?, ?, ?) RETURNING id`)
+                `INSERT INTO invoices (client_id, number, issue_date, due_date, tax_rate, notes, internal_notes)
+                 VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id`)
                 .get(
                   body.client_id ? Number(body.client_id) : null,
                   number,
                   String(body.issue_date || todayStr()),
                   body.due_date ? String(body.due_date) : null,
                   Number(body.tax_rate) || 0,
-                  String(body.notes || "")) as any;
+                  String(body.notes || ""),
+                  String(body.internal_notes || "")) as any; /* #302 */
               const insItem = db.query(
                 "INSERT INTO invoice_items (invoice_id, description, hours, rate, amount, date_from, date_to) VALUES (?, ?, ?, ?, ?, ?, ?)");
               const linkEntry = db.query("UPDATE time_entries SET invoice_id = ? WHERE id = ?");
@@ -229,6 +235,8 @@ export function createApiRouter(deps: ApiDeps) {
                              (inv.status === "sent" && want === "paid");
                   if (!ok) return json({ error: "invalid status transition (draft → sent → paid)" }, 400);
                   db.query("UPDATE invoices SET status = ? WHERE id = ?").run(want, id);
+                  /* #301: freeze at send, re-freeze at paid for the status badge. */
+                  freezeInvoiceSnapshots(id, shareOrigin(req));
                 }
                 const full = getInvoice(id)!;
                 return json({ ...full, ...invoiceTotals(full.items, full.tax_rate) });
