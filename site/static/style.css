@@ -1038,21 +1038,18 @@ button.m3-menu-item {
 .pill-paid { background: #1f3d2b; color: #b8e6c5; }
 .pill-unpaid { background: var(--md-sys-color-error-container); color: var(--md-sys-color-on-error-container); }
 
-/* #330: "Invoiced"/"Draft" mark on time entries — tonal pill, no border. */
+/* #330: "Invoiced"/"Draft" mark on timer entry rows — tonal pill, no border. */
 .inv-mark { display: inline-flex; align-items: center; height: 18px; padding: 0 8px;
   border-radius: var(--md-sys-shape-corner-full); font-size: 10px; font-weight: 600;
   letter-spacing: 0.4px; white-space: nowrap; flex: none; }
-/* Calendar cards (client-colored bg, dark text): translucent black pill, overlaid
-   top-right so the fixed slot height never changes. */
-.cal-entry .inv-mark { position: absolute; top: 4px; right: 6px; background: rgba(0,0,0,0.32); color: #fff; }
-.cal-entry .inv-mark.draft { background: rgba(0,0,0,0.18); }
-.cal-entry.invoiced:not(.cal-compact) .cal-entry-desc { padding-right: 62px; }
+/* #332: calendar slots carry no chip — the grid is too dense for a pill on
+   every card. Invoiced cards dim instead (bright = still needs billing); the
+   invoice number is in the hover tooltip. */
+.cal-entry.invoiced { opacity: 0.72; }
 /* Timer entry rows: tonal on the dark surface. */
 .md-list-item-supporting .inv-mark { background: var(--md-sys-color-secondary-container);
   color: var(--md-sys-color-on-secondary-container); margin-right: 6px; }
 .md-list-item-supporting .inv-mark.draft { opacity: 0.7; }
-/* Compact calendar pills have no room for a chip — dim instead. */
-.cal-entry.cal-compact.invoiced { opacity: 0.68; }
 
 .two-field { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 @media (max-width: 560px) { .two-field { grid-template-columns: 1fr; } }
