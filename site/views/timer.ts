@@ -5,7 +5,7 @@
  *  slices, so every call site keeps working unchanged. */
 
 import type { Database, Statement } from "bun:sqlite";
-import { dayBounds, durationSeconds, esc, fmtDur, money, todayStr } from "../lib/format.ts";
+import { dayBounds, durationSeconds, entryInvoiceMark, esc, fmtDur, money, todayStr } from "../lib/format.ts";
 import { icon } from "../lib/icons.ts";
 import type { Entry } from "../lib/types.ts";
 
@@ -39,10 +39,13 @@ export function createTimerViews(deps: TimerViewDeps) {
       ? `<span class="md-chip">${e.client_color ? `<span class="dot" style="background:${esc(e.client_color)}"></span>` : ""}${esc(e.project_name)}</span>`
       : "";
     const desc = e.description ? esc(e.description) : "<em>No description</em>";
+    /* #330: mark time that's already on an invoice (sent/paid) or in a draft. */
+    const mark = entryInvoiceMark(e);
+    const invMark = mark ? `<span class="inv-mark ${mark.cls}" title="${esc(mark.title)}">${mark.label}</span>` : "";
     return `<li class="md-list-item" id="entry-${e.id}" style="animation-delay:${Math.min(i * 30, 300)}ms">
       <div class="md-list-item-content">
         <div class="md-list-item-headline">${desc}</div>
-        <div class="md-list-item-supporting">${chip}<span>${startTs} – ${endTs}${e.client_name && !e.project_name ? ` · ${esc(e.client_name)}` : ""}</span></div>
+        <div class="md-list-item-supporting">${chip}${invMark}<span>${startTs} – ${endTs}${e.client_name && !e.project_name ? ` · ${esc(e.client_name)}` : ""}</span></div>
       </div>
       <div class="md-list-item-trailing">
         <span class="dur">${dur}</span>

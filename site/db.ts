@@ -134,10 +134,12 @@ db.exec(`DROP TABLE IF EXISTS recurring_schedules;`);
 
   const ENTRY_SELECT = `
   SELECT e.id, e.project_id, e.description, e.start_time, e.end_time, e.invoice_id,
-         p.name AS project_name, c.name AS client_name, c.color AS client_color
+         p.name AS project_name, c.name AS client_name, c.color AS client_color,
+         i.number AS invoice_number, i.status AS invoice_status
   FROM time_entries e
   LEFT JOIN projects p ON p.id = e.project_id
-  LEFT JOIN clients c ON c.id = p.client_id`;
+  LEFT JOIN clients c ON c.id = p.client_id
+  LEFT JOIN invoices i ON i.id = e.invoice_id`;
 
   const qRunning = db.query(`${ENTRY_SELECT} WHERE e.end_time IS NULL ORDER BY e.start_time DESC LIMIT 1`);
   const qOne = db.query(`${ENTRY_SELECT} WHERE e.id = ?`);
