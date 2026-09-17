@@ -70,7 +70,7 @@ export function createWebRouter(deps: WebDeps) {
   const {
     db, qRunning, qOne, qRange, qInvoice, qInvoices,
     DATA_DIR, STATIC_DIR, TOKEN, authedPage, tokensEqual, html, json, csvResponse, isHtmx,
-    shareOrigin, PORT, loginPage, publicInvoicePage, notFoundPage, errorPage,
+    shareOrigin, PORT, loginPage, publicInvoicePage, notFoundPage, noSuchInvoicePage, errorPage,
     dashboardPage, timerPartial, todayPartial, weekInner,
     calendarPage, editPage, manageCols, managePage, bizProfileSection, invoicesPage, invoiceNewPage,
     defaultNewInvParams, invoiceStep2, invoiceDetailPage, invoiceDetailBody, invoiceDoc,
@@ -121,7 +121,11 @@ export function createWebRouter(deps: WebDeps) {
         if (pub && method === "GET") {
           const idRow = db.query("SELECT id FROM invoices WHERE public_token = ?").get(pub[1]) as { id: number } | null;
           const inv = idRow ? getInvoice(idRow.id) : null;
-          return inv ? html(publicInvoicePage(inv)) : html(notFoundPage(false), 404);
+          return inv ? html(publicInvoicePage(inv)) : html(noSuchInvoicePage(), 404);
+        }
+        /* Malformed /i/ paths (too short, bad chars): same dead-end. */
+        if (method === "GET" && (path === "/i" || path === "/i/" || path.startsWith("/i/"))) {
+          return html(noSuchInvoicePage(), 404);
         }
 
         /* ---- JSON API is handled by routes/api.ts via handleApi; web routes continue below. ---- */
