@@ -117,6 +117,41 @@ export function createDomain(deps: DomainDeps) {
        ORDER BY e.start_time`).all(clientId, from, to) as any[];
   }
 
+  /** "Invoice the rest" (#328): the from-date for a client's next invoice —
+      the day after its last invoice's through-date (MAX invoice_items.date_to,
+      all statuses — a draft's entries are attached too). First invoice: the
+      earliest finished, unbilled entry date. Null when the client has neither. */
+  function clientRestFrom(clientId: number): string | null {
+    const last = db.query(
+      `SELECT MAX(ii.date_to) AS last_to FROM invoice_items ii
+       JOIN invoices i ON i.id = ii.invoice_id
+       WHERE i.client_id = ?`).get(clientId) as any;
+    if (last?.last_to) return addDays(String(last.last_to), 1);
+    const first = db.query(
+      `SELECT MIN(substr(e.start_time, 1, 10)) AS first_day FROM time_entries e
+       JOIN projects p ON p.id = e.project_id
+       WHERE p.client_id = ? AND e.invoice_id IS NULL AND e.end_time IS NOT NULL`
+    ).get(clientId) as any;
+    return first?.first_day ? String(first.first_day) : null;
+  }
+
+  /** Per-client finished, unbilled time with invoice rounding applied (#328). */
+  function unbilledByClient(): { id: number; name: string; secs: number }[] {
+    const rows = db.query(
+      `SELECT c.id, c.name, e.start_time, e.end_time FROM time_entries e
+       JOIN projects p ON p.id = e.project_id
+       JOIN clients c ON c.id = p.client_id
+       WHERE e.invoice_id IS NULL AND e.end_time IS NOT NULL
+       ORDER BY c.name`).all() as any[];
+    const map = new Map<number, { id: number; name: string; secs: number }>();
+    for (const r of rows) {
+      const g = map.get(r.id) ?? { id: r.id, name: r.name, secs: 0 };
+      g.secs += roundUpSeconds(durationSeconds(r.start_time, r.end_time), ROUNDING_MINUTES);
+      map.set(r.id, g);
+    }
+    return [...map.values()].filter(g => g.secs > 0);
+  }
+
   /** Fixed billable rounding, minutes. Every invoice rounds each entry's
       duration UP to the next increment (issue #199). */
   const ROUNDING_MINUTES = 5;
@@ -215,7 +250,7 @@ export function createDomain(deps: DomainDeps) {
 
   return {
     getInvoice, invoiceTotals, nextInvoiceNumber, stripeLinkFor,
-    unbilledEntries, groupToLineItems,
+    unbilledEntries, groupToLineItems, clientRestFrom, unbilledByClient,
     projectOptions, m3ProgressBar, weekTargetBar,
     newPublicToken, ensurePublicToken, getPublicToken, mintPublicToken,
   };
