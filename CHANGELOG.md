@@ -2,6 +2,10 @@
 
 What's new in Timekeep, newest first.
 
+## 2026-09-18
+
+- **License gating (dormant in beta).** The groundwork for post-beta licensing is in: a one-time license key checked fully offline (Ed25519, no network calls — your data never leaves the machine), an honesty-box banner, and a License section in Settings. While `TIMEKEEP_BETA` is set (the default), none of it appears and everything stays free.
+
 ## 2026-09-17
 
 - **Immutable invoices.** Once an invoice is sent, its PDF and on-screen copy are frozen snapshots — later changes to clients or your business profile can't silently alter what a client sees.

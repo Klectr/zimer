@@ -1006,6 +1006,26 @@ button.m3-menu-item {
   .demo-banner { animation: banner-in .45s cubic-bezier(0.05, 0.7, 0.1, 1); }
 }
 @keyframes banner-in { from { opacity: 0; transform: translateY(-8px); } }
+/* #304: license honesty-box banner — same treatment as the demo banner, but
+   in the primary container so it reads as app chrome rather than demo data. */
+.license-banner {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin: 12px 16px 0; padding: 12px 16px; border-radius: 16px;
+  background: var(--md-sys-color-primary-container, #3a2a00);
+  color: var(--md-sys-color-on-primary-container, #ffe9bd);
+}
+.license-banner svg { flex: none; width: 24px; height: 24px; }
+.license-banner span { flex: 1; }
+.license-banner .md-text-button { color: inherit; }
+.license-banner .md-icon-button { color: inherit; }
+@media (prefers-reduced-motion: no-preference) {
+  .license-banner { animation: banner-in .45s cubic-bezier(0.05, 0.7, 0.1, 1); }
+}
+/* #304: settings License section states. */
+.licensed-ok { display: flex; align-items: center; gap: 12px; margin: 0 0 4px; }
+.licensed-ok svg { flex: none; width: 24px; height: 24px; color: var(--md-sys-color-primary, #f2c14e); }
+.licensed-ok code { font-size: 13px; }
+.license-error { color: var(--md-sys-color-error, #ffb4ab); margin: 4px 0 0; }
 /* #300: first-run empty states — centered icon, headline, copy, actions. */
 .empty-state { text-align: center; padding: 56px 24px; max-width: 440px; margin: 0 auto; }
 .empty-state > svg { width: 48px; height: 48px; color: var(--md-sys-color-on-surface-variant); }

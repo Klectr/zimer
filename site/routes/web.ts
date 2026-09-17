@@ -12,6 +12,7 @@ import { getMeta, setMeta } from "../db.ts";
 import { clientIp } from "../lib/http.ts";
 import { createRateLimiter } from "../lib/ratelimit.ts";
 import { loadChangelog } from "../lib/changelog.ts"; /* #303 */
+import { isLaunchMode, isLicensed, licenseSectionHtml, storeLicenseKey } from "../lib/license.ts"; /* #304 */
 
 export interface WebDeps {
   db: Database;
@@ -353,6 +354,21 @@ export function createWebRouter(deps: WebDeps) {
           setMeta(db, "business_payment_terms", gterms);
           if (isHtmx(req)) return html(bizProfileSection());
           return new Response(null, { status: 302, headers: { Location: "/manage" } });
+        }
+        /* #304: settings modal body — business profile plus the License
+           section in launch mode; profile only in beta (no licensing UI). */
+        if (path === "/settings" && method === "GET")
+          return html(bizProfileSection() + (isLaunchMode() ? licenseSectionHtml(db, isLicensed(db)) : ""));
+        /* #304: license key entry. Invalid keys are rejected with a specific
+           message and the stored key is left untouched. No licensing routes
+           exist at all in beta. */
+        if (path === "/license" && method === "POST") {
+          if (!isLaunchMode()) return new Response("Not found", { status: 404 });
+          const form = await req.formData();
+          const key = String(form.get("license_key") || "");
+          if (!storeLicenseKey(db, key))
+            return html(licenseSectionHtml(db, isLicensed(db), "That key isn't valid — not a valid Timekeep key."), 422);
+          return html(licenseSectionHtml(db, true));
         }
         if (path === "/clients" && method === "POST") {
           const form = await req.formData();

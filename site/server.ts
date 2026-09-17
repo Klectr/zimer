@@ -16,6 +16,7 @@ import { entryToJson, csvResponse, statusPill } from "./lib/format.ts";
 import { json, html, isHtmx, publicOrigin } from "./lib/http.ts";
 import { getToken, tokensEqual, authedApi, authedPage } from "./lib/auth.ts";
 import { createDb, getMeta } from "./db.ts";
+import { isLicensed, licenseBannerHtml } from "./lib/license.ts"; /* #304 */
 import { createRevenue } from "./lib/revenue.ts";
 import { workspaceEmpty, demoIds, seedDemoData, removeDemoData, demoBanner } from "./lib/demo.ts";
 import { createDomain, CAL_HOUR_PX, DAY_TARGET_SECS } from "./lib/domain.ts";
@@ -48,7 +49,10 @@ const {
 } = createDb(DATA_DIR);
 const { revenueTotals, revenueMonthly, revenueByClient, isOverdue, revenueOverdue } =
   createRevenue(qRevenueRows, () => getMeta(db, "business_payment_terms"));
-const { layout, notFoundPage, noSuchInvoicePage, rateLimitPage, errorPage } = createLayoutViews(qRunning);
+const { layout, notFoundPage, noSuchInvoicePage, rateLimitPage, errorPage } =
+  /* #304: the license banner closure runs per request inside layout(), so
+     every app page shows it in launch mode until a valid key is stored. */
+  createLayoutViews(qRunning, () => licenseBannerHtml(isLicensed(db)));
 
 const {
   getInvoice, invoiceTotals, nextInvoiceNumber, stripeLinkFor,
