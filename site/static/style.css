@@ -607,11 +607,14 @@ main.page-invoices { max-width: 760px; }
 .pane-layout { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 .pane-focus, .pane-supporting { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
 .pane-supporting { container-type: inline-size; }
+/* #326: the global h2.md-headline-small 24px top margin is for page-level
+   section headings — inside the pane it just shoves "Revenue" down. */
+.pane-supporting h2.md-headline-small { margin: 0 4px 12px; }
 @media (max-width: 839px) {
   .pane-layout { overflow-y: auto; }
   .pane-focus, .pane-supporting { flex: none; }
   .pane-layout .scroll-region { flex: none; overflow: visible; }
-  .pane-supporting { margin-top: 32px; }
+  .pane-supporting { margin-top: 24px; } /* #326: match the desktop pane gap */
 }
 @media (min-width: 840px) {
   .pane-layout { flex-direction: row; gap: 24px; }
