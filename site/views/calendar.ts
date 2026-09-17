@@ -4,7 +4,7 @@
  *  call site keeps working unchanged. */
 
 import type { Database, Statement } from "bun:sqlite";
-import { addDays, durationSeconds, esc, fmtDur } from "../lib/format.ts";
+import { addDays, durationSeconds, entryInvoiceMark, esc, fmtDur } from "../lib/format.ts";
 import { icon } from "../lib/icons.ts";
 import { workspaceEmpty } from "../lib/demo.ts"; /* #300: first-run hint */
 import type { Entry } from "../lib/types.ts";
@@ -199,11 +199,16 @@ export function createCalendarViews(deps: CalendarViewDeps) {
         const resizable = !running && (b - a) >= 60;
         const desc = e.description ? esc(e.description) : "<em>No description</em>";
         const dur = fmtDur(durationSeconds(e.start_time, e.end_time));
-        return `<div class="cal-entry${running ? " running" : ""}${overlap ? " overlap" : ""}${compact ? " cal-compact" : ""}"
+        /* #330: mark time that's already on an invoice. Compact pills have no
+           room for a chip, so they dim instead (see .cal-compact.invoiced). */
+        const mark = entryInvoiceMark(e);
+        const markA11y = mark ? `, ${mark.label} ${esc(e.invoice_number || "")}` : "";
+        return `<div class="cal-entry${running ? " running" : ""}${overlap ? " overlap" : ""}${compact ? " cal-compact" : ""}${mark ? " invoiced" : ""}"
             style="top:${(top + 2).toFixed(1)}px;height:${(h - 4).toFixed(1)}px;--c:${esc(color)}"
             data-id="${e.id}" data-desc="${esc(e.description)}" data-project-id="${e.project_id ?? ""}"
             data-date="${day}" data-start="${toHM(a)}" data-end="${running ? "" : toHM(Math.min(b, 1439))}"
-            tabindex="0" role="button" aria-label="${desc}, ${dur}">
+            tabindex="0" role="button" aria-label="${desc}, ${dur}${markA11y}">
+          ${mark && !compact ? `<span class="inv-mark ${mark.cls}" title="${esc(mark.title)}">${mark.label}</span>` : ""}
           <div class="cal-entry-desc">${e.project_name ? `<strong>${esc(e.project_name)}</strong> · ` : ""}${desc}</div>
           <div class="cal-entry-dur">${dur}</div>
           ${resizable ? `<div class="cal-resize top" data-resize="start" title="Drag to change start" aria-hidden="true"></div><div class="cal-resize" data-resize="end" title="Drag to resize" aria-hidden="true"></div>` : ""}

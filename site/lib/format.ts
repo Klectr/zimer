@@ -15,6 +15,23 @@ export function statusPill(status: string): string {
   return `<span class="pill pill-${esc(status)}">${esc(label)}</span>`;
 }
 
+/** #330: "Invoiced" / "Draft" mark for time entries attached to an invoice.
+ *  Returns null when the entry isn't on any invoice. Draft-attached time can
+ *  still be freed (deleting the draft), so it gets the quieter treatment. */
+export function entryInvoiceMark(e: { invoice_number: string | null; invoice_status: string | null }): {
+  cls: string; label: string; title: string;
+} | null {
+  if (!e.invoice_number) return null;
+  const draft = e.invoice_status === "draft";
+  return {
+    cls: draft ? "draft" : "",
+    label: draft ? "Draft" : "Invoiced",
+    title: draft
+      ? `In draft ${e.invoice_number} — not billed yet`
+      : `Invoiced on ${e.invoice_number}`,
+  };
+}
+
 /** Payment-state pill for the invoice document itself (#222): the document
  *  only ever communicates Unpaid vs Paid — draft/sent are internal workflow. */
 export function payPill(paid: boolean): string {

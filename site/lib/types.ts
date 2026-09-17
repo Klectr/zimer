@@ -10,6 +10,8 @@ export type Entry = {
   client_name: string | null;
   client_color: string | null;
   invoice_id: number | null;
+  invoice_number: string | null; /* #330: LEFT JOIN invoices in ENTRY_SELECT */
+  invoice_status: string | null; /* #330: "draft" | "sent" | "paid" | null */
 };
 
 export type InvoiceItem = { id: number; description: string; hours: number; rate: number; amount: number; date_from: string | null; date_to: string | null };
