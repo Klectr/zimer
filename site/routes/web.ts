@@ -200,6 +200,7 @@ export function createWebRouter(deps: WebDeps) {
             return html(`<div class="md-text-field filled"><input type="date" id="inv-from" name="from" value="${esc(from)}" required placeholder=" "><label>From</label></div>
             <div class="md-text-field filled"><input type="date" id="inv-to" name="to" value="${esc(to)}" required placeholder=" "><label>To (exclusive)</label></div>`);
           }
+          if (path === "/timer/start" && method === "POST") {
             if (qRunning.get()) return html(timerPartial(), 409);
             const form = await req.formData();
             const pid = form.get("project_id");
