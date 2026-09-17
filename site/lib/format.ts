@@ -32,6 +32,14 @@ export function entryInvoiceMark(e: { invoice_number: string | null; invoice_sta
   };
 }
 
+/**
+ * #334: time on a sent/paid invoice is a frozen record — no edit, resize,
+ * or delete. Draft-attached time stays editable (drafts are work-in-progress).
+ */
+export function entryIsLocked(e: { invoice_status: string | null }): boolean {
+  return e.invoice_status === "sent" || e.invoice_status === "paid";
+}
+
 /** Payment-state pill for the invoice document itself (#222): the document
  *  only ever communicates Unpaid vs Paid — draft/sent are internal workflow. */
 export function payPill(paid: boolean): string {

@@ -4,7 +4,7 @@
  *  call site keeps working unchanged. */
 
 import type { Database, Statement } from "bun:sqlite";
-import { addDays, durationSeconds, entryInvoiceMark, esc, fmtDur } from "../lib/format.ts";
+import { addDays, durationSeconds, entryInvoiceMark, entryIsLocked, esc, fmtDur } from "../lib/format.ts";
 import { icon } from "../lib/icons.ts";
 import { workspaceEmpty } from "../lib/demo.ts"; /* #300: first-run hint */
 import type { Entry } from "../lib/types.ts";
@@ -196,7 +196,8 @@ export function createCalendarViews(deps: CalendarViewDeps) {
         /* #277: resize handles only on entries of 1 hour or more — the 12px
            hit areas swallow taps on short entries. Shorter entries stay
            fully tappable and resize via the edit dialog. */
-        const resizable = !running && (b - a) >= 60;
+        const locked = entryIsLocked(e); /* #334: sent/paid time is a frozen record */
+        const resizable = !running && (b - a) >= 60 && !locked;
         const desc = e.description ? esc(e.description) : "<em>No description</em>";
         const dur = fmtDur(durationSeconds(e.start_time, e.end_time));
         /* #332: invoiced time dims instead of a chip — the week grid is too
@@ -209,6 +210,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
             style="top:${(top + 2).toFixed(1)}px;height:${(h - 4).toFixed(1)}px;--c:${esc(color)}"
             data-id="${e.id}" data-desc="${esc(e.description)}" data-project-id="${e.project_id ?? ""}"
             data-date="${day}" data-start="${toHM(a)}" data-end="${running ? "" : toHM(Math.min(b, 1439))}"
+            data-locked="${locked ? esc(e.invoice_number || "") : ""}"
             tabindex="0" role="button" aria-label="${desc}, ${dur}${markA11y}"${markTitle}>
           <div class="cal-entry-desc">${e.project_name ? `<strong>${esc(e.project_name)}</strong> · ` : ""}${desc}</div>
           <div class="cal-entry-dur">${dur}</div>
@@ -346,6 +348,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
             </div>
             <span class="md-title-small" id="cal-dur"></span>
           </div>
+          <p class="muted tiny" id="cal-locked" hidden></p>
           <p class="error tiny" id="cal-error" hidden></p>
           <div class="cal-dialog-actions">
             <button class="md-text-button danger" id="cal-delete" hidden>Delete</button>
@@ -405,7 +408,9 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     var endI=document.getElementById('cal-end');
     var dur=document.getElementById('cal-dur');
     var err=document.getElementById('cal-error');
+    var lockNote=document.getElementById('cal-locked');
     var delBtn=document.getElementById('cal-delete');
+    var saveBtn=document.getElementById('cal-save');
     var mode='create', editId=null, dayStr='';
     /* grid owns the scroll: land near the current time when today is in view */
     var scroller=document.querySelector('.cal-scroll'), nowEl=document.querySelector('[data-now]');
@@ -424,16 +429,31 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       dateLine.textContent=d.toLocaleDateString([],{weekday:'long',month:'long',day:'numeric'});
       desc.value=''; project.value='';
       startI.value=toHM(a); endI.value=toHM(b); updDur();
+      lockNote.hidden=true; /* #334: the dialog is reused — clear locked state */
+      desc.disabled=false; project.disabled=false; startI.disabled=false; endI.disabled=false;
+      saveBtn.hidden=false;
       showScrim(); desc.focus();
     }
     function openEdit(el){
       mode='edit'; editId=el.dataset.id; dayStr=el.dataset.date;
-      title.textContent='Edit entry'; delBtn.hidden=false; err.hidden=true;
+      var locked=el.dataset.locked||''; /* #334: sent/paid time opens read-only */
+      title.textContent=locked?'Entry (invoiced)':'Edit entry';
+      delBtn.hidden=!!locked; err.hidden=true;
       var d=new Date(dayStr+'T12:00:00');
       dateLine.textContent=d.toLocaleDateString([],{weekday:'long',month:'long',day:'numeric'});
       desc.value=el.dataset.desc||''; project.value=el.dataset.projectId||'';
       startI.value=el.dataset.start||'09:00'; endI.value=el.dataset.end||toHM(toMin(startI.value)+60); updDur();
-      showScrim(); desc.focus();
+      if(locked){
+        lockNote.textContent='Invoiced on '+locked+' — this time can\u2019t be edited.';
+        lockNote.hidden=false;
+        desc.disabled=true; project.disabled=true; startI.disabled=true; endI.disabled=true;
+        saveBtn.hidden=true;
+      }else{
+        lockNote.hidden=true;
+        desc.disabled=false; project.disabled=false; startI.disabled=false; endI.disabled=false;
+        saveBtn.hidden=false;
+      }
+      showScrim(); if(!locked) desc.focus();
     }
     function close(){ hideScrim(); }
     document.getElementById('cal-cancel').addEventListener('click',close);
@@ -494,7 +514,10 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     });
     delBtn.addEventListener('click',function(){
       if(!confirm('Delete this entry?')) return;
-      fetch('/entries/'+editId,{method:'DELETE'}).then(function(){ close(); refreshWeek(null); });
+      fetch('/entries/'+editId,{method:'DELETE'}).then(function(r){
+        if(!r.ok) throw new Error('delete failed'); /* #334: locked entries 403 */
+        close(); refreshWeek(null);
+      }).catch(function(ex){ fail(ex.message); });
     });
     // drag-to-create on empty grid space
     var drag=null;
@@ -681,28 +704,31 @@ export function createCalendarViews(deps: CalendarViewDeps) {
   function editPage(id: number): string | null {
     const e = qOne.get(id) as Entry | null;
     if (!e) return null;
-    return layout("Edit entry", `
-      <h2 class="md-headline-small" data-enter="2">Edit entry</h2>
+    const locked = entryIsLocked(e); /* #334: sent/paid time opens read-only */
+    const dis = locked ? " disabled" : "";
+    return layout(locked ? "Entry" : "Edit entry", `
+      <h2 class="md-headline-small" data-enter="2">${locked ? "Entry" : "Edit entry"}</h2>
+      ${locked ? `<p class="muted md-body-medium">Invoiced on ${esc(e.invoice_number || "")} — this time can\u2019t be edited.</p>` : ""}
       <form method="post" action="/entries/${e.id}" class="form" id="edit-entry-form">
         <div class="md-text-field">
-          <input type="text" name="description" value="${esc(e.description)}" placeholder=" ">
+          <input type="text" name="description" value="${esc(e.description)}" placeholder=" "${dis}>
           <label>Description</label>
         </div>
         <div class="md-text-field filled">
-          <select name="project_id"><option value="">No project</option>${projectOptions(e.project_id)}</select>
+          <select name="project_id"${dis}><option value="">No project</option>${projectOptions(e.project_id)}</select>
           <label>Project</label>
         </div>
         <div class="md-text-field filled">
-          <input type="datetime-local" name="start_time" data-iso="${esc(e.start_time)}" required placeholder=" ">
+          <input type="datetime-local" name="start_time" data-iso="${esc(e.start_time)}" required placeholder=" "${dis}>
           <label>Start</label>
         </div>
         <div class="md-text-field filled">
-          <input type="datetime-local" name="end_time" data-iso="${esc(e.end_time || "")}" placeholder=" ">
+          <input type="datetime-local" name="end_time" data-iso="${esc(e.end_time || "")}" placeholder=" "${dis}>
           <label>End (blank = still running)</label>
         </div>
         <div class="row">
-          <button class="md-filled-button" type="submit">Save</button>
-          <a class="md-text-button" href="/calendar">Cancel</a>
+          ${locked ? "" : `<button class="md-filled-button" type="submit">Save</button>`}
+          <a class="md-text-button" href="/calendar">${locked ? "Back" : "Cancel"}</a>
         </div>
       </form>
       <script>(function(){
