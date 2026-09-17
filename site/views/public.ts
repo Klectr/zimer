@@ -10,12 +10,12 @@ import type { Invoice, InvoiceItem } from "../lib/types.ts";
 export interface PublicViewDeps {
   getInvoice: (id: number) => (Invoice & { items: InvoiceItem[] }) | null;
   invoiceTotals: (items: InvoiceItem[], taxRate: number) => { subtotal: number; tax: number; total: number };
-  invoiceSheet: (inv: Invoice & { items: InvoiceItem[] }) => string;
+  invoiceDocumentHtml: (inv: Invoice & { items: InvoiceItem[] }) => string; /* #301: frozen at send, live for drafts */
   ensurePublicToken: (id: number) => string;
 }
 
 export function createPublicViews(deps: PublicViewDeps) {
-  const { getInvoice, invoiceTotals, invoiceSheet, ensurePublicToken } = deps;
+  const { getInvoice, invoiceTotals, invoiceDocumentHtml, ensurePublicToken } = deps;
 
   /** Public client invoice page: no auth, read-only, no actions or navigation. */
   function publicInvoicePage(inv: Invoice & { items: InvoiceItem[] }): string {
@@ -39,7 +39,7 @@ export function createPublicViews(deps: PublicViewDeps) {
   </head>
   <body>
   <main class="page-public-invoice">
-  ${invoiceSheet(inv)}
+  ${invoiceDocumentHtml(inv)}
   ${pay}
   <p class="muted tiny no-print public-foot">Shared securely via Timekeep</p>
   </main>

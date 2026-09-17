@@ -7,6 +7,7 @@ import { addDays, daysBetween, esc, money, round2, shortDateRange, termsDescript
 import { icon } from "../lib/icons.ts";
 import { getMeta } from "../db.ts";
 import type { Invoice, InvoiceItem, NewInvParams } from "../lib/types.ts";
+import type { PdfInvoice } from "../pdf.ts";
 
 export interface InvoiceViewDeps {
   db: Database;
@@ -242,7 +243,53 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
   }
 
   function invoiceDoc(inv: Invoice & { items: InvoiceItem[] }): string {
-    return `<div id="invoice-doc">${invoiceSheet(inv)}</div>`;
+    return `<div id="invoice-doc">${invoiceDocumentHtml(inv)}</div>`;
+  }
+
+  /* #301: immutable invoices. The rendered document is frozen at send time
+     (and re-frozen at the paid milestone for the status badge) and served
+     verbatim afterwards — re-downloads are byte-identical. Pre-snapshot
+     invoices lazy-freeze on first view after this ships. */
+  function invoiceDocumentHtml(inv: Invoice & { items: InvoiceItem[] }): string {
+    if (inv.html_snapshot) return inv.html_snapshot;
+    const html = invoiceSheet(inv);
+    if (inv.status !== "draft") {
+      db.query("UPDATE invoices SET html_snapshot = ? WHERE id = ? AND html_snapshot IS NULL")
+        .run(html, inv.id);
+    }
+    return html;
+  }
+
+  /* #301: single code path for the PDF input, shared by the download route
+     and the send-time freeze. Extracted from the old inline route assembly. */
+  function invoicePdfInput(inv: Invoice & { items: InvoiceItem[] }, origin: string): PdfInvoice {
+    const t = invoiceTotals(inv.items, inv.tax_rate);
+    /* #289/#293/#295: effective terms key drives the canned description
+       and whether the PDF due line is shown. */
+    const termsKey_ = termsKey(inv.client_payment_terms, getMeta(db, "business_payment_terms"));
+    return {
+      number: inv.number,
+      status: inv.status,
+      clientName: inv.client_name || "",
+      issueDate: inv.issue_date,
+      dueDate: inv.due_date,
+      items: inv.items.map(it => ({
+        description: it.description, hours: it.hours, rate: it.rate, amount: it.amount,
+        dateFrom: it.date_from ?? null, dateTo: it.date_to ?? null, /* #243 */
+      })),
+      subtotal: t.subtotal, tax: t.tax, taxRate: inv.tax_rate, total: t.total,
+      notes: inv.notes,
+      fromName: getMeta(db, "business_name") || undefined,
+      fromEmail: getMeta(db, "business_email") || undefined,
+      fromAddress: getMeta(db, "business_address") || undefined,
+      /* #243: payment terms, and the pay-online link.
+         #289: the invoice client's own terms win; global is fallback.
+         #293: fixed list — print the canned description.
+         #295: pay-when-paid has no fixed due date — suppress the PDF due line. */
+      terms: termsDescription(termsKey_),
+      hideDue: termsKey_ === "pay_when_paid",
+      payUrl: inv.public_token ? `${origin}/i/${inv.public_token}` : undefined,
+    };
   }
 
   /* #71: detail body as a fragment — status/Stripe/link actions swap
@@ -356,5 +403,6 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
   return {
     invoicesPage, defaultNewInvParams, invoiceNewPage, invoiceStep2,
     invoiceSheet, invoiceDoc, invoiceDetailBody, invoiceDetailPage,
+    invoiceDocumentHtml, invoicePdfInput, /* #301 */
   };
 }

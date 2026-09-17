@@ -71,18 +71,28 @@ const { manageCols, managePage, clientOptions, bizProfileSection } =
 const {
   invoicesPage, defaultNewInvParams, invoiceNewPage, invoiceStep2, invoiceSheet,
   invoiceDoc, invoiceDetailBody, invoiceDetailPage,
+  invoiceDocumentHtml, invoicePdfInput, /* #301 */
 } = createInvoiceViews({
   db, qInvoices, layout, clientOptions,
   getPublicToken, stripeConfigured, nextInvoiceNumber, invoiceTotals, statusPill, isOverdue,
 });
+/* #301: freeze the rendered document at send time (re-frozen at the paid
+   milestone for the status badge). Served verbatim afterwards. */
+const freezeInvoiceSnapshots = (id: number, origin: string) => {
+  const inv = getInvoice(id);
+  if (!inv || inv.status === "draft") return;
+  db.query("UPDATE invoices SET pdf_snapshot = ?, html_snapshot = ? WHERE id = ?")
+    .run(invoicePdf(invoicePdfInput(inv, origin)), invoiceSheet(inv), id);
+};
 const { loginPage, publicInvoicePage } = createPublicViews({
-  getInvoice, invoiceTotals, invoiceSheet, ensurePublicToken,
+  getInvoice, invoiceTotals, invoiceDocumentHtml, ensurePublicToken,
 });
 const { handleApi } = createApiRouter({
   db, qRunning, qOne, qRange, qInvoice, qInvoices, TOKEN, authedApi, json,
   entryToJson, groupToLineItems, unbilledEntries, getInvoice,
   invoiceTotals, nextInvoiceNumber, mintPublicToken, stripeLinkFor, verifyWebhookSignature,
   revenueTotals, revenueMonthly, revenueByClient, revenueOverdue,
+  freezeInvoiceSnapshots, shareOrigin: (req: Request) => PUBLIC_BASE_URL || publicOrigin(req, PORT), /* #301 */
 });
 const { handleWeb } = createWebRouter({
   db, qRunning, qOne, qRange, qInvoice, qInvoices,
@@ -96,6 +106,7 @@ const { handleWeb } = createWebRouter({
   nextInvoiceNumber, stripeLinkFor, unbilledEntries,
   groupToLineItems, ensurePublicToken, getPublicToken, mintPublicToken,
   invoicePdf, stripeConfigured,
+  invoicePdfInput, freezeInvoiceSnapshots, /* #301 */
   workspaceEmpty, demoIds, seedDemoData, removeDemoData, entryToJson,
 });
 

@@ -61,6 +61,8 @@ export interface WebDeps {
   getPublicToken: (id: number) => string | null;
   mintPublicToken: (id: number) => string;
   invoicePdf: (inv: PdfInvoice) => Uint8Array;
+  invoicePdfInput: (inv: Invoice & { items: InvoiceItem[] }, origin: string) => PdfInvoice; /* #301 */
+  freezeInvoiceSnapshots: (id: number, origin: string) => void; /* #301 */
   stripeConfigured: () => boolean;
   workspaceEmpty: (db: Database) => boolean;
   demoIds: (db: Database) => number[];
@@ -80,7 +82,7 @@ export function createWebRouter(deps: WebDeps) {
     getInvoice, invoiceTotals,
     nextInvoiceNumber, stripeLinkFor, unbilledEntries,
     groupToLineItems, ensurePublicToken, getPublicToken, mintPublicToken,
-    invoicePdf, stripeConfigured,
+    invoicePdf, invoicePdfInput, freezeInvoiceSnapshots, stripeConfigured,
     workspaceEmpty, demoIds, seedDemoData, removeDemoData, entryToJson,
   } = deps;
 
@@ -490,33 +492,16 @@ export function createWebRouter(deps: WebDeps) {
         if (m && method === "GET") {
           const inv = getInvoice(Number(m[1]));
           if (!inv) return html(notFoundPage(authedPage(req, TOKEN)), 404);
-          const t = invoiceTotals(inv.items, inv.tax_rate);
-          /* #289/#293/#295: effective terms key drives the canned description
-             and whether the PDF due line is shown. */
-          const termsKey_ = termsKey(inv.client_payment_terms, getMeta(db, "business_payment_terms"));
-          const pdf = invoicePdf({
-            number: inv.number,
-            status: inv.status,
-            clientName: inv.client_name || "",
-            issueDate: inv.issue_date,
-            dueDate: inv.due_date,
-            items: inv.items.map(it => ({
-              description: it.description, hours: it.hours, rate: it.rate, amount: it.amount,
-              dateFrom: it.date_from ?? null, dateTo: it.date_to ?? null, /* #243 */
-            })),
-            subtotal: t.subtotal, tax: t.tax, taxRate: inv.tax_rate, total: t.total,
-            notes: inv.notes,
-            fromName: getMeta(db, "business_name") || undefined,
-            fromEmail: getMeta(db, "business_email") || undefined,
-            fromAddress: getMeta(db, "business_address") || undefined,
-            /* #243: payment terms, and the pay-online link.
-               #289: the invoice client's own terms win; global is fallback.
-               #293: fixed list — print the canned description.
-               #295: pay-when-paid has no fixed due date — suppress the PDF due line. */
-            terms: termsDescription(termsKey_),
-            hideDue: termsKey_ === "pay_when_paid",
-            payUrl: inv.public_token ? `${shareOrigin(req)}/i/${inv.public_token}` : undefined,
-          });
+          /* #301: sent/paid invoices serve the frozen snapshot; drafts render
+             live. Pre-snapshot invoices lazy-freeze on first download. */
+          let pdf = inv.pdf_snapshot;
+          if (!pdf) {
+            pdf = invoicePdf(invoicePdfInput(inv, shareOrigin(req)));
+            if (inv.status !== "draft") {
+              db.query("UPDATE invoices SET pdf_snapshot = ? WHERE id = ? AND pdf_snapshot IS NULL")
+                .run(pdf, inv.id);
+            }
+          }
           const filename = inv.number.replace(/[^A-Za-z0-9._-]+/g, "_") + ".pdf";
           return new Response(pdf, {
             headers: {
@@ -535,6 +520,9 @@ export function createWebRouter(deps: WebDeps) {
           db.query(want === "paid"
             ? "UPDATE invoices SET status = 'paid', paid_at = date('now') WHERE id = ?"
             : "UPDATE invoices SET status = ? WHERE id = ?").run(...(want === "paid" ? [inv!.id] : [want, inv!.id]));
+          /* #301: freeze the rendered document at send (re-frozen at paid for
+             the status badge) — served verbatim from here on. */
+          freezeInvoiceSnapshots(inv!.id, shareOrigin(req));
           /* #227: a sent invoice collects by default — create the Stripe payment
              link now. A Stripe failure never blocks the status transition; the
              detail page offers a retry. */
