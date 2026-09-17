@@ -1310,6 +1310,36 @@ button.m3-menu-item {
 .skel-btn { height: 56px; width: 148px; border-radius: 999px; }
 .skel-row { height: 64px; border-radius: var(--md-sys-shape-corner-medium); }
 
+/* -------- calendar skeleton (#322): mirrors .cal-pane-layout so the htmx
+   week swap has no layout flash. Same grid areas and 840px breakpoint as the
+   real grid; lanes echo the 80px hour rhythm of .cal-day-col. */
+.cal-skel { display: grid; flex: 1; min-height: 0; min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "nav" "summary" "grid";
+  grid-template-rows: auto auto minmax(0, 1fr); row-gap: 12px; }
+.cal-skel-nav { grid-area: nav; display: flex; align-items: center; justify-content: space-between; }
+.cal-skel-title { width: 140px; height: 28px; border-radius: 8px; }
+.cal-skel-actions { display: flex; gap: 4px; }
+.cal-skel-dot { width: 40px; height: 40px; border-radius: 50%; }
+.cal-skel-aside { grid-area: summary; display: flex; flex-direction: column; gap: 12px; margin: 10px 0 12px; min-width: 0; }
+.cal-skel-big { width: 120px; height: 36px; border-radius: 10px; }
+.cal-skel-bar { height: 8px; border-radius: 4px; }
+.cal-skel-grid { grid-area: grid; display: grid; min-width: 0; min-height: 0;
+  grid-template-columns: 54px repeat(7, minmax(0, 1fr)); gap: 8px; }
+.cal-skel-day { display: flex; flex-direction: column; gap: 8px; min-width: 0; min-height: 0; }
+.cal-skel-head { height: 64px; flex: none; border-radius: var(--md-sys-shape-corner-medium); }
+.cal-skel-lane { flex: 1; min-height: 120px; border-radius: var(--md-sys-shape-corner-medium);
+  background-color: var(--md-sys-color-surface-container-low);
+  background-image: repeating-linear-gradient(to bottom,
+    transparent 0, transparent 79px,
+    color-mix(in srgb, var(--md-sys-color-outline-variant) 30%, transparent) 79px,
+    color-mix(in srgb, var(--md-sys-color-outline-variant) 30%, transparent) 80px); }
+@media (min-width: 840px) {
+  .cal-skel { grid-template-columns: minmax(0, 1fr) 360px;
+    grid-template-areas: "nav summary" "grid summary"; column-gap: 24px; }
+  .cal-skel-aside { margin: 8px 0 0; }
+}
+
 /* M3 press ripple (JS-driven, see motion.js). Buttons already clip with
    overflow: hidden; the span paints above the ::after state layer. */
 .md-ripple {

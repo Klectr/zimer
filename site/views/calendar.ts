@@ -294,11 +294,24 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       a server-rendered grid would flash server-timezone positions. */
   function weekGrid(weekStr?: string): string {
     const q = weekStr && /^\d{4}-\d{2}-\d{2}$/.test(weekStr) ? `?week=${weekStr}` : "";
+    /* #322: the skeleton mirrors .cal-pane-layout (week-nav, summary aside,
+       gutter + 7 day columns with the hour rhythm) so the htmx swap lands
+       without a layout flash. */
+    const skelDay = `<div class="cal-skel-day"><div class="skel cal-skel-head"></div><div class="skel cal-skel-lane"></div></div>`;
+    const skelGrid = `<div class="cal-skel-grid">${skelDay.repeat(8)}</div>`;
     return `<div id="week" hx-get="/partial/week${q}" hx-trigger="load" hx-swap="innerHTML">
-        <div class="skel-stack" aria-hidden="true">
-          <div class="skel skel-row"></div>
-          <div class="skel skel-row"></div>
-          <div class="skel skel-row"></div>
+        <div class="cal-skel" aria-hidden="true">
+          <div class="cal-skel-nav">
+            <div class="skel cal-skel-title"></div>
+            <div class="cal-skel-actions"><div class="skel cal-skel-dot"></div><div class="skel cal-skel-dot"></div><div class="skel cal-skel-dot"></div></div>
+          </div>
+          <div class="cal-skel-aside">
+            <div class="skel cal-skel-big"></div>
+            <div class="skel skel-line" style="width:75%"></div>
+            <div class="skel skel-line" style="width:55%"></div>
+            <div class="skel cal-skel-bar"></div>
+          </div>
+          ${skelGrid}
         </div>
       </div>
       <div class="cal-scrim" id="cal-scrim" hidden>
