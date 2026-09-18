@@ -158,12 +158,15 @@ per-page:
   a project (hence a client); entries without a project are non-billable.
   Day headers and the week header show the billable portion beneath each
   total (e.g. "6h 30m" then "5h billable").
-- **Unified top app bar.** One header row: app title (icon + name) leading,
-  primary destinations as nav items, Log out trailing. The destinations are
-  top-level pages, and M3 reserves tabs for related content *within* a page —
-  so they are nav items with an M3 navigation-bar-style active pill
-  (`secondary-container`), not tabs. Below 760px the nav collapses to
-  icon-only (labels remain for assistive tech and tooltips).
+- **Primary navigation (M3, #354).** Compact (<600px): bottom navigation bar
+  with the four destinations, fixed to the bottom edge. Medium and wider
+  (600px+): collapsed leading navigation rail, outside all panes on the
+  leading edge, below the app bar. The switch is the 600px breakpoint — rail
+  and bar never show together. The active destination gets the M3
+  active-indicator pill (`secondary-container`) behind its icon; labels are
+  one word and never truncated ("Clients"). The top app bar keeps the brand
+  mark leading and the account menu trailing only — it never carries primary
+  navigation.
 - **Secondary actions placement.** Nothing lives below a growing list —
   lists can be infinitely long, so trailing sections get buried and add
   clutter. Infrequent/maintenance actions (backup, export) go in the global
@@ -174,7 +177,9 @@ per-page:
   invoices list, manage) opt in via `layout(..., fixed=true)`: `body.app-fixed`
   is a 100dvh flex column, the page never scrolls, and exactly one region owns
   the vertical scroll (`.scroll-region`; the calendar's week grid instead).
-  Document-like pages (invoice detail, new/edit forms) keep page scroll — the
+  The navigation rail sits in the chrome row between the app bar and the
+  content column — outside all scroll regions. Document-like pages (invoice
+  detail, new/edit forms) keep page scroll — the
   invoice detail must print.
 - **Charts:** hand-rolled SVG (no libraries). Distinguish series by tone/shade
   first, hue second.

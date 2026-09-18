@@ -8,9 +8,21 @@ import { esc } from "../lib/format.ts";
 import { ICONS, icon, logo } from "../lib/icons.ts";
 
 export function createLayoutViews(qRunning: Statement, bannerHtml?: () => string) {
+  /* #354: M3 navigation per window size class. The four destinations live in
+     a bottom navigation bar on compact (<600px) or a collapsed leading
+     navigation rail on medium+ (600px+), never both. The app bar keeps the
+     brand mark and account actions only. Labels are one word
+     ("Clients", not "Clients & projects") per the rail/bar guidelines. */
+  const dests = [
+    { href: "/", label: "Timer", key: "timer", ic: "timer" as const },
+    { href: "/calendar", label: "Calendar", key: "calendar", ic: "calendar" as const },
+    { href: "/invoices", label: "Invoices", key: "invoices", ic: "receipt" as const },
+    { href: "/manage", label: "Clients", key: "manage", ic: "group" as const },
+  ];
   function layout(title: string, body: string, active?: "timer" | "calendar" | "manage" | "invoices", fixed?: boolean): string {
-    const navItem = (href: string, label: string, key: string, ic: keyof typeof ICONS) =>
-      `<a href="${href}" title="${label}" class="md-top-nav-item${active === key ? " active" : ""}"${active === key ? ` aria-current="page"` : ""}>${icon(ic)}<span>${label}</span></a>`;
+    const dest = (d: (typeof dests)[number], cls: string) =>
+      `<a href="${d.href}" class="${cls}${active === d.key ? " active" : ""}"${active === d.key ? ` aria-current="page"` : ""}>` +
+      `<span class="nav-pill">${icon(d.ic as keyof typeof ICONS)}</span><span class="nav-label">${d.label}</span></a>`;
     return `<!DOCTYPE html>
   <html lang="en">
   <head>
@@ -29,19 +41,23 @@ export function createLayoutViews(qRunning: Statement, bannerHtml?: () => string
   <body${fixed ? ' class="app-fixed"' : ""} data-timer-running="${qRunning.get() ? 1 : 0}">
   <header class="md-top-app-bar" data-enter="1">
     <span class="md-top-app-bar-title">${logo(34)}</span>
-    <nav class="md-top-nav" aria-label="Primary">
-      ${navItem("/", "Timer", "timer", "timer")}
-      ${navItem("/calendar", "Calendar", "calendar", "calendar")}
-      ${navItem("/invoices", "Invoices", "invoices", "receipt")}
-      ${navItem("/manage", "Clients & projects", "manage", "group")}
-    </nav>
     <span class="md-top-app-bar-spacer"></span>
     ${accountMenu()}
   </header>
-  ${/* #304: license honesty-box banner (launch mode only, unlicensed only).
-       Rendered here so it appears on every app page; publicShell() pages
-       (client invoice links) never see it. */ bannerHtml ? bannerHtml() : ""}
-  <main${active ? ` class="page-${active}"` : ""}>${body}</main>
+  <div class="app-chrome">
+    <nav class="md-nav-rail" aria-label="Primary">
+      ${dests.map(d => dest(d, "md-rail-item")).join("")}
+    </nav>
+    <div class="app-content">
+      ${/* #304: license honesty-box banner (launch mode only, unlicensed only).
+           Rendered here so it appears on every app page; publicShell() pages
+           (client invoice links) never see it. */ bannerHtml ? bannerHtml() : ""}
+      <main${active ? ` class="page-${active}"` : ""}>${body}</main>
+    </div>
+  </div>
+  <nav class="md-bottom-nav" aria-label="Primary">
+    ${dests.map(d => dest(d, "md-bar-item")).join("")}
+  </nav>
   </html>`;
   }
 
