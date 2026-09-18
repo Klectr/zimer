@@ -359,6 +359,10 @@ input[type="number"] {
 }
 .md-text-field input:focus + label,
 .md-text-field input:not(:placeholder-shown) + label,
+/* #337: a select always shows a value, so its label always floats —
+   selects never match :placeholder-shown, and the manual .filled
+   workaround shouldn't be required on every select wrapper. */
+.md-text-field:has(select) label,
 .md-text-field.filled label {
   top: 8px;
   font-size: 12px;
@@ -400,7 +404,8 @@ input[type="number"] {
 .md-text-field.compact:has(label) input { padding-top: 18px; padding-bottom: 4px; }
 .md-text-field.compact:has(label) label { top: 12px; font-size: 14px; }
 .md-text-field.compact:has(label) input:focus + label,
-.md-text-field.compact:has(label) input:not(:placeholder-shown) + label { top: 5px; font-size: 11px; }
+.md-text-field.compact:has(label) input:not(:placeholder-shown) + label,
+.md-text-field.compact:has(label):has(select) label { top: 5px; font-size: 11px; }
 /* auto-width: size the field to its content (e.g. a select sized to its
    longest option) instead of a fragile fixed pixel width. */
 .md-text-field.auto-width { display: inline-block; width: auto; }
