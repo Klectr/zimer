@@ -76,6 +76,12 @@
   --layout-body-margin: 16px;
   --layout-pane-gap: 24px;
   --layout-supporting-pane: 360px;
+  /* #354: primary navigation dimensions. 80px collapsed rail width and 80px
+     bottom bar height are the M3 defaults; the /specs measurement values
+     weren't extractable in the research pass, so these are judgment calls
+     (noted on #354). */
+  --md-nav-rail-width: 80px;
+  --md-nav-bar-height: 80px;
 }
 @media (min-width: 600px) {
   :root { --layout-body-margin: 24px; }
@@ -173,42 +179,11 @@ body {
 }
 .md-top-app-bar-spacer { flex: 1; }
 
-/* ---------------- unified top app bar: title + primary nav + actions, one row ----
- * M3: tabs are for related content within a page, not primary destinations.
- * The four destinations are top-level pages, so they live in the app bar as
- * nav items with an M3 navigation-bar-style active pill (secondary-container). */
+/* ---------------- slim top app bar: brand mark + account actions only ----------------
+ * #354: primary navigation moved out of the app bar into the bottom bar / rail
+ * below, per M3. The app bar holds the title and essential actions only. */
 .md-top-app-bar-title { display: inline-flex; align-items: center; gap: 10px; }
 .md-top-app-bar-title svg { width: 34px; height: 34px; color: var(--md-sys-color-primary); }
-.md-top-nav { display: flex; align-items: center; gap: 4px; margin-left: 20px; }
-.md-top-nav-item {
-  display: inline-flex; align-items: center; gap: 8px;
-  height: 40px; padding: 0 16px;
-  border-radius: var(--md-sys-shape-corner-full);
-  color: var(--md-sys-color-on-surface-variant);
-  font-size: 14px; font-weight: 500; letter-spacing: 0.1px;
-  text-decoration: none; white-space: nowrap;
-}
-.md-top-nav-item svg { width: 20px; height: 20px; flex: none; }
-.md-top-nav-item:hover {
-  background: color-mix(in srgb, var(--md-sys-color-on-surface) 8%, transparent);
-  color: var(--md-sys-color-on-surface);
-}
-.md-top-nav-item.active {
-  background: var(--md-sys-color-secondary-container);
-  color: var(--md-sys-color-on-secondary-container);
-}
-/* narrow screens: icon-only nav, title mark only — labels stay for AT/tooltips.
-   #353: content-driven threshold (app-bar crowding), not an M3 window size
-   class — the top-bar nav is replaced by a bottom bar / rail in #354. */
-@media (max-width: 760px) {
-  .md-top-app-bar { padding: 0 8px 0 16px; }
-  .md-top-nav { margin-left: 8px; gap: 0; }
-  .md-top-nav-item { padding: 0 12px; }
-  .md-top-app-bar-title span, .md-top-nav-item span {
-    position: absolute; width: 1px; height: 1px;
-    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
-  }
-}
 
 /* Body margins follow the M3 window size classes: 16px on compact (<600px),
    24px on medium and wider (via --layout-body-margin). */
@@ -627,6 +602,72 @@ body.app-fixed main {
  * field, and fields sit flush against this region's clip edge (overflow-y: auto
  * clips the ring otherwise). */
 .scroll-region { flex: 1; min-height: 0; overflow-y: auto; padding: 4px; }
+/* ---------------- primary navigation: bottom bar (compact) / rail (medium+) ----
+ * #354: M3 per window size class. Compact (<600px): bottom navigation bar,
+ * fixed to the bottom edge. Medium and wider (600px+): collapsed leading
+ * navigation rail, outside all panes on the leading edge, below the app bar.
+ * The switch is the 600px breakpoint — rail and bar never show together.
+ * Rail width (80px) and bar height (80px) are the M3 defaults; the /specs
+ * measurement values weren't extractable in the research pass, so these are
+ * judgment calls (noted on #354). */
+/* app chrome: rail beside the content column (banner + main). On
+   fixed-viewport pages the row fills the 100dvh body; on document pages the
+   rail sticks below the app bar while the page scrolls. */
+.app-chrome { display: flex; flex: 1; min-height: 0; }
+.app-content { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; }
+.md-nav-rail {
+  flex: none; width: var(--md-nav-rail-width);
+  position: sticky; top: 64px; height: calc(100dvh - 64px);
+  display: flex; flex-direction: column; align-items: stretch;
+  padding: 12px 0; gap: 4px;
+  background: var(--md-sys-color-surface);
+}
+/* destinations: icon in an active-indicator pill + one-word label below.
+   Shared by rail and bottom bar; labels are never truncated. */
+.md-rail-item, .md-bar-item {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4px; text-decoration: none; color: var(--md-sys-color-on-surface-variant);
+  font-size: 12px; font-weight: 500; letter-spacing: 0.5px; line-height: 16px;
+  position: relative;
+}
+.md-rail-item { padding: 12px 0 10px; }
+.nav-pill {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 56px; height: 32px; border-radius: var(--md-sys-shape-corner-full);
+}
+.nav-pill svg { width: 24px; height: 24px; }
+.md-rail-item:hover .nav-pill, .md-bar-item:hover .nav-pill {
+  background: color-mix(in srgb, var(--md-sys-color-on-surface) 8%, transparent);
+  color: var(--md-sys-color-on-surface);
+}
+.md-rail-item.active, .md-bar-item.active { color: var(--md-sys-color-on-surface); }
+.md-rail-item.active .nav-pill, .md-bar-item.active .nav-pill {
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+/* bottom navigation bar: compact only, fixed to the bottom edge */
+.md-bottom-nav {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
+  height: calc(var(--md-nav-bar-height) + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  display: flex; align-items: stretch;
+  background: var(--md-sys-color-surface-container);
+}
+.md-bar-item { flex: 1; min-width: 0; }
+.md-bar-item .nav-label {
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* the 600px switch: never rail + bar together */
+@media (max-width: 599px) {
+  .md-nav-rail { display: none; }
+  /* compact clearance: the fixed bar overlays the bottom 80px */
+  body main { padding-bottom: calc(96px + var(--md-nav-bar-height)); }
+  body.app-fixed main { padding-bottom: calc(16px + var(--md-nav-bar-height)); }
+  .tk-snackbar { bottom: calc(24px + var(--md-nav-bar-height)); }
+}
+@media (min-width: 600px) {
+  .md-bottom-nav { display: none; }
+}
 /* #320: M3 — a simple list reads best in a narrower centered column, not the
    full 1000px app container. Matches the public invoice page rhythm. */
 main.page-invoices { max-width: 760px; }
@@ -1299,7 +1340,7 @@ button.m3-menu-item {
 
 /* ---------------- print ---------------- */
 @media print {
-  .md-top-app-bar, .no-print, .page-head { display: none !important; }
+  .md-top-app-bar, .md-nav-rail, .md-bottom-nav, .no-print, .page-head { display: none !important; }
   body { background: #fff; color: #111; }
   main { max-width: none; padding: 0; }
   .md-card.invoice-sheet { box-shadow: none; background: #fff; color: #111; max-width: none; }
