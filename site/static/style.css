@@ -633,19 +633,20 @@ main.page-invoices { max-width: 760px; }
  * long-standing spot; the grid is an internally-scrolling 24h surface, so the
  * spec's below-the-fold placement would bury the summary and its invoice CTA).
  * ≥840px: the summary trails beside the grid, which takes the freed vertical
- * space. Grid areas keep the DOM order nav → summary → grid on narrow screens
- * without a wrapper. */
+ * space. #347: the week-nav lives at the top of the summary aside, so the
+ * grid is just summary + grid areas; DOM order aside → grid stacks the
+ * summary above the grid on narrow screens without a wrapper. */
 .cal-pane-layout { display: grid; flex: 1; min-height: 0; min-width: 0;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-areas: "nav" "summary" "grid";
-  grid-template-rows: auto auto minmax(0, 1fr); }
-.cal-pane-layout .week-nav { grid-area: nav; }
+  grid-template-areas: "summary" "grid";
+  grid-template-rows: auto minmax(0, 1fr); }
 .cal-supporting { grid-area: summary; display: flex; flex-direction: column; gap: 14px; margin: 10px 0 12px; min-width: 0; }
+.cal-supporting .week-nav { margin: 0; }
 .cal-supporting .m3-progress, .cal-supporting .week-clients, .cal-supporting .cal-hint { margin: 0; }
 .cal-pane-layout .cal-scroll { grid-area: grid; }
 @media (min-width: 840px) {
   .cal-pane-layout { grid-template-columns: minmax(0, 1fr) 360px;
-    grid-template-areas: "nav summary" "grid summary"; column-gap: 24px; }
+    grid-template-areas: "grid summary"; grid-template-rows: minmax(0, 1fr); column-gap: 24px; }
   .cal-supporting { margin: 8px 0 0; min-height: 0; overflow-y: auto; }
 }
 /* calendar specifics: the week grid is the scroll region, headers stick */
@@ -1363,9 +1364,9 @@ button.m3-menu-item {
    real grid; lanes echo the 80px hour rhythm of .cal-day-col. */
 .cal-skel { display: grid; flex: 1; min-height: 0; min-width: 0;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-areas: "nav" "summary" "grid";
-  grid-template-rows: auto auto minmax(0, 1fr); row-gap: 12px; }
-.cal-skel-nav { grid-area: nav; display: flex; align-items: center; justify-content: space-between; }
+  grid-template-areas: "summary" "grid";
+  grid-template-rows: auto minmax(0, 1fr); row-gap: 12px; }
+.cal-skel-nav { display: flex; align-items: center; justify-content: space-between; }
 .cal-skel-title { width: 140px; height: 28px; border-radius: 8px; }
 .cal-skel-actions { display: flex; gap: 4px; }
 .cal-skel-dot { width: 40px; height: 40px; border-radius: 50%; }
@@ -1384,7 +1385,7 @@ button.m3-menu-item {
     color-mix(in srgb, var(--md-sys-color-outline-variant) 30%, transparent) 80px); }
 @media (min-width: 840px) {
   .cal-skel { grid-template-columns: minmax(0, 1fr) 360px;
-    grid-template-areas: "nav summary" "grid summary"; column-gap: 24px; }
+    grid-template-areas: "grid summary"; column-gap: 24px; }
   .cal-skel-aside { margin: 8px 0 0; }
 }
 

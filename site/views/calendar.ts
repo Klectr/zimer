@@ -256,15 +256,15 @@ export function createCalendarViews(deps: CalendarViewDeps) {
 
     return `
     <div class="cal-pane-layout">
-      <div class="week-nav" data-enter="2">
-        <h2 class="md-headline-small">${isThisWeek ? "This week" : `Week of ${esc(weekLabel)}`}</h2>
-        <div class="week-nav-actions">
-          ${isThisWeek ? "" : `<a class="md-text-button" href="/calendar" hx-get="/partial/week" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar">Today</a>`}
-          <a class="md-icon-button" href="/calendar?week=${prev}" hx-get="/partial/week?week=${prev}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?week=${prev}" title="Previous week" aria-label="Previous week">${icon("chevron_left")}</a>
-          <a class="md-icon-button" href="/calendar?week=${next}" hx-get="/partial/week?week=${next}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?week=${next}" title="Next week" aria-label="Next week">${icon("chevron_right")}</a>
-        </div>
-      </div>
       <aside class="cal-supporting" data-enter="3" aria-label="Week summary">
+        <div class="week-nav">
+          <h2 class="md-headline-small">${isThisWeek ? "This week" : `Week of ${esc(weekLabel)}`}</h2>
+          <div class="week-nav-actions">
+            ${isThisWeek ? "" : `<a class="md-text-button" href="/calendar" hx-get="/partial/week" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar">Today</a>`}
+            <a class="md-icon-button" href="/calendar?week=${prev}" hx-get="/partial/week?week=${prev}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?week=${prev}" title="Previous week" aria-label="Previous week">${icon("chevron_left")}</a>
+            <a class="md-icon-button" href="/calendar?week=${next}" hx-get="/partial/week?week=${next}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?week=${next}" title="Next week" aria-label="Next week">${icon("chevron_right")}</a>
+          </div>
+        </div>
         <div class="cal-summary">
           <div class="md-headline-small">${fmtDur(weekTotal)}</div>
           <div class="md-label-medium muted">${fmtDur(weekBillable)} billable · ${deltaHtml}</div>
@@ -305,18 +305,18 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       a server-rendered grid would flash server-timezone positions. */
   function weekGrid(weekStr?: string): string {
     const q = weekStr && /^\d{4}-\d{2}-\d{2}$/.test(weekStr) ? `?week=${weekStr}` : "";
-    /* #322: the skeleton mirrors .cal-pane-layout (week-nav, summary aside,
-       gutter + 7 day columns with the hour rhythm) so the htmx swap lands
-       without a layout flash. */
+    /* #322: the skeleton mirrors .cal-pane-layout (summary aside with the
+       week-nav skeleton at its top, gutter + 7 day columns with the hour
+       rhythm) so the htmx swap lands without a layout flash. */
     const skelDay = `<div class="cal-skel-day"><div class="skel cal-skel-head"></div><div class="skel cal-skel-lane"></div></div>`;
     const skelGrid = `<div class="cal-skel-grid">${skelDay.repeat(8)}</div>`;
     return `<div id="week" hx-get="/partial/week${q}" hx-trigger="load" hx-swap="innerHTML">
         <div class="cal-skel" aria-hidden="true">
-          <div class="cal-skel-nav">
-            <div class="skel cal-skel-title"></div>
-            <div class="cal-skel-actions"><div class="skel cal-skel-dot"></div><div class="skel cal-skel-dot"></div><div class="skel cal-skel-dot"></div></div>
-          </div>
           <div class="cal-skel-aside">
+            <div class="cal-skel-nav">
+              <div class="skel cal-skel-title"></div>
+              <div class="cal-skel-actions"><div class="skel cal-skel-dot"></div><div class="skel cal-skel-dot"></div><div class="skel cal-skel-dot"></div></div>
+            </div>
             <div class="skel cal-skel-big"></div>
             <div class="skel skel-line" style="width:75%"></div>
             <div class="skel skel-line" style="width:55%"></div>
