@@ -89,7 +89,7 @@ const freezeInvoiceSnapshots = (id: number, origin: string) => {
   db.query("UPDATE invoices SET pdf_snapshot = ?, html_snapshot = ? WHERE id = ?")
     .run(invoicePdf(invoicePdfInput(inv, origin)), invoiceSheet(inv), id);
 };
-const { loginPage, publicInvoicePage, changelogPage } = createPublicViews({ /* #303: +changelogPage */
+const { loginPage, publicInvoicePage, changelogPage, termsPage } = createPublicViews({ /* #303: +changelogPage; #341: +termsPage */
   getInvoice, invoiceTotals, invoiceDocumentHtml, ensurePublicToken,
 });
 const { handleApi } = createApiRouter({
@@ -103,7 +103,7 @@ const { handleWeb } = createWebRouter({
   db, qRunning, qOne, qRange, qInvoice, qInvoices,
   DATA_DIR, STATIC_DIR, TOKEN, authedPage, tokensEqual, html, json, csvResponse, isHtmx,
   shareOrigin: (req: Request) => PUBLIC_BASE_URL || publicOrigin(req, PORT),
-  PORT, loginPage, publicInvoicePage, changelogPage, notFoundPage, noSuchInvoicePage, rateLimitPage, errorPage,
+  PORT, loginPage, publicInvoicePage, changelogPage, termsPage, notFoundPage, noSuchInvoicePage, rateLimitPage, errorPage,
   dashboardPage, timerPartial, todayPartial, weekInner,
   calendarPage, editPage, manageCols, managePage, bizProfileSection, invoicesPage, invoiceNewPage,
   defaultNewInvParams, invoiceStep2, invoiceDetailPage, invoiceDetailBody, invoiceDoc,

@@ -122,7 +122,7 @@ export function licenseSectionHtml(db: Database, licensed: boolean, error = ""):
   const keyId = licensed ? storedKeyId(db) : null;
   const body = licensed
     ? `<p class="licensed-ok">${icon("check")}<span><strong>Licensed.</strong>${keyId ? ` Key <code>${esc(keyId)}</code> verified` : ""} — thanks for supporting Timekeep.</span></p>`
-    : `<p class="muted" style="margin:0 0 12px">One key per install. Keys never leave this machine — validation is fully offline, no network calls.</p>
+    : `<p class="muted" style="margin:0 0 12px">One key per user — use it on all your machines. Keys never leave this machine — validation is fully offline, no network calls. <a href="/terms" target="_blank" rel="noopener">License terms</a></p>
       <form method="post" action="/license" class="manage-form" hx-post="/license" hx-target="#license-section" hx-swap="outerHTML">
         <div class="md-text-field">
           <input type="text" name="license_key" placeholder=" " autocomplete="off" spellcheck="false" aria-label="License key">
