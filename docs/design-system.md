@@ -49,10 +49,10 @@ a border-color change.
 All components live as classes in `style.css`; reuse them, don't restyle
 per-page:
 
-- **Buttons:** `.md-filled-button` (primary actions), `.md-tonal-button`,
+- **Buttons:** `.md-filled-button` (primary actions — including the timer
+  card's Start/Stop), `.md-tonal-button`,
   `.md-outlined-button` (use sparingly — borders are a last resort),
-  `.md-text-button` (navigation, cancel), `.md-icon-button`, `.md-extended-fab`
-  (timer start/stop).
+  `.md-text-button` (navigation, cancel), `.md-icon-button`.
 - **Navigation:** `.md-tabs` + `.md-tab`; `.md-top-app-bar`.
 - **Data:** `.md-card`, `.md-list` + `.md-list-item`
   (headline/supporting/trailing slots), `.md-table`, `.md-chip`.
@@ -62,7 +62,7 @@ per-page:
   (see `statusPill` in `site/server.ts`).
 - **Icons:** inline SVG via `icon(name)` in `site/server.ts` — M3 outlined
   24px style (`stroke="currentColor"`, round caps/joins), no icon font or CDN.
-  Sizing: 20px leading in tabs, 18px in buttons, 24px in the extended FAB,
+  Sizing: 20px leading in tabs, 18px in buttons,
   24px in icon buttons. Icons are visual cues alongside labels, never the only
   affordance. Destructive actions (delete) use the system `delete` icon in a
   standard icon button with a hover tooltip — never emoji.
