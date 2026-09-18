@@ -86,6 +86,11 @@ per-page:
 - **Form actions:** submit rows use `.row.end` — buttons are end-aligned
   (right in LTR), per the M3 dialog/action convention. Confirming action sits
   farthest right when there are several.
+- **Dialogs (#355).** 600px+ keeps the centered basic dialog (scrim, 28dp
+  corners, scale/fade motion). Below 600px the calendar entry and settings
+  dialogs go full-screen: full bleed, no corner radius, full viewport height,
+  with a title/close app-bar row pinned at the top. Dismissal (Escape, scrim
+  tap, close), focus, and motion are unchanged.
 - **Account menu:** `.m3-menu` + `.m3-menu-item` + `.m3-menu-divider` — the
   M3 menu pattern for global low-priority actions (spec: "don't clutter your
   UI with too many buttons — present low-priority actions in overflow

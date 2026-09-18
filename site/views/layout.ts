@@ -58,6 +58,9 @@ export function createLayoutViews(qRunning: Statement, bannerHtml?: () => string
   <nav class="md-bottom-nav" aria-label="Primary">
     ${dests.map(d => dest(d, "md-bar-item")).join("")}
   </nav>
+  ${/* #355: the settings scrim is a direct body child — inside the app bar it
+       would be trapped in the header's stacking context and paint below the
+       bottom navigation bar. */ settingsDialog()}
   </html>`;
   }
 
@@ -166,7 +169,6 @@ function accountMenu(): string {
       <a class="m3-menu-item" role="menuitem" href="/logout">${icon("logout")}<span>Log out</span></a>
     </div>
   </div>
-  ${settingsDialog()}
   <script>(function(){
     var btn=document.getElementById('account-menu-btn'), menu=document.getElementById('account-menu');
     if(!btn||!menu) return;
@@ -206,8 +208,10 @@ function accountMenu(): string {
   })();</script>`;
 }
 
-/** Issue #245: settings modal reached through the account menu button. The shell lives
-    next to the account menu in the app bar; the business-profile form loads
+/** Issue #245: settings modal reached through the account menu button. The shell
+    is a direct body child (rendered by layout(), not accountMenu()) so its
+    scrim isn't trapped in the app bar's stacking context — #355: otherwise the
+    bottom navigation bar would paint above it. The business-profile form loads
     lazily via htmx on open so layout() needs no db access. Follows the
     .cal-scrim/.cal-dialog motion pattern (scrim fade + dialog scale/fade). */
 function settingsDialog(): string {

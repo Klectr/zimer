@@ -940,6 +940,32 @@ body.app-fixed .cal-gutter-spacer {
 .settings-dialog-head h2 { margin: 0; }
 #settings-body p { margin: 0; }
 #biz-profile h2 { margin: 0 0 4px; }
+/* #355: the calendar dialog gets the same title/close header row as the
+   settings dialog; the close button is compact-only (600px+ keeps the
+   centered basic-dialog treatment with its Cancel/Save actions). */
+.cal-dialog-head { display: flex; align-items: center; justify-content: space-between; }
+.cal-dialog-head h2 { margin: 0; }
+.cal-dialog-head .md-icon-button { display: none; }
+/* #355: full-screen dialogs on compact. Below 600px the calendar entry and
+   settings dialogs go full bleed: no scrim padding, no corner radius, full
+   viewport height, with a title/close app-bar row pinned at the top. Escape,
+   scrim dismissal, focus behavior, close/save/delete behavior, and motion
+   are unchanged — only the presentation switches. */
+@media (max-width: 599px) {
+  .cal-scrim { padding: 0; }
+  .cal-dialog, .settings-dialog {
+    width: 100%; height: 100dvh; max-height: 100dvh;
+    border-radius: 0;
+    /* the dialogs are grids: keep rows content-sized when stretched full-height */
+    align-content: start;
+  }
+  .cal-dialog-head, .settings-dialog-head {
+    margin: -24px -24px 0; padding: 12px 8px 12px 24px;
+    position: sticky; top: -24px; z-index: 1;
+    background: var(--md-sys-color-surface-container-high);
+  }
+  .cal-dialog-head .md-icon-button { display: inline-flex; }
+}
 
 /* Issue #151: M3 menu for the manage-page overflow (backup/export). M3 menu
    specs: 4dp container corners, surface-container-high, 48dp items with
