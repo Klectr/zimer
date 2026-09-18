@@ -107,16 +107,26 @@ per-page:
   ([canonical layouts](http://m3.material.io/foundations/layout/canonical-layouts),
   [large-screen guidance](https://m3.material.io/blog/5-steps-large-screen-apps)).
   Centering the column keeps a focused task visually contained; it does not
-  center the form's contents.
+  center the form's contents. **Window size classes (M3):** compact <600px,
+  medium 600–839px, expanded 840–1199px, large 1200–1599px, extra-large 1600px+.
+  All width media queries use these breakpoints — ad-hoc thresholds (560px,
+  760px, 900px) are only allowed for genuinely content-driven switches, each
+  documented with a comment. Body leading/trailing margins: 16px compact, 24px
+  medium+ (`--layout-body-margin`). Inter-pane spacer: 24px everywhere
+  (`--layout-pane-gap`).
 - **Supporting-pane layout (M3, timer page).** The timer page uses the M3
   supporting-pane canonical layout with responsive switching. Below 840px it
   is a single stacked column (timer card → today's entries → revenue); at
   840px and up the focus pane (timer card + today's entries, fluid) sits
-  beside a trailing 360px supporting pane (revenue summary) with a 24px gap,
-  and each pane owns its own scroll. Revenue is the supporting pane because it
+  beside a trailing fixed supporting pane (revenue summary) with a 24px gap,
+  and each pane owns its own scroll. The pane is 360px at expanded
+  (840–1199px) and 412px at large/XL (1200px+) — `--layout-supporting-pane`.
+  Revenue is the supporting pane because it
   is contextual info derived from tracked time, per the spec's supporting-pane
   test. The stat cards reflow inside the narrow pane via container queries
-  (`@container (max-width: 480px)`), not viewport queries.
+  (`@container (max-width: 480px)`), not viewport queries. The calendar page
+  mirrors the same canonical layout (week summary aside, same breakpoint,
+  gap, and pane widths).
 - **Hierarchical lists (M3).** The spec defines no nested/indented list
   pattern and no list subheaders — a list's one hierarchy mechanism is
   folder-like expand/collapse ("List items containing other list items can
