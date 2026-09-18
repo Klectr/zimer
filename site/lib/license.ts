@@ -42,6 +42,15 @@ export function licensePrice(): string {
   return (process.env.TIMEKEEP_LICENSE_PRICE || "").trim() || "$59";
 }
 
+/* #339: where the "Buy license" button points. TIMEKEEP_BUY_URL overrides
+   the baked-in default (Triston's Stripe Payment Link). Empty until he
+   creates the link — the button hides itself when there's no URL, so the
+   section never shows a dead purchase path. */
+const EMBEDDED_BUY_URL = "";
+export function licenseBuyUrl(): string {
+  return (process.env.TIMEKEEP_BUY_URL || "").trim() || EMBEDDED_BUY_URL;
+}
+
 /* Triston's license public key (32 bytes hex). Ships empty until he runs
    `bun scripts/mint-license.ts gen` on his own machine and the public half
    lands here. TIMEKEEP_LICENSE_PUBLIC_KEY (hex) overrides the constant. */
@@ -120,9 +129,16 @@ export function licenseBannerHtml(licensed: boolean): string {
    with a specific message and the previously stored key is left untouched. */
 export function licenseSectionHtml(db: Database, licensed: boolean, error = ""): string {
   const keyId = licensed ? storedKeyId(db) : null;
+  /* #339: buy button sits right above the key field — the buyer is already
+     here. Hidden until a buy URL is configured (env or baked-in). */
+  const buyUrl = licenseBuyUrl();
+  const buy = buyUrl
+    ? `<p style="margin:0 0 12px"><a class="md-filled-button" href="${esc(buyUrl)}" target="_blank" rel="noopener">${icon("card")}<span>Buy license — ${esc(licensePrice())}</span></a></p>`
+    : "";
   const body = licensed
     ? `<p class="licensed-ok">${icon("check")}<span><strong>Licensed.</strong>${keyId ? ` Key <code>${esc(keyId)}</code> verified` : ""} — thanks for supporting Timekeep.</span></p>`
     : `<p class="muted" style="margin:0 0 12px">One key per user — use it on all your machines. Keys never leave this machine — validation is fully offline, no network calls. <a href="/terms" target="_blank" rel="noopener">License terms</a></p>
+      ${buy}
       <form method="post" action="/license" class="manage-form" hx-post="/license" hx-target="#license-section" hx-swap="outerHTML">
         <div class="md-text-field">
           <input type="text" name="license_key" placeholder=" " autocomplete="off" spellcheck="false" aria-label="License key">
