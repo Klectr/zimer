@@ -370,14 +370,22 @@ export function createWebRouter(deps: WebDeps) {
         }
         /* #304: settings modal body — business profile plus the License
            section in launch mode; profile only in beta (no licensing UI).
-           #340: Updates section in all modes — updates aren't licensing. */
-        if (path === "/settings" && method === "GET")
-          return html(bizProfileSection() + (isLaunchMode() ? licenseSectionHtml(db, isLicensed(db)) : "") + updateSectionHtml());
+           #340: Updates section for paid users — hidden when unpaid in
+           launch mode (#345); beta keeps it (no licensing concept there). */
+        if (path === "/settings" && method === "GET") {
+          const licensed = isLicensed(db);
+          const launch = isLaunchMode();
+          const updates = (!launch || licensed) ? updateSectionHtml() : "";
+          return html(bizProfileSection() + (launch ? licenseSectionHtml(db, licensed) : "") + updates);
+        }
         /* #340: manual update check — fetches the release feed server-side
            and swaps the result into the Updates section. Authed like the
-           rest of settings; never called automatically. */
-        if (path === "/check-updates" && method === "POST")
+           rest of settings; never called automatically. #345: unpaid users
+           in launch mode get no update checks. */
+        if (path === "/check-updates" && method === "POST") {
+          if (isLaunchMode() && !isLicensed(db)) return new Response("License required.", { status: 403 });
           return html(updateStatusHtml(await checkForUpdates()));
+        }
         /* #304: license key entry. Invalid keys are rejected with a specific
            message and the stored key is left untouched. No licensing routes
            exist at all in beta. */

@@ -106,25 +106,19 @@ export function storedKeyId(db: Database): string | null {
 }
 
 /* #304: honesty-box banner, launch mode only, rendered by layout() so it
-   appears on every app page until licensed. Dismissible per tab session —
-   it returns on the next visit until a valid key is stored. Never rendered
-   in beta. Public invoice pages use publicShell(), not layout(), so client-
-   facing pages never show licensing UI. */
+   appears on every app page until licensed. #345: persistent — no dismiss
+   button, no per-session hiding. Never rendered in beta. Public invoice
+   pages use publicShell(), not layout(), so client-facing pages never show
+   licensing UI. */
 export function licenseBannerHtml(licensed: boolean): string {
   if (!isLaunchMode() || licensed) return "";
   return `<div class="license-banner" id="license-banner" data-enter="1" role="note">
     ${icon("info")}
     <span><strong>Timekeep is ${esc(licensePrice())} one-time.</strong> Enter your license key in Settings — everything keeps working either way.</span>
     <button class="md-text-button" type="button" id="license-banner-settings">Open Settings</button>
-    <button class="md-icon-button" type="button" id="license-banner-dismiss" aria-label="Dismiss">${icon("close")}</button>
   </div>
   <script>(function(){
     var b=document.getElementById('license-banner'); if(!b) return;
-    if(sessionStorage.getItem('timekeep.licenseDismissed')){ b.remove(); return; }
-    document.getElementById('license-banner-dismiss').addEventListener('click',function(){
-      try{ sessionStorage.setItem('timekeep.licenseDismissed','1'); }catch(e){}
-      b.remove();
-    });
     document.getElementById('license-banner-settings').addEventListener('click',function(){
       var item=document.getElementById('settings-menu-item'); if(item) item.click();
     });
