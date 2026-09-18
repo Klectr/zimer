@@ -111,8 +111,9 @@ export function updateStatusHtml(s: UpdateStatus): string {
   }
 }
 
-/* #340: Updates section in the Settings modal. Rendered in all modes (beta
-   included) — updates aren't a licensing concern. The check is manual. */
+/* #340: Updates section in the Settings modal. Shown in beta and to licensed
+   users in launch mode; hidden when unpaid in launch mode (#345). The check
+   itself is manual. */
 export function updateSectionHtml(): string {
   return `<section id="update-section">
       <h2 class="md-headline-small">Updates</h2>
