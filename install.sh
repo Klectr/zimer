@@ -55,7 +55,9 @@ ACTUAL_SHA="$(sha256sum "$TMP/timekeep.tgz" | cut -d' ' -f1)"
 [ "$ACTUAL_SHA" = "$EXPECT_SHA" ] || die "checksum mismatch — the download may be corrupted, refusing to install."
 
 mkdir -p "$TMP/new"
-tar xzf "$TMP/timekeep.tgz" -C "$TMP/new" --strip-components=1
+# The release tarball is flat (site/, VERSION, ... at its root) — extract
+# straight into the staging dir.
+tar xzf "$TMP/timekeep.tgz" -C "$TMP/new"
 [ -f "$TMP/new/site/server.ts" ] || die "the tarball doesn't look like a Timekeep release."
 
 # Stop a previous server. Primary: the .pid file written by start.sh.
@@ -107,7 +109,12 @@ fi
 printf '%s' "$VERSION" > "$INSTALL_DIR/.version"
 
 say "Starting Timekeep v$VERSION ..."
-cd "$INSTALL_DIR" && setsid ./start.sh >/dev/null 2>&1 < /dev/null &
+# Double-fork + disown: the subshell exits right after backgrounding, and
+# disown drops the server from the job table. Without disown, bash blocks in
+# wait4 at exit: the daemon calls setsid() (new session/pgid), which breaks
+# bash's process-group-based background-job wait, hanging the installer
+# forever even though the server is healthy.
+( cd "$INSTALL_DIR" && setsid ./start.sh >/dev/null 2>&1 < /dev/null & disown )
 sleep 4
 if curl -fsS "http://127.0.0.1:$PORT/login" >/dev/null 2>&1; then
   say "Timekeep v$VERSION is running at http://127.0.0.1:$PORT"

@@ -23,7 +23,10 @@ FILE_VERSION="$(tr -d '[:space:]' < "$ROOT/VERSION")"
 }
 
 OUT="/tmp/timekeep-$VERSION.tgz"
-tar czf "$OUT" -C "$ROOT" site extension VERSION LICENSE README.md CHANGELOG.md
+# Never ship site/data: the working copy's dev database and .token live
+# there and must not end up in a public tarball.
+tar czf "$OUT" -C "$ROOT" --exclude='site/data' \
+  site extension VERSION LICENSE README.md CHANGELOG.md
 echo "tarball: $OUT"
 echo -n "sha256:  "
 sha256sum "$OUT" | cut -d' ' -f1
