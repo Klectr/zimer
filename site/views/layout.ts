@@ -7,7 +7,7 @@ import type { Statement } from "bun:sqlite";
 import { esc } from "../lib/format.ts";
 import { ICONS, icon, logo } from "../lib/icons.ts";
 
-export function createLayoutViews(qRunning: Statement) {
+export function createLayoutViews(qRunning: Statement, bannerHtml?: () => string) {
   function layout(title: string, body: string, active?: "timer" | "calendar" | "manage" | "invoices", fixed?: boolean): string {
     const navItem = (href: string, label: string, key: string, ic: keyof typeof ICONS) =>
       `<a href="${href}" title="${label}" class="md-top-nav-item${active === key ? " active" : ""}"${active === key ? ` aria-current="page"` : ""}>${icon(ic)}<span>${label}</span></a>`;
@@ -38,6 +38,9 @@ export function createLayoutViews(qRunning: Statement) {
     <span class="md-top-app-bar-spacer"></span>
     ${accountMenu()}
   </header>
+  ${/* #304: license honesty-box banner (launch mode only, unlicensed only).
+       Rendered here so it appears on every app page; publicShell() pages
+       (client invoice links) never see it. */ bannerHtml ? bannerHtml() : ""}
   <main${active ? ` class="page-${active}"` : ""}>${body}</main>
   </html>`;
   }
@@ -212,9 +215,11 @@ function settingsDialog(): string {
     function open(){
       open_=true;
       scrim.hidden=false; void scrim.offsetWidth; scrim.classList.add('open');
-      /* Fresh form on every open — the profile may have changed elsewhere. */
+      /* Fresh form on every open — the profile may have changed elsewhere.
+         #304: /settings returns the business profile plus the License
+         section in launch mode (profile only in beta). */
       focusOnSwap=true;
-      htmx.ajax('GET','/business-profile','#settings-body');
+      htmx.ajax('GET','/settings','#settings-body');
       document.addEventListener('keydown',onKey,true);
     }
     function close(refocus){
