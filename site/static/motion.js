@@ -4,7 +4,7 @@
   "use strict";
   if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
-  var SEL = ".md-filled-button,.md-tonal-button,.md-text-button,.md-icon-button,.md-extended-fab";
+  var SEL = ".md-filled-button,.md-tonal-button,.md-text-button,.md-icon-button";
 
   function spawn(host, x, y) {
     var r = host.getBoundingClientRect();

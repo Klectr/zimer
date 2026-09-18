@@ -228,7 +228,7 @@ h2.md-headline-small { margin: 24px 4px 12px; }
 /* hover state layer 8% */
 .md-filled-button:hover::after, .md-tonal-button:hover::after,
 .md-outlined-button:hover::after, .md-text-button:hover::after,
-.md-extended-fab:hover::after, .md-icon-button:hover::after {
+.md-icon-button:hover::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -238,8 +238,7 @@ h2.md-headline-small { margin: 24px 4px 12px; }
   pointer-events: none;
 }
 .md-filled-button:active::after, .md-tonal-button:active::after,
-.md-outlined-button:active::after, .md-text-button:active::after,
-.md-extended-fab:active::after {
+.md-outlined-button:active::after, .md-text-button:active::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -264,29 +263,6 @@ h2.md-headline-small { margin: 24px 4px 12px; }
   width: 18px; height: 18px; flex: none; }
 
 /* ---------------- FAB (extended: 56dp high, pill, icon + label) ---------------- */
-.md-extended-fab {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-  height: 56px;
-  padding: 0 20px 0 16px;
-  border: none;
-  border-radius: var(--md-sys-shape-corner-large);
-  background: var(--md-sys-color-primary-container);
-  color: var(--md-sys-color-on-primary-container);
-  font-size: 14px;
-  font-weight: 500;
-  letter-spacing: 0.1px;
-  cursor: pointer;
-  position: relative;
-  overflow: hidden;
-}
-.md-extended-fab svg { width: 24px; height: 24px; flex: none; }
-.md-extended-fab.stop {
-  background: var(--md-sys-color-error-container);
-  color: var(--md-sys-color-on-error-container);
-}
-
 /* ---------------- icon buttons (48dp target, 24px glyph) ---------------- */
 .md-icon-button {
   display: inline-flex;
