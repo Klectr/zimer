@@ -1031,6 +1031,11 @@ button.m3-menu-item {
 .licensed-ok svg { flex: none; width: 24px; height: 24px; color: var(--md-sys-color-primary, #f2c14e); }
 .licensed-ok code { font-size: 13px; }
 .license-error { color: var(--md-sys-color-error, #ffb4ab); margin: 4px 0 0; }
+/* #340: update command shown by the update check — tonal, monospace, wraps. */
+.update-cmd { display: block; font-family: ui-monospace, monospace; font-size: 13px;
+  background: var(--md-sys-color-surface-container-highest, #2b2b2b);
+  color: var(--md-sys-color-on-surface, #e3e3e3);
+  border-radius: 8px; padding: 10px 12px; overflow-wrap: anywhere; }
 /* #300: first-run empty states — centered icon, headline, copy, actions. */
 .empty-state { text-align: center; padding: 56px 24px; max-width: 440px; margin: 0 auto; }
 .empty-state > svg { width: 48px; height: 48px; color: var(--md-sys-color-on-surface-variant); }

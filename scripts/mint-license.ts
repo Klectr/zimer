@@ -6,6 +6,7 @@
  *
  *    bun scripts/mint-license.ts gen    # one-time: create the keypair
  *    bun scripts/mint-license.ts mint   # per sale: print a license key
+ *    bun scripts/mint-license.ts mint --major=2  # key for v2 (#340)
  *
  *  `gen` prints the public key (embed it in site/lib/license.ts as
  *  EMBEDDED_PUBLIC_KEY, or ship it via TIMEKEEP_LICENSE_PUBLIC_KEY) and the
@@ -15,6 +16,8 @@
  *  `mint` reads the private key from TIMEKEEP_LICENSE_PRIVATE_KEY (96 hex
  *  chars of PKCS8 DER, as printed by `gen`) and prints one key:
  *  tk1-<keyid>-<signature>. Key ids are random and carry no PII.
+ *  #340: the signature covers `timekeep:<major>:<keyid>` — a v1 key
+ *  validates only on a v1 app, enforcing "new major needs a new key".
  *
  *  Keys can't be revoked — they're verified offline, so there's nothing to
  *  phone home to. That's accepted and documented.
@@ -26,14 +29,14 @@ const PRODUCT = "timekeep";
 
 function usage(): never {
   console.error(`usage:
-  bun scripts/mint-license.ts gen    # create the license keypair (once)
-  bun scripts/mint-license.ts mint   # print one license key (per sale)
+  bun scripts/mint-license.ts gen              # create the license keypair (once)
+  bun scripts/mint-license.ts mint [--major=N] # print one license key (per sale, default major 1)
 
 mint reads TIMEKEEP_LICENSE_PRIVATE_KEY from the environment.`);
   process.exit(1);
 }
 
-const [cmd] = Bun.argv.slice(2);
+const [cmd, ...rest] = Bun.argv.slice(2);
 if (cmd !== "gen" && cmd !== "mint") usage();
 
 if (cmd === "gen") {
@@ -50,13 +53,23 @@ if (cmd === "gen") {
   process.exit(0);
 }
 
-/* mint */
+/* mint — #340: --major=N (default 1) selects the license major version. */
 const privHex = (process.env.TIMEKEEP_LICENSE_PRIVATE_KEY || "").trim().toLowerCase();
 if (!/^[0-9a-f]{96}$/.test(privHex)) {
   console.error("TIMEKEEP_LICENSE_PRIVATE_KEY must be the 96-hex-char PKCS8 key from `gen`.");
   process.exit(1);
 }
+let major = 1;
+for (const a of rest) {
+  const m = /^--major=(\d+)$/.exec(a);
+  if (!m) usage();
+  major = parseInt(m[1], 10);
+}
+if (!Number.isInteger(major) || major < 1) {
+  console.error("--major must be a positive integer.");
+  process.exit(1);
+}
 const privKey = createPrivateKey({ key: Buffer.from(privHex, "hex"), format: "der", type: "pkcs8" });
 const keyId = randomBytes(8).toString("hex");
-const sig = sign(null, Buffer.from(`${PRODUCT}:${keyId}`), privKey);
+const sig = sign(null, Buffer.from(`${PRODUCT}:${major}:${keyId}`), privKey);
 console.log(`tk1-${keyId}-${sig.toString("hex")}`);

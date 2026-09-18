@@ -5,12 +5,16 @@
  *  page until a valid license key is entered in Settings. All features keep
  *  working either way — the banner is a nudge, not a lockout.
  *
- *  Keys are `tk1-<keyid>-<signature>`: Ed25519 over "<product>:<keyid>",
- *  verified against Triston's public key. Validation is fully offline —
- *  node:crypto only, zero network I/O, so the privacy posture ("your data
- *  and your license check never leave the machine") holds. node:crypto is
- *  used instead of WebCrypto so verification stays synchronous and
- *  layout() never has to go async. Still zero dependencies.
+ *  Keys are `tk1-<keyid>-<signature>`: Ed25519 over
+ *  "timekeep:<major>:<keyid>" (#340), verified against Triston's public key.
+ *  The `tk1` prefix is the *key format* version; `<major>` is the *license*
+ *  major version (1 for v1.x). A v1 key validates only on a v1 app — a v2
+ *  app needs a v2 key, which is how "new major needs a new key" is enforced.
+ *  Validation is fully offline — node:crypto only, zero network I/O, so the
+ *  privacy posture ("your data and your license check never leave the
+ *  machine") holds. node:crypto is used instead of WebCrypto so verification
+ *  stays synchronous and layout() never has to go async. Still zero
+ *  dependencies.
  *
  *  Key issuance lives in scripts/mint-license.ts and runs offline on
  *  Triston's machine. The private key is NEVER in this repo, NEVER on a
@@ -24,6 +28,7 @@ import { verify, createPublicKey } from "node:crypto";
 import { getMeta, setMeta } from "../db.ts";
 import { esc } from "./format.ts";
 import { icon } from "./icons.ts";
+import { appMajor } from "./version.ts"; /* #340 */
 
 export const LICENSE_PRODUCT_ID = "timekeep";
 export const LICENSE_META_KEY = "license_key";
@@ -68,7 +73,9 @@ function parseKey(key: string): { keyId: string; sig: Buffer } | null {
   return { keyId: m[1], sig: Buffer.from(m[2], "hex") };
 }
 
-/** Offline Ed25519 check. Never throws, never touches the network. */
+/** Offline Ed25519 check. Never throws, never touches the network.
+ *  #340: the signed payload includes the app's major version, so a key
+ *  minted for v1 validates only on a v1 app. */
 export function validateLicenseKey(key: string): boolean {
   const parsed = parseKey(key);
   const pub = publicKeyBytes();
@@ -78,7 +85,7 @@ export function validateLicenseKey(key: string): boolean {
       key: { kty: "OKP", crv: "Ed25519", x: pub.toString("base64url") },
       format: "jwk",
     });
-    return verify(null, Buffer.from(`${LICENSE_PRODUCT_ID}:${parsed.keyId}`), pubKey, parsed.sig);
+    return verify(null, Buffer.from(`${LICENSE_PRODUCT_ID}:${appMajor()}:${parsed.keyId}`), pubKey, parsed.sig);
   } catch {
     return false;
   }
