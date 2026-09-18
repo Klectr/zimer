@@ -63,6 +63,27 @@
   --motion-duration-long2: 500ms;
 }
 
+/* ---------------- sys tokens: layout (M3 window size classes) ----------------
+ * Breakpoints (dp map 1:1 to px on web): compact <600 · medium 600–839 ·
+ * expanded 840–1199 · large 1200–1599 · extra-large 1600+. Body margins: 16px
+ * on compact, 24px on medium+. Inter-pane spacer: 24px everywhere. Fixed
+ * supporting-pane width: 360px at expanded, 412px at large/XL. CSS variables
+ * cannot drive media queries, so the breakpoints appear as literals in the
+ * queries below; these tokens are the single source of truth for the values
+ * components consume. (M3 layout foundations briefing:
+ * research_notes/m3-layout-foundations-20260918-2027/report.md) */
+:root {
+  --layout-body-margin: 16px;
+  --layout-pane-gap: 24px;
+  --layout-supporting-pane: 360px;
+}
+@media (min-width: 600px) {
+  :root { --layout-body-margin: 24px; }
+}
+@media (min-width: 1200px) {
+  :root { --layout-supporting-pane: 412px; }
+}
+
 /* Staggered content entrance (#48): page regions fade + rise in sequence
    on page load. Attributes sit on shells HTMX never replaces, so the
    entrance plays once per page load and never replays on swaps. */
@@ -176,7 +197,9 @@ body {
   background: var(--md-sys-color-secondary-container);
   color: var(--md-sys-color-on-secondary-container);
 }
-/* narrow screens: icon-only nav, title mark only — labels stay for AT/tooltips */
+/* narrow screens: icon-only nav, title mark only — labels stay for AT/tooltips.
+   #353: content-driven threshold (app-bar crowding), not an M3 window size
+   class — the top-bar nav is replaced by a bottom bar / rail in #354. */
 @media (max-width: 760px) {
   .md-top-app-bar { padding: 0 8px 0 16px; }
   .md-top-nav { margin-left: 8px; gap: 0; }
@@ -187,7 +210,9 @@ body {
   }
 }
 
-main { max-width: 1000px; margin: 0 auto; padding: 24px 16px 96px; }
+/* Body margins follow the M3 window size classes: 16px on compact (<600px),
+   24px on medium and wider (via --layout-body-margin). */
+main { max-width: 1000px; margin: 0 auto; padding: 24px var(--layout-body-margin) 96px; }
 main.page-calendar { max-width: 1360px; }
 main.login { max-width: 420px; margin-top: 8vh; }
 h2.md-headline-small { margin: 24px 4px 12px; }
@@ -607,8 +632,10 @@ body.app-fixed main {
 main.page-invoices { max-width: 760px; }
 /* ---------------- supporting-pane layout (M3 canonical, timer page) ----------------
  * <840px: single stacked column — timer card stays pinned above, entries + revenue
- * share one scroll region. ≥840px: focus pane (entries) + trailing 360px supporting
- * pane (revenue), each scrolling independently. Spec: supporting-pane example. */
+ * share one scroll region. ≥840px (M3 expanded): focus pane (entries) + trailing
+ * fixed supporting pane (revenue) with a 24px gap — 360px at expanded, 412px at
+ * large/XL (via --layout-supporting-pane) — each scrolling independently.
+ * Spec: supporting-pane example. */
 .pane-layout { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 .pane-focus, .pane-supporting { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
 .pane-supporting { container-type: inline-size; }
@@ -619,16 +646,17 @@ main.page-invoices { max-width: 760px; }
   .pane-layout { overflow-y: auto; }
   .pane-focus, .pane-supporting { flex: none; }
   .pane-layout .scroll-region { flex: none; overflow: visible; }
-  .pane-supporting { margin-top: 24px; } /* #326: match the desktop pane gap */
+  .pane-supporting { margin-top: var(--layout-pane-gap); } /* match the desktop pane gap */
 }
 @media (min-width: 840px) {
-  .pane-layout { flex-direction: row; gap: 24px; }
+  .pane-layout { flex-direction: row; gap: var(--layout-pane-gap); }
   .pane-focus { flex: 1; }
-  .pane-supporting { flex: 0 0 360px; }
+  .pane-supporting { flex: 0 0 var(--layout-supporting-pane); }
 }
 /* ---------------- calendar supporting pane (M3 canonical, #67) ----------------
  * The week grid is the primary content, the week summary is supplementary —
- * the same canonical layout as the timer page (840px breakpoint, 360px pane).
+ * the same canonical layout as the timer page (840px breakpoint; supporting
+ * pane 360px at expanded, 412px at large/XL via --layout-supporting-pane).
  * <840px: single column, the summary keeps its position above the grid (its
  * long-standing spot; the grid is an internally-scrolling 24h surface, so the
  * spec's below-the-fold placement would bury the summary and its invoice CTA).
@@ -645,8 +673,8 @@ main.page-invoices { max-width: 760px; }
 .cal-supporting .m3-progress, .cal-supporting .week-clients, .cal-supporting .cal-hint { margin: 0; }
 .cal-pane-layout .cal-scroll { grid-area: grid; }
 @media (min-width: 840px) {
-  .cal-pane-layout { grid-template-columns: minmax(0, 1fr) 360px;
-    grid-template-areas: "grid summary"; grid-template-rows: minmax(0, 1fr); column-gap: 24px; }
+  .cal-pane-layout { grid-template-columns: minmax(0, 1fr) var(--layout-supporting-pane);
+    grid-template-areas: "grid summary"; grid-template-rows: minmax(0, 1fr); column-gap: var(--layout-pane-gap); }
   .cal-supporting { margin: 8px 0 0; min-height: 0; overflow-y: auto; }
 }
 /* calendar specifics: the week grid is the scroll region, headers stick */
@@ -1048,6 +1076,9 @@ button.m3-menu-item {
   background: var(--md-sys-color-surface-container); }
 .cal-first-run p { margin: 8px 0; }
 
+/* #353: content-driven thresholds, not M3 window size classes. .two-col
+   collapses when invoice forms get cramped; main's extra bottom padding keeps
+   the fixed snackbar from covering trailing content on narrower viewports. */
 @media (max-width: 900px) {
   .two-col { grid-template-columns: 1fr; }
   main { padding-bottom: 120px; }
@@ -1083,6 +1114,7 @@ button.m3-menu-item {
 .md-list-item-supporting .inv-mark.draft { opacity: 0.7; }
 
 .two-field { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+/* #353: content-driven — form field stacking, not an M3 window size class. */
 @media (max-width: 560px) { .two-field { grid-template-columns: 1fr; } }
 
 .table-wrap { overflow-x: auto; margin: 0 -4px; padding: 0 4px; }
@@ -1361,7 +1393,8 @@ button.m3-menu-item {
 
 /* -------- calendar skeleton (#322): mirrors .cal-pane-layout so the htmx
    week swap has no layout flash. Same grid areas and 840px breakpoint as the
-   real grid; lanes echo the 80px hour rhythm of .cal-day-col. */
+   real grid; lanes echo the 80px hour rhythm of .cal-day-col. The aside width
+   tracks the real pane through --layout-supporting-pane. */
 .cal-skel { display: grid; flex: 1; min-height: 0; min-width: 0;
   grid-template-columns: minmax(0, 1fr);
   grid-template-areas: "summary" "grid";
@@ -1384,8 +1417,8 @@ button.m3-menu-item {
     color-mix(in srgb, var(--md-sys-color-outline-variant) 30%, transparent) 79px,
     color-mix(in srgb, var(--md-sys-color-outline-variant) 30%, transparent) 80px); }
 @media (min-width: 840px) {
-  .cal-skel { grid-template-columns: minmax(0, 1fr) 360px;
-    grid-template-areas: "grid summary"; column-gap: 24px; }
+  .cal-skel { grid-template-columns: minmax(0, 1fr) var(--layout-supporting-pane);
+    grid-template-areas: "grid summary"; column-gap: var(--layout-pane-gap); }
   .cal-skel-aside { margin: 8px 0 0; }
 }
 
