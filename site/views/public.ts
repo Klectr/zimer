@@ -6,6 +6,7 @@
 import { esc, money } from "../lib/format.ts";
 import { icon, logo } from "../lib/icons.ts";
 import type { ChangelogEntry } from "../lib/changelog.ts"; /* #303 */
+import type { TermsSection } from "../lib/license-terms.ts"; /* #341 */
 import type { Invoice, InvoiceItem } from "../lib/types.ts";
 
 export interface PublicViewDeps {
@@ -78,6 +79,36 @@ export function createPublicViews(deps: PublicViewDeps) {
   </html>`;
   }
 
+  /* #341: public license terms — same minimal public chrome as the
+     changelog: no auth, no app nav, noindex. */
+  function termsPage(sections: TermsSection[]): string {
+    const body = sections.map(s => `
+      <section class="changelog-release">
+        <h2 class="md-title-large">${esc(s.heading)}</h2>
+        <p>${esc(s.body)}</p>
+      </section>`).join("");
+    return `<!DOCTYPE html>
+  <html lang="en">
+  <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>License terms · Timekeep</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
+  <script src="/static/motion.js" defer></script>
+  </head>
+  <body>
+  <main class="page-public page-changelog">
+  <h1 class="md-headline-small changelog-title">${logo(28)}<span>Timekeep license terms</span></h1>
+  ${body}
+  <p class="muted tiny no-print public-foot">Shared securely via Timekeep · <a href="/changelog">Changelog</a></p>
+  </main>
+  </html>`;
+  }
+
   function loginPage(): string {
     return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Log in · Timekeep</title>
@@ -99,6 +130,6 @@ export function createPublicViews(deps: PublicViewDeps) {
   </form></div></main></body></html>`;
   }
 
-  return { loginPage, publicInvoicePage, changelogPage };
+  return { loginPage, publicInvoicePage, changelogPage, termsPage };
 }
 

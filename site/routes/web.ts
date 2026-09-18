@@ -12,6 +12,7 @@ import { getMeta, setMeta } from "../db.ts";
 import { clientIp } from "../lib/http.ts";
 import { createRateLimiter } from "../lib/ratelimit.ts";
 import { loadChangelog } from "../lib/changelog.ts"; /* #303 */
+import { licenseTerms } from "../lib/license-terms.ts"; /* #341 */
 import { isLaunchMode, isLicensed, licenseSectionHtml, storeLicenseKey } from "../lib/license.ts"; /* #304 */
 
 export interface WebDeps {
@@ -35,6 +36,7 @@ export interface WebDeps {
   loginPage: () => string;
   publicInvoicePage: (inv: Invoice & { items: InvoiceItem[] }) => string;
   changelogPage: (entries: import("../lib/changelog.ts").ChangelogEntry[]) => string;
+  termsPage: (sections: import("../lib/license-terms.ts").TermsSection[]) => string; /* #341 */
   notFoundPage: (authed: boolean) => string;
   rateLimitPage: () => string;
   errorPage: (authed: boolean) => string;
@@ -79,7 +81,7 @@ export function createWebRouter(deps: WebDeps) {
   const {
     db, qRunning, qOne, qRange, qInvoice, qInvoices,
     DATA_DIR, STATIC_DIR, TOKEN, authedPage, tokensEqual, html, json, csvResponse, isHtmx,
-    shareOrigin, PORT, loginPage, publicInvoicePage, changelogPage, notFoundPage, noSuchInvoicePage, rateLimitPage, errorPage,
+    shareOrigin, PORT, loginPage, publicInvoicePage, changelogPage, termsPage, notFoundPage, noSuchInvoicePage, rateLimitPage, errorPage, /* #341: +termsPage */
     dashboardPage, timerPartial, todayPartial, weekInner,
     calendarPage, editPage, manageCols, managePage, bizProfileSection, invoicesPage, invoiceNewPage,
     defaultNewInvParams, invoiceStep2, invoiceDetailPage, invoiceDetailBody, invoiceDoc,
@@ -131,6 +133,16 @@ export function createWebRouter(deps: WebDeps) {
             status: 302,
             headers: { Location: "/login", "Set-Cookie": "tk=; HttpOnly; Path=/; Max-Age=0" },
           });
+        }
+
+        /* #341: public license terms — no auth, same rate limit as the public
+           invoice surface. Linked from Settings → License. */
+        if (path === "/terms" && method === "GET") {
+          const rl = invoiceLimiter.check(clientIp(req));
+          if (!rl.allowed) {
+            return html(rateLimitPage(), 429, { "Retry-After": String(rl.retryAfterSec) });
+          }
+          return html(termsPage(licenseTerms()));
         }
 
         /* #303: public changelog — no auth, same rate limit as the public
