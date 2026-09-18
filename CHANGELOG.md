@@ -5,6 +5,7 @@ What's new in Timekeep, newest first.
 ## 2026-09-18
 
 - **Material 3 navigation.** The four destinations moved out of the top app bar into proper M3 navigation: a bottom bar on phones, a leading navigation rail on larger screens, and a slimmer app bar with just the brand mark and account menu.
+- **Full-screen dialogs on phones.** The calendar entry and settings dialogs now fill the whole screen below 600px, with a title/close row at the top; larger screens keep the centered dialog.
 - **License gating (dormant in beta).** The groundwork for post-beta licensing is in: a one-time license key checked fully offline (Ed25519, no network calls — your data never leaves the machine), an honesty-box banner, and a License section in Settings. While `TIMEKEEP_BETA` is set (the default), none of it appears and everything stays free.
 
 ## 2026-09-17

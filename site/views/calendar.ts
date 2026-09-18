@@ -331,7 +331,10 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       </div>
       <div class="cal-scrim" id="cal-scrim" hidden>
         <div class="cal-dialog" role="dialog" aria-modal="true" aria-labelledby="cal-dialog-title">
-          <h2 class="md-headline-small" id="cal-dialog-title">New entry</h2>
+          <div class="cal-dialog-head">
+            <h2 class="md-headline-small" id="cal-dialog-title">New entry</h2>
+            <button class="md-icon-button" id="cal-close" type="button" aria-label="Close dialog">${icon("close")}</button>
+          </div>
           <p class="muted md-body-medium" id="cal-dialog-date"></p>
           <div class="md-text-field">
             <input type="text" id="cal-desc" placeholder=" " autocomplete="off">
@@ -461,6 +464,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     }
     function close(){ hideScrim(); }
     document.getElementById('cal-cancel').addEventListener('click',close);
+    document.getElementById('cal-close').addEventListener('click',close);
     scrim.addEventListener('click',function(e){ if(e.target===scrim) close(); });
     document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&!scrim.hidden) close(); });
     function fail(msg){ err.textContent=msg; err.hidden=false; }
