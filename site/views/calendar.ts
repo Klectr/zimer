@@ -122,8 +122,10 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       byClient.set(key, cur);
     }
     const clientRows = [...byClient.values()].sort((a, b) => b.secs - a.secs);
+    /* #351: only invoiceable time counts as "not yet invoiced" — entries with a
+       project. Non-project time can never land on an invoice. */
     const uninvoiced = rows.reduce(
-      (s, e) => s + (e.invoice_id == null ? durationSeconds(e.start_time, e.end_time) : 0), 0);
+      (s, e) => s + (e.invoice_id == null && e.project_id != null ? durationSeconds(e.start_time, e.end_time) : 0), 0);
     const nudgeChip = uninvoiced > 0 ? `
       <a class="nudge-chip" href="/invoices/new?from=${sun}&to=${addDays(sun, 7)}">
         <span class="md-label-large">${fmtDur(uninvoiced)} not yet invoiced</span>
@@ -235,13 +237,15 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       </div>`);
     }
 
-    // Week-over-week delta vs the immediately preceding week.
+    /* #351: week-over-week delta vs the immediately preceding week — billable
+       vs billable, since it sits next to the billable figure. */
     const [pFrom, pTo] = weekBoundsISO(addDays(sun, -7), tz);
     const prevRows = qRange.all(pFrom, pTo) as Entry[];
-    const prevTotal = prevRows.reduce((a, e) => a + durationSeconds(e.start_time, e.end_time), 0);
+    const prevBillable = prevRows.reduce(
+      (a, e) => a + (e.project_id != null ? durationSeconds(e.start_time, e.end_time) : 0), 0);
     const deltaHtml = (() => {
-      if (prevTotal <= 0) return `<span class="muted">—</span>`;
-      const pct = Math.round(((weekTotal - prevTotal) / prevTotal) * 100);
+      if (prevBillable <= 0) return `<span class="muted">—</span>`;
+      const pct = Math.round(((weekBillable - prevBillable) / prevBillable) * 100);
       const arrow = pct > 0 ? "↑" : pct < 0 ? "↓" : "→";
       return `<span class="muted">${arrow} ${Math.abs(pct)}% vs prev week</span>`;
     })();
