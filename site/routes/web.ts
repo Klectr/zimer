@@ -13,6 +13,7 @@ import { clientIp } from "../lib/http.ts";
 import { createRateLimiter } from "../lib/ratelimit.ts";
 import { loadChangelog } from "../lib/changelog.ts"; /* #303 */
 import { licenseTerms } from "../lib/license-terms.ts"; /* #341 */
+import { updateSectionHtml, checkForUpdates, updateStatusHtml } from "../lib/updates.ts"; /* #340 */
 import { isLaunchMode, isLicensed, licenseSectionHtml, storeLicenseKey } from "../lib/license.ts"; /* #304 */
 
 export interface WebDeps {
@@ -368,9 +369,15 @@ export function createWebRouter(deps: WebDeps) {
           return new Response(null, { status: 302, headers: { Location: "/manage" } });
         }
         /* #304: settings modal body — business profile plus the License
-           section in launch mode; profile only in beta (no licensing UI). */
+           section in launch mode; profile only in beta (no licensing UI).
+           #340: Updates section in all modes — updates aren't licensing. */
         if (path === "/settings" && method === "GET")
-          return html(bizProfileSection() + (isLaunchMode() ? licenseSectionHtml(db, isLicensed(db)) : ""));
+          return html(bizProfileSection() + (isLaunchMode() ? licenseSectionHtml(db, isLicensed(db)) : "") + updateSectionHtml());
+        /* #340: manual update check — fetches the release feed server-side
+           and swaps the result into the Updates section. Authed like the
+           rest of settings; never called automatically. */
+        if (path === "/check-updates" && method === "POST")
+          return html(updateStatusHtml(await checkForUpdates()));
         /* #304: license key entry. Invalid keys are rejected with a specific
            message and the stored key is left untouched. No licensing routes
            exist at all in beta. */
