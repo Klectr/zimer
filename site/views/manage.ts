@@ -1,11 +1,17 @@
-/** Manage views: clients with nested projects (in-place fragment) and the
- *  manage page shell. */
+/** Manage views: clients in an M3 list-detail layout (#367, mirrors the
+ *  invoices list-detail from #364). The leading pane lists clients; the
+ *  detail pane manages the selected client's rate, payment terms, projects,
+ *  and deletion. */
 
 import type { Database } from "bun:sqlite";
 import { esc, PAYMENT_TERMS, termsDays, termsDescription, termsKey } from "../lib/format.ts";
 import type { PaymentTermsKey } from "../lib/format.ts";
 import { icon } from "../lib/icons.ts";
 import { getMeta } from "../db.ts";
+
+/* #367: the detail-pane selection. "none" is the pseudo-client holding
+   projects with no client assigned. */
+export type ClientSel = { kind: "client"; client: any } | { kind: "none" };
 
 export interface ManageViewDeps {
   db: Database;
@@ -26,13 +32,7 @@ export function createManageViews(deps: ManageViewDeps) {
     ).join("");
   }
 
-  /* #271: one flat segmented list instead of a card per client (M3 has no
-     nested/indented list pattern — hierarchy is folder-like expand/collapse).
-     Each client is a segment: client row, then its project rows revealed in
-     place. Repetitive child rows get whitespace separation, not dividers.
-     Expanded/collapsed state is applied client-side from localStorage (see
-     the script in managePage); actions still swap #manage-cols in place. */
-  function manageCols(): string {
+  function manageData() {
     const clients = db.query("SELECT * FROM clients ORDER BY name").all() as any[];
     const projects = db.query("SELECT * FROM projects ORDER BY name").all() as any[];
     const clientIds = new Set(clients.map(c => c.id));
@@ -47,86 +47,217 @@ export function createManageViews(deps: ManageViewDeps) {
         if (list) list.push(p); else byClient.set(p.client_id, [p]);
       }
     }
-    const projectRow = (p: any) => `<li class="md-list-item collapsible" style="min-height:56px">
-              <div class="md-list-item-content"><div class="md-list-item-headline">${esc(p.name)}</div></div>
-              <div class="md-list-item-trailing">
-                <form method="post" action="/projects/${p.id}/delete" class="inline" hx-post="/projects/${p.id}/delete" hx-target="#manage-cols" hx-swap="outerHTML"><button class="md-icon-button danger" hx-confirm="Delete project? Entries keep their history." aria-label="Delete project ${esc(p.name)}" title="Delete">${icon("delete")}</button></form>
+    return { clients, byClient, unassigned };
+  }
+
+  /* #367: resolve ?client= — a numeric id, "none", or null (nothing
+     selected). Unknown ids degrade to null (placeholder), never an error. */
+  function clientSelection(raw: string | null): ClientSel | null {
+    if (raw === "none") return { kind: "none" };
+    if (raw && /^\d+$/.test(raw)) {
+      const c = db.query("SELECT * FROM clients WHERE id = ?").get(Number(raw)) as any;
+      if (c) return { kind: "client", client: c };
+    }
+    return null;
+  }
+
+  const selKey = (sel: ClientSel | null): number | "none" | null =>
+    !sel ? null : sel.kind === "client" ? sel.client.id : "none";
+
+  const dot = (color: string, large = false) =>
+    `<span class="client-dot${large ? " large" : ""}" style="background:${esc(color)}" aria-hidden="true"></span>`;
+
+  function clientListHtml(sel: ClientSel | null): string {
+    const { clients, byClient, unassigned } = manageData();
+    const sk = selKey(sel);
+    const row = (href: string, dotHtml: string, name: string, supporting: string, selected: boolean, label: string) =>
+      `<li class="md-list-item client-row${selected ? " selected" : ""}">
+        <a class="client-row-hit" href="${href}" aria-label="${esc(label)}">
+          ${dotHtml}
+          <div class="md-list-item-content">
+            <div class="md-list-item-headline">${esc(name)}</div>
+            <div class="md-list-item-supporting">${supporting}</div>
+          </div>
+          <div class="md-list-item-trailing">${icon("chevron_right")}</div>
+        </a>
+      </li>`;
+    const rows = clients.map(c => {
+      const n = (byClient.get(c.id) || []).length;
+      return row(`/manage?client=${c.id}`, dot(c.color || "#f2c14e"), c.name,
+        `${n} project${n === 1 ? "" : "s"}${c.rate ? ` · $${c.rate}/hr` : ""}`,
+        sk === c.id, `Manage client ${c.name}`);
+    }).join("");
+    const noneRow = row("/manage?client=none",
+      `<span class="client-dot none" aria-hidden="true">${icon("group")}</span>`,
+      "No client", `${unassigned.length} unassigned project${unassigned.length === 1 ? "" : "s"}`,
+      sk === "none", "Manage projects with no client");
+    return `<ul class="md-list" id="client-list">${rows}${noneRow}</ul>`;
+  }
+
+  /* #367: out-of-band list refresh after a detail-pane action — the row
+     supporting text (project count) must not go stale, and the pushed-URL
+     history snapshot restores the right selection on back. */
+  function clientListOob(sel: ClientSel | null): string {
+    return clientListHtml(sel).replace(`id="client-list"`, `id="client-list" hx-swap-oob="true"`);
+  }
+
+  const projectRow = (p: any) => `<li class="md-list-item" style="min-height:56px">
+            <div class="md-list-item-content"><div class="md-list-item-headline">${esc(p.name)}</div></div>
+            <div class="md-list-item-trailing">
+              <form method="post" action="/projects/${p.id}/delete" class="inline" hx-post="/projects/${p.id}/delete" hx-target="#client-detail" hx-swap="outerHTML"><button class="md-icon-button danger" hx-confirm="Delete project? Entries keep their history." aria-label="Delete project ${esc(p.name)}" title="Delete">${icon("delete")}</button></form>
+            </div>
+          </li>`;
+
+  const addProjectForm = (clientId: number | null) => `<li class="md-list-item add-project-row" style="min-height:56px">
+            <form method="post" action="/projects" class="add-project-form" hx-post="/projects" hx-target="#client-detail" hx-swap="outerHTML">
+              ${clientId == null ? "" : `<input type="hidden" name="client_id" value="${clientId}">`}
+              <div class="md-text-field compact">
+                <input type="text" name="name" placeholder=" " required aria-label="New project name">
+                <label>New project</label>
               </div>
-            </li>`;
-    const addProjectRow = (clientId: number | null, label: string) => `<li class="md-list-item add-project-row collapsible" style="min-height:56px">
-              <form method="post" action="/projects" class="add-project-form" hx-post="/projects" hx-target="#manage-cols" hx-swap="outerHTML">
-                ${clientId == null ? "" : `<input type="hidden" name="client_id" value="${clientId}">`}
-                <div class="md-text-field compact">
-                  <input type="text" name="name" placeholder=" " required aria-label="${esc(label)}">
-                  <label>New project</label>
-                </div>
-                <button class="md-icon-button" type="submit" title="Add project" aria-label="${esc(label)}">${icon("add")}</button>
-              </form>
-            </li>`;
-    const clientSegment = (c: any) => `<ul class="md-list client-seg" data-client-seg="${c.id}">
-            <li class="md-list-item client-row" style="min-height:56px">
-              <button class="md-icon-button client-expand" type="button" aria-expanded="true" aria-label="Collapse projects for ${esc(c.name)}" title="Collapse">${icon("chevron_down")}</button>
-              <div class="md-list-item-content"><div class="md-list-item-headline"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${esc(c.color)};margin-right:8px"></span>${esc(c.name)}</div></div>
-              <div class="md-list-item-trailing">
-                <form method="post" action="/clients/${c.id}/rate" class="inline rate-form" hx-post="/clients/${c.id}/rate" hx-target="#manage-cols" hx-swap="outerHTML" title="Hourly rate">
-                  <div class="md-text-field has-prefix has-suffix compact" style="width:104px">
-                    <span class="affix prefix" aria-hidden="true">$</span>
-                    <input type="number" name="rate" value="${c.rate || ""}" min="0" step="0.01" placeholder="0" aria-label="Hourly rate for ${esc(c.name)}">
-                    <span class="affix suffix" aria-hidden="true">/hr</span>
-                  </div>
-                  <button class="md-icon-button" type="submit" title="Save" aria-label="Save hourly rate for ${esc(c.name)}">${icon("save")}</button>
-                </form>
-                <form method="post" action="/clients/${c.id}/delete" class="inline" hx-post="/clients/${c.id}/delete" hx-target="#manage-cols" hx-swap="outerHTML"><button class="md-icon-button danger" hx-confirm="Delete client? Its projects move to No client." aria-label="Delete client ${esc(c.name)}" title="Delete">${icon("delete")}</button></form>
-              </div>
-            </li>
-            <li class="md-list-item collapsible" style="min-height:56px;flex-wrap:wrap">
-              <form method="post" action="/clients/${c.id}/terms" class="terms-form" hx-post="/clients/${c.id}/terms" hx-target="#manage-cols" hx-swap="outerHTML">
-                <div class="md-text-field compact" style="flex:1;min-width:120px">
-                  <select name="payment_terms" class="terms-select" aria-label="Payment terms for ${esc(c.name)}">
-                    <option value="" data-desc="Falls back to the global payment terms."${c.payment_terms ? "" : " selected"}>Use global terms</option>
-                    ${termsOptions(c.payment_terms)}
-                  </select>
-                  <label>Payment terms</label>
-                </div>
-                <button class="md-icon-button" type="submit" title="Save" aria-label="Save payment terms for ${esc(c.name)}">${icon("save")}</button>
-              </form>
-              <p class="terms-desc muted">${esc(termsDescription(termsKey(c.payment_terms, globalTerms())))}</p>
-            </li>
-            ${(byClient.get(c.id) || []).map(projectRow).join("")}
-            ${addProjectRow(c.id, `Add project to ${c.name}`)}
-          </ul>`;
-    return `<div id="manage-cols">
-        <section>
+              <button class="md-icon-button" type="submit" title="Add project" aria-label="Add project">${icon("add")}</button>
+            </form>
+          </li>`;
+
+  /* #367: detail body as a fragment — rate/terms/project actions swap
+     #client-detail in place instead of reloading the page. */
+  function clientDetailBody(sel: ClientSel): string {
+    const hxDetail = `hx-target="#client-detail" hx-swap="outerHTML"`;
+    const { byClient, unassigned } = manageData();
+    const isClient = sel.kind === "client";
+    const c = isClient ? sel.client : null;
+    const projects = isClient ? (byClient.get(c.id) || []) : unassigned;
+    return `<div id="client-detail">
+      <div class="page-head no-print">
+        <a class="md-text-button detail-back" href="/manage">${icon("arrow_left")}Clients</a>
+      </div>
+      <div class="client-detail-head">
+        ${isClient ? dot(c.color || "#f2c14e", true) : `<span class="client-dot large none" aria-hidden="true">${icon("group")}</span>`}
+        <div>
+          <h2 class="md-headline-small">${isClient ? esc(c.name) : "No client"}</h2>
+          <p class="muted" style="margin:4px 0 0">${isClient
+            ? `${projects.length} project${projects.length === 1 ? "" : "s"}${c.rate ? ` · $${c.rate}/hr` : ""}`
+            : "Projects not assigned to a client"}</p>
+        </div>
+      </div>
+      ${isClient ? `
+      <form method="post" action="/clients/${c.id}/rate" class="rate-form detail-form" hx-post="/clients/${c.id}/rate" ${hxDetail} title="Hourly rate">
+        <div class="md-text-field has-prefix has-suffix compact" style="width:104px">
+          <span class="affix prefix" aria-hidden="true">$</span>
+          <input type="number" name="rate" value="${c.rate || ""}" min="0" step="0.01" placeholder="0" aria-label="Hourly rate for ${esc(c.name)}">
+          <span class="affix suffix" aria-hidden="true">/hr</span>
+        </div>
+        <button class="md-icon-button" type="submit" title="Save" aria-label="Save hourly rate for ${esc(c.name)}">${icon("save")}</button>
+      </form>
+      <form method="post" action="/clients/${c.id}/terms" class="terms-form detail-form" hx-post="/clients/${c.id}/terms" ${hxDetail}>
+        <div class="md-text-field compact" style="flex:1;min-width:120px">
+          <select name="payment_terms" class="terms-select" aria-label="Payment terms for ${esc(c.name)}">
+            <option value="" data-desc="Falls back to the global payment terms."${c.payment_terms ? "" : " selected"}>Use global terms</option>
+            ${termsOptions(c.payment_terms)}
+          </select>
+          <label>Payment terms</label>
+        </div>
+        <button class="md-icon-button" type="submit" title="Save" aria-label="Save payment terms for ${esc(c.name)}">${icon("save")}</button>
+      </form>
+      <p class="terms-desc muted">${esc(termsDescription(termsKey(c.payment_terms, globalTerms())))}</p>` : ""}
+      <h3 class="md-title-medium manage-subhead">Projects</h3>
+      <ul class="md-list">
+        ${projects.map(projectRow).join("")}
+        ${addProjectForm(isClient ? c.id : null)}
+      </ul>
+      ${isClient ? `
+      <form method="post" action="/clients/${c.id}/delete" class="detail-form">
+        <button class="md-text-button danger" type="submit" onclick="return confirm('Delete this client? Its projects move to No client.')">Delete client</button>
+      </form>` : ""}
+    </div>`;
+  }
+
+  function detailPlaceholder(): string {
+    return `<div class="detail-placeholder">${icon("group")}<p class="muted">Select a client to manage its projects, rate, and payment terms.</p></div>`;
+  }
+
+  /* Add-client lives in the list pane behind a toggle — a plain POST so the
+     new client opens selected on every width (an in-place HTMX swap could
+     not flip the single-pane shell to the detail on phones). */
+  function addClientForm(): string {
+    return `<div class="client-add">
+      <button class="md-text-button" type="button" id="client-add-toggle">${icon("add")}Add client</button>
+      <form method="post" action="/clients" id="client-add-form" class="manage-form" hidden>
+        <div class="md-text-field">
+          <input type="text" name="name" placeholder=" " required aria-label="Client name">
+          <label>Client name</label>
+        </div>
+        <div class="manage-form-row">
+          <div class="md-text-field has-prefix has-suffix" style="max-width:172px">
+            <span class="affix prefix" aria-hidden="true">$</span>
+            <input type="number" name="rate" min="0" step="0.01" placeholder=" " aria-label="Hourly rate">
+            <label>Hourly rate</label>
+            <span class="affix suffix" aria-hidden="true">/hr</span>
+          </div>
+          <label class="md-color-control" title="Client color">
+            ${icon("palette")}
+            <span>Color</span>
+            <input type="color" name="color" value="#f2c14e" aria-label="Client color">
+          </label>
+          <span class="manage-form-spacer"></span>
+          <button class="md-filled-button" type="submit">${icon("add")}Add</button>
+        </div>
+      </form>
+    </div>`;
+  }
+
+  function managePage(sel: ClientSel | null): string {
+    /* #71: data-enter sits on the shell HTMX never replaces, so the entrance
+       plays once per page load and never replays on swaps.
+       #245: the business profile section moved into the settings modal
+       behind the account menu button; the Manage page is clients & projects only. */
+    return layout("Clients & Projects", `
+      <div class="client-list-detail${sel ? " has-selection" : ""}" data-enter="2">
+        <section class="client-list-pane" aria-label="Client list">
           <h2 class="md-headline-small">Clients</h2>
-          <form method="post" action="/clients" class="manage-form" hx-post="/clients" hx-target="#manage-cols" hx-swap="outerHTML">
-            <div class="md-text-field">
-              <input type="text" name="name" placeholder=" " required aria-label="Client name">
-              <label>Client name</label>
-            </div>
-            <div class="manage-form-row">
-              <div class="md-text-field has-prefix has-suffix" style="max-width:172px">
-                <span class="affix prefix" aria-hidden="true">$</span>
-                <input type="number" name="rate" min="0" step="0.01" placeholder=" " aria-label="Hourly rate">
-                <label>Hourly rate</label>
-                <span class="affix suffix" aria-hidden="true">/hr</span>
-              </div>
-              <label class="md-color-control" title="Client color">
-                ${icon("palette")}
-                <span>Color</span>
-                <input type="color" name="color" value="#f2c14e" aria-label="Client color">
-              </label>
-              <span class="manage-form-spacer"></span>
-              <button class="md-filled-button" type="submit">${icon("add")}Add</button>
-            </div>
-          </form>
-          ${clients.length ? clients.map(clientSegment).join("") : `<p class="muted">No clients yet.</p>`}
-          <h3 class="md-title-medium manage-subhead">No client</h3>
-          <ul class="md-list client-seg">
-            ${unassigned.map(projectRow).join("")}
-            ${addProjectRow(null, "Add project with no client")}
-          </ul>
+          ${addClientForm()}
+          ${clientListHtml(sel)}
         </section>
-      </div>`;
+        <section class="client-detail-pane" id="client-detail-pane" aria-label="Client detail">
+          ${sel ? clientDetailBody(sel) : detailPlaceholder()}
+        </section>
+      </div>
+      <script>(function(){
+        /* #367: add-client toggle. The form is outside every HTMX-swapped
+           region, so its id is safe to query directly. */
+        var tgl = document.getElementById("client-add-toggle");
+        var frm = document.getElementById("client-add-form");
+        if (tgl && frm) tgl.addEventListener("click", function(){
+          frm.hidden = !frm.hidden;
+          if (!frm.hidden) { var i = frm.querySelector('input[name="name"]'); if (i) i.focus(); }
+        });
+        /* #367: two-pane selection, mirrors the invoices list-detail (#364).
+           At ≥840px a row click swaps the detail pane in place (the fragment
+           pushes ?client=<id> and OOB-marks the selected row); below that
+           the link navigates to the single-pane detail screen. Delegated so
+           it survives the list's OOB swaps. */
+        var wrap = document.querySelector(".client-list-detail");
+        if (!wrap || !window.htmx) return;
+        var mq = window.matchMedia("(min-width: 840px)");
+        wrap.addEventListener("click", function(ev){
+          var link = ev.target.closest(".client-row-hit");
+          if (!link || !mq.matches) return;
+          ev.preventDefault();
+          window.htmx.ajax("GET", link.getAttribute("href") + "&fragment=detail",
+            { target: "#client-detail-pane", swap: "innerHTML" });
+        });
+      })();</script>`, "manage", true);
+  }
+
+  function clientOptions(selected: number | null = null): string {
+    const rows = db.query("SELECT id, name, rate, payment_terms FROM clients ORDER BY name").all() as any[];
+    const g = globalTerms();
+    return rows.map(c => {
+      /* #293: effective terms days ride along so the new-invoice form can
+         derive the due date when the client changes. */
+      const days = termsDays(c.payment_terms || g);
+      return `<option value="${c.id}" data-rate="${c.rate || 0}"${days === null ? "" : ` data-terms-days="${days}"`}${c.id === selected ? " selected" : ""}>${esc(c.name)}</option>`;
+    }).join("");
   }
 
   /* #233: business profile — name/email/address printed in the FROM block
@@ -164,69 +295,5 @@ export function createManageViews(deps: ManageViewDeps) {
         </section>`;
   }
 
-  function managePage(): string {
-    /* #71: data-enter sits on the shell HTMX never replaces, so the entrance
-       plays once per page load and never replays on swaps.
-       #245: the business profile section moved into the settings modal
-       behind the account menu button; the Manage page is clients & projects only. */
-    return layout("Clients & Projects", `
-      <div class="scroll-region">
-      <div data-enter="2" id="manage-wrap">${manageCols()}</div>
-      </div>
-      <script>(function(){
-        /* #271: folder-like expand/collapse for client segments. Collapsed
-           ids persist in localStorage; state is reapplied after every
-           #manage-cols HTMX swap. Delegated so it survives swaps; the script
-           lives outside the swapped region. */
-        var KEY = "timekeep.collapsedClients";
-        function read(){ try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch (e) { return []; } }
-        function write(ids){ try { localStorage.setItem(KEY, JSON.stringify(ids)); } catch (e) {} }
-        function apply(){
-          var ids = read();
-          document.querySelectorAll("#manage-cols [data-client-seg]").forEach(function(seg){
-            var id = seg.getAttribute("data-client-seg");
-            var collapsed = ids.indexOf(id) !== -1;
-            seg.classList.toggle("collapsed", collapsed);
-            var btn = seg.querySelector(".client-expand");
-            if (btn) {
-              btn.setAttribute("aria-expanded", String(!collapsed));
-              var name = seg.querySelector(".client-row .md-list-item-headline").textContent.trim();
-              btn.setAttribute("aria-label", (collapsed ? "Expand" : "Collapse") + " projects for " + name);
-              btn.setAttribute("title", collapsed ? "Expand" : "Collapse");
-            }
-          });
-        }
-        document.addEventListener("click", function(e){
-          var btn = e.target.closest ? e.target.closest(".client-expand") : null;
-          if (!btn) return;
-          var seg = btn.closest("[data-client-seg]");
-          if (!seg) return;
-          var id = seg.getAttribute("data-client-seg");
-          var ids = read();
-          var i = ids.indexOf(id);
-          if (i === -1) ids.push(id); else ids.splice(i, 1);
-          write(ids);
-          apply();
-        });
-        document.addEventListener("htmx:afterSwap", function(e){
-          if (e.target && e.target.id === "manage-cols") apply();
-        });
-        if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", apply);
-        else apply();
-      })();</script>`, "manage", true);
-  }
-
-  function clientOptions(selected: number | null = null): string {
-    const rows = db.query("SELECT id, name, rate, payment_terms FROM clients ORDER BY name").all() as any[];
-    const g = globalTerms();
-    return rows.map(c => {
-      /* #293: effective terms days ride along so the new-invoice form can
-         derive the due date when the client changes. */
-      const days = termsDays(c.payment_terms || g);
-      return `<option value="${c.id}" data-rate="${c.rate || 0}"${days === null ? "" : ` data-terms-days="${days}"`}${c.id === selected ? " selected" : ""}>${esc(c.name)}</option>`;
-    }).join("");
-  }
-
-
-  return { manageCols, managePage, clientOptions, bizProfileSection };
+  return { managePage, clientSelection, clientDetailBody, clientListOob, clientOptions, bizProfileSection };
 }

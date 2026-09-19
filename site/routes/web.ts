@@ -7,6 +7,7 @@ import { join, normalize, sep } from "node:path";
 import type { Database, Statement } from "bun:sqlite";
 import { addDays, entryIsLocked, esc, isPaymentTermsKey, round2, termsDescription, termsDays, termsKey, todayStr } from "../lib/format.ts";
 import type { Entry, Invoice, InvoiceItem } from "../lib/types.ts";
+import type { ClientSel } from "../views/manage.ts"; /* #367 */
 import type { PdfInvoice } from "../pdf.ts";
 import { getMeta, setMeta } from "../db.ts";
 import { clientIp } from "../lib/http.ts";
@@ -47,8 +48,10 @@ export interface WebDeps {
   weekInner: (weekStr?: string) => string;
   calendarPage: (week?: string) => string;
   editPage: (id: number) => string | null;
-  manageCols: () => string;
-  managePage: () => string;
+  managePage: (selected: ClientSel | null) => string; /* #367 */
+  clientSelection: (raw: string | null) => ClientSel | null; /* #367 */
+  clientDetailBody: (sel: ClientSel) => string; /* #367 */
+  clientListOob: (sel: ClientSel | null) => string; /* #367 */
   bizProfileSection: () => string;
   invoicesPage: (selected: (Invoice & { items: InvoiceItem[] }) | null, origin: string) => string;
   invoiceNewPage: (p: any, preview?: any) => string;
@@ -84,7 +87,7 @@ export function createWebRouter(deps: WebDeps) {
     DATA_DIR, STATIC_DIR, TOKEN, authedPage, tokensEqual, html, json, csvResponse, isHtmx,
     shareOrigin, PORT, loginPage, publicInvoicePage, changelogPage, termsPage, notFoundPage, noSuchInvoicePage, rateLimitPage, errorPage, /* #341: +termsPage */
     dashboardPage, timerPartial, todayPartial, weekInner,
-    calendarPage, editPage, manageCols, managePage, bizProfileSection, invoicesPage, invoiceNewPage,
+    calendarPage, editPage, managePage, clientSelection, clientDetailBody, clientListOob, bizProfileSection, invoicesPage, invoiceNewPage,
     defaultNewInvParams, invoiceStep2, invoiceDetailBody, invoiceListOob, invoiceDoc,
     getInvoice, invoiceTotals,
     nextInvoiceNumber, stripeLinkFor, unbilledEntries,
@@ -350,7 +353,21 @@ export function createWebRouter(deps: WebDeps) {
           return csvResponse(out.join("\n"), "timekeep-invoices.csv");
         }
 
-        if (path === "/manage" && method === "GET") return html(managePage());
+        /* #367: M3 list-detail — ?client=<id> (or "none") selects into the
+           detail pane (two-pane ≥840px) or the single-pane detail screen;
+           fragment=detail is the HTMX swap the list pane's row clicks request. */
+        if (path === "/manage" && method === "GET") {
+          const sp = new URL(req.url).searchParams;
+          const sel = clientSelection(sp.get("client"));
+          if (sp.get("fragment") === "detail" && isHtmx(req)) {
+            if (!sel) return new Response("Client not found.", { status: 404 });
+            /* #367: the OOB list carries the selected row — the pushed-URL
+               history snapshot then restores the right selection on back. */
+            const push = sel.kind === "client" ? `/manage?client=${sel.client.id}` : "/manage?client=none";
+            return html(clientDetailBody(sel) + clientListOob(sel), 200, { "HX-Push-Url": push });
+          }
+          return html(managePage(sel));
+        }
         /* #233: business profile for the Modern PDF template's FROM block.
            #245: rendered inside the settings modal (GET) and saved from it
            (POST); no longer part of the Manage page. */
@@ -399,19 +416,21 @@ export function createWebRouter(deps: WebDeps) {
         }
         if (path === "/clients" && method === "POST") {
           const form = await req.formData();
-          db.query("INSERT INTO clients (name, color, rate) VALUES (?, ?, ?)")
-            .run(String(form.get("name")), String(form.get("color") || "#f2c14e"),
-                 Number(form.get("rate") || 0));
-          if (isHtmx(req)) return html(manageCols()); // #71: swap in place
-          return new Response(null, { status: 302, headers: { Location: "/manage" } });
+          const r = db.query("INSERT INTO clients (name, color, rate) VALUES (?, ?, ?) RETURNING id")
+            .get(String(form.get("name")), String(form.get("color") || "#f2c14e"),
+                 Number(form.get("rate") || 0)) as any;
+          /* #367: plain POST (see the add-client form) — land on the new
+             client selected, on every width. */
+          return new Response(null, { status: 302, headers: { Location: `/manage?client=${r.id}` } });
         }
         m = path.match(/^\/clients\/(\d+)\/rate$/);
         if (m && method === "POST") {
           const form = await req.formData();
           db.query("UPDATE clients SET rate = ? WHERE id = ?")
             .run(Number(form.get("rate") || 0), Number(m[1]));
-          if (isHtmx(req)) return html(manageCols()); // #71: swap in place
-          return new Response(null, { status: 302, headers: { Location: "/manage" } });
+          const sel = clientSelection(m[1]); /* #367: re-render the detail pane + OOB list */
+          if (isHtmx(req)) return html(sel ? clientDetailBody(sel) + clientListOob(sel) : clientListOob(null));
+          return new Response(null, { status: 302, headers: { Location: `/manage?client=${m[1]}` } });
         }
         /* #289: per-client payment terms. Blank stores NULL so invoice
            render falls back to the global business_payment_terms.
@@ -423,8 +442,9 @@ export function createWebRouter(deps: WebDeps) {
           if (terms !== "" && !isPaymentTermsKey(terms)) return new Response("Unknown payment terms.", { status: 400 });
           db.query("UPDATE clients SET payment_terms = ? WHERE id = ?")
             .run(terms || null, Number(m[1]));
-          if (isHtmx(req)) return html(manageCols()); // #71: swap in place
-          return new Response(null, { status: 302, headers: { Location: "/manage" } });
+          const sel = clientSelection(m[1]); /* #367: re-render the detail pane + OOB list */
+          if (isHtmx(req)) return html(sel ? clientDetailBody(sel) + clientListOob(sel) : clientListOob(null));
+          return new Response(null, { status: 302, headers: { Location: `/manage?client=${m[1]}` } });
         }
         m = path.match(/^\/clients\/(\d+)\/delete$/);
         if (m && method === "POST") {
@@ -435,7 +455,7 @@ export function createWebRouter(deps: WebDeps) {
             db.query("UPDATE invoices SET client_id = NULL WHERE client_id = ?").run(Number(m[1]));
             db.query("DELETE FROM clients WHERE id = ?").run(Number(m[1]));
           })();
-          if (isHtmx(req)) return html(manageCols()); // #71: swap in place
+          /* #367: plain POST — the selection is gone, so land on the bare list. */
           return new Response(null, { status: 302, headers: { Location: "/manage" } });
         }
         if (path === "/projects" && method === "POST") {
@@ -443,18 +463,24 @@ export function createWebRouter(deps: WebDeps) {
           const cid = form.get("client_id");
           db.query("INSERT INTO projects (name, client_id) VALUES (?, ?)")
             .run(String(form.get("name")), cid ? Number(cid) : null);
-          if (isHtmx(req)) return html(manageCols()); // #71: swap in place
-          return new Response(null, { status: 302, headers: { Location: "/manage" } });
+          const sel = clientSelection(cid ? String(cid) : "none"); /* #367 */
+          if (isHtmx(req)) return html(clientDetailBody(sel!) + clientListOob(sel));
+          const push = cid ? `/manage?client=${cid}` : "/manage?client=none";
+          return new Response(null, { status: 302, headers: { Location: push } });
         }
         m = path.match(/^\/projects\/(\d+)\/delete$/);
         if (m && method === "POST") {
+          /* Which detail pane owns this project — needed before the delete. */
+          const p = db.query("SELECT client_id FROM projects WHERE id = ?").get(Number(m[1])) as any;
           /* Schema FK is not enforced: null entries explicitly. */
           db.transaction(() => {
             db.query("UPDATE time_entries SET project_id = NULL WHERE project_id = ?").run(Number(m[1]));
             db.query("DELETE FROM projects WHERE id = ?").run(Number(m[1]));
           })();
-          if (isHtmx(req)) return html(manageCols()); // #71: swap in place
-          return new Response(null, { status: 302, headers: { Location: "/manage" } });
+          const sel = clientSelection(p && p.client_id ? String(p.client_id) : "none"); /* #367 */
+          if (isHtmx(req)) return html(clientDetailBody(sel!) + clientListOob(sel));
+          const push = p && p.client_id ? `/manage?client=${p.client_id}` : "/manage?client=none";
+          return new Response(null, { status: 302, headers: { Location: push } });
         }
 
         /* #299: one-click "invoice this period". /invoices/new?from=YYYY-MM-DD&to=YYYY-MM-DD
