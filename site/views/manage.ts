@@ -1,5 +1,7 @@
 /** Manage views: clients with nested projects (in-place fragment) and the
- *  manage page shell. */
+ *  manage page shell.
+ *
+ *  #367 WIP: M3 list-detail layout (mirrors #364 invoices). */
 
 import type { Database } from "bun:sqlite";
 import { esc, PAYMENT_TERMS, termsDays, termsDescription, termsKey } from "../lib/format.ts";
