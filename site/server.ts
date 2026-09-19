@@ -74,7 +74,7 @@ const { manageCols, managePage, clientOptions, bizProfileSection } =
   createManageViews({ db, layout });
 const {
   invoicesPage, defaultNewInvParams, invoiceNewPage, invoiceStep2, invoiceSheet,
-  invoiceDoc, invoiceDetailBody, invoiceDetailPage,
+  invoiceDoc, invoiceDetailBody, invoiceListOob,
   invoiceDocumentHtml, invoicePdfInput, /* #301 */
 } = createInvoiceViews({
   db, qInvoices, layout, clientOptions,
@@ -106,7 +106,7 @@ const { handleWeb } = createWebRouter({
   PORT, loginPage, publicInvoicePage, changelogPage, termsPage, notFoundPage, noSuchInvoicePage, rateLimitPage, errorPage,
   dashboardPage, timerPartial, todayPartial, weekInner,
   calendarPage, editPage, manageCols, managePage, bizProfileSection, invoicesPage, invoiceNewPage,
-  defaultNewInvParams, invoiceStep2, invoiceDetailPage, invoiceDetailBody, invoiceDoc,
+  defaultNewInvParams, invoiceStep2, invoiceDetailBody, invoiceListOob, invoiceDoc,
   getInvoice, invoiceTotals,
   nextInvoiceNumber, stripeLinkFor, unbilledEntries,
   groupToLineItems, clientRestFrom, ensurePublicToken, getPublicToken, mintPublicToken,
