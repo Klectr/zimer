@@ -651,6 +651,34 @@ body.app-fixed main {
 /* #320: M3 — a simple list reads best in a narrower centered column, not the
    full 1000px app container. Matches the public invoice page rhythm. */
 main.page-invoices { max-width: 760px; }
+/* ---------------- invoices list-detail (M3 canonical, #364) ----------------
+ * The invoice list → invoice document is a parent-child pairing, so M3
+ * expects the list-detail layout: two panes at expanded+, a single pane
+ * below. The detail pane reuses invoiceDetailBody; its back link shows only
+ * in single-pane mode and the selected-row state only in two-pane mode
+ * (both per M3). Panes scroll independently on the fixed-viewport page. */
+.invoice-list-detail { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.invoice-list-pane, .invoice-detail-pane { min-width: 0; }
+@media (min-width: 840px) {
+  .invoice-list-detail { flex-direction: row; gap: var(--layout-pane-gap); align-items: stretch; }
+  .invoice-list-pane { flex: 0 0 400px; overflow-y: auto; }
+  .invoice-detail-pane { flex: 1; min-width: 0; overflow-y: auto; }
+  .invoice-detail-pane .detail-back { display: none; }
+  .inv-row.selected { background: var(--md-sys-color-secondary-container); border-radius: 12px; }
+  main.page-invoices { max-width: 1160px; }
+}
+@media (max-width: 839px) {
+  .invoice-list-pane, .invoice-detail-pane { flex: 1; min-height: 0; overflow-y: auto; }
+  .invoice-list-detail.has-selection .invoice-list-pane { display: none; }
+  .invoice-list-detail:not(.has-selection) .invoice-detail-pane { display: none; }
+}
+/* whole-row tap target for invoice rows */
+.inv-row-hit { display: flex; align-items: center; gap: 8px; width: 100%;
+  color: inherit; text-decoration: none; }
+/* empty detail pane */
+.detail-placeholder { display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 12px; padding: 64px 24px; text-align: center; min-height: 320px; }
+.detail-placeholder > svg { width: 48px; height: 48px; color: var(--md-sys-color-on-surface-variant); }
 /* ---------------- supporting-pane layout (M3 canonical, timer page) ----------------
  * <840px: single stacked column — timer card stays pinned above, entries + revenue
  * share one scroll region. ≥840px (M3 expanded): focus pane (entries) + trailing
@@ -1346,6 +1374,9 @@ button.m3-menu-item {
 /* ---------------- print ---------------- */
 @media print {
   .md-top-app-bar, .md-nav-rail, .md-bottom-nav, .no-print, .page-head { display: none !important; }
+  .invoice-list-pane { display: none !important; } /* #364: print only the invoice document */
+  .invoice-list-detail { display: block; }
+  .invoice-detail-pane { overflow: visible; }
   body { background: #fff; color: #111; }
   main { max-width: none; padding: 0; }
   .md-card.invoice-sheet { box-shadow: none; background: #fff; color: #111; max-width: none; }
