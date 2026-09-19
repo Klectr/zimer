@@ -172,6 +172,32 @@ body {
      border under the app bar — M3 separates it tonally. */
   padding: 0 16px 0 var(--layout-body-margin);
   background: var(--md-sys-color-surface);
+  /* #375: M3 scroll lift — surface at rest, surface-container once content
+     scrolls (toggled by motion.js). The 200ms ease matches the spec's
+     container-color transition. */
+  transition: background-color 200ms ease;
+}
+.md-top-app-bar.scrolled {
+  background: var(--md-sys-color-surface-container);
+}
+/* ---------------- M3 tonal separation: supporting/detail panes (#375) -----
+ * Per the M3 canonical layouts, side content reads as a distinct region one
+ * tonal step above the body: surface-container-low over the surface page,
+ * with pane content (cards at surface-container-high) one step above that.
+ * Expanded+ only — single-pane layouts have no side content, so they stay
+ * flat surface. Pane padding keeps content off the region's edges now that
+ * the region is visible. */
+@media screen and (min-width: 840px) {
+  .pane-supporting,
+  .cal-supporting,
+  .invoice-detail-pane,
+  .client-detail-pane {
+    background: var(--md-sys-color-surface-container-low);
+  }
+  .pane-supporting { padding: 20px; }
+  .cal-supporting { padding: 20px; }
+  .invoice-detail-pane { padding: 20px; }
+  .client-detail-pane { padding: 20px; }
 }
 .md-top-app-bar-title {
   font-size: 22px;
