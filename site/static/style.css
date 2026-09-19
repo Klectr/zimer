@@ -167,9 +167,11 @@ body {
   align-items: center;
   gap: 8px;
   height: 64px;
-  padding: 0 16px 0 24px;
+  /* #361: leading padding tracks the M3 body margin (16px compact, 24px
+     medium+) so the brand mark aligns with the content ruler. #362: no hard
+     border under the app bar — M3 separates it tonally. */
+  padding: 0 16px 0 var(--layout-body-margin);
   background: var(--md-sys-color-surface);
-  border-bottom: 1px solid var(--md-sys-color-surface-container-high);
 }
 .md-top-app-bar-title {
   font-size: 22px;
@@ -190,7 +192,8 @@ body {
 main { max-width: 1000px; margin: 0 auto; padding: 24px var(--layout-body-margin) 96px; }
 main.page-calendar { max-width: 1360px; }
 main.login { max-width: 420px; margin-top: 8vh; }
-h2.md-headline-small { margin: 24px 4px 12px; }
+/* #361: no horizontal inset — headings align with the M3 body-margin ruler. */
+h2.md-headline-small { margin: 24px 0 12px; }
 
 /* ---------------- cards (filled: surface-container-high, 12dp) ---------------- */
 .md-card {
@@ -432,7 +435,8 @@ input[type="number"] {
   min-height: 72px;
   padding: 8px 8px 8px 16px;
 }
-.md-list-item + .md-list-item { border-top: 1px solid var(--md-sys-color-outline-variant); }
+/* #362: no hard dividers between list rows — separation by whitespace and
+   tonal cards, matching the Manage segmented list since #271. */
 .md-list-item-content { flex: 1; min-width: 0; }
 
 /* Entry row motion (#46): enter with fade+rise and per-row stagger
@@ -658,7 +662,7 @@ main.page-invoices { max-width: 760px; }
 .pane-supporting { container-type: inline-size; }
 /* #326: the global h2.md-headline-small 24px top margin is for page-level
    section headings — inside the pane it just shoves "Revenue" down. */
-.pane-supporting h2.md-headline-small { margin: 0 4px 12px; }
+.pane-supporting h2.md-headline-small { margin: 0 0 12px; }
 @media (max-width: 839px) {
   .pane-layout { overflow-y: auto; }
   .pane-focus, .pane-supporting { flex: none; }
@@ -1018,10 +1022,9 @@ button.m3-menu-item {
 /* Segmented client list (#271): one filled segment per client instead of a
    card per client — M3 has no nested/indented list pattern, hierarchy is
    folder-like expand/collapse. Gaps between segments group; repetitive child
-   rows are separated by whitespace alone (spec-sanctioned), so the
-   full-width per-row dividers are dropped inside segments. */
+   rows are separated by whitespace alone (spec-sanctioned) — #362 removed
+   the global per-row dividers, so no overrides are needed inside segments. */
 #manage-cols .client-seg { margin-bottom: 12px; }
-#manage-cols .client-seg .md-list-item + .md-list-item { border-top: none; }
 #manage-cols .client-seg .collapsible { padding-top: 2px; padding-bottom: 2px; }
 #manage-cols .client-seg .client-row + .collapsible { margin-top: 4px; }
 #manage-cols [data-client-seg].collapsed .collapsible { display: none; }
