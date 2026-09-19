@@ -59,8 +59,8 @@ timekeep/
   it asks for a one-time license key (Settings → License). The key is
   checked **offline** against an embedded public key — license validation
   never touches the network, and your data never leaves the machine.
-  `bun scripts/mint-license.ts` mints keys; the private key stays on the
-  seller's machine.
+  Keys are minted with a private tool (separate private repo); the private
+  key stays on the seller's machine.
 - Times are stored as UTC ISO strings; the site renders them in the server's
   local timezone. If you host on a VPS in another timezone, set `TZ` for the
   process (e.g. `TZ=America/Chicago bun server.ts`).
