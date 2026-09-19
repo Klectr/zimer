@@ -350,10 +350,15 @@ input[type="number"] {
 .md-text-field input:focus, .md-text-field select:focus {
   background-color: var(--md-sys-color-surface-container-high);
 }
-/* keyboard focus ring (the base `outline: none` would otherwise kill the global one) */
+/* keyboard focus ring (the base `outline: none` would otherwise kill the global one).
+   #372: drawn as box-shadow, not outline — outline + border-radius +
+   outline-offset mis-rasterizes at high device pixel ratios (the field's own
+   background paints over the ring's bottom corners on phones). box-shadow
+   follows the corner radius exactly at any DPR; the 2px surface ring keeps
+   the same 2px gap + 2px ring the outline had. */
 .md-text-field input:focus-visible, .md-text-field select:focus-visible {
-  outline: 2px solid var(--md-sys-color-primary);
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: 0 0 0 2px var(--md-sys-color-surface), 0 0 0 4px var(--md-sys-color-primary);
 }
 .md-text-field input:focus + label { color: var(--md-sys-color-primary); }
 .md-text-field input[type="color"] { padding: 8px 16px; height: 56px; }
