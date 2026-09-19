@@ -55,3 +55,31 @@
     setTimeout(function () { s.classList.add("fade"); }, 200);
   });
 })();
+
+/* #375: M3 top app bar scroll lift — surface at rest, surface-container once
+ * content scrolls. Fixed-viewport pages scroll an inner region below the bar
+ * rather than under it; any scrolled region counts, since the lift's purpose
+ * is separating the bar from content once the user moves into the page.
+ * Separate IIFE so it runs even under prefers-reduced-motion (this is a
+ * state change, not motion). */
+(function () {
+  "use strict";
+  var bar = document.querySelector(".md-top-app-bar");
+  if (!bar) return;
+  var SEL = ".scroll-region,.cal-scroll,.cal-supporting,.pane-layout," +
+    ".client-list-pane,.client-detail-pane,.invoice-list-pane,.invoice-detail-pane";
+  function update() {
+    var scrolled = window.scrollY > 0;
+    if (!scrolled) {
+      var els = document.querySelectorAll(SEL);
+      for (var i = 0; i < els.length; i++) {
+        if (els[i].scrollTop > 0) { scrolled = true; break; }
+      }
+    }
+    bar.classList.toggle("scrolled", scrolled);
+  }
+  /* scroll doesn't bubble; capture catches inner-region scrolls too */
+  document.addEventListener("scroll", update, { capture: true, passive: true });
+  document.addEventListener("htmx:afterSwap", update);
+  update();
+})();
