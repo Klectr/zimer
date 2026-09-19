@@ -171,34 +171,14 @@ body {
      medium+) so the brand mark aligns with the content ruler. #362: no hard
      border under the app bar — M3 separates it tonally. */
   padding: 0 16px 0 var(--layout-body-margin);
-  background: var(--md-sys-color-surface);
-  /* #375: M3 scroll lift — surface at rest, surface-container once content
-     scrolls (toggled by motion.js). The 200ms ease matches the spec's
-     container-color transition. */
-  transition: background-color 200ms ease;
-}
-.md-top-app-bar.scrolled {
+  /* #377: nav chrome carries the tonal step — the app bar is
+     surface-container at all times, separating it from the surface page. */
   background: var(--md-sys-color-surface-container);
 }
-/* ---------------- M3 tonal separation: supporting/detail panes (#375) -----
- * Per the M3 canonical layouts, side content reads as a distinct region one
- * tonal step above the body: surface-container-low over the surface page,
- * with pane content (cards at surface-container-high) one step above that.
- * Expanded+ only — single-pane layouts have no side content, so they stay
- * flat surface. Pane padding keeps content off the region's edges now that
- * the region is visible. */
-@media screen and (min-width: 840px) {
-  .pane-supporting,
-  .cal-supporting,
-  .invoice-detail-pane,
-  .client-detail-pane {
-    background: var(--md-sys-color-surface-container-low);
-  }
-  .pane-supporting { padding: 20px; }
-  .cal-supporting { padding: 20px; }
-  .invoice-detail-pane { padding: 20px; }
-  .client-detail-pane { padding: 20px; }
-}
+/* ---------------- M3 tonal separation: nav chrome (#377) ---------------------
+ * The nav chrome — top app bar, nav rail, bottom nav — sits one tonal step
+ * above the page at surface-container, separating navigation from content.
+ * In-content supporting/detail panes stay flat surface. */
 .md-top-app-bar-title {
   font-size: 22px;
   line-height: 28px;
@@ -631,7 +611,8 @@ body.app-fixed main {
   position: sticky; top: 64px; height: calc(100dvh - 64px);
   display: flex; flex-direction: column; align-items: stretch;
   padding: 12px 0; gap: 4px;
-  background: var(--md-sys-color-surface);
+  /* #377: nav chrome carries the tonal step — matches .md-bottom-nav. */
+  background: var(--md-sys-color-surface-container);
 }
 /* destinations: icon in an active-indicator pill + one-word label below.
    Shared by rail and bottom bar; labels are never truncated. */
