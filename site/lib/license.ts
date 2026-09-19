@@ -16,8 +16,8 @@
  *  stays synchronous and layout() never has to go async. Still zero
  *  dependencies.
  *
- *  Key issuance lives in scripts/mint-license.ts and runs offline on
- *  Triston's machine. The private key is NEVER in this repo, NEVER on a
+ *  Key issuance lives in the private timekeep-licensing repo and runs
+ *  offline on Triston's machine. The private key is NEVER in this repo, NEVER on a
  *  server. The public half is embedded below (or via
  *  TIMEKEEP_LICENSE_PUBLIC_KEY); until it's set, no key can validate and
  *  the banner simply persists in launch mode.
@@ -57,8 +57,8 @@ export function licenseBuyUrl(): string {
 }
 
 /* Triston's license public key (32 bytes hex). Ships empty until he runs
-   `bun scripts/mint-license.ts gen` on his own machine and the public half
-   lands here. TIMEKEEP_LICENSE_PUBLIC_KEY (hex) overrides the constant. */
+   the minter (private timekeep-licensing repo) on his own machine and the
+   public half lands here. TIMEKEEP_LICENSE_PUBLIC_KEY (hex) overrides the constant. */
 const EMBEDDED_PUBLIC_KEY = "";
 
 function publicKeyBytes(): Buffer | null {
