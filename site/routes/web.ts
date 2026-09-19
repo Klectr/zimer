@@ -50,12 +50,12 @@ export interface WebDeps {
   manageCols: () => string;
   managePage: () => string;
   bizProfileSection: () => string;
-  invoicesPage: () => string;
+  invoicesPage: (selected: (Invoice & { items: InvoiceItem[] }) | null, origin: string) => string;
   invoiceNewPage: (p: any, preview?: any) => string;
   defaultNewInvParams: () => any;
   invoiceStep2: (p: any, preview?: any) => string;
-  invoiceDetailPage: (inv: Invoice & { items: InvoiceItem[] }, origin: string) => string;
   invoiceDetailBody: (inv: Invoice & { items: InvoiceItem[] }, origin: string) => string;
+  invoiceListOob: (selectedId: number) => string; /* #364 */
   invoiceDoc: (inv: Invoice & { items: InvoiceItem[] }) => string;
   getInvoice: (id: number) => (Invoice & { items: InvoiceItem[] }) | null;
   invoiceTotals: (items: InvoiceItem[], taxRate: number) => { subtotal: number; tax: number; total: number };
@@ -85,7 +85,7 @@ export function createWebRouter(deps: WebDeps) {
     shareOrigin, PORT, loginPage, publicInvoicePage, changelogPage, termsPage, notFoundPage, noSuchInvoicePage, rateLimitPage, errorPage, /* #341: +termsPage */
     dashboardPage, timerPartial, todayPartial, weekInner,
     calendarPage, editPage, manageCols, managePage, bizProfileSection, invoicesPage, invoiceNewPage,
-    defaultNewInvParams, invoiceStep2, invoiceDetailPage, invoiceDetailBody, invoiceDoc,
+    defaultNewInvParams, invoiceStep2, invoiceDetailBody, invoiceListOob, invoiceDoc,
     getInvoice, invoiceTotals,
     nextInvoiceNumber, stripeLinkFor, unbilledEntries,
     groupToLineItems, clientRestFrom, ensurePublicToken, getPublicToken, mintPublicToken,
@@ -508,7 +508,24 @@ export function createWebRouter(deps: WebDeps) {
         }
 
         /* ---- invoicing pages ---- */
-        if (path === "/invoices" && method === "GET") return html(invoicesPage());
+        /* #364: M3 list-detail — ?invoice=<id> selects into the detail pane
+           (two-pane ≥840px) or the single-pane detail screen; fragment=detail
+           is the HTMX swap the list pane's row clicks request. */
+        if (path === "/invoices" && method === "GET") {
+          const sp = new URL(req.url).searchParams;
+          const selRaw = sp.get("invoice");
+          const selId = selRaw && /^\d+$/.test(selRaw) ? Number(selRaw) : null;
+          if (sp.get("fragment") === "detail" && isHtmx(req)) {
+            const inv = selId ? getInvoice(selId) : null;
+            if (!inv) return new Response("Invoice not found.", { status: 404 });
+            /* #364: the OOB list carries the selected row — the pushed-URL
+               history snapshot then restores the right selection on back. */
+            return html(invoiceDetailBody(inv, shareOrigin(req)) + invoiceListOob(inv.id), 200,
+              { "HX-Push-Url": `/invoices?invoice=${inv.id}` });
+          }
+          const selected = selId ? getInvoice(selId) : null;
+          return html(invoicesPage(selected, shareOrigin(req)));
+        }
         if (path === "/invoices/new" && method === "GET") {
           const sp = new URL(req.url).searchParams;
           const { p, preview } = prefillNewInvoice(sp);
@@ -578,12 +595,16 @@ export function createWebRouter(deps: WebDeps) {
             }
           })();
           mintPublicToken(inv.id); /* #227: client link exists from birth */
-          return new Response(null, { status: 302, headers: { Location: `/invoices/${inv.id}` } });
+          return new Response(null, { status: 302, headers: { Location: `/invoices?invoice=${inv.id}` } }); /* #364 */
         }
         m = path.match(/^\/invoices\/(\d+)$/);
         if (m && method === "GET") {
+          /* #364: the standalone detail page is gone — old URLs land on the
+             list-detail with the invoice selected. */
           const inv = getInvoice(Number(m[1]));
-          return inv ? html(invoiceDetailPage(inv, shareOrigin(req))) : html(notFoundPage(authedPage(req, TOKEN)), 404);
+          return inv
+            ? new Response(null, { status: 302, headers: { Location: `/invoices?invoice=${inv.id}` } })
+            : html(notFoundPage(authedPage(req, TOKEN)), 404);
         }
         m = path.match(/^\/invoices\/(\d+)\.pdf$/);
         if (m && method === "GET") {
@@ -624,15 +645,15 @@ export function createWebRouter(deps: WebDeps) {
              link now. A Stripe failure never blocks the status transition; the
              detail page offers a retry. */
           if (want === "sent" && stripeConfigured()) { await stripeLinkFor(inv!.id); }
-          if (isHtmx(req)) { const full = getInvoice(inv!.id); if (full) return html(invoiceDetailBody(full, shareOrigin(req))); } // #71
-          return new Response(null, { status: 302, headers: { Location: `/invoices/${inv!.id}` } });
+          if (isHtmx(req)) { const full = getInvoice(inv!.id); if (full) return html(invoiceDetailBody(full, shareOrigin(req)) + invoiceListOob(full.id)); } // #71, #364: +OOB list refresh
+          return new Response(null, { status: 302, headers: { Location: `/invoices?invoice=${inv!.id}` } });
         }
         m = path.match(/^\/invoices\/(\d+)\/stripe-link$/);
         if (m && method === "POST") {
           const r = await stripeLinkFor(Number(m[1]));
           if (r.url) {
             if (isHtmx(req)) { const full = getInvoice(Number(m[1])); if (full) return html(invoiceDetailBody(full, shareOrigin(req))); } // #71
-            return new Response(null, { status: 302, headers: { Location: `/invoices/${m[1]}` } });
+            return new Response(null, { status: 302, headers: { Location: `/invoices?invoice=${m[1]}` } });
           }
           return new Response(r.error || "Stripe error", { status: r.status || 500 });
         }
@@ -640,13 +661,13 @@ export function createWebRouter(deps: WebDeps) {
         if (m && method === "POST") {
           mintPublicToken(Number(m[1]));
           if (isHtmx(req)) { const full = getInvoice(Number(m[1])); if (full) return html(invoiceDetailBody(full, shareOrigin(req))); } // #71
-          return new Response(null, { status: 302, headers: { Location: `/invoices/${m[1]}` } });
+          return new Response(null, { status: 302, headers: { Location: `/invoices?invoice=${m[1]}` } });
         }
         m = path.match(/^\/invoices\/(\d+)\/public-token\/revoke$/);
         if (m && method === "POST") {
           db.query("UPDATE invoices SET public_token = NULL WHERE id = ?").run(Number(m[1]));
           if (isHtmx(req)) { const full = getInvoice(Number(m[1])); if (full) return html(invoiceDetailBody(full, shareOrigin(req))); } // #71
-          return new Response(null, { status: 302, headers: { Location: `/invoices/${m[1]}` } });
+          return new Response(null, { status: 302, headers: { Location: `/invoices?invoice=${m[1]}` } });
         }
         m = path.match(/^\/invoices\/(\d+)\/delete$/);
         if (m && method === "POST") {

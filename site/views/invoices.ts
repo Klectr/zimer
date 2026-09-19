@@ -46,31 +46,89 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     </div>`;
   }
 
-  function invoicesPage(): string {
-    const rows = qInvoices.all() as any[];
-    const outstanding = rows
-      .filter(r => r.status !== "paid")
-      .reduce((a, r) => a + r.subtotal * (1 + (r.tax_rate || 0) / 100), 0);
-    const list = rows.length ? `<ul class="md-list">${rows.map(r => {
-      const od = isOverdue(r) ? daysBetween(r.due_date as string, todayStr()) : 0;
-      return `<li class="md-list-item">
+  /* #364: one invoice row — the whole row is the tap target into the detail
+     pane (two-pane, ≥840px) or the detail screen (single-pane). */
+  function invoiceRow(r: any, selected: boolean): string {
+    const od = isOverdue(r) ? daysBetween(r.due_date as string, todayStr()) : 0;
+    return `<li class="md-list-item inv-row${selected ? " selected" : ""}">
+      <a class="inv-row-hit" href="/invoices?invoice=${r.id}" aria-label="View invoice ${esc(r.number)}">
         <div class="md-list-item-content">
-          <div class="md-list-item-headline"><a href="/invoices/${r.id}" class="inv-link">${esc(r.number)}</a> ${statusPill(r.status)}${od ? ` <span class="attn-chip">${od}d overdue</span>` : ""}</div>
+          <div class="md-list-item-headline">${esc(r.number)} ${statusPill(r.status)}${od ? ` <span class="attn-chip">${od}d overdue</span>` : ""}</div>
           <div class="md-list-item-supporting">${r.client_name ? esc(r.client_name) : "<em>No client</em>"} · issued ${esc(r.issue_date)}${r.due_date ? ` · due ${esc(r.due_date)}` : ""}</div>
         </div>
         <div class="md-list-item-trailing"><span class="dur">${money(round2(r.subtotal * (1 + (r.tax_rate || 0) / 100)))}</span></div>
-      </li>`;
-    }).join("")}</ul>` : emptyInvoices();
-    return layout("Invoices", `
+      </a>
+    </li>`;
+  }
+
+  function outstandingTotal(rows: any[]): number {
+    return rows
+      .filter(r => r.status !== "paid")
+      .reduce((a, r) => a + r.subtotal * (1 + (r.tax_rate || 0) / 100), 0);
+  }
+
+  function invoiceListHtml(rows: any[], selectedId: number | null): string {
+    return `<ul class="md-list" id="inv-list">${rows.map(r => invoiceRow(r, selectedId === r.id)).join("")}</ul>`;
+  }
+
+  /* #364: out-of-band refresh for the list pane after a detail-pane action
+     changes an invoice — the row pill and the outstanding total must not go
+     stale. The action's invoice stays selected: the detail pane is showing it. */
+  function invoiceListOob(selectedId: number): string {
+    const rows = qInvoices.all() as any[];
+    return `<ul class="md-list" id="inv-list" hx-swap-oob="true">${rows.map(r => invoiceRow(r, selectedId === r.id)).join("")}</ul>`
+      + `<p class="muted" id="inv-outstanding" hx-swap-oob="true">Outstanding: <strong>${money(outstandingTotal(rows))}</strong></p>`;
+  }
+
+  function detailPlaceholder(): string {
+    return `<div class="detail-placeholder">${icon("receipt")}<p class="muted">Select an invoice to preview it here.</p></div>`;
+  }
+
+  /* #364: M3 list-detail — the list pane owns the outstanding summary,
+     unbilled time, and invoice rows; the detail pane shows the selected
+     invoice (or a placeholder). Below 840px the panes take turns via
+     .has-selection. */
+  function invoicesPage(selected: (Invoice & { items: InvoiceItem[] }) | null, origin: string): string {
+    const rows = qInvoices.all() as any[];
+    const head = `
       <div class="page-head" data-enter="2">
         <h2 class="md-headline-small">Invoices</h2>
         <div class="page-head-actions">
           <a class="md-text-button" href="/export/invoices.csv" download>${icon("download")}Export CSV</a>
           <a class="md-filled-button" href="/invoices/new">${icon("add")}New invoice</a>
         </div>
+      </div>`;
+    if (!rows.length) {
+      return layout("Invoices", `${head}
+        <div class="scroll-region" data-enter="3">${emptyInvoices()}</div>`, "invoices", true);
+    }
+    return layout("Invoices", `${head}
+      <div class="invoice-list-detail${selected ? " has-selection" : ""}" data-enter="3">
+        <section class="invoice-list-pane" aria-label="Invoice list">
+          <p class="muted" id="inv-outstanding">Outstanding: <strong>${money(outstandingTotal(rows))}</strong></p>
+          ${unbilledSection(rows)}
+          ${invoiceListHtml(rows, selected ? selected.id : null)}
+        </section>
+        <section class="invoice-detail-pane" id="invoice-detail-pane" aria-label="Invoice detail">
+          ${selected ? invoiceDetailBody(selected, origin) : detailPlaceholder()}
+        </section>
       </div>
-      ${rows.length ? `<p class="muted">Outstanding: <strong>${money(outstanding)}</strong></p>` : ""}
-      <div class="scroll-region" data-enter="3">${unbilledSection(rows)}${list}</div>`, "invoices", true);
+      <script>(function(){
+        /* #364: two-pane selection. At ≥840px a row click swaps the detail
+           pane in place (the fragment pushes ?invoice=<id> and OOB-marks the
+           selected row); below that the link navigates to the single-pane
+           detail screen. Delegated so it survives the list's OOB swaps. */
+        var wrap = document.querySelector(".invoice-list-detail");
+        if (!wrap || !window.htmx) return;
+        var mq = window.matchMedia("(min-width: 840px)");
+        wrap.addEventListener("click", function(ev){
+          var link = ev.target.closest(".inv-row-hit");
+          if (!link || !mq.matches) return;
+          ev.preventDefault();
+          window.htmx.ajax("GET", link.getAttribute("href") + "&fragment=detail",
+            { target: "#invoice-detail-pane", swap: "innerHTML" });
+        });
+      })();</script>`, "invoices", true);
   }
 
   /** #328: per-client finished, unbilled time with an "Invoice" shortcut into
@@ -418,7 +476,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       </section>`;
     return `<div id="invoice-detail">
       <div class="page-head no-print">
-        <a class="md-text-button" href="/invoices">${icon("arrow_left")}Invoices</a>
+        <a class="md-text-button detail-back" href="/invoices">${icon("arrow_left")}Invoices</a>
         <div class="row">
           <a class="md-filled-button" href="/invoices/${inv.id}.pdf" download>${icon("download")}Download PDF</a>
           ${next ? `<form method="post" action="/invoices/${inv.id}/status" class="inline" hx-post="/invoices/${inv.id}/status" ${hxDetail}>
@@ -435,16 +493,11 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       ${shareLines}</div>`;
   }
 
-  function invoiceDetailPage(inv: Invoice & { items: InvoiceItem[] }, origin: string): string {
-    /* #71: data-enter sits on the shell HTMX never replaces, so the entrance
-       plays once per page load and never replays on swaps. */
-    return layout(`Invoice ${inv.number}`, `
-      <div data-enter="2" id="invoice-detail-wrap">${invoiceDetailBody(inv, origin)}</div>`, "invoices");
-  }
-
+  /* #364: list-detail replaced the standalone detail page — the detail body
+     now renders inside the detail pane (or as the fragment the pane swaps). */
   return {
     invoicesPage, defaultNewInvParams, invoiceNewPage, invoiceStep2,
-    invoiceSheet, invoiceDoc, invoiceDetailBody, invoiceDetailPage,
+    invoiceSheet, invoiceDoc, invoiceDetailBody, invoiceListOob,
     invoiceDocumentHtml, invoicePdfInput, /* #301 */
   };
 }

@@ -220,7 +220,7 @@ export function createTimerViews(deps: TimerViewDeps) {
       return `<div class="md-card rev-attention">${title}<p class="muted attn-ok">All caught up — nothing overdue.</p></div>`;
     const rows = overdue.map(o => `
       <li class="md-list-item">
-        <a class="attn-link" href="/invoices/${o.id}">
+        <a class="attn-link" href="/invoices?invoice=${o.id}">
           <div class="md-list-item-content">
             <div class="md-list-item-headline">${esc(o.client_name || "Unknown")}</div>
             <div class="md-list-item-supporting">${esc(o.number)} · Due ${esc(o.due_date || "")}</div>
