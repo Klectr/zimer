@@ -86,8 +86,9 @@ stop_server() {
 if [ -f "$INSTALL_DIR/site/server.ts" ]; then
   say "Updating $INSTALL_DIR to v$VERSION ..."
   stop_server
-  # Clear everything except what must survive an update.
-  ( cd "$INSTALL_DIR" && ls -A | grep -vx -e data -e .token -e start.sh -e .version -e .pid | xargs -r rm -rf )
+  # Clear everything except what must survive an update. #369: .stripe.env
+  # holds the Stripe secret — wiping it silently breaks payments on update.
+  ( cd "$INSTALL_DIR" && ls -A | grep -vx -e data -e .token -e start.sh -e .version -e .pid -e .stripe.env | xargs -r rm -rf )
   cp -a "$TMP/new/." "$INSTALL_DIR/"
 else
   say "Installing Timekeep v$VERSION to $INSTALL_DIR ..."

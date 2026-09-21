@@ -57,15 +57,35 @@ export async function checkForUpdates(): Promise<UpdateStatus> {
   const current = appVersion();
   const major = appMajor();
   if (major === 0) return { kind: "dev" };
-  let feed: { releases?: Record<string, ReleaseInfo> };
+  let feed: unknown;
   try {
     const res = await fetch(releasesFeedUrl(), { signal: AbortSignal.timeout(10000) });
     if (!res.ok) return { kind: "unreachable" };
-    feed = (await res.json()) as typeof feed;
+    feed = await res.json();
   } catch {
     return { kind: "unreachable" };
   }
-  const releases = feed?.releases ?? {};
+  return updateStatusFromFeed(feed, current, major);
+}
+
+/* #369: pure feed → status mapping, extracted for testing. A feed that parses
+   but isn't the documented shape is "unreachable", not "no-releases":
+   claiming "no releases published yet" for a corrupt feed would mask a real
+   feed problem. "no-releases" is only for a well-formed feed with no entry
+   for this major (including the documented empty-until-v1.0.0 state). */
+export function updateStatusFromFeed(feed: unknown, current: string, major: number): UpdateStatus {
+  if (typeof feed !== "object" || feed === null || Array.isArray(feed)) return { kind: "unreachable" };
+  const releasesRaw = (feed as { releases?: unknown }).releases;
+  if (releasesRaw === undefined) return { kind: "no-releases" };
+  if (typeof releasesRaw !== "object" || releasesRaw === null || Array.isArray(releasesRaw)) {
+    return { kind: "unreachable" };
+  }
+  const releases = releasesRaw as Record<string, unknown>;
+  const isRelease = (r: unknown): r is ReleaseInfo =>
+    typeof r === "object" && r !== null &&
+    typeof (r as { version?: unknown }).version === "string" &&
+    typeof (r as { url?: unknown }).url === "string" &&
+    typeof (r as { sha256?: unknown }).sha256 === "string";
   /* A newer major than this install's key covers: the v1 key won't validate
      on v2, so say so plainly and point at the buy flow. */
   const newerMajors = Object.keys(releases)
@@ -74,10 +94,12 @@ export async function checkForUpdates(): Promise<UpdateStatus> {
     .sort((x, y) => x - y);
   if (newerMajors.length > 0) {
     const latest = releases[String(newerMajors[newerMajors.length - 1])];
-    if (latest?.version) return { kind: "major-available", current, latest };
+    if (!isRelease(latest)) return { kind: "unreachable" };
+    return { kind: "major-available", current, latest };
   }
   const same = releases[String(major)];
-  if (!same?.version) return { kind: "no-releases" };
+  if (same === undefined) return { kind: "no-releases" };
+  if (!isRelease(same)) return { kind: "unreachable" };
   return cmpVersions(same.version, current) > 0
     ? { kind: "update-available", current, latest: same }
     : { kind: "up-to-date", version: current };
