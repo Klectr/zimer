@@ -137,7 +137,10 @@ export function licenseSectionHtml(db: Database, licensed: boolean, error = ""):
     ? `<p style="margin:0 0 12px"><a class="md-filled-button" href="${esc(buyUrl)}" target="_blank" rel="noopener">${icon("card")}<span>Buy license — ${esc(licensePrice())}</span></a></p>`
     : "";
   const body = licensed
-    ? `<p class="licensed-ok">${icon("check")}<span><strong>Licensed.</strong>${keyId ? ` Key <code>${esc(keyId)}</code> verified` : ""} — thanks for supporting Timekeep.</span></p>`
+    ? `<div class="status-row status-row-licensed">${icon("check")}<div class="status-row-text">
+        <p class="status-row-headline">Licensed</p>
+        <p class="status-row-supporting">${keyId ? `Key <code>${esc(keyId)}</code> verified — thanks for supporting Timekeep.` : "Thanks for supporting Timekeep."}</p>
+      </div></div>`
     : `${buy}
       <form method="post" action="/license" class="manage-form" hx-post="/license" hx-target="#license-section" hx-swap="outerHTML">
         <div class="md-text-field">

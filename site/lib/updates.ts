@@ -109,7 +109,10 @@ export function updateStatusFromFeed(feed: unknown, current: string, major: numb
 export function updateStatusHtml(s: UpdateStatus): string {
   switch (s.kind) {
     case "up-to-date":
-      return `<p class="licensed-ok">${icon("check")}<span>You're up to date — <strong>v${esc(s.version)}</strong>.</span></p>`;
+      return `<div class="status-row">${icon("check")}<div class="status-row-text">
+        <p class="status-row-headline">You're up to date</p>
+        <p class="status-row-supporting">Timekeep v${esc(s.version)}</p>
+      </div></div>`;
     case "no-releases":
       return `<p class="muted">No releases published yet — you're running a pre-release build.</p>`;
     case "update-available": {
