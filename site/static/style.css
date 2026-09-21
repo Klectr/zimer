@@ -1082,6 +1082,9 @@ button.m3-menu-item {
 .client-detail-head { display: flex; align-items: center; gap: 12px; margin: 4px 0 16px; }
 .client-detail-head .md-headline-small { margin: 0; }
 .client-add { margin-bottom: 8px; }
+/* #383: the add-client field sat tight against the column's left edge — give
+   it left breathing room (aligns the field with the toggle text above it). */
+#client-add-form { padding-left: 16px; }
 #client-add-form[hidden] { display: none; }
 .detail-form { margin-bottom: 12px; }
 /* #367: rate field + save sit inline in the detail pane (they used to ride
