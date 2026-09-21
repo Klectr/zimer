@@ -13,7 +13,7 @@
 
 import { appVersion, appMajor } from "./version.ts";
 import { esc } from "./format.ts";
-import { icon } from "./icons.ts";
+import { icon, logo } from "./icons.ts";
 import { licenseBuyUrl, licensePrice } from "./license.ts";
 
 const DEFAULT_FEED_URL = "https://invoices.tristonarmstrong.com/releases/feed.json";
@@ -164,7 +164,7 @@ export function updateSectionHtml(): string {
       </div></div></div>
       <div class="manage-form-row">
         <span class="manage-form-spacer"></span>
-        <button class="md-tonal-button" type="button" hx-post="/check-updates" hx-target="#update-status" hx-swap="innerHTML">${icon("refresh")}Check for updates</button>
+        <button id="check-updates-btn" class="md-tonal-button" type="button" hx-post="/check-updates" hx-target="#update-status" hx-swap="innerHTML" hx-disabled-elt="#check-updates-btn">${icon("refresh")}<span class="btn-spinner" aria-hidden="true">${logo(24, true)}</span>Check for updates</button>
       </div>
     </section>`;
 }

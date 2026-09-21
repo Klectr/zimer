@@ -101,3 +101,34 @@ describe("navigation rail width (#397)", () => {
     expect(rail.get("width")).toBe("var(--md-nav-rail-width)");
   });
 });
+
+describe("update-check progress state (#406)", () => {
+  test("spinner occupies the icon's 18px box; hands spin; reduced-motion is static", () => {
+    // hidden at rest, same 18px box as the refresh icon it replaces
+    const hidden = declarations(ruleBlock("#check-updates-btn .btn-spinner"));
+    expect(hidden.get("display")).toBe("none");
+    expect(hidden.get("width")).toBe("18px");
+    expect(hidden.get("height")).toBe("18px");
+
+    // shown while htmx has the request in flight; refresh icon hidden
+    const shown = declarations(
+      ruleBlock("#check-updates-btn.htmx-request .btn-spinner"),
+    );
+    expect(shown.get("display")).toBe("inline-flex");
+    const iconHidden = declarations(
+      ruleBlock("#check-updates-btn.htmx-request > svg"),
+    );
+    expect(iconHidden.get("display")).toBe("none");
+
+    // the clock hands rotate around the clock center (33, 22 on the 64-grid)
+    expect(css).toContain("@keyframes tk-logo-spin");
+    expect(css).toContain("transform-origin: 33px 22px");
+
+    // reduced motion: the logo still swaps in, but the hands stay still
+    const rmIdx = css.indexOf("@media (prefers-reduced-motion: reduce)");
+    expect(rmIdx).toBeGreaterThan(-1);
+    const rmTail = css.slice(rmIdx, rmIdx + 400);
+    expect(rmTail).toContain(".tk-logo-spinning .tk-logo-hands");
+    expect(rmTail).toContain("animation: none");
+  });
+});

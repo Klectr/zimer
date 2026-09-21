@@ -278,6 +278,30 @@ h2.md-headline-small { margin: 24px 0 12px; }
 .md-filled-button svg, .md-tonal-button svg, .md-outlined-button svg, .md-text-button svg {
   width: 18px; height: 18px; flex: none; }
 
+/* ---------------- update-check progress state (#406) ---------------- */
+/* While the check is in flight htmx adds .htmx-request to the button: the
+   squiggly logo replaces the refresh icon in the same 18px box, so the
+   button never jumps, and the clock hands spin. hx-disabled-elt disables
+   the button for the duration of the request. */
+#check-updates-btn .btn-spinner { display: none; width: 18px; height: 18px; flex: none; }
+#check-updates-btn.htmx-request .btn-spinner { display: inline-flex; }
+#check-updates-btn.htmx-request > svg { display: none; }
+.tk-logo-spinning .tk-logo-hands {
+  transform-box: view-box;
+  transform-origin: 33px 22px;
+  animation: tk-logo-spin 1.1s linear infinite;
+}
+@keyframes tk-logo-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .tk-logo-spinning .tk-logo-hands { animation: none; }
+}
+/* disabled buttons (used by hx-disabled-elt on #check-updates-btn) */
+.md-filled-button:disabled, .md-tonal-button:disabled,
+.md-outlined-button:disabled, .md-text-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
 /* ---------------- FAB (extended: 56dp high, pill, icon + label) ---------------- */
 /* ---------------- icon buttons (48dp target, 24px glyph) ---------------- */
 .md-icon-button {
