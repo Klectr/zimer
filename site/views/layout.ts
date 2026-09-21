@@ -39,9 +39,8 @@ export function createLayoutViews(qRunning: Statement, bannerHtml?: () => string
   <script src="/static/terms.js" defer></script>
   </head>
   <body class="app${fixed ? " app-fixed" : ""}" data-timer-running="${qRunning.get() ? 1 : 0}">
-  <!-- #385: the app is a rounded surface sheet floating on the page
-       background, which carries the nav chrome's tonal color. -->
-  <div class="app-sheet">
+  <!-- #387: the app bar and nav rail sit chromeless on the page background;
+       the rounded surface sheet wraps only the content column. -->
   <header class="md-top-app-bar" data-enter="1">
     <span class="md-top-app-bar-title">${logo(34)}</span>
     <span class="md-top-app-bar-spacer"></span>
@@ -51,13 +50,12 @@ export function createLayoutViews(qRunning: Statement, bannerHtml?: () => string
     <nav class="md-nav-rail" aria-label="Primary">
       ${dests.map(d => dest(d, "md-rail-item")).join("")}
     </nav>
-    <div class="app-content">
+    <div class="app-sheet">
       ${/* #304: license honesty-box banner (launch mode only, unlicensed only).
            Rendered here so it appears on every app page; publicShell() pages
            (client invoice links) never see it. */ bannerHtml ? bannerHtml() : ""}
       <main${active ? ` class="page-${active}"` : ""}>${body}</main>
     </div>
-  </div>
   </div>
   <nav class="md-bottom-nav" aria-label="Primary">
     ${dests.map(d => dest(d, "md-bar-item")).join("")}
