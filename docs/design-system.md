@@ -192,7 +192,10 @@ per-page:
   with the four destinations, fixed to the bottom edge. Medium and wider
   (600px+): collapsed leading navigation rail, outside all panes on the
   leading edge, below the app bar. The switch is the 600px breakpoint — rail
-  and bar never show together. The active destination gets the M3
+  and bar never show together. The rail is 72px wide — a documented deviation
+  from the M3 80dp default (#397): the 56px active-indicator pill keeps 8px
+  clearance and the one-word labels (longest: "Calendar") stay legible.
+  The active destination gets the M3
   active-indicator pill (`secondary-container`) behind its icon; labels are
   one word and never truncated ("Clients"). The top app bar keeps the brand
   mark leading and the account menu trailing only — it never carries primary

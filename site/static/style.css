@@ -76,11 +76,13 @@
   --layout-body-margin: 16px;
   --layout-pane-gap: 24px;
   --layout-supporting-pane: 360px;
-  /* #354: primary navigation dimensions. 80px collapsed rail width and 80px
-     bottom bar height are the M3 defaults; the /specs measurement values
-     weren't extractable in the research pass, so these are judgment calls
-     (noted on #354). */
-  --md-nav-rail-width: 80px;
+  /* #354: primary navigation dimensions. #397: the collapsed rail is 72px —
+     a deliberate deviation from the M3 80dp default (same standing as the
+     56px app bar, #389); the 56px active pill still has 8px clearance and
+     the one-word labels still fit. The 80px bottom bar height is the M3
+     default. The /specs measurement values weren't extractable in the
+     research pass, so these are judgment calls (noted on #354). */
+  --md-nav-rail-width: 72px;
   --md-nav-bar-height: 80px;
 }
 @media (min-width: 600px) {
@@ -634,9 +636,8 @@ body.app-fixed .md-nav-rail { position: static; height: auto; }
  * fixed to the bottom edge. Medium and wider (600px+): collapsed leading
  * navigation rail, outside all panes on the leading edge, below the app bar.
  * The switch is the 600px breakpoint — rail and bar never show together.
- * Rail width (80px) and bar height (80px) are the M3 defaults; the /specs
- * measurement values weren't extractable in the research pass, so these are
- * judgment calls (noted on #354). */
+ * Rail width (72px, #397) is a deliberate deviation from the M3 80dp
+ * default; bar height (80px) is the M3 default. */
 /* app chrome: rail beside the content column (banner + main). On
    fixed-viewport pages the row fills the 100dvh body; on document pages the
    rail sticks below the app bar while the page scrolls. #387: the 12px
