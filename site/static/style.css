@@ -1216,6 +1216,11 @@ button.m3-menu-item {
   color: var(--md-sys-color-on-surface-variant); }
 /* Licensed is an active state — the gold check stays per the design doc. */
 .status-row-licensed > svg { color: var(--md-sys-color-primary); }
+/* #404: per-status update icons — an available update prompts a primary
+   action, so it takes primary; unreachable is an error state. */
+.status-row-primary > svg { color: var(--md-sys-color-primary); }
+.status-row-error > svg { color: var(--md-sys-color-error, #ffb4ab); }
+.status-row-error .status-row-headline { color: var(--md-sys-color-error, #ffb4ab); }
 .status-row-text { flex: 1; min-width: 0; }
 .status-row-headline { margin: 0; font-size: 16px; line-height: 24px;
   letter-spacing: 0.5px; color: var(--md-sys-color-on-surface); }

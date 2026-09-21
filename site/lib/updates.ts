@@ -105,7 +105,8 @@ export function updateStatusFromFeed(feed: unknown, current: string, major: numb
     : { kind: "up-to-date", version: current };
 }
 
-/* Rendered into #update-status via hx-post /check-updates. */
+/* Rendered into #update-status via hx-post /check-updates.
+   #404: every status gets its own leading icon on the shared .status-row. */
 export function updateStatusHtml(s: UpdateStatus): string {
   switch (s.kind) {
     case "up-to-date":
@@ -114,11 +115,17 @@ export function updateStatusHtml(s: UpdateStatus): string {
         <p class="status-row-supporting">Timekeep v${esc(s.version)}</p>
       </div></div>`;
     case "no-releases":
-      return `<p class="muted">No releases published yet — you're running a pre-release build.</p>`;
+      return `<div class="status-row">${icon("info")}<div class="status-row-text">
+        <p class="status-row-headline">No releases published yet</p>
+        <p class="status-row-supporting">You're running a pre-release build.</p>
+      </div></div>`;
     case "update-available": {
       const cmd = `curl -fsSL ${installScriptUrl()} | bash`;
-      return `<p><strong>v${esc(s.latest.version)} is available</strong> (you're on v${esc(s.current)}).</p>
-        <p class="muted">Update by re-running the installer — your data, token, and settings are preserved:</p>
+      return `<div class="status-row status-row-primary">${icon("download")}<div class="status-row-text">
+        <p class="status-row-headline">v${esc(s.latest.version)} is available</p>
+        <p class="status-row-supporting">You're on v${esc(s.current)} — re-run the installer to update.</p>
+      </div></div>
+        <p class="muted">Your data, token, and settings are preserved:</p>
         <p><code class="update-cmd">${esc(cmd)}</code></p>`;
     }
     case "major-available": {
@@ -126,13 +133,22 @@ export function updateStatusHtml(s: UpdateStatus): string {
       const buy = buyUrl
         ? `<p><a class="md-filled-button" href="${esc(buyUrl)}" target="_blank" rel="noopener">${icon("card")}<span>Buy a v${esc(String(s.latest.version).split(".")[0])} license — ${esc(licensePrice())}</span></a></p>`
         : "";
-      return `<p><strong>v${esc(s.latest.version)} is available</strong> — it's a new major version, so it needs a new license key (your current key keeps working on v${esc(s.current.split(".")[0])}.x forever).</p>
+      return `<div class="status-row status-row-primary">${icon("download")}<div class="status-row-text">
+        <p class="status-row-headline">v${esc(s.latest.version)} is available</p>
+        <p class="status-row-supporting">It's a new major version, so it needs a new license key — your current key keeps working on v${esc(s.current.split(".")[0])}.x forever.</p>
+      </div></div>
         ${buy}`;
     }
     case "unreachable":
-      return `<p class="license-error" role="alert">Couldn't reach the update server. Check your connection and try again.</p>`;
+      return `<div class="status-row status-row-error" role="alert">${icon("alert")}<div class="status-row-text">
+        <p class="status-row-headline">Couldn't reach the update server</p>
+        <p class="status-row-supporting">Check your connection and try again.</p>
+      </div></div>`;
     case "dev":
-      return `<p class="muted">Development build — update checks are disabled.</p>`;
+      return `<div class="status-row">${icon("info")}<div class="status-row-text">
+        <p class="status-row-headline">Development build</p>
+        <p class="status-row-supporting">Update checks are disabled.</p>
+      </div></div>`;
   }
 }
 
@@ -142,7 +158,10 @@ export function updateStatusHtml(s: UpdateStatus): string {
 export function updateSectionHtml(): string {
   return `<section id="update-section">
       <h2 class="md-headline-small">Updates</h2>
-      <div id="update-status"><p class="muted">Timekeep v${esc(appVersion())}. Press the button to check for new releases.</p></div>
+      <div id="update-status"><div class="status-row">${icon("info")}<div class="status-row-text">
+        <p class="status-row-headline">Timekeep v${esc(appVersion())}</p>
+        <p class="status-row-supporting">Press the button below to check for new releases.</p>
+      </div></div></div>
       <div class="manage-form-row">
         <span class="manage-form-spacer"></span>
         <button class="md-tonal-button" type="button" hx-post="/check-updates" hx-target="#update-status" hx-swap="innerHTML">${icon("refresh")}Check for updates</button>

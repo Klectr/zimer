@@ -69,7 +69,13 @@ per-page:
   on-surface-variant). The icon top-aligns with the first line; wrapped
   supporting text keeps its hanging indent. The license row adds
   `.status-row-licensed` for the gold check — licensed is an active state,
-  which is where the design doc allows gold.
+  which is where the design doc allows gold. Update statuses each get their
+  own leading icon (#404): up-to-date → check (on-surface-variant); an
+  available update → download in primary (`.status-row-primary`) — it prompts
+  a primary action (re-run the installer / buy a new major); unreachable →
+  the `alert` warning-triangle in error (`.status-row-error`); no-releases,
+  dev, and the idle pre-check state → info (on-surface-variant), neutral and
+  informational.
 - **Icons:** inline SVG via `icon(name)` in `site/server.ts` — M3 outlined
   24px style (`stroke="currentColor"`, round caps/joins), no icon font or CDN.
   Sizing: 20px leading in tabs, 18px in buttons,
