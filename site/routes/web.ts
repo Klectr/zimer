@@ -109,7 +109,14 @@ export function createWebRouter(deps: WebDeps) {
           if (!p.startsWith(STATIC_DIR + sep) && p !== STATIC_DIR) return new Response("Forbidden", { status: 403 });
           const f = Bun.file(p);
           if (!(await f.exists())) return html(notFoundPage(authedPage(req, TOKEN)), 404);
-          return new Response(f);
+          /* #374: filenames aren't fingerprinted, so browsers must revalidate
+             every load — otherwise a deploy's new CSS/JS never reaches cached
+             clients. ETag from size+mtime; If-None-Match gets a 304. */
+          const etag = `"${f.size.toString(36)}-${Math.floor(f.lastModified / 1000).toString(36)}"`;
+          if (req.headers.get("if-none-match") === etag) {
+            return new Response(null, { status: 304 });
+          }
+          return new Response(f, { headers: { ETag: etag, "Cache-Control": "public, no-cache" } });
         }
         if (path === "/login") {
           if (method === "GET") {
