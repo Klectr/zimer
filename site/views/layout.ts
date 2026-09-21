@@ -38,7 +38,10 @@ export function createLayoutViews(qRunning: Statement, bannerHtml?: () => string
   <script src="/static/shortcut.js" defer></script>
   <script src="/static/terms.js" defer></script>
   </head>
-  <body${fixed ? ' class="app-fixed"' : ""} data-timer-running="${qRunning.get() ? 1 : 0}">
+  <body class="app${fixed ? " app-fixed" : ""}" data-timer-running="${qRunning.get() ? 1 : 0}">
+  <!-- #385: the app is a rounded surface sheet floating on the page
+       background, which carries the nav chrome's tonal color. -->
+  <div class="app-sheet">
   <header class="md-top-app-bar" data-enter="1">
     <span class="md-top-app-bar-title">${logo(34)}</span>
     <span class="md-top-app-bar-spacer"></span>
@@ -54,6 +57,7 @@ export function createLayoutViews(qRunning: Statement, bannerHtml?: () => string
            (client invoice links) never see it. */ bannerHtml ? bannerHtml() : ""}
       <main${active ? ` class="page-${active}"` : ""}>${body}</main>
     </div>
+  </div>
   </div>
   <nav class="md-bottom-nav" aria-label="Primary">
     ${dests.map(d => dest(d, "md-bar-item")).join("")}
