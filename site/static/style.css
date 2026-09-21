@@ -158,7 +158,10 @@ body {
   outline-offset: 2px;
 }
 
-/* ---------------- top app bar (small, 64dp) ---------------- */
+/* ---------------- top app bar (slim, 56px) ----------------
+ * #389: deliberately slimmer than the M3 small app bar spec (64dp) — the
+ * chromeless bar read too tall. Logo is 34px, actions are 48px icon
+ * buttons, so 56px keeps comfortable clearance and full touch targets. */
 .md-top-app-bar {
   position: sticky;
   /* #387: sticks 12px off the viewport top so the chrome floats with a
@@ -168,7 +171,7 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  height: 64px;
+  height: 56px;
   /* #361: leading padding tracks the M3 body margin (16px compact, 24px
      medium+) so the brand mark aligns with the content ruler. #362: no hard
      border under the app bar — M3 separates it tonally. */
@@ -641,10 +644,11 @@ body.app-fixed .md-nav-rail { position: static; height: auto; }
 .app-chrome { display: flex; flex: 1; min-height: 0; gap: 12px; padding: 12px; }
 .md-nav-rail {
   flex: none; width: var(--md-nav-rail-width);
-  /* #387: sticks below the floating app bar (12px gutter + 64px bar + 12px
+  /* #387: sticks below the floating app bar (12px gutter + 56px bar + 12px
      chrome gap) so the rail keeps the same offset at rest and while stuck.
-     Chromeless — inherits the page background. */
-  position: sticky; top: 88px; height: calc(100dvh - 88px);
+     Chromeless — inherits the page background. #389: 88px → 80px follows
+     the slimmer app bar. */
+  position: sticky; top: 80px; height: calc(100dvh - 80px);
   display: flex; flex-direction: column; align-items: stretch;
   padding: 12px 0; gap: 4px;
   background: transparent;
