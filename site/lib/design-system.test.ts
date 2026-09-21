@@ -84,3 +84,20 @@ describe("account-menu locked spec (#395)", () => {
     expect(inner).toBe(container - inset);
   });
 });
+
+describe("navigation rail width (#397)", () => {
+  test("72px rail — documented deviation from the M3 80dp default", () => {
+    // :root is split across two blocks; take the one carrying the nav token
+    const hits = [...css.matchAll(/^:root\s*\{([^}]*)\}/gm)];
+    const hit = hits.find((m) => m[1].includes("--md-nav-rail-width"));
+    if (!hit)
+      throw new Error(
+        "locked-spec: --md-nav-rail-width not found in any :root block",
+      );
+    const root = declarations(hit[1]);
+    expect(root.get("--md-nav-rail-width")).toBe("72px");
+
+    const rail = declarations(ruleBlock(".md-nav-rail"));
+    expect(rail.get("width")).toBe("var(--md-nav-rail-width)");
+  });
+});
