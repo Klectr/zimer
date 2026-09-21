@@ -112,7 +112,13 @@ export function createWebRouter(deps: WebDeps) {
           return new Response(f);
         }
         if (path === "/login") {
-          if (method === "GET") return html(loginPage());
+          if (method === "GET") {
+            /* #379: already logged in — bounce to the timer. */
+            if (authedPage(req, TOKEN)) {
+              return new Response(null, { status: 302, headers: { Location: "/" } });
+            }
+            return html(loginPage());
+          }
           if (method === "POST") {
             /* #308: slow down token brute-forcing. */
             const rl = loginLimiter.check(clientIp(req));
