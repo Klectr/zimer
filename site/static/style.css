@@ -161,8 +161,8 @@ body {
 /* ---------------- top app bar (small, 64dp) ---------------- */
 .md-top-app-bar {
   position: sticky;
-  /* #385: sticks 12px off the viewport top so the app sheet keeps its
-     rounded top corners (and page-background gutter) while scrolling. */
+  /* #387: sticks 12px off the viewport top so the chrome floats with a
+     page-background gutter while scrolling. */
   top: 12px;
   z-index: 10;
   display: flex;
@@ -173,17 +173,14 @@ body {
      medium+) so the brand mark aligns with the content ruler. #362: no hard
      border under the app bar — M3 separates it tonally. */
   padding: 0 16px 0 var(--layout-body-margin);
-  /* #377: nav chrome carries the tonal step — the app bar is
-     surface-container at all times, separating it from the surface page. */
+  /* #377: tonal default (surface-container); the app override below (#387)
+     makes it transparent so it inherits the page bg. */
   background: var(--md-sys-color-surface-container);
 }
-/* ---------------- M3 tonal separation: nav chrome (#377, #385) ----------------
- * #385: the page background carries the nav chrome's tonal color
- * (surface-container) and the app is a rounded surface sheet on it. Inside
- * the sheet the nav rail keeps its surface-container tone; the top app bar
- * blends into the sheet's surface (body.app override below) so the sheet's
- * rounded top corners read. In-content supporting/detail panes stay flat
- * surface. */
+/* ---------------- M3 tonal separation: nav chrome (#377, #385, #387) ----------------
+ * #387: the page background is surface-container and the app bar + rail sit
+ * chromeless on it; only the content column is the rounded surface sheet.
+ * In-content supporting/detail panes stay flat surface. */
 .md-top-app-bar-title {
   font-size: 22px;
   line-height: 28px;
@@ -598,36 +595,36 @@ body.app-fixed main {
  * field, and fields sit flush against this region's clip edge (overflow-y: auto
  * clips the ring otherwise). */
 .scroll-region { flex: 1; min-height: 0; overflow-y: auto; padding: 4px; }
-/* ---------------- rounded app sheet (#385) ----------------
- * M3 doesn't do sharp corners. The page background carries the nav chrome's
- * tonal color (surface-container); the app itself — top app bar + content
- * column — is a surface sheet with extra-large corners floating on it, so the
- * top-left corner reads rounded instead of a sharp 90 degrees. The nav rail
- * keeps its surface-container tone as a column inside the sheet; the app bar
- * blends into the sheet's surface so the sheet's rounded top corners stay
- * visible. Scoped to layout() via body.app — public pages (login, invoice
- * links, error pages) keep the flat surface background. */
+/* ---------------- rounded app sheet (#385, refined #387) ----------------
+ * M3 doesn't do sharp corners. The page background is surface-container; the
+ * top app bar and nav rail sit chromeless on it (no background of their own),
+ * and only the content column is a surface sheet with extra-large corners
+ * floating on the page. Scoped to layout() via body.app — public pages
+ * (login, invoice links, error pages) keep the flat surface background. */
 body.app { background: var(--md-sys-color-surface-container); }
+/* #387: the sheet is the content column of .app-chrome (rail beside it).
+ * Gutters live on .app-chrome's padding; overflow: clip rounds the sheet's
+ * inner content corners without becoming a scroll container. */
 .app-sheet {
   background: var(--md-sys-color-surface);
   border-radius: var(--md-sys-shape-corner-extra-large);
-  margin: 12px;
-  /* overflow: clip (not hidden) rounds the rail's inner corners without
-     becoming a scroll container, so the sticky app bar keeps working on
-     document pages. */
   overflow: clip;
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
 }
+/* #387: the app bar floats chromeless on the page background — no tonal band
+ * of its own, so it inherits the page bg exactly. */
 body.app .md-top-app-bar {
-  background: var(--md-sys-color-surface);
-  /* #385: rounded at rest (matches the sheet) and while stuck. */
-  border-radius: var(--md-sys-shape-corner-extra-large);
+  background: transparent;
+  margin: 12px 12px 0;
 }
-/* fixed-viewport pages: the sheet is the flex child filling the 100dvh body.
-   The rail stops being sticky here — its 100dvh-based height would poke past
-   the sheet — and just stretches with the chrome row. */
-body.app-fixed .app-sheet { flex: 1; min-height: 0; }
+/* fixed-viewport pages: the chrome row fills the 100dvh body and the sheet
+   stretches with it. The rail stops being sticky here — its 100dvh-based
+   height would poke past the chrome — and just stretches with the row. */
+body.app-fixed .app-sheet { min-height: 0; }
 body.app-fixed .md-nav-rail { position: static; height: auto; }
 /* ---------------- primary navigation: bottom bar (compact) / rail (medium+) ----
  * #354: M3 per window size class. Compact (<600px): bottom navigation bar,
@@ -639,17 +636,18 @@ body.app-fixed .md-nav-rail { position: static; height: auto; }
  * judgment calls (noted on #354). */
 /* app chrome: rail beside the content column (banner + main). On
    fixed-viewport pages the row fills the 100dvh body; on document pages the
-   rail sticks below the app bar while the page scrolls. */
-.app-chrome { display: flex; flex: 1; min-height: 0; }
-.app-content { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; }
+   rail sticks below the app bar while the page scrolls. #387: the 12px
+   gutters around the floating sheet live on this row's padding/gap. */
+.app-chrome { display: flex; flex: 1; min-height: 0; gap: 12px; padding: 12px; }
 .md-nav-rail {
   flex: none; width: var(--md-nav-rail-width);
-  /* #385: sticks below the floating app bar (12px gutter + 64px bar). */
-  position: sticky; top: 76px; height: calc(100dvh - 76px);
+  /* #387: sticks below the floating app bar (12px gutter + 64px bar + 12px
+     chrome gap) so the rail keeps the same offset at rest and while stuck.
+     Chromeless — inherits the page background. */
+  position: sticky; top: 88px; height: calc(100dvh - 88px);
   display: flex; flex-direction: column; align-items: stretch;
   padding: 12px 0; gap: 4px;
-  /* #377: nav chrome carries the tonal step — matches .md-bottom-nav. */
-  background: var(--md-sys-color-surface-container);
+  background: transparent;
 }
 /* destinations: icon in an active-indicator pill + one-word label below.
    Shared by rail and bottom bar; labels are never truncated. */
@@ -1448,8 +1446,9 @@ button.m3-menu-item {
   .invoice-detail-pane { overflow: visible; }
   body { background: #fff; color: #111; }
   body.app { background: #fff; }
-  /* #385: flatten the app sheet for print — no radius, no margins. */
-  .app-sheet { background: #fff; margin: 0; border-radius: 0; overflow: visible; }
+  /* #387: flatten the app sheet for print — no radius, no gutters. */
+  body.app .app-chrome { display: block; padding: 0; gap: 0; }
+  .app-sheet { background: #fff; border-radius: 0; overflow: visible; }
   main { max-width: none; padding: 0; }
   .md-card.invoice-sheet { box-shadow: none; background: #fff; color: #111; max-width: none; }
   .invoice-sheet .muted { color: #555; }
