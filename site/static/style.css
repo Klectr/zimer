@@ -1207,9 +1207,21 @@ button.m3-menu-item {
   .license-banner { animation: banner-in .45s cubic-bezier(0.05, 0.7, 0.1, 1); }
 }
 /* #304: settings License section states. */
-.licensed-ok { display: flex; align-items: center; gap: 12px; margin: 0 0 4px; }
-.licensed-ok svg { flex: none; width: 24px; height: 24px; color: var(--md-sys-color-primary, #f2c14e); }
-.licensed-ok code { font-size: 13px; }
+/* #402: status rows (settings License + Updates sections) — proper M3
+   two-line list-item anatomy: leading icon + headline + supporting text.
+   The icon top-aligns with the first line, and wrapped supporting text keeps
+   its hanging indent because the text lives in its own flex child. */
+.status-row { display: flex; align-items: flex-start; gap: 16px; margin: 0; }
+.status-row > svg { flex: none; width: 24px; height: 24px; margin-top: 2px;
+  color: var(--md-sys-color-on-surface-variant); }
+/* Licensed is an active state — the gold check stays per the design doc. */
+.status-row-licensed > svg { color: var(--md-sys-color-primary); }
+.status-row-text { flex: 1; min-width: 0; }
+.status-row-headline { margin: 0; font-size: 16px; line-height: 24px;
+  letter-spacing: 0.5px; color: var(--md-sys-color-on-surface); }
+.status-row-supporting { margin: 2px 0 0; font-size: 14px; line-height: 20px;
+  letter-spacing: 0.25px; color: var(--md-sys-color-on-surface-variant); }
+.status-row-supporting code { font-size: 13px; }
 .license-error { color: var(--md-sys-color-error, #ffb4ab); margin: 4px 0 0; }
 /* #340: update command shown by the update check — tonal, monospace, wraps. */
 .update-cmd { display: block; font-family: ui-monospace, monospace; font-size: 13px;
