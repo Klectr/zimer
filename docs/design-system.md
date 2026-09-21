@@ -195,6 +195,10 @@ per-page:
   and bar never show together. The rail is 72px wide — a documented deviation
   from the M3 80dp default (#397): the 56px active-indicator pill keeps 8px
   clearance and the one-word labels (longest: "Calendar") stay legible.
+  72px is the floor with labels — kept Sep 21 2026 (#400); icon-only 64px
+  was the only way to go narrower and was rejected to preserve wayfinding.
+  Layout chrome stays px by design (maps 1:1 to M3 dp; browser zoom covers
+  enlargement) — the type scale's px→rem conversion is tracked in #399.
   The active destination gets the M3
   active-indicator pill (`secondary-container`) behind its icon; labels are
   one word and never truncated ("Clients"). The top app bar keeps the brand
