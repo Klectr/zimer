@@ -20,6 +20,7 @@ export type Invoice = {
   id: number; client_id: number | null; number: string; issue_date: string; due_date: string | null;
   status: string; tax_rate: number; notes: string; template: string; created_at: string;
   stripe_payment_link: string | null; paid_via_stripe: number; public_token: string | null;
+  paid_at: string | null; /* #416: YYYY-MM-DD, set when marked paid (manual or Stripe) */
   client_name: string | null; client_color: string | null;
   client_payment_terms: string | null; /* #289: per-client terms, else global */
   internal_notes: string; /* #302: internal-only, never on client surfaces */
