@@ -100,7 +100,8 @@ per-page:
   menus"). Opened from a circular `.avatar-button` (40dp, DiceBear-generated
   avatar in `site/static/avatar.svg`) in the top app bar, on every page. Menu
   holds Export entries CSV, Download backup, a divider, then Log out. 16dp
-  container (M3 Expressive; baseline was 4dp, #391), `surface-container-high`, 48dp items with 24dp leading icons,
+  container (M3 Expressive; baseline was 4dp, #391), `surface-container-high`, 4dp internal padding, 12dp item state-layer
+  corners (items paint their own hover/focus backgrounds, #393), 48dp items with 24dp leading icons,
   scale/fade from the anchor, Esc/outside-tap/arrow-key handling with focus
   restoration.
 
