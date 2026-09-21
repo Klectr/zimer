@@ -5,7 +5,7 @@
  *  yet" for a corrupt feed would mask a real feed problem.
  */
 import { describe, expect, test, beforeAll, afterAll } from "bun:test";
-import { checkForUpdates, updateStatusFromFeed } from "./updates.ts";
+import { checkForUpdates, updateStatusFromFeed, updateSectionHtml } from "./updates.ts";
 
 const CURRENT = "1.0.0";
 const MAJOR = 1;
@@ -97,5 +97,18 @@ describe("checkForUpdates — transport failures are unreachable", () => {
     status = 200;
     const s = await checkForUpdates();
     expect(s.kind).toBe("update-available");
+  });
+});
+
+/* #406: the check button carries the progress-state wiring — the squiggly
+   logo (spinning clock hands) replaces the refresh icon while htmx has the
+   request in flight, and the button disables itself for the duration. */
+describe("check-for-updates button progress wiring (#406)", () => {
+  test("button has the spinner + disabled-elt wiring", () => {
+    const html = updateSectionHtml();
+    expect(html).toContain('id="check-updates-btn"');
+    expect(html).toContain('hx-disabled-elt="#check-updates-btn"');
+    expect(html).toContain('class="btn-spinner"');
+    expect(html).toContain("tk-logo-hands");
   });
 });

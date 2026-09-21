@@ -76,6 +76,13 @@ per-page:
   the `alert` warning-triangle in error (`.status-row-error`); no-releases,
   dev, and the idle pre-check state → info (on-surface-variant), neutral and
   informational.
+- **Update-check progress:** while the feed fetch is in flight, htmx adds
+  `.htmx-request` to the "Check for updates" button and the squiggly logo
+  swaps into the refresh icon's 18px box (`#check-updates-btn .btn-spinner`);
+  the clock hands spin (`tk-logo-spin`, `transform-origin` at the clock
+  center) — never the whole mark. `prefers-reduced-motion` shows the static
+  logo. The button self-disables via `hx-disabled-elt` for the request
+  duration. Disabled buttons render at 45% opacity, default cursor.
 - **Icons:** inline SVG via `icon(name)` in `site/server.ts` — M3 outlined
   24px style (`stroke="currentColor"`, round caps/joins), no icon font or CDN.
   Sizing: 20px leading in tabs, 18px in buttons,
