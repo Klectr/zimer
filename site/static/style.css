@@ -1050,7 +1050,8 @@ body.app-fixed .cal-gutter-spacer {
   min-width: 200px; max-width: 280px; padding: 8px 0; margin: 0;
   background: var(--md-sys-color-surface-container-high);
   color: var(--md-sys-color-on-surface);
-  border-radius: 4px;
+  /* #391: M3 Expressive menu container shape (large = 16dp). Baseline was 4dp. */
+  border-radius: var(--md-sys-shape-corner-large);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
   opacity: 0; transform: scale(0.92); transform-origin: top right;
   transition: opacity var(--motion-duration-short4) var(--motion-easing-standard),

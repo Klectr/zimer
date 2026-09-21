@@ -39,6 +39,9 @@ Classes: `.md-headline-small`, `.md-title-large`, `.md-title-medium`,
 `--md-sys-shape-corner-extra-small: 4px`, `-small: 8px`, `-medium: 12px`,
 `-large: 16px`, `-extra-large: 28px`, `-full: 999px` (pills/chips).
 
+M3 Expressive is the target spec generation — baseline M3 variants are legacy;
+where a component exists in both, follow the expressive token.
+
 ## State layers
 
 Hover `0.08`, focus `0.1`, pressed `0.1` — overlay on-primary/on-surface, never
@@ -96,8 +99,8 @@ per-page:
   UI with too many buttons — present low-priority actions in overflow
   menus"). Opened from a circular `.avatar-button` (40dp, DiceBear-generated
   avatar in `site/static/avatar.svg`) in the top app bar, on every page. Menu
-  holds Export entries CSV, Download backup, a divider, then Log out. 4dp
-  container, `surface-container-high`, 48dp items with 24dp leading icons,
+  holds Export entries CSV, Download backup, a divider, then Log out. 16dp
+  container (M3 Expressive; baseline was 4dp, #391), `surface-container-high`, 48dp items with 24dp leading icons,
   scale/fade from the anchor, Esc/outside-tap/arrow-key handling with focus
   restoration.
 
