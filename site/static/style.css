@@ -346,6 +346,13 @@ h2.md-headline-small { margin: 24px 0 12px; }
 .md-icon-button[data-tip].tip-show::before {
   opacity: 1; transform: translateX(-50%) translateY(0);
 }
+/* #434: tooltips on right-edge buttons anchor to the button's right edge
+   instead of centering, so they extend leftward and can't run off the
+   viewport (the detail action buttons sit at the header's right edge). */
+.md-icon-button[data-tip].tip-right::before { left: auto; right: 0; transform: translateY(-2px); }
+.md-icon-button[data-tip].tip-right:hover::before,
+.md-icon-button[data-tip].tip-right:focus-visible::before,
+.md-icon-button[data-tip].tip-right.tip-show::before { transform: translateY(0); }
 
 /* ---------------- text fields (borderless tonal, 56dp) ----------------
  * No indicator lines: separation comes from the tonal container + whitespace.
