@@ -66,18 +66,20 @@ describe("paid-on date", () => {
     expect(html).not.toContain("paid ");
   });
 
-  test("detail page-head shows the paid date when present", () => {
+  test("detail shows the paid date caption when present", () => {
     const html = views([]).invoiceDetailBody(detailInv("paid", "2026-09-21") as any, "http://x");
     expect(html).toContain("Paid Sep 21");
+    expect(html).toContain("paid-meta");
   });
 
-  test("#420: detail paid date renders as an M3 chip trailing the title block", () => {
+  test("#422: paid date caption sits below the page-head, out of the button bar", () => {
     const html = views([]).invoiceDetailBody(detailInv("paid", "2026-09-21") as any, "http://x");
-    const headBlock = html.match(/<div class="invoice-detail-head">[\s\S]*?<\/div>/)?.[0] || "";
-    const actionsRow = html.match(/<div class="page-head no-print">[\s\S]*?<div class="row">([\s\S]*?)<\/div>/)?.[1] || "";
-    expect(headBlock).toContain("Paid Sep 21");
-    expect(headBlock).toContain("md-chip");
-    expect(actionsRow).not.toContain("Paid Sep 21");
+    const pageHead = html.match(/<div class="page-head no-print">[\s\S]*?<\/div>\s*<\/div>/)?.[0] || "";
+    expect(pageHead).not.toContain("Paid Sep 21");
+    const captionIdx = html.indexOf("paid-meta");
+    const docIdx = html.indexOf("invoice-sheet");
+    expect(captionIdx).toBeGreaterThan(-1);
+    expect(docIdx).toBeGreaterThan(captionIdx);
   });
 
   test("detail page-head shows no paid date for sent invoices", () => {
