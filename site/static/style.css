@@ -1314,8 +1314,6 @@ button.m3-menu-item {
 .page-head h2 { margin: 0; }
 .page-head .row { display: flex; gap: 8px; align-items: center; }
 .invoice-detail-head { display: flex; align-items: center; gap: 12px; }
-.inv-link { color: var(--md-sys-color-primary); text-decoration: none; font-weight: 500; }
-.inv-link:hover { text-decoration: underline; }
 /* #328: "Unbilled time" section head on the invoices page. */
 .unbilled-head { margin: 16px 4px 4px; }
 
@@ -1324,7 +1322,6 @@ button.m3-menu-item {
 .pill-draft { background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container); }
 .pill-sent { background: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container); }
 .pill-paid { background: #1f3d2b; color: #b8e6c5; }
-.pill-unpaid { background: var(--md-sys-color-error-container); color: var(--md-sys-color-on-error-container); }
 
 /* #330: "Invoiced"/"Draft" mark on timer entry rows — tonal pill, no border. */
 .inv-mark { display: inline-flex; align-items: center; height: 18px; padding: 0 8px;
@@ -1620,8 +1617,6 @@ button.m3-menu-item {
 @keyframes skel-shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
 .skel-stack { display: flex; flex-direction: column; gap: 12px; }
 .skel-line { height: 14px; border-radius: 7px; }
-.skel-display { height: 60px; border-radius: 12px; }
-.skel-btn { height: 56px; width: 148px; border-radius: 999px; }
 .skel-row { height: 64px; border-radius: var(--md-sys-shape-corner-medium); }
 
 /* -------- calendar skeleton (#322): mirrors .cal-pane-layout so the htmx
