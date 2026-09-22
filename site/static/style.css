@@ -552,6 +552,8 @@ input[type="number"] {
   white-space: nowrap;
 }
 .md-chip .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+/* chip icons (e.g. the paid-date chip) render at M3's 18px chip icon size. */
+.md-chip svg { width: 18px; height: 18px; flex: none; }
 
 /* ---------------- timer ---------------- */
 /* HTMX swap choreography (#45): outgoing card sinks/fades during the
@@ -1280,13 +1282,7 @@ button.m3-menu-item {
 .page-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; flex-wrap: wrap; }
 .page-head h2 { margin: 0; }
 .page-head .row { display: flex; gap: 8px; align-items: center; }
-/* #422: invoice detail title block — back link + actions only, exactly as
-   before the paid-date work. The paid date lives in .paid-meta below. */
 .invoice-detail-head { display: flex; align-items: center; gap: 12px; }
-/* #422: paid-date metadata caption — M3 body text with a check icon,
-   app-only, sitting between the page-head and the invoice document. */
-.paid-meta { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; }
-.paid-meta svg { width: 18px; height: 18px; flex: none; }
 .inv-link { color: var(--md-sys-color-primary); text-decoration: none; font-weight: 500; }
 .inv-link:hover { text-decoration: underline; }
 /* #328: "Unbilled time" section head on the invoices page. */

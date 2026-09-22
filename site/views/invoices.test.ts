@@ -66,20 +66,18 @@ describe("paid-on date", () => {
     expect(html).not.toContain("paid ");
   });
 
-  test("detail shows the paid date caption when present", () => {
+  test("#424: paid label is an M3 chip first in the detail actions row", () => {
     const html = views([]).invoiceDetailBody(detailInv("paid", "2026-09-21") as any, "http://x");
-    expect(html).toContain("Paid Sep 21");
-    expect(html).toContain("paid-meta");
-  });
-
-  test("#422: paid date caption sits below the page-head, out of the button bar", () => {
-    const html = views([]).invoiceDetailBody(detailInv("paid", "2026-09-21") as any, "http://x");
-    const pageHead = html.match(/<div class="page-head no-print">[\s\S]*?<\/div>\s*<\/div>/)?.[0] || "";
-    expect(pageHead).not.toContain("Paid Sep 21");
-    const captionIdx = html.indexOf("paid-meta");
-    const docIdx = html.indexOf("invoice-sheet");
-    expect(captionIdx).toBeGreaterThan(-1);
-    expect(docIdx).toBeGreaterThan(captionIdx);
+    const actionsRow = html.match(/<div class="page-head no-print">[\s\S]*?<div class="row">([\s\S]*?)<\/div>\s*<\/div>/)?.[1] || "";
+    expect(actionsRow).toContain("md-chip");
+    expect(actionsRow).toContain("Paid Sep 21");
+    // chip leads the actions row, ahead of Download PDF
+    expect(actionsRow.indexOf("md-chip")).toBeLessThan(actionsRow.indexOf("Download PDF"));
+    // title block untouched: back link only, no paid date
+    const headBlock = html.match(/<div class="invoice-detail-head">[\s\S]*?<\/div>/)?.[0] || "";
+    expect(headBlock).not.toContain("Paid Sep 21");
+    // no caption element anywhere
+    expect(html).not.toContain("paid-meta");
   });
 
   test("detail page-head shows no paid date for sent invoices", () => {
