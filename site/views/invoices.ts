@@ -484,13 +484,13 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
         </div>
         <div class="row">
           ${inv.status === "paid" && inv.paid_at ? `<span class="md-chip">${icon("check")}Paid ${esc(shortYmd(inv.paid_at))}</span>` : ""}
-          <a class="md-icon-button" href="/invoices/${inv.id}.pdf" download data-tip="Download PDF" aria-label="Download PDF">${icon("download")}</a>
+          <a class="md-icon-button tip-right" href="/invoices/${inv.id}.pdf" download data-tip="Download PDF" aria-label="Download PDF">${icon("download")}</a>
           ${next ? `<form method="post" action="/invoices/${inv.id}/status" class="inline" hx-post="/invoices/${inv.id}/status" ${hxDetail}>
             <input type="hidden" name="status" value="${next}">
-            <button class="md-icon-button" type="submit" data-tip="${nextLabel}" aria-label="${nextLabel}">${icon("check")}</button>
+            <button class="md-icon-button tip-right" type="submit" data-tip="${nextLabel}" aria-label="${nextLabel}">${icon("check")}</button>
           </form>` : ""}
           ${inv.status === "draft" ? `<form method="post" action="/invoices/${inv.id}/delete" class="inline">
-            <button class="md-icon-button danger" type="submit" data-tip="Delete draft" aria-label="Delete draft" onclick="return confirm('Delete this draft invoice? Its entries become unbilled again.')">${icon("delete")}</button>
+            <button class="md-icon-button danger tip-right" type="submit" data-tip="Delete draft" aria-label="Delete draft" onclick="return confirm('Delete this draft invoice? Its entries become unbilled again.')">${icon("delete")}</button>
           </form>` : ""}
         </div>
       </div>

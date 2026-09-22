@@ -78,6 +78,7 @@ describe("paid-on date", () => {
     expect(row).not.toContain("inv-overflow-menu-");
     const iconBtns = row.match(/md-icon-button/g) || [];
     expect(iconBtns.length).toBe(3);
+    expect(row.match(/tip-right/g)?.length).toBe(3); // #434: tooltips anchor right
   });
 
   test("#432: paid invoice shows only the download icon button", () => {
