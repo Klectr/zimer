@@ -392,41 +392,6 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     };
   }
 
-  /* #426: state-dependent detail actions (status transition, delete) live in
-     an M3 overflow menu — the actions row stays Download PDF + ⋮ no matter
-     how many actions an invoice state has. Reuses the .m3-menu pattern from
-     the account menu (#155). The menu only renders when it has items. */
-  function overflowMenu(inv: Invoice & { items: InvoiceItem[] }, next: string | null, nextLabel: string, hxDetail: string): string {
-    const statusItem = next ? `
-          <form method="post" action="/invoices/${inv.id}/status" class="inline" hx-post="/invoices/${inv.id}/status" ${hxDetail}>
-            <input type="hidden" name="status" value="${next}">
-            <button class="m3-menu-item" type="submit" role="menuitem">${icon("check")}<span>${nextLabel}</span></button>
-          </form>` : "";
-    const deleteItem = inv.status === "draft" ? `
-          <form method="post" action="/invoices/${inv.id}/delete" class="inline">
-            <button class="m3-menu-item danger" type="submit" role="menuitem" onclick="return confirm('Delete this draft invoice? Its entries become unbilled again.')">${icon("delete")}<span>Delete</span></button>
-          </form>` : "";
-    if (!statusItem && !deleteItem) return "";
-    const btnId = `inv-overflow-btn-${inv.id}`, menuId = `inv-overflow-menu-${inv.id}`;
-    return `<div class="m3-menu-wrap">
-          <button class="overflow-menu-button" id="${btnId}" aria-label="More actions"
-            aria-haspopup="menu" aria-expanded="false" aria-controls="${menuId}">${icon("more_vert")}</button>
-          <div class="m3-menu" id="${menuId}" role="menu" aria-label="Invoice actions" hidden>${statusItem}${deleteItem}
-          </div>
-        </div>
-        <script>(function(){
-          var btn=document.getElementById('${btnId}'), menu=document.getElementById('${menuId}');
-          if(!btn||!menu) return;
-          var items=Array.prototype.slice.call(menu.querySelectorAll('.m3-menu-item'));
-          var open_=false;
-          function open(){ open_=true; menu.hidden=false; void menu.offsetWidth; menu.classList.add('open'); btn.setAttribute('aria-expanded','true'); if(items[0]) items[0].focus(); document.addEventListener('keydown',onKey,true); document.addEventListener('pointerdown',onDoc,true); }
-          function close(refocus){ if(!open_) return; open_=false; menu.classList.remove('open'); btn.setAttribute('aria-expanded','false'); document.removeEventListener('keydown',onKey,true); document.removeEventListener('pointerdown',onDoc,true); var done=false, finish=function(){ if(done) return; done=true; menu.hidden=true; }; var onEnd=function(e){ if(e.target===menu&&(e.propertyName==='transform'||e.propertyName==='opacity')){ menu.removeEventListener('transitionend',onEnd); finish(); } }; menu.addEventListener('transitionend',onEnd); setTimeout(finish,300); if(refocus) btn.focus(); }
-          function onKey(e){ var i=items.indexOf(document.activeElement); if(e.key==='Escape'){ e.preventDefault(); close(true); } else if(e.key==='ArrowDown'){ e.preventDefault(); items[(i+1+items.length)%items.length].focus(); } else if(e.key==='ArrowUp'){ e.preventDefault(); items[(i-1+items.length)%items.length].focus(); } else if(e.key==='Tab'){ close(false); } }
-          function onDoc(e){ if(!e.target.closest('.m3-menu-wrap')) close(false); }
-          btn.addEventListener('click',function(){ open_?close(true):open(); });
-        })();</script>`;
-  }
-
   /* #71: detail body as a fragment — status/Stripe/link actions swap
      #invoice-detail in place instead of reloading the page. */
   function invoiceDetailBody(inv: Invoice & { items: InvoiceItem[] }, origin: string): string {
@@ -519,13 +484,38 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
         </div>
         <div class="row">
           ${inv.status === "paid" && inv.paid_at ? `<span class="md-chip">${icon("check")}Paid ${esc(shortYmd(inv.paid_at))}</span>` : ""}
-          <a class="md-filled-button" href="/invoices/${inv.id}.pdf" download>${icon("download")}Download PDF</a>
-          ${overflowMenu(inv, next, nextLabel, hxDetail)}
+          <a class="md-icon-button" href="/invoices/${inv.id}.pdf" download data-tip="Download PDF" aria-label="Download PDF">${icon("download")}</a>
+          ${next ? `<form method="post" action="/invoices/${inv.id}/status" class="inline" hx-post="/invoices/${inv.id}/status" ${hxDetail}>
+            <input type="hidden" name="status" value="${next}">
+            <button class="md-icon-button" type="submit" data-tip="${nextLabel}" aria-label="${nextLabel}">${icon("check")}</button>
+          </form>` : ""}
+          ${inv.status === "draft" ? `<form method="post" action="/invoices/${inv.id}/delete" class="inline">
+            <button class="md-icon-button danger" type="submit" data-tip="Delete draft" aria-label="Delete draft" onclick="return confirm('Delete this draft invoice? Its entries become unbilled again.')">${icon("delete")}</button>
+          </form>` : ""}
         </div>
       </div>
       ${invoiceDoc(inv)}
       ${internalBlock}
-      ${shareLines}</div>`;
+      ${shareLines}
+      <script>(function(){
+        /* #432: M3 plain tooltips need a 450ms long-press on touch, where
+           hover doesn't exist (same pattern as the calendar day heads, #69).
+           Guarded: the fragment re-renders on every hx swap. */
+        if(window.__invIconTip) return; window.__invIconTip=true;
+        var tipTimer=null,tipEl=null;
+        document.addEventListener('pointerdown',function(e){
+          var b=e.target.closest('.md-icon-button[data-tip]');
+          if(!b) return;
+          tipEl=b;
+          tipTimer=setTimeout(function(){ b.classList.add('tip-show'); },450);
+        });
+        ['pointerup','pointercancel'].forEach(function(t){
+          document.addEventListener(t,function(){
+            if(tipTimer){ clearTimeout(tipTimer); tipTimer=null; }
+            if(tipEl){ tipEl.classList.remove('tip-show'); tipEl=null; }
+          },{passive:true});
+        });
+      })();</script></div>`;
   }
 
   /* #364: list-detail replaced the standalone detail page — the detail body
