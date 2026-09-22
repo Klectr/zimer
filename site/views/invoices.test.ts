@@ -71,11 +71,12 @@ describe("paid-on date", () => {
     expect(html).toContain("Paid Sep 21");
   });
 
-  test("#418: detail paid date lives in the title block, not the actions row", () => {
+  test("#420: detail paid date renders as an M3 chip trailing the title block", () => {
     const html = views([]).invoiceDetailBody(detailInv("paid", "2026-09-21") as any, "http://x");
     const headBlock = html.match(/<div class="invoice-detail-head">[\s\S]*?<\/div>/)?.[0] || "";
     const actionsRow = html.match(/<div class="page-head no-print">[\s\S]*?<div class="row">([\s\S]*?)<\/div>/)?.[1] || "";
     expect(headBlock).toContain("Paid Sep 21");
+    expect(headBlock).toContain("md-chip");
     expect(actionsRow).not.toContain("Paid Sep 21");
   });
 
