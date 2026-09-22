@@ -66,6 +66,21 @@ describe("paid-on date", () => {
     expect(html).not.toContain("paid ");
   });
 
+  test("#426: draft state actions live in the overflow menu", () => {
+    const html = views([]).invoiceDetailBody(detailInv("draft", null) as any, "http://x");
+    expect(html).toContain("inv-overflow-menu-");
+    const row = html.match(/<div class="page-head no-print">[\s\S]*?<div class="row">([\s\S]*?)<\/div>\s*<\/div>/)?.[1] || "";
+    const filled = row.match(/md-filled-button/g) || [];
+    expect(filled.length).toBe(1); // Download PDF only — the rest are menu items
+    expect(row).toContain("Mark sent");
+    expect(row).toContain("Delete");
+  });
+
+  test("#426: paid invoice has no overflow menu", () => {
+    const html = views([]).invoiceDetailBody(detailInv("paid", "2026-09-21") as any, "http://x");
+    expect(html).not.toContain("inv-overflow-menu-");
+  });
+
   test("#424: paid label is an M3 chip first in the detail actions row", () => {
     const html = views([]).invoiceDetailBody(detailInv("paid", "2026-09-21") as any, "http://x");
     const actionsRow = html.match(/<div class="page-head no-print">[\s\S]*?<div class="row">([\s\S]*?)<\/div>\s*<\/div>/)?.[1] || "";
