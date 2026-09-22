@@ -474,11 +474,16 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
         ${stripeWarn}
         ${copyScript}
       </section>`;
+    /* #418: the paid date is header metadata, not an action — it sits with the
+       back link (M3 body-large, on-surface-variant) so the actions row holds
+       only actions. It stays out of the frozen invoice document (see #417). */
     return `<div id="invoice-detail">
       <div class="page-head no-print">
-        <a class="md-text-button detail-back" href="/invoices">${icon("arrow_left")}Invoices</a>
+        <div class="invoice-detail-head">
+          <a class="md-text-button detail-back" href="/invoices">${icon("arrow_left")}Invoices</a>
+          ${inv.status === "paid" && inv.paid_at ? `<span class="md-body-large muted">Paid ${esc(shortYmd(inv.paid_at))}</span>` : ""}
+        </div>
         <div class="row">
-          ${inv.status === "paid" && inv.paid_at ? `<span class="muted">Paid ${esc(shortYmd(inv.paid_at))}</span>` : ""}
           <a class="md-filled-button" href="/invoices/${inv.id}.pdf" download>${icon("download")}Download PDF</a>
           ${next ? `<form method="post" action="/invoices/${inv.id}/status" class="inline" hx-post="/invoices/${inv.id}/status" ${hxDetail}>
             <input type="hidden" name="status" value="${next}">
