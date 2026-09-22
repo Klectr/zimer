@@ -474,20 +474,16 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
         ${stripeWarn}
         ${copyScript}
       </section>`;
-    /* #422: the paid date is document metadata, not header chrome — the
-       detail button bar is back to exactly its original shape (back link +
-       actions, nothing else). The date renders as an M3 body caption with a
-       check icon directly above the invoice document: findable, clearly
-       metadata, and out of the button bar. It stays out of the frozen
-       invoice document (see #417). */
-    const paidMeta = inv.status === "paid" && inv.paid_at
-      ? `<p class="paid-meta md-body-medium muted no-print">${icon("check")}Paid ${esc(shortYmd(inv.paid_at))}</p>` : "";
+    /* #424: the paid label stays exactly where it always was — first in the
+       detail actions row. Only its styling changes: plain muted text becomes
+       an M3 chip (check icon + label). Nothing else in the header moves. */
     return `<div id="invoice-detail">
       <div class="page-head no-print">
         <div class="invoice-detail-head">
           <a class="md-text-button detail-back" href="/invoices">${icon("arrow_left")}Invoices</a>
         </div>
         <div class="row">
+          ${inv.status === "paid" && inv.paid_at ? `<span class="md-chip">${icon("check")}Paid ${esc(shortYmd(inv.paid_at))}</span>` : ""}
           <a class="md-filled-button" href="/invoices/${inv.id}.pdf" download>${icon("download")}Download PDF</a>
           ${next ? `<form method="post" action="/invoices/${inv.id}/status" class="inline" hx-post="/invoices/${inv.id}/status" ${hxDetail}>
             <input type="hidden" name="status" value="${next}">
@@ -498,7 +494,6 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
           </form>` : ""}
         </div>
       </div>
-      ${paidMeta}
       ${invoiceDoc(inv)}
       ${internalBlock}
       ${shareLines}</div>`;
