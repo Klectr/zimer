@@ -3,7 +3,7 @@
  *  invoiceSheet is also returned so the public-views factory can reuse it. */
 
 import type { Database, Statement } from "bun:sqlite";
-import { addDays, daysBetween, esc, fmtDur, money, round2, shortDateRange, termsDescription, termsKey, todayStr } from "../lib/format.ts";
+import { addDays, daysBetween, esc, fmtDur, money, round2, shortDateRange, shortYmd, termsDescription, termsKey, todayStr } from "../lib/format.ts";
 import { icon } from "../lib/icons.ts";
 import { getMeta } from "../db.ts";
 import { workspaceEmpty } from "../lib/demo.ts"; /* #300: empty-state CTA */
@@ -54,7 +54,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       <a class="inv-row-hit" href="/invoices?invoice=${r.id}" aria-label="View invoice ${esc(r.number)}">
         <div class="md-list-item-content">
           <div class="md-list-item-headline">${esc(r.number)} ${statusPill(r.status)}${od ? ` <span class="attn-chip">${od}d overdue</span>` : ""}</div>
-          <div class="md-list-item-supporting">${r.client_name ? esc(r.client_name) : "<em>No client</em>"} · issued ${esc(r.issue_date)}${r.due_date ? ` · due ${esc(r.due_date)}` : ""}</div>
+          <div class="md-list-item-supporting">${r.client_name ? esc(r.client_name) : "<em>No client</em>"} · issued ${esc(r.issue_date)}${r.due_date ? ` · due ${esc(r.due_date)}` : ""}${r.status === "paid" && r.paid_at ? ` · paid ${esc(shortYmd(r.paid_at))}` : ""}</div>
         </div>
         <div class="md-list-item-trailing"><span class="dur">${money(round2(r.subtotal * (1 + (r.tax_rate || 0) / 100)))}</span></div>
       </a>
@@ -478,6 +478,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       <div class="page-head no-print">
         <a class="md-text-button detail-back" href="/invoices">${icon("arrow_left")}Invoices</a>
         <div class="row">
+          ${inv.status === "paid" && inv.paid_at ? `<span class="muted">Paid ${esc(shortYmd(inv.paid_at))}</span>` : ""}
           <a class="md-filled-button" href="/invoices/${inv.id}.pdf" download>${icon("download")}Download PDF</a>
           ${next ? `<form method="post" action="/invoices/${inv.id}/status" class="inline" hx-post="/invoices/${inv.id}/status" ${hxDetail}>
             <input type="hidden" name="status" value="${next}">

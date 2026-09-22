@@ -348,18 +348,18 @@ export function createWebRouter(deps: WebDeps) {
 
         if (path === "/export/invoices.csv" && method === "GET") {
           const rows = db.query(`
-            SELECT i.number, i.issue_date, i.due_date, i.status, i.tax_rate,
+            SELECT i.number, i.issue_date, i.due_date, i.status, i.tax_rate, i.paid_at,
                    c.name AS client,
                    (SELECT COUNT(*) FROM invoice_items WHERE invoice_id = i.id) AS items,
                    (SELECT COALESCE(SUM(amount), 0) FROM invoice_items WHERE invoice_id = i.id) AS subtotal
             FROM invoices i LEFT JOIN clients c ON c.id = i.client_id
             ORDER BY i.issue_date DESC`).all() as any[];
-          const out = ["number,client,issue_date,due_date,status,items,subtotal,tax,total"];
+          const out = ["number,client,issue_date,due_date,status,paid_date,items,subtotal,tax,total"];
           for (const r of rows) {
             const subtotal = Number(r.subtotal || 0);
             const tax = subtotal * Number(r.tax_rate || 0) / 100;
             const cells = [r.number, r.client || "", r.issue_date, r.due_date || "",
-              r.status, String(r.items), subtotal.toFixed(2), tax.toFixed(2),
+              r.status, r.paid_at || "", String(r.items), subtotal.toFixed(2), tax.toFixed(2),
               (subtotal + tax).toFixed(2)];
             out.push(cells.map(csvCell).join(","));
           }
