@@ -552,6 +552,8 @@ input[type="number"] {
   white-space: nowrap;
 }
 .md-chip .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+/* #420: chip icons match M3's 18px chip icon size (buttons use the same). */
+.md-chip svg { width: 18px; height: 18px; flex: none; }
 
 /* ---------------- timer ---------------- */
 /* HTMX swap choreography (#45): outgoing card sinks/fades during the
@@ -1280,9 +1282,10 @@ button.m3-menu-item {
 .page-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; flex-wrap: wrap; }
 .page-head h2 { margin: 0; }
 .page-head .row { display: flex; gap: 8px; align-items: center; }
-/* #418: invoice detail title block — back link + paid-date metadata. The
-   actions row holds only actions; the date reads as header metadata. */
-.invoice-detail-head { display: flex; align-items: center; gap: 12px; }
+/* #420: invoice detail title block — back link leading, paid-date chip
+   trailing as header metadata. The actions row holds only actions. */
+.invoice-detail-head { display: flex; align-items: center; gap: 12px; flex: 1; }
+.invoice-detail-head .md-chip { margin-left: auto; }
 .inv-link { color: var(--md-sys-color-primary); text-decoration: none; font-weight: 500; }
 .inv-link:hover { text-decoration: underline; }
 /* #328: "Unbilled time" section head on the invoices page. */

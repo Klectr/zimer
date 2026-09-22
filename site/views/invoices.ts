@@ -474,14 +474,16 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
         ${stripeWarn}
         ${copyScript}
       </section>`;
-    /* #418: the paid date is header metadata, not an action — it sits with the
-       back link (M3 body-large, on-surface-variant) so the actions row holds
-       only actions. It stays out of the frozen invoice document (see #417). */
+    /* #420: the paid date is header metadata, not an action — it renders as an
+       M3 assist chip (check icon + label) trailing the header row, so it reads
+       as deliberate status metadata instead of stray text stuck to the back
+       link. The actions row holds only actions. It stays out of the frozen
+       invoice document (see #417). */
     return `<div id="invoice-detail">
       <div class="page-head no-print">
         <div class="invoice-detail-head">
           <a class="md-text-button detail-back" href="/invoices">${icon("arrow_left")}Invoices</a>
-          ${inv.status === "paid" && inv.paid_at ? `<span class="md-body-large muted">Paid ${esc(shortYmd(inv.paid_at))}</span>` : ""}
+          ${inv.status === "paid" && inv.paid_at ? `<span class="md-chip">${icon("check")}Paid ${esc(shortYmd(inv.paid_at))}</span>` : ""}
         </div>
         <div class="row">
           <a class="md-filled-button" href="/invoices/${inv.id}.pdf" download>${icon("download")}Download PDF</a>
