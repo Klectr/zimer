@@ -34,6 +34,8 @@ export const ICONS: Record<string, string> = {
   close: `<path d="M6 6l12 12M18 6L6 18"/>`,
   /* #253: hamburger for the account-menu button (Lucide-style, three strokes). */
   menu: `<path d="M4 6h16M4 12h16M4 18h16"/>`,
+  /* #426: vertical ellipsis for the invoice overflow-menu trigger. */
+  more_vert: `<circle cx="12" cy="5" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="1.4" fill="currentColor" stroke="none"/>`,
   /* #404: warning triangle for error statuses (M3 error-outline style). */
   alert: `<path d="M12 4.5L21 19.5H3z"/><path d="M12 10v4"/><circle cx="12" cy="16.8" r="1.1" fill="currentColor" stroke="none"/>`,
 };
