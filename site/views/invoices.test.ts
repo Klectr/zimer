@@ -66,19 +66,26 @@ describe("paid-on date", () => {
     expect(html).not.toContain("paid ");
   });
 
-  test("#426: draft state actions live in the overflow menu", () => {
+  test("#432: detail actions are icon buttons with M3 tooltips", () => {
     const html = views([]).invoiceDetailBody(detailInv("draft", null) as any, "http://x");
-    expect(html).toContain("inv-overflow-menu-");
     const row = html.match(/<div class="page-head no-print">[\s\S]*?<div class="row">([\s\S]*?)<\/div>\s*<\/div>/)?.[1] || "";
-    const filled = row.match(/md-filled-button/g) || [];
-    expect(filled.length).toBe(1); // Download PDF only — the rest are menu items
-    expect(row).toContain("Mark sent");
-    expect(row).toContain("Delete");
+    expect(row).toContain('data-tip="Download PDF"');
+    expect(row).toContain('data-tip="Mark sent"');
+    expect(row).toContain('data-tip="Delete draft"');
+    expect(row).toContain('aria-label="Download PDF"');
+    expect(row).not.toContain("md-filled-button");
+    expect(row).not.toContain("md-text-button");
+    expect(row).not.toContain("inv-overflow-menu-");
+    const iconBtns = row.match(/md-icon-button/g) || [];
+    expect(iconBtns.length).toBe(3);
   });
 
-  test("#426: paid invoice has no overflow menu", () => {
+  test("#432: paid invoice shows only the download icon button", () => {
     const html = views([]).invoiceDetailBody(detailInv("paid", "2026-09-21") as any, "http://x");
-    expect(html).not.toContain("inv-overflow-menu-");
+    const row = html.match(/<div class="page-head no-print">[\s\S]*?<div class="row">([\s\S]*?)<\/div>\s*<\/div>/)?.[1] || "";
+    const iconBtns = row.match(/md-icon-button/g) || [];
+    expect(iconBtns.length).toBe(1);
+    expect(row).not.toContain("inv-overflow-menu-");
   });
 
   test("#424: paid label is an M3 chip first in the detail actions row", () => {

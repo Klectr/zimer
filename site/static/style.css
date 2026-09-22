@@ -323,6 +323,29 @@ h2.md-headline-small { margin: 24px 0 12px; }
 .md-icon-button svg { width: 24px; height: 24px; }
 .md-icon-button:hover { color: var(--md-sys-color-on-surface); }
 .md-icon-button.danger:hover { color: var(--md-sys-color-error); }
+/* #432: M3 plain tooltip for icon buttons (the actions that lost their text
+   labels). ::before so it doesn't clobber the ::after hover state layer;
+   overflow:visible so the tooltip escapes the button's clip. */
+.md-icon-button[data-tip] { overflow: visible; }
+.md-icon-button[data-tip]::before {
+  content: attr(data-tip);
+  position: absolute; left: 50%; top: calc(100% + 4px); /* M3: 4dp anchor gap */
+  transform: translateX(-50%) translateY(-2px);
+  background: var(--md-sys-color-inverse-surface);
+  color: var(--md-sys-color-inverse-on-surface);
+  border-radius: var(--md-sys-shape-corner-extra-small); /* M3 plain tooltip shape */
+  padding: 4px 8px; /* M3 plain tooltip padding */
+  white-space: nowrap; max-width: 200px;
+  font-size: 12px; line-height: 16px; font-weight: 400;
+  opacity: 0; pointer-events: none; z-index: 30;
+  transition: opacity var(--motion-duration-short2) var(--motion-easing-standard),
+    transform var(--motion-duration-short2) var(--motion-easing-standard);
+}
+.md-icon-button[data-tip]:hover::before,
+.md-icon-button[data-tip]:focus-visible::before,
+.md-icon-button[data-tip].tip-show::before {
+  opacity: 1; transform: translateX(-50%) translateY(0);
+}
 
 /* ---------------- text fields (borderless tonal, 56dp) ----------------
  * No indicator lines: separation comes from the tonal container + whitespace.
@@ -1106,15 +1129,6 @@ button.m3-menu-item {
 .m3-menu-item:hover { background: rgb(255 255 255 / 0.08); }
 .m3-menu-item:focus-visible { outline: none; background: rgb(255 255 255 / 0.12); }
 .m3-menu-item.danger { color: var(--md-sys-color-error); }
-/* #426: circular overflow trigger for the invoice detail actions menu. */
-.overflow-menu-button {
-  width: 40px; height: 40px; border-radius: 50%; border: none; padding: 0;
-  display: inline-flex; align-items: center; justify-content: center;
-  background: transparent; color: var(--md-sys-color-on-surface-variant);
-  cursor: pointer; flex: none;
-}
-.overflow-menu-button:hover { background: rgb(255 255 255 / 0.08); }
-.overflow-menu-button svg { width: 24px; height: 24px; }
 @media (prefers-reduced-motion: reduce) {
   .m3-menu { transition: none; }
 }
