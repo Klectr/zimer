@@ -1280,6 +1280,9 @@ button.m3-menu-item {
 .page-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; flex-wrap: wrap; }
 .page-head h2 { margin: 0; }
 .page-head .row { display: flex; gap: 8px; align-items: center; }
+/* #418: invoice detail title block — back link + paid-date metadata. The
+   actions row holds only actions; the date reads as header metadata. */
+.invoice-detail-head { display: flex; align-items: center; gap: 12px; }
 .inv-link { color: var(--md-sys-color-primary); text-decoration: none; font-weight: 500; }
 .inv-link:hover { text-decoration: underline; }
 /* #328: "Unbilled time" section head on the invoices page. */
