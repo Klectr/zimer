@@ -1356,6 +1356,64 @@ button.m3-menu-item {
 .md-table tfoot td { padding: 6px 8px; color: var(--md-sys-color-on-surface-variant); }
 .md-table tfoot tr.grand td { color: var(--md-sys-color-on-surface); font-weight: 700; font-size: 16px;
   padding-top: 10px; }
+/* #366: the 5-column invoice table must fit a 390px phone with the Amount
+   column visible — no hiding it behind a scroll. Compact the table chrome
+   below 480px; the .table-wrap inner scroll stays as the fallback for
+   unusually wide data. Print is untouched. */
+@media (max-width: 480px) {
+  .md-table { font-size: 13px; }
+  .md-table th, .md-table td { padding: 8px 6px; }
+  .md-table thead th { font-size: 11px; letter-spacing: 0; }
+  .md-table tfoot td { padding: 6px; }
+  .md-table td.desc { overflow-wrap: anywhere; }
+  /* the DESCRIPTION header is one long word — let it break too, otherwise
+     its min-content alone keeps the column (and the table) too wide. */
+  .md-table th:nth-child(2) { overflow-wrap: anywhere; }
+}
+/* #366, continued: on phones the invoice document's line items stack instead
+   of squeezing into five columns — description on its own line, then a muted
+   meta line (date · hours × rate) with the amount right-aligned. The thead is
+   visually hidden (kept for assistive tech); tfoot becomes label/amount rows.
+   Print and desktop keep the full table. */
+@media (max-width: 480px) {
+  .invoice-sheet .md-table thead {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%);
+  }
+  .invoice-sheet .md-table,
+  .invoice-sheet .md-table tbody,
+  .invoice-sheet .md-table tfoot { display: block; }
+  .invoice-sheet .md-table tbody tr,
+  .invoice-sheet.template-modern .md-table tbody tr {
+    display: flex; flex-wrap: wrap; align-items: baseline;
+    background: var(--md-sys-color-surface-container-low);
+    border-radius: 12px; padding: 12px; margin: 0 0 8px;
+  }
+  .invoice-sheet .md-table tbody tr + tr { border-top: 0; }
+  .invoice-sheet .md-table tbody td { padding: 0; }
+  .invoice-sheet .md-table tbody td:first-child,
+  .invoice-sheet .md-table tbody td:last-child { border-radius: 0; }
+  .invoice-sheet .md-table td.desc { flex: 1 1 100%; order: -1; font-size: 14px; margin-bottom: 6px; }
+  .invoice-sheet .md-table td.inv-date:empty { display: none; }
+  .invoice-sheet .md-table td.inv-date,
+  .invoice-sheet .md-table td.inv-hours,
+  .invoice-sheet .md-table td.inv-rate {
+    display: inline; font-size: 12px; color: var(--md-sys-color-on-surface-variant);
+  }
+  .invoice-sheet .md-table td.inv-date::after { content: "\00a0·\00a0"; }
+  .invoice-sheet .md-table td.inv-hours::after { content: " hrs\00a0×\00a0"; }
+  .invoice-sheet .md-table td.inv-amount {
+    margin-left: auto; font-size: 14px; font-weight: 700; white-space: nowrap;
+  }
+  .invoice-sheet .md-table tfoot tr { display: flex; justify-content: space-between; }
+  .invoice-sheet .md-table tfoot td { padding: 4px 0; }
+  .invoice-sheet .md-table tfoot tr.grand td { padding-top: 8px; }
+  /* the cream total bar: paint it on the row, not the cells, so the flex
+     space-between doesn't split it into two chips. */
+  .invoice-sheet.template-modern .md-table tfoot tr.grand {
+    background: #fdf3dd; border-radius: 8px; padding: 6px 12px; margin-top: 4px;
+  }
+  .invoice-sheet.template-modern .md-table tfoot tr.grand td { background: none; border-radius: 0; }
+}
 .cell-input { width: 100%; background: var(--md-sys-color-surface-container-highest); color: inherit;
   border: none; border-radius: 8px; padding: 8px 10px; font: inherit; }
 .cell-input.num { text-align: right; max-width: 110px; }
