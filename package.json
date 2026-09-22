@@ -1,0 +1,14 @@
+{
+  "name": "timekeep",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "bun run ./site/server.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}
