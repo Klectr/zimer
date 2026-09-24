@@ -51,9 +51,12 @@ export function createTimerViews(deps: TimerViewDeps) {
         <span class="dur">${dur}</span>
         ${entryIsLocked(e) ? "" : `
         <a class="md-icon-button" href="/entries/${e.id}/edit" aria-label="Edit entry" title="Edit">${icon("edit")}</a>
+        ${/* #462: the timer card owns the running entry — deleting it from the
+             list orphaned the card (ghost TRACKING + tab-title count). Stop
+             there first; delete lands on the finished row. */ !e.end_time ? "" : `
         <button class="md-icon-button danger" hx-delete="/entries/${e.id}"
           hx-target="#entry-${e.id}" hx-swap="outerHTML swap:220ms" hx-confirm="Delete this entry?"
-          aria-label="Delete entry" title="Delete">${icon("delete")}</button>`}
+          aria-label="Delete entry" title="Delete">${icon("delete")}</button>`}`}
       </div>
     </li>`;
   }
