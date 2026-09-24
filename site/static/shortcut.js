@@ -40,7 +40,7 @@
         body: new FormData(), // keeps req.formData() on the route happy
       });
       if (!res.ok) throw new Error("toggle failed");
-      document.body.dataset.timerRunning = running ? "0" : "1";
+      if (running) disarmTicker(); else armTicker();
       refreshCard();
       snackbar(running ? "Timer stopped" : "Timer started — press t to stop");
     } catch (e) {
@@ -56,10 +56,58 @@
     toggle();
   });
 
+  /* #444: site-wide tab-title ticker. #440's ticker lived in the timer card's
+     inline script, so full page loads (e.g. opening the Calendar) wiped its
+     interval — exactly where ambient awareness matters. This one runs on
+     every app page: layout renders body[data-timer-start] from the running
+     entry, and /timer/start|stop swaps re-arm it. */
+  const ticker = (() => {
+    let tick = null;
+    let baseTitle = document.title;
+    function fmt(ms) {
+      const h = Math.floor(ms / 36e5), m = Math.floor(ms % 36e5 / 6e4), s = Math.floor(ms % 6e4 / 1e3);
+      return (h ? h + ":" : "") + String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
+    }
+    function start(startIso) {
+      stop();
+      baseTitle = document.title;
+      const t0 = new Date(startIso).getTime();
+      if (!isFinite(t0)) return;
+      const render = () => {
+        document.title = fmt(Math.max(0, Date.now() - t0)) + " · Timekeep";
+      };
+      render();
+      tick = setInterval(render, 1000);
+    }
+    function stop() {
+      if (tick) { clearInterval(tick); tick = null; }
+      if (document.title !== baseTitle) document.title = baseTitle;
+    }
+    if (document.body.dataset.timerRunning === "1" && document.body.dataset.timerStart) {
+      start(document.body.dataset.timerStart);
+    }
+    return { start, stop };
+  })();
+
   // keep the body flag in sync when the timer is toggled via the page buttons
   document.addEventListener("htmx:afterRequest", (e) => {
     const path = (e.detail && e.detail.pathInfo && e.detail.pathInfo.requestPath) || "";
-    if (path === "/timer/start") document.body.dataset.timerRunning = "1";
-    else if (path === "/timer/stop") document.body.dataset.timerRunning = "0";
+    if (path === "/timer/start") armTicker();
+    else if (path === "/timer/stop") disarmTicker();
   });
+
+  /* #444: the t shortcut posts via raw fetch, so no htmx:afterRequest fires —
+     arm/disarm the ticker here too. */
+  function armTicker() {
+    document.body.dataset.timerRunning = "1";
+    /* client clock approximates the server start; cold page loads get the
+       exact instant from layout's data-timer-start instead. */
+    document.body.dataset.timerStart = new Date().toISOString();
+    ticker.start(document.body.dataset.timerStart);
+  }
+  function disarmTicker() {
+    document.body.dataset.timerRunning = "0";
+    delete document.body.dataset.timerStart;
+    ticker.stop();
+  }
 })();

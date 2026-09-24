@@ -20,6 +20,10 @@ export function createLayoutViews(qRunning: Statement, bannerHtml?: () => string
     { href: "/manage", label: "Clients", key: "manage", ic: "group" as const },
   ];
   function layout(title: string, body: string, active?: "timer" | "calendar" | "manage" | "invoices", fixed?: boolean): string {
+    /* #444: the site-wide tab ticker (shortcut.js) needs the start instant
+       of the running timer — the start form can't know it on a cold load. */
+    const running = qRunning.get() as { start_time?: string } | null;
+    const startAttr = running?.start_time ? ` data-timer-start="${esc(running.start_time)}"` : "";
     const dest = (d: (typeof dests)[number], cls: string) =>
       `<a href="${d.href}" class="${cls}${active === d.key ? " active" : ""}"${active === d.key ? ` aria-current="page"` : ""}>` +
       `<span class="nav-pill">${icon(d.ic as keyof typeof ICONS)}</span><span class="nav-label">${d.label}</span></a>`;
@@ -38,7 +42,7 @@ export function createLayoutViews(qRunning: Statement, bannerHtml?: () => string
   <script src="/static/shortcut.js" defer></script>
   <script src="/static/terms.js" defer></script>
   </head>
-  <body class="app${fixed ? " app-fixed" : ""}" data-timer-running="${qRunning.get() ? 1 : 0}">
+  <body class="app${fixed ? " app-fixed" : ""}" data-timer-running="${running ? 1 : 0}"${startAttr}>
   <!-- #387: the app bar and nav rail sit chromeless on the page background;
        the rounded surface sheet wraps only the content column. -->
   <header class="md-top-app-bar" data-enter="1">

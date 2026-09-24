@@ -74,21 +74,14 @@ export function createTimerViews(deps: TimerViewDeps) {
         <div class="md-title-medium">${running.description ? esc(running.description) : "No description"}</div>
         <div class="timer-elapsed" id="elapsed" data-start="${esc(running.start_time)}">…</div>
         <script>(function(){var el=document.getElementById('elapsed');if(!el)return;
-          /* #440: the card re-renders on every start/stop (and the t shortcut),
-             so clear the previous ticker — otherwise each re-render leaves a
-             zombie setInterval ticking on a detached node. */
+          /* #444: the tab-title ticker moved to shortcut.js (site-wide) — the
+             card keeps its own display interval, and still clears the previous
+             one so re-renders don't orphan intervals on detached nodes. */
           if(window.__tkTick){clearInterval(window.__tkTick);window.__tkTick=null;}
-          if(window.__tkBaseTitle===undefined)window.__tkBaseTitle=document.title;
           var s=new Date(el.dataset.start).getTime();
           function tick(){var d=Math.max(0,Date.now()-s);
             var h=Math.floor(d/36e5),m=Math.floor(d%36e5/6e4),sec=Math.floor(d%6e4/1e3);
-            var t=(h?h+':':'')+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0');
-            el.textContent=t;
-            /* #440: ambient awareness — the tab shows live elapsed while
-               tracking (like Toggl), so a running timer is visible from any
-               tab. Navigation is full page loads, so the title is only ever
-               written from here; the stop card below restores it. */
-            document.title=t+' · Timekeep';}
+            el.textContent=(h?h+':':'')+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0');}
           tick();window.__tkTick=setInterval(tick,1000);})();</script>
       </div>`;
     }
@@ -109,10 +102,9 @@ export function createTimerViews(deps: TimerViewDeps) {
         </button>
       </form>
       <script>(function(){
-        /* #440: timer stopped — retire the tab-title ticker from the tracking
-           card and restore the page title it was rewriting. */
+        /* #444: the card's display interval still needs retiring on stop —
+           the tab title itself is restored by shortcut.js's site-wide ticker. */
         if(window.__tkTick){clearInterval(window.__tkTick);window.__tkTick=null;}
-        if(window.__tkBaseTitle!==undefined){document.title=window.__tkBaseTitle;window.__tkBaseTitle=undefined;}
       })();</script>
     </div>`;
   }
