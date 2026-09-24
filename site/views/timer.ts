@@ -28,7 +28,11 @@ export function createTimerViews(deps: TimerViewDeps) {
   const { db, qRunning, qRange, layout, demoBanner, projectOptions,
     revenueTotals, revenueMonthly, revenueByClient, revenueOverdue, m3ProgressBar, dayTargetSecs } = deps;
 
-  function entryRow(e: Entry, i = 0): string {
+  /* #473: canRepeat — one-tap restart of a finished entry. Hidden on the
+     running row (no end_time) and while another timer is running (POST
+     /timer/start 409s there); posts to the existing route, whose HX-Trigger
+     already refreshes the Today list. */
+  function entryRow(e: Entry, i = 0, canRepeat = false): string {
     const dur = fmtDur(durationSeconds(e.start_time, e.end_time));
     /* #255: times are a client concept (the server may be in another
        timezone — VPS is UTC). Emit the ISO instant and let the client format
@@ -59,6 +63,14 @@ export function createTimerViews(deps: TimerViewDeps) {
         ${/* #462: the timer card owns the running entry — deleting it from the
              list orphaned the card (ghost TRACKING + tab-title count). Stop
              there first; delete lands on the finished row. */ !e.end_time ? "" : `
+        ${/* #473: repeat posts the row's description + project to the existing
+             /timer/start route (mini-form: hidden inputs survive quotes and
+             apostrophes where hx-vals JSON would not). */ canRepeat ? `
+        <form class="repeat-form" hx-post="/timer/start" hx-target="#timer-card" hx-swap="outerHTML swap:200ms">
+          <input type="hidden" name="description" value="${esc(e.description ?? "")}">
+          <input type="hidden" name="project_id" value="${e.project_id ?? ""}">
+          <button class="md-icon-button" type="submit" aria-label="Repeat entry" data-tip="Repeat">${icon("repeat")}</button>
+        </form>` : ""}
         <button class="md-icon-button danger" hx-delete="/entries/${e.id}"
           hx-target="#entry-${e.id}" hx-swap="outerHTML swap:220ms" data-confirm="Delete this entry?"
           aria-label="Delete entry" title="Delete">${icon("delete")}</button>`}`}
@@ -137,8 +149,11 @@ export function createTimerViews(deps: TimerViewDeps) {
     const total = entries.reduce((a, e) => a + durationSeconds(e.start_time, e.end_time), 0);
     const bar = todayTargetBar(total);
     if (!entries.length) return `${bar}<p class="muted">Nothing tracked today yet.</p>`;
+    /* #473: repeat is only offered when nothing is running — /timer/start
+       409s while a timer runs, so showing it then would be a silent no-op. */
+    const canRepeat = !qRunning.get();
     return `${bar}
-      <ul class="md-list">${entries.map(entryRow).join("")}</ul>`;
+      <ul class="md-list">${entries.map((e, i) => entryRow(e, i, canRepeat)).join("")}</ul>`;
   }
 
   function dashboardPage(): string {

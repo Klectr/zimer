@@ -563,6 +563,9 @@ input[type="number"] {
   margin-right: 4px;
   white-space: nowrap;
 }
+/* #473: repeat is a mini-form in the row's trailing area — keep it inline
+   with the icon buttons and strip the UA form margin. */
+.repeat-form { display: inline-flex; margin: 0; }
 
 /* ---------------- chips (32dp, 8dp radius, outline-variant) ---------------- */
 .md-chip {

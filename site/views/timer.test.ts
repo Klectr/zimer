@@ -170,3 +170,65 @@ describe("running entry row live duration (#469)", () => {
     expect(partial(false)).not.toContain("data-live-start");
   });
 });
+
+describe("repeat entry (#473)", () => {
+  const finished = {
+    id: 2, start_time: "2026-09-23T10:00:00.000Z", end_time: "2026-09-23T18:00:00.000Z",
+    description: "deep work", project_id: 7, project_name: "Acme",
+    client_name: null, client_color: null, invoice_id: null, invoice_status: null,
+  };
+  function row(entry: typeof finished, canRepeat: boolean) {
+    return createTimerViews({ ...baseDeps, qRunning: stubQuery() } as any).entryRow(entry as any, 0, canRepeat);
+  }
+  test("finished unlocked entry offers repeat when nothing is running", () => {
+    const html = row(finished, true);
+    expect(html).toContain('hx-post="/timer/start"');
+    expect(html).toContain('name="description" value="deep work"');
+    expect(html).toContain('name="project_id" value="7"');
+    expect(html).toContain('aria-label="Repeat entry"');
+    expect(html).toContain('hx-target="#timer-card"');
+  });
+  test("repeat values survive quotes and apostrophes in the description", () => {
+    const tricky = { ...finished, description: `Bob's "big" call`, project_id: null };
+    const html = row(tricky, true);
+    expect(html).toContain('value="Bob&#39;s &quot;big&quot; call"');
+    expect(html).toContain('name="project_id" value=""');
+  });
+  test("running row never offers repeat", () => {
+    const html = row({ ...runningEntry, project_id: 7 } as any, true);
+    expect(html).not.toContain('hx-post="/timer/start"');
+  });
+  test("no repeat while another timer is running", () => {
+    const html = row(finished, false);
+    expect(html).not.toContain('hx-post="/timer/start"');
+    // edit + delete stay put
+    expect(html).toContain("/entries/2/edit");
+    expect(html).toContain("hx-delete");
+  });
+  test("locked (invoiced) entries offer no repeat", () => {
+    const html = row({ ...finished, invoice_status: "sent" }, true);
+    expect(html).not.toContain('hx-post="/timer/start"');
+  });
+});
+
+describe("today list repeat wiring (#473)", () => {
+  const finishedRow = {
+    id: 2, start_time: "2026-09-23T10:00:00.000Z", end_time: "2026-09-23T11:30:00.000Z",
+    description: "deep work", project_id: 7, project_name: null,
+    client_name: null, client_color: null, invoice_id: null, invoice_status: null,
+  };
+  function today(running: boolean) {
+    const deps = {
+      ...baseDeps,
+      qRunning: { get: () => (running ? runningEntry : null) } as unknown as Statement,
+      qRange: { all: () => [finishedRow] } as unknown as Statement,
+    };
+    return createTimerViews(deps as any).todayPartial();
+  }
+  test("today list shows repeat on finished rows when idle", () => {
+    expect(today(false)).toContain('hx-post="/timer/start"');
+  });
+  test("today list hides repeat while a timer is running", () => {
+    expect(today(true)).not.toContain('hx-post="/timer/start"');
+  });
+});
