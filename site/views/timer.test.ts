@@ -145,3 +145,28 @@ describe("running entry row delete guard (#462)", () => {
     expect(html).toContain("hx-delete");
   });
 });
+
+describe("running entry row live duration (#469)", () => {
+  const stoppedEntry = { ...runningEntry, end_time: "2026-09-23T11:30:00.000Z" };
+  function row(entry: typeof runningEntry) {
+    return createTimerViews({ ...baseDeps, qRunning: stubQuery() } as any).entryRow(entry as any);
+  }
+  test("running entry row carries data-live-start for the card ticker", () => {
+    expect(row(runningEntry)).toContain('data-live-start="2026-09-23T10:00:00.000Z"');
+  });
+  test("finished entry row has no live duration hook", () => {
+    expect(row(stoppedEntry)).not.toContain("data-live-start");
+  });
+  test("card tick script updates the live row with a fmtDur mirror", () => {
+    const html = partial(true);
+    expect(html).toContain("querySelector('#today-list [data-live-start]')");
+    // mirror of site/lib/format.ts fmtDur: "1h 02m" / "3m 24s" / "45s"
+    expect(html).toContain("return h+'h '+String(m).padStart(2,'0')+'m'");
+    expect(html).toContain("return m+'m '+String(sec).padStart(2,'0')+'s'");
+    expect(html).toContain("return sec+'s'");
+  });
+  test("stopped card renders no live ticker", () => {
+    // the stopped card only retires the old interval — no row-ticking logic
+    expect(partial(false)).not.toContain("data-live-start");
+  });
+});

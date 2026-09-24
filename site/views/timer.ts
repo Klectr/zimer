@@ -42,13 +42,18 @@ export function createTimerViews(deps: TimerViewDeps) {
     /* #330: mark time that's already on an invoice (sent/paid) or in a draft. */
     const mark = entryInvoiceMark(e);
     const invMark = mark ? `<span class="inv-mark ${mark.cls}" title="${esc(mark.title)}">${mark.label}</span>` : "";
+    /* #469: the running row's duration ticks live from the card's 1s interval
+       (found by data-live-start); finished rows stay static. */
+    const durSpan = !e.end_time
+      ? `<span class="dur" data-live-start="${esc(e.start_time)}">${dur}</span>`
+      : `<span class="dur">${dur}</span>`;
     return `<li class="md-list-item" id="entry-${e.id}" style="animation-delay:${Math.min(i * 30, 300)}ms">
       <div class="md-list-item-content">
         <div class="md-list-item-headline">${desc}</div>
         <div class="md-list-item-supporting">${chip}${invMark}<span>${startTs} – ${endTs}${e.client_name && !e.project_name ? ` · ${esc(e.client_name)}` : ""}</span></div>
       </div>
       <div class="md-list-item-trailing">
-        <span class="dur">${dur}</span>
+        ${durSpan}
         ${entryIsLocked(e) ? "" : `
         <a class="md-icon-button" href="/entries/${e.id}/edit" aria-label="Edit entry" title="Edit">${icon("edit")}</a>
         ${/* #462: the timer card owns the running entry — deleting it from the
@@ -82,9 +87,19 @@ export function createTimerViews(deps: TimerViewDeps) {
              one so re-renders don't orphan intervals on detached nodes. */
           if(window.__tkTick){clearInterval(window.__tkTick);window.__tkTick=null;}
           var s=new Date(el.dataset.start).getTime();
+          /* #469: mirror fmtDur (site/lib/format.ts) for the running entry's
+             duration in the Today list — it was frozen at render time while
+             the card ticked. Same 1s interval, no extra timers. */
+          function fmtDurRow(d){var t=Math.floor(d/1000),
+            h=Math.floor(t/3600),m=Math.floor(t%3600/60),sec=t%60;
+            if(h>0)return h+'h '+String(m).padStart(2,'0')+'m';
+            if(m>0)return m+'m '+String(sec).padStart(2,'0')+'s';
+            return sec+'s';}
           function tick(){var d=Math.max(0,Date.now()-s);
             var h=Math.floor(d/36e5),m=Math.floor(d%36e5/6e4),sec=Math.floor(d%6e4/1e3);
-            el.textContent=(h?h+':':'')+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0');}
+            el.textContent=(h?h+':':'')+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0');
+            var row=document.querySelector('#today-list [data-live-start]');
+            if(row)row.textContent=fmtDurRow(d);}
           tick();window.__tkTick=setInterval(tick,1000);})();</script>
       </div>`;
     }
