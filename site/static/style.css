@@ -786,6 +786,9 @@ main.page-invoices { max-width: 760px; }
 /* whole-row tap target for invoice rows */
 .inv-row-hit { display: flex; align-items: center; gap: 8px; width: 100%;
   color: inherit; text-decoration: none; }
+/* #442: date phrases in list rows never split mid-date; the supporting line
+   wraps at the middot separators instead. */
+.inv-date { white-space: nowrap; }
 /* empty detail pane */
 .detail-placeholder { display: flex; flex-direction: column; align-items: center;
   justify-content: center; gap: 12px; padding: 64px 24px; text-align: center; min-height: 320px; }
