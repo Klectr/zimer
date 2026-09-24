@@ -459,10 +459,6 @@ input[type="number"] {
 .md-text-field.compact:has(label) input:focus + label,
 .md-text-field.compact:has(label) input:not(:placeholder-shown) + label,
 .md-text-field.compact:has(label):has(select) label { top: 5px; font-size: 0.6875rem; }
-/* auto-width: size the field to its content (e.g. a select sized to its
-   longest option) instead of a fragile fixed pixel width. */
-.md-text-field.auto-width { display: inline-block; width: auto; }
-.md-text-field.auto-width select { width: auto; }
 
 /* color control: tonal container with palette icon, label, and swatch */
 .md-color-control {
@@ -1678,8 +1674,6 @@ button.m3-menu-item {
 @keyframes skel-shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
 .skel-stack { display: flex; flex-direction: column; gap: 12px; }
 .skel-line { height: 14px; border-radius: 7px; }
-.skel-display { height: 60px; border-radius: 12px; }
-.skel-btn { height: 56px; width: 148px; border-radius: 999px; }
 .skel-row { height: 64px; border-radius: var(--md-sys-shape-corner-medium); }
 
 /* -------- calendar skeleton (#322): mirrors .cal-pane-layout so the htmx
