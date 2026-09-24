@@ -1533,7 +1533,7 @@ button.m3-menu-item {
 .internal-notes-label { font-size: 12px; letter-spacing: .4px; text-transform: uppercase;
   color: var(--md-sys-color-on-surface-variant); margin-bottom: 6px; }
 .internal-notes p { margin: 0; white-space: pre-wrap; }
-.inv-modern-dates strong { color: #fff; }
+.inv-modern-dates strong { color: #fff; white-space: nowrap; }
 
 /* ---------------- Modern invoice template (#233) ---------------- */
 .template-modern { overflow: hidden; }
