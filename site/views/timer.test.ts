@@ -128,3 +128,20 @@ describe("shortcut.js t toggle parity (#454)", () => {
     expect(toggleBody).toContain('htmx.trigger(document.body, "timer-updated")');
   });
 });
+
+describe("running entry row delete guard (#462)", () => {
+  const stoppedEntry = { ...runningEntry, end_time: "2026-09-23T11:30:00.000Z" };
+  function row(entry: typeof runningEntry) {
+    return createTimerViews({ ...baseDeps, qRunning: stubQuery() } as any).entryRow(entry as any);
+  }
+  test("running entry keeps Edit but hides Delete (the card owns it)", () => {
+    const html = row(runningEntry);
+    expect(html).toContain("/entries/1/edit");
+    expect(html).not.toContain("hx-delete");
+  });
+  test("finished entry keeps both Edit and Delete", () => {
+    const html = row(stoppedEntry);
+    expect(html).toContain("/entries/1/edit");
+    expect(html).toContain("hx-delete");
+  });
+});

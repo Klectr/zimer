@@ -444,8 +444,10 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     function openEdit(el){
       mode='edit'; editId=el.dataset.id; dayStr=el.dataset.date;
       var locked=el.dataset.locked||''; /* #334: sent/paid time opens read-only */
+      var running=el.classList.contains('running'); /* #462: the timer card owns
+        the running entry — deleting it here orphaned the card. */
       title.textContent=locked?'Entry (invoiced)':'Edit entry';
-      delBtn.hidden=!!locked; err.hidden=true;
+      delBtn.hidden=!!locked||running; err.hidden=true;
       var d=new Date(dayStr+'T12:00:00');
       dateLine.textContent=d.toLocaleDateString([],{weekday:'long',month:'long',day:'numeric'});
       desc.value=el.dataset.desc||''; project.value=el.dataset.projectId||'';
