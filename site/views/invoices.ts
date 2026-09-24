@@ -50,15 +50,18 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
      pane (two-pane, ≥840px) or the detail screen (single-pane). */
   function invoiceRow(r: any, selected: boolean): string {
     const od = isOverdue(r) ? daysBetween(r.due_date as string, todayStr()) : 0;
-    /* #442: same class as #437 — keep each date phrase on one line so the
-       narrow list pane wraps at the middots instead of splitting "2026-"
-       from "10-09". */
-    const seg = (label: string, val: string) => ` · <span class="inv-date">${label} ${esc(val)}</span>`;
+    /* #442: keep each date phrase on one line so the narrow list pane wraps
+       at the middots instead of splitting "2026-" from "10-09". #481: the
+       middot is a leading separator INSIDE the nowrap span — it used to sit
+       in the raw text between spans, dangling at the end of the broken line
+       ("issued 2026-09-24 ·" / "due 2026-10-09"). Wraps now happen before
+       a middot, never after one. */
+    const seg = (label: string, val: string) => `<span class="inv-date">· ${label} ${esc(val)}</span>`;
     return `<li class="md-list-item inv-row${selected ? " selected" : ""}">
       <a class="inv-row-hit" href="/invoices?invoice=${r.id}" aria-label="View invoice ${esc(r.number)}">
         <div class="md-list-item-content">
           <div class="md-list-item-headline">${esc(r.number)} ${statusPill(r.status)}${od ? ` <span class="attn-chip">${od}d overdue</span>` : ""}</div>
-          <div class="md-list-item-supporting">${r.client_name ? esc(r.client_name) : "<em>No client</em>"}${seg("issued", r.issue_date)}${r.due_date ? seg("due", r.due_date) : ""}${r.status === "paid" && r.paid_at ? seg("paid", shortYmd(r.paid_at)) : ""}</div>
+          <div class="md-list-item-supporting">${r.client_name ? esc(r.client_name) : "<em>No client</em>"} ${seg("issued", r.issue_date)}${r.due_date ? ` ${seg("due", r.due_date)}` : ""}${r.status === "paid" && r.paid_at ? ` ${seg("paid", shortYmd(r.paid_at))}` : ""}</div>
         </div>
         <div class="md-list-item-trailing"><span class="dur">${money(round2(r.subtotal * (1 + (r.tax_rate || 0) / 100)))}</span></div>
       </a>
