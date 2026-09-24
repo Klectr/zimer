@@ -129,4 +129,18 @@ describe("paid-on date", () => {
     const plain = views([]).invoiceDetailBody(detailInv("paid", "2026-09-21") as any, "http://x");
     expect(plain).not.toContain("stripe-paid-chip");
   });
+
+  test("#471: new-invoice rate/tax use affixes, not label-crammed units", () => {
+    const html = views([]).invoiceNewPage(views([]).defaultNewInvParams());
+    // rate: $ prefix affix, label is just "Hourly rate"
+    expect(html).toContain('class="md-text-field filled has-prefix"');
+    expect(html).toContain('<span class="affix prefix" aria-hidden="true">$</span>');
+    expect(html).toContain('aria-label="Hourly rate"><label>Hourly rate</label>');
+    expect(html).not.toContain("Hourly rate ($)");
+    // tax: % suffix affix, label is just "Tax"
+    expect(html).toContain('class="md-text-field filled has-suffix"');
+    expect(html).toContain('<span class="affix suffix" aria-hidden="true">%</span>');
+    expect(html).toContain('aria-label="Tax"><label>Tax</label>');
+    expect(html).not.toContain("Tax %");
+  });
 });

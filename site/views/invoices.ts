@@ -187,8 +187,8 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
             <div class="md-text-field filled"><input type="date" id="inv-to" name="to" value="${esc(p.to)}" required placeholder=" "><label>To (exclusive)</label></div>
           </div>
           <div class="two-field">
-            <div class="md-text-field filled"><input type="number" name="rate" id="inv-rate" value="${esc(p.rate || (selClient ? String(selClient.rate || "") : ""))}" min="0" step="0.01" placeholder=" "><label>Hourly rate ($)</label></div>
-            <div class="md-text-field filled"><input type="number" name="tax_rate" value="${esc(p.tax_rate)}" min="0" step="0.01" placeholder=" "><label>Tax %</label></div>
+            <div class="md-text-field filled has-prefix"><span class="affix prefix" aria-hidden="true">$</span><input type="number" name="rate" id="inv-rate" value="${esc(p.rate || (selClient ? String(selClient.rate || "") : ""))}" min="0" step="0.01" placeholder=" " aria-label="Hourly rate"><label>Hourly rate</label></div>
+            <div class="md-text-field filled has-suffix"><input type="number" name="tax_rate" value="${esc(p.tax_rate)}" min="0" step="0.01" placeholder=" " aria-label="Tax"><label>Tax</label><span class="affix suffix" aria-hidden="true">%</span></div>
           </div>
           <div class="two-field">
             <div class="md-text-field"><input type="text" name="number" value="${esc(p.number)}" required placeholder=" "><label>Invoice number</label></div>
