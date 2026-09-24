@@ -529,11 +529,14 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       }).catch(function(ex){ fail(ex.message); });
     });
     delBtn.addEventListener('click',function(){
-      if(!confirm('Delete this entry?')) return;
-      fetch('/entries/'+editId,{method:'DELETE'}).then(function(r){
-        if(!r.ok) throw new Error('delete failed'); /* #334: locked entries 403 */
-        close(); refreshWeek(null);
-      }).catch(function(ex){ fail(ex.message); });
+      /* #464: native confirm() replaced by the shared M3 confirm dialog. */
+      window.tkConfirm('Delete this entry?').then(function(ok){
+        if(!ok) return;
+        fetch('/entries/'+editId,{method:'DELETE'}).then(function(r){
+          if(!r.ok) throw new Error('delete failed'); /* #334: locked entries 403 */
+          close(); refreshWeek(null);
+        }).catch(function(ex){ fail(ex.message); });
+      });
     });
     // drag-to-create on empty grid space
     var drag=null;

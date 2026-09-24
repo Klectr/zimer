@@ -104,7 +104,7 @@ export function createManageViews(deps: ManageViewDeps) {
   const projectRow = (p: any) => `<li class="md-list-item" style="min-height:56px">
             <div class="md-list-item-content"><div class="md-list-item-headline">${esc(p.name)}</div></div>
             <div class="md-list-item-trailing">
-              <form method="post" action="/projects/${p.id}/delete" class="inline" hx-post="/projects/${p.id}/delete" hx-target="#client-detail" hx-swap="outerHTML"><button class="md-icon-button danger" hx-confirm="Delete project? Entries keep their history." aria-label="Delete project ${esc(p.name)}" title="Delete">${icon("delete")}</button></form>
+              <form method="post" action="/projects/${p.id}/delete" class="inline" hx-post="/projects/${p.id}/delete" hx-target="#client-detail" hx-swap="outerHTML"><button class="md-icon-button danger" data-confirm="Delete project? Entries keep their history." aria-label="Delete project ${esc(p.name)}" title="Delete">${icon("delete")}</button></form>
             </div>
           </li>`;
 
@@ -167,7 +167,7 @@ export function createManageViews(deps: ManageViewDeps) {
       </ul>
       ${isClient ? `
       <form method="post" action="/clients/${c.id}/delete" class="detail-form">
-        <button class="md-text-button danger" type="submit" onclick="return confirm('Delete this client? Its projects move to No client.')">Delete client</button>
+        <button class="md-text-button danger" type="submit" data-confirm="Delete this client? Its projects move to No client.">Delete client</button>
       </form>` : ""}
     </div>`;
   }

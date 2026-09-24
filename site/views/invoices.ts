@@ -432,9 +432,9 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     })();</script>`;
     const copyBtn = (url: string) => `
       <button class="md-icon-button" type="button" data-copy data-url="${esc(url)}" title="Copy link" aria-label="Copy link">${icon("copy")}</button>`;
-    const actBtn = (action: string, ic: string, label: string, cls = "", confirm = "") => `
+    const actBtn = (action: string, ic: string, label: string, cls = "", confirm = "", confirmLabel = "Delete") => `
       <form method="post" action="${action}" hx-post="${action}" ${hxDetail}>
-        <button class="md-icon-button ${cls}" type="submit" title="${label}" aria-label="${label}"${confirm ? ` hx-confirm="${confirm}"` : ""}>${icon(ic)}</button>
+        <button class="md-icon-button ${cls}" type="submit" title="${label}" aria-label="${label}"${confirm ? ` data-confirm="${confirm}" data-confirm-label="${confirmLabel}"` : ""}>${icon(ic)}</button>
       </form>`;
     const clientLine = clientLink ? `
       <div class="share-line">
@@ -443,7 +443,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
         <span class="share-icons">
           ${copyBtn(clientLink)}
           ${actBtn(`/invoices/${inv.id}/public-token/regenerate`, "refresh", "Regenerate link (invalidates the old one)")}
-          ${actBtn(`/invoices/${inv.id}/public-token/revoke`, "delete", "Revoke link", "danger", "Revoke the client link? The current URL will stop working.")}
+          ${actBtn(`/invoices/${inv.id}/public-token/revoke`, "delete", "Revoke link", "danger", "Revoke the client link? The current URL will stop working.", "Revoke")}
         </span>
       </div>` : `
       <div class="share-line">
@@ -496,7 +496,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
             <button class="md-icon-button tip-right" type="submit" data-tip="${nextLabel}" aria-label="${nextLabel}">${icon("check")}</button>
           </form>` : ""}
           ${inv.status === "draft" ? `<form method="post" action="/invoices/${inv.id}/delete" class="inline">
-            <button class="md-icon-button danger tip-right" type="submit" data-tip="Delete draft" aria-label="Delete draft" onclick="return confirm('Delete this draft invoice? Its entries become unbilled again.')">${icon("delete")}</button>
+            <button class="md-icon-button danger tip-right" type="submit" data-tip="Delete draft" aria-label="Delete draft" data-confirm="Delete this draft invoice? Its entries become unbilled again.">${icon("delete")}</button>
           </form>` : ""}
         </div>
       </div>

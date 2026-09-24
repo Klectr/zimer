@@ -33,4 +33,98 @@
       e.preventDefault(); first.focus();
     }
   };
+
+  /* #464: one shared M3 confirm dialog, replacing every native confirm() /
+     hx-confirm in the app (delete entry x2, delete draft invoice, delete
+     client, delete project, revoke client link). Returns a promise that
+     resolves true on the confirm action, false on Cancel / Escape / scrim
+     click. Reuses the .cal-scrim/.cal-dialog motion pattern; traps Tab via
+     tkTrapTab; initial focus lands on Cancel, the safe action. The message is
+     set as textContent, never HTML. */
+  var confirmOpen = false;
+  window.tkConfirm = function (message, confirmLabel) {
+    if (confirmOpen) return Promise.resolve(false); /* never stack dialogs */
+    confirmOpen = true;
+    return new Promise(function (resolve) {
+      var doc = document;
+      var scrim = doc.createElement("div");
+      scrim.className = "cal-scrim";
+      var box = doc.createElement("div");
+      box.className = "cal-dialog tk-confirm";
+      box.setAttribute("role", "alertdialog");
+      box.setAttribute("aria-modal", "true");
+      var title = doc.createElement("h2");
+      title.className = "md-headline-small";
+      title.id = "tk-confirm-title";
+      title.textContent = message || "";
+      box.setAttribute("aria-labelledby", "tk-confirm-title");
+      var actions = doc.createElement("div");
+      actions.className = "cal-dialog-actions";
+      var spacer = doc.createElement("span");
+      spacer.className = "cal-spacer";
+      var cancelBtn = doc.createElement("button");
+      cancelBtn.type = "button";
+      cancelBtn.className = "md-text-button";
+      cancelBtn.textContent = "Cancel";
+      var okBtn = doc.createElement("button");
+      okBtn.type = "button";
+      okBtn.className = "md-text-button danger";
+      okBtn.textContent = confirmLabel || "Delete";
+      actions.appendChild(spacer);
+      actions.appendChild(cancelBtn);
+      actions.appendChild(okBtn);
+      box.appendChild(title);
+      box.appendChild(actions);
+      scrim.appendChild(box);
+
+      var settled = false;
+      function close(result) {
+        if (settled) return;
+        settled = true;
+        confirmOpen = false;
+        doc.removeEventListener("keydown", onKey, true);
+        scrim.classList.remove("open");
+        /* let the 200ms fade-out play before removing the nodes */
+        setTimeout(function () { scrim.remove(); resolve(result); }, 220);
+      }
+      function onKey(e) {
+        if (!e) return;
+        if (e.key === "Escape") { e.preventDefault(); close(false); return; }
+        window.tkTrapTab(box, e);
+      }
+      cancelBtn.addEventListener("click", function () { close(false); });
+      okBtn.addEventListener("click", function () { close(true); });
+      scrim.addEventListener("click", function (e) {
+        if (e.target === scrim) close(false);
+      });
+      doc.addEventListener("keydown", onKey, true);
+      doc.body.appendChild(scrim);
+      /* next frame so the enter transition plays */
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () { scrim.classList.add("open"); });
+      });
+      cancelBtn.focus();
+    });
+  };
+
+  /* #464: [data-confirm] replaces hx-confirm / onclick="return confirm()".
+     Capture phase at the document runs before htmx's element-level listener,
+     so preventDefault + stopPropagation fully pre-empts it; on OK the click
+     is re-dispatched with a one-shot flag, and both the htmx path and the
+     plain-form submit path proceed untouched. Keyboard activation (Enter /
+     Space on the button) dispatches a click too, so it flows through here. */
+  document.addEventListener("click", function (e) {
+    var t = e.target;
+    var el = t && t.closest ? t.closest("[data-confirm]") : null;
+    if (!el || el.disabled) return;
+    if (el.dataset.tkConfirmed) { delete el.dataset.tkConfirmed; return; }
+    e.preventDefault();
+    e.stopPropagation();
+    window.tkConfirm(el.getAttribute("data-confirm") || "",
+      el.getAttribute("data-confirm-label")).then(function (ok) {
+      if (!ok) return;
+      el.dataset.tkConfirmed = "1";
+      el.click();
+    });
+  }, true);
 })();
