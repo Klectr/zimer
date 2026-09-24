@@ -208,12 +208,16 @@ export function createCalendarViews(deps: CalendarViewDeps) {
         const mark = entryInvoiceMark(e);
         const markA11y = mark ? `, ${mark.label} ${esc(e.invoice_number || "")}` : "";
         const markTitle = mark ? ` title="${esc(mark.title)}"` : "";
+        /* #479: the aria-label is a plain-text accessible name — `desc`
+           carries <em> markup for untitled entries, which screen readers
+           would announce as literal tags. */
+        const label = `${esc(e.description || "No description")}, ${dur}${markA11y}`;
         return `<div class="cal-entry${running ? " running" : ""}${overlap ? " overlap" : ""}${compact ? " cal-compact" : ""}${mark ? " invoiced" : ""}"
             style="top:${(top + 2).toFixed(1)}px;height:${(h - 4).toFixed(1)}px;--c:${esc(color)}"
             data-id="${e.id}" data-desc="${esc(e.description)}" data-project-id="${e.project_id ?? ""}"
             data-date="${day}" data-start="${toHM(a)}" data-end="${running ? "" : toHM(Math.min(b, 1439))}"
             data-locked="${locked ? esc(e.invoice_number || "") : ""}"
-            tabindex="0" role="button" aria-label="${desc}, ${dur}${markA11y}"${markTitle}>
+            tabindex="0" role="button" aria-label="${label}"${markTitle}>
           <div class="cal-entry-desc">${e.project_name ? `<strong>${esc(e.project_name)}</strong> · ` : ""}${desc}</div>
           <div class="cal-entry-dur">${dur}</div>
           ${resizable ? `<div class="cal-resize top" data-resize="start" title="Drag to change start" aria-hidden="true"></div><div class="cal-resize" data-resize="end" title="Drag to resize" aria-hidden="true"></div>` : ""}
