@@ -107,4 +107,15 @@ describe("paid-on date", () => {
     const html = views([]).invoiceDetailBody(detailInv("sent", null) as any, "http://x");
     expect(html).not.toContain("Paid ");
   });
+
+  test("#442: list row keeps date phrases on one line", () => {
+    const html = views([{ ...baseRow, status: "paid", paid_at: "2026-09-21" }]).invoiceListOob(7);
+    expect(html).toContain('<span class="inv-date">issued 2026-09-01</span>');
+    expect(html).toContain('<span class="inv-date">due 2026-09-30</span>');
+    expect(html).toContain('<span class="inv-date">paid Sep 21</span>');
+    const html2 = views([{ ...baseRow, status: "sent", paid_at: null }]).invoiceListOob(0);
+    expect(html2).toContain('<span class="inv-date">issued 2026-09-01</span>');
+    expect(html2).toContain('<span class="inv-date">due 2026-09-30</span>');
+    expect(html2).not.toContain('inv-date">paid');
+  });
 });
