@@ -288,6 +288,20 @@ describe("tkConfirm", () => {
     void p1;
   });
 
+  test("#467: second call during the fade-out resolves false without stacking", async () => {
+    const p1 = tkConfirm("first");
+    clickFirst(dlgParts(lastScrim()).cancel); /* 220ms fade starts */
+    const p2 = tkConfirm("second");
+    expect(await p2).toBe(false);
+    expect(g.document.body.children.length).toBe(1); /* no stacked dialog */
+    expect(await p1).toBe(false);
+    await new Promise((r) => setTimeout(r, 250)); /* fade done, guard released */
+    const p3 = tkConfirm("third");
+    expect(g.document.body.children.length).toBe(1);
+    clickFirst(dlgParts(lastScrim()).cancel);
+    expect(await p3).toBe(false);
+  });
+
   test("Tab inside the dialog cycles through the dialog buttons", () => {
     tkConfirm("Delete this entry?");
     const { cancel, ok } = dlgParts(lastScrim());

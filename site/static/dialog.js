@@ -81,11 +81,16 @@
       function close(result) {
         if (settled) return;
         settled = true;
-        confirmOpen = false;
         doc.removeEventListener("keydown", onKey, true);
         scrim.classList.remove("open");
-        /* let the 200ms fade-out play before removing the nodes */
-        setTimeout(function () { scrim.remove(); resolve(result); }, 220);
+        /* #467: the guard stays raised until the fading dialog is actually
+           removed — resetting it here opened a 220ms window where a second
+           tkConfirm stacked a new dialog over the fading one. */
+        setTimeout(function () {
+          confirmOpen = false;
+          scrim.remove();
+          resolve(result);
+        }, 220);
       }
       function onKey(e) {
         if (!e) return;
