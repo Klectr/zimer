@@ -244,3 +244,17 @@ describe("timer card stop button (#475)", () => {
     expect(partial(false)).not.toContain("/timer/stop");
   });
 });
+
+describe("timer card annotation hygiene (#477)", () => {
+  // A /* ... */ note once sat inside the template literal and rendered as
+  // visible text between the TRACKING label and the Stop button. Inline
+  // <script> blocks legitimately contain JS comments, so strip them before
+  // asserting the HTML carries no comment text.
+  const noScripts = (html: string) => html.replace(/<script[\s\S]*?<\/script>/g, "");
+  test("running card emits no JS-style comment text", () => {
+    expect(noScripts(partial(true))).not.toContain("/*");
+  });
+  test("idle card emits no JS-style comment text", () => {
+    expect(noScripts(partial(false))).not.toContain("/*");
+  });
+});

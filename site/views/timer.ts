@@ -84,11 +84,13 @@ export function createTimerViews(deps: TimerViewDeps) {
     const running = qRunning.get() as Entry | null;
     if (running) {
       const proj = running.project_name ? ` · ${esc(running.project_name)}` : "";
+      /* #475: the stop class is what .timer-top-row .stop positions — the
+         button once dropped it and sat below the TRACKING label in normal
+         flow. This note lives outside the template literal: a JS-style comment
+         inside the HTML renders as visible text in the card. */
       return `<div class="md-card tracking" id="timer-card">
         <div class="timer-top-row">
           <div class="timer-state-label"><span class="live-dot" aria-hidden="true"></span>TRACKING${proj}</div>
-          /* #475: the stop class is what .timer-top-row .stop positions — the
-           button dropped it and sat below the TRACKING label in normal flow. */
         <button class="md-filled-button stop" hx-post="/timer/stop" hx-target="#timer-card" hx-swap="outerHTML swap:200ms">
             ${icon("stop")}Stop
           </button>
