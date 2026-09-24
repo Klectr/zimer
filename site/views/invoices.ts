@@ -299,8 +299,10 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
         <td class="num inv-amount">${money(it.amount)}</td>
       </tr>`).join("");
     const client = inv.client_name ? esc(inv.client_name) : "<em>No client</em>";
+    /* #448: bolt comes from the icon system, not an emoji — the chip is
+       otherwise untouched (same spot, same styling, same label). */
     const paidChip = inv.paid_via_stripe
-      ? ` <span class="stripe-paid-chip" title="Marked paid automatically by a Stripe payment">⚡ Paid via Stripe</span>` : "";
+      ? ` <span class="stripe-paid-chip" title="Marked paid automatically by a Stripe payment">${icon("bolt")}<span>Paid via Stripe</span></span>` : "";
     /* #243: billing period derives from the line-item dates. */
     const froms = inv.items.map(it => it.date_from).filter(Boolean).sort() as string[];
     const tos = inv.items.map(it => it.date_to || it.date_from).filter(Boolean).sort() as string[];
