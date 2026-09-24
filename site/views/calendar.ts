@@ -466,7 +466,13 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     document.getElementById('cal-cancel').addEventListener('click',close);
     document.getElementById('cal-close').addEventListener('click',close);
     scrim.addEventListener('click',function(e){ if(e.target===scrim) close(); });
-    document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&!scrim.hidden) close(); });
+    /* #456: keep Tab cycling inside the modal entry dialog — it's
+       aria-modal="true", so focus must not wander behind the scrim. The
+       scrim's only child is the dialog itself. */
+    document.addEventListener('keydown',function(e){
+      if(e.key==='Escape'&&!scrim.hidden) close();
+      else if(e.key==='Tab'&&!scrim.hidden&&window.tkTrapTab) window.tkTrapTab(scrim,e);
+    });
     function fail(msg){ err.textContent=msg; err.hidden=false; }
     /* In-place week refresh (#65): re-render the #week section without a full
        page reload. Load-entrance animations are suppressed for the swap

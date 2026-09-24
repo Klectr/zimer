@@ -41,6 +41,7 @@ export function createLayoutViews(qRunning: Statement, bannerHtml?: () => string
   <script src="/static/motion.js" defer></script>
   <script src="/static/shortcut.js" defer></script>
   <script src="/static/terms.js" defer></script>
+  <script src="/static/dialog.js" defer></script>
   </head>
   <body class="app${fixed ? " app-fixed" : ""}" data-timer-running="${running ? 1 : 0}"${startAttr}>
   <!-- #387: the app bar and nav rail sit chromeless on the page background;
@@ -257,7 +258,11 @@ function settingsDialog(): string {
       scrim.addEventListener('transitionend',onEnd); setTimeout(finish,300);
       if(refocus&&avatarBtn) avatarBtn.focus();
     }
-    function onKey(e){ if(e.key==='Escape'){ e.preventDefault(); close(true); } }
+    /* #456: trap Tab inside the modal while it's open. onKey only runs
+       while open (attached on open, detached on close), so no extra open
+       guard is needed. The scrim's only child is the dialog itself. */
+    function onKey(e){ if(e.key==='Escape'){ e.preventDefault(); close(true); }
+      else if(e.key==='Tab'&&window.tkTrapTab){ window.tkTrapTab(scrim,e); } }
     body.addEventListener('htmx:afterSwap',function(){
       if(!focusOnSwap) return; focusOnSwap=false;
       var f=body.querySelector('input'); if(f) f.focus();
