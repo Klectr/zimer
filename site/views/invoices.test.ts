@@ -118,4 +118,15 @@ describe("paid-on date", () => {
     expect(html2).toContain('<span class="inv-date">due 2026-09-30</span>');
     expect(html2).not.toContain('inv-date">paid');
   });
+
+  test("#448: stripe-paid chip uses the icon system, not an emoji", () => {
+    const stripeInv = { ...detailInv("paid", "2026-09-21"), paid_via_stripe: 1 };
+    const html = views([]).invoiceDetailBody(stripeInv as any, "http://x");
+    const chip = html.match(/<span class="stripe-paid-chip"[^>]*>([\s\S]*?)<\/span>/)?.[1] || "";
+    expect(chip).toContain("<svg");
+    expect(chip).toContain("Paid via Stripe");
+    expect(chip).not.toContain("⚡");
+    const plain = views([]).invoiceDetailBody(detailInv("paid", "2026-09-21") as any, "http://x");
+    expect(plain).not.toContain("stripe-paid-chip");
+  });
 });

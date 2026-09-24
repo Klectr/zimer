@@ -36,6 +36,9 @@ export const ICONS: Record<string, string> = {
   menu: `<path d="M4 6h16M4 12h16M4 18h16"/>`,
   /* #404: warning triangle for error statuses (M3 error-outline style). */
   alert: `<path d="M12 4.5L21 19.5H3z"/><path d="M12 10v4"/><circle cx="12" cy="16.8" r="1.1" fill="currentColor" stroke="none"/>`,
+  /* #448: bolt for the "Paid via Stripe" chip — the last emoji in the UI
+     leaves the icon system here. M3 outlined 24px, matches the set. */
+  bolt: `<path d="M13 2L4.5 13.5H11L9.5 22L18.5 10.5H12Z"/>`,
 };
 
 export function icon(name: keyof typeof ICONS): string {
