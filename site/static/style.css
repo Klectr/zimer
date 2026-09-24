@@ -1032,6 +1032,9 @@ body.app-fixed .cal-gutter-spacer {
 .cal-scrim.open .cal-dialog { transform: scale(1); opacity: 1; }
 .cal-dialog h2 { margin: 0; }
 .cal-dialog p { margin: 0; }
+/* #464: shared confirm dialog — same scrim/motion as the app dialogs,
+   narrower than the form dialogs. */
+.tk-confirm { width: min(400px, 100%); }
 .cal-time-row { display: flex; gap: 12px; align-items: flex-end; }
 .cal-time-row .md-text-field { flex: 1; min-width: 0; }
 #cal-dur { white-space: nowrap; flex-shrink: 0; align-self: center; }

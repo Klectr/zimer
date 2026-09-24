@@ -55,7 +55,7 @@ export function createTimerViews(deps: TimerViewDeps) {
              list orphaned the card (ghost TRACKING + tab-title count). Stop
              there first; delete lands on the finished row. */ !e.end_time ? "" : `
         <button class="md-icon-button danger" hx-delete="/entries/${e.id}"
-          hx-target="#entry-${e.id}" hx-swap="outerHTML swap:220ms" hx-confirm="Delete this entry?"
+          hx-target="#entry-${e.id}" hx-swap="outerHTML swap:220ms" data-confirm="Delete this entry?"
           aria-label="Delete entry" title="Delete">${icon("delete")}</button>`}`}
       </div>
     </li>`;
