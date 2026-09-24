@@ -288,11 +288,11 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     const t = invoiceTotals(inv.items, inv.tax_rate);
     const items = inv.items.map(it => `
       <tr>
-        <td>${esc(shortDateRange(it.date_from, it.date_to))}</td>
-        <td>${esc(it.description)}</td>
-        <td class="num">${it.hours}</td>
-        <td class="num">${money(it.rate)}</td>
-        <td class="num">${money(it.amount)}</td>
+        <td class="inv-date">${esc(shortDateRange(it.date_from, it.date_to))}</td>
+        <td class="desc">${esc(it.description)}</td>
+        <td class="num inv-hours">${it.hours}</td>
+        <td class="num inv-rate">${money(it.rate)}</td>
+        <td class="num inv-amount">${money(it.amount)}</td>
       </tr>`).join("");
     const client = inv.client_name ? esc(inv.client_name) : "<em>No client</em>";
     const paidChip = inv.paid_via_stripe
