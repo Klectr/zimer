@@ -42,6 +42,10 @@
       if (!res.ok) throw new Error("toggle failed");
       if (running) disarmTicker(); else armTicker();
       refreshCard();
+      /* #454: the button path fires timer-updated via the server's HX-Trigger
+         header; this raw-fetch path never did, so the today list kept showing
+         stale data after a t toggle. Fire the same event for parity. */
+      if (window.htmx) htmx.trigger(document.body, "timer-updated");
       snackbar(running ? "Timer stopped" : "Timer started — press t to stop");
     } catch (e) {
       snackbar("Couldn't toggle the timer");
