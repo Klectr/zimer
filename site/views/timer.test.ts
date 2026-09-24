@@ -232,3 +232,15 @@ describe("today list repeat wiring (#473)", () => {
     expect(today(true)).not.toContain('hx-post="/timer/start"');
   });
 });
+
+describe("timer card stop button (#475)", () => {
+  test("running card's stop button keeps the stop positioning class", () => {
+    const html = partial(true);
+    // .timer-top-row .stop positions the button top-right; without the
+    // class it drops below the TRACKING label in normal flow.
+    expect(html).toContain('class="md-filled-button stop" hx-post="/timer/stop"');
+  });
+  test("idle card has no stop button", () => {
+    expect(partial(false)).not.toContain("/timer/stop");
+  });
+});
