@@ -110,13 +110,22 @@ describe("paid-on date", () => {
 
   test("#442: list row keeps date phrases on one line", () => {
     const html = views([{ ...baseRow, status: "paid", paid_at: "2026-09-21" }]).invoiceListOob(7);
-    expect(html).toContain('<span class="inv-date">issued 2026-09-01</span>');
-    expect(html).toContain('<span class="inv-date">due 2026-09-30</span>');
-    expect(html).toContain('<span class="inv-date">paid Sep 21</span>');
+    expect(html).toContain('<span class="inv-date">· issued 2026-09-01</span>');
+    expect(html).toContain('<span class="inv-date">· due 2026-09-30</span>');
+    expect(html).toContain('<span class="inv-date">· paid Sep 21</span>');
     const html2 = views([{ ...baseRow, status: "sent", paid_at: null }]).invoiceListOob(0);
-    expect(html2).toContain('<span class="inv-date">issued 2026-09-01</span>');
-    expect(html2).toContain('<span class="inv-date">due 2026-09-30</span>');
-    expect(html2).not.toContain('inv-date">paid');
+    expect(html2).toContain('<span class="inv-date">· issued 2026-09-01</span>');
+    expect(html2).toContain('<span class="inv-date">· due 2026-09-30</span>');
+    expect(html2).not.toContain('inv-date">· paid');
+  });
+
+  test("#481: no middot dangles in raw text between the date spans", () => {
+    const html = views([{ ...baseRow, status: "paid", paid_at: "2026-09-21" }]).invoiceListOob(7);
+    const supporting = html.match(/<div class="md-list-item-supporting">([\s\S]*?)<\/div>/)?.[1] || "";
+    /* The middot is a leading separator inside each nowrap span, so a wrap
+       breaks before a middot, never after one — no " · " in raw text. */
+    expect(supporting).toContain('Acme <span class="inv-date">· issued 2026-09-01</span> <span class="inv-date">· due 2026-09-30</span> <span class="inv-date">· paid Sep 21</span>');
+    expect(supporting).not.toMatch(/ · </);
   });
 
   test("#448: stripe-paid chip uses the icon system, not an emoji", () => {
