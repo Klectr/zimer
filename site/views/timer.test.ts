@@ -118,3 +118,13 @@ describe("shortcut.js site-wide ticker (#444)", () => {
     expect(toggleBody).toContain("armTicker()");
   });
 });
+
+describe("shortcut.js t toggle parity (#454)", () => {
+  test("t toggle fires timer-updated like the button path", async () => {
+    const js = await Bun.file("site/static/shortcut.js").text();
+    const toggleBody = js.slice(js.indexOf("async function toggle()"), js.indexOf("document.addEventListener(\"keydown\""));
+    // the button path fires this via the server's HX-Trigger header; the
+    // raw-fetch shortcut must fire the same event so the today list refreshes
+    expect(toggleBody).toContain('htmx.trigger(document.body, "timer-updated")');
+  });
+});
