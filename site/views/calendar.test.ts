@@ -166,4 +166,11 @@ describe("calendar entry invoiced-mark tooltip (#500)", () => {
     expect(tag).not.toContain("data-tip=");
     expect(tag).not.toContain("title=");
   });
+  test("resize handles carry no native title", () => {
+    // both stubs are 1h, not running, not locked → resizable handles render
+    const html = weekInnerHtml([plain, invoiced]);
+    expect(html).toContain('data-resize="start"');
+    expect(html).toContain('data-resize="end"');
+    expect(html).not.toContain("title=");
+  });
 });
