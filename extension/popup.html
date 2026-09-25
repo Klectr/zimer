@@ -49,12 +49,14 @@
   <!-- settings -->
   <div id="view-setup">
     <p class="muted tiny">Point the extension at your self-hosted Timekeep server.</p>
-    <label>Site URL</label>
+    <!-- #515: labels are wired to their inputs (for/id), so clicking a
+         label focuses the field and screen readers announce the pairing. -->
+    <label for="site-url">Site URL</label>
     <input id="site-url" type="url" placeholder="http://localhost:3000" autocomplete="off">
-    <label>API token</label>
+    <label for="api-token">API token</label>
     <input id="api-token" type="password" placeholder="paste token from server log" autocomplete="off">
     <button id="btn-save" class="start">Save</button>
-    <div id="setup-error" class="error"></div>
+    <div id="setup-error" class="error" role="alert"></div>
   </div>
 
   <!-- main -->
@@ -76,11 +78,12 @@
       </div>
     </div>
     <div id="timer-idle" class="hidden">
-      <input id="in-desc" type="text" placeholder="What are you working on?" autocomplete="off">
-      <select id="in-project"><option value="">No project</option></select>
+      <!-- #515: placeholder-only fields get real accessible names. -->
+      <input id="in-desc" type="text" placeholder="What are you working on?" autocomplete="off" aria-label="What are you working on?">
+      <select id="in-project" aria-label="Project"><option value="">No project</option></select>
       <button id="btn-start" class="start">Start</button>
     </div>
-    <div id="main-error" class="error"></div>
+    <div id="main-error" class="error" role="alert"></div>
     <div class="row">
       <button id="btn-open" class="ghost">Open dashboard</button>
       <button id="btn-settings" class="ghost">Settings</button>
@@ -88,14 +91,14 @@
     <button id="btn-rules" class="ghost">Autotracker rules</button>
     <div id="rules-panel" class="hidden">
       <div id="rules-list"></div>
-      <label>Match text (part of page title or URL)</label>
+      <label for="rule-pattern">Match text (part of page title or URL)</label>
       <div class="row2">
         <input id="rule-pattern" type="text" placeholder="e.g. github.com" autocomplete="off">
       </div>
-      <label>Project</label>
+      <label for="rule-project">Project</label>
       <select id="rule-project"></select>
       <button id="btn-add-rule" class="start">Add rule</button>
-      <div id="rules-error" class="error"></div>
+      <div id="rules-error" class="error" role="alert"></div>
     </div>
   </div>
 
