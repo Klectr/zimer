@@ -22,6 +22,14 @@ function detailHtml(): string {
   return views.clientDetailBody({ kind: "client", client });
 }
 
+/* The color control lives in the list pane's add-client form, not the
+   client detail — render the full page for assertions covering it. */
+function pageHtml(): string {
+  const { db, client } = testDb();
+  const views = createManageViews({ db, layout: (_t: string, b: string) => b });
+  return views.managePage({ kind: "client", client });
+}
+
 describe("manage tooltips (#486)", () => {
   test("project delete/add and rate/terms save use data-tip, not native title", () => {
     const html = detailHtml();
@@ -38,5 +46,18 @@ describe("manage tooltips (#486)", () => {
     expect(html).toContain('aria-label="Delete project Website"');
     expect(html).toContain('aria-label="Save hourly rate for Acme"');
     expect(html).toContain('aria-label="Save payment terms for Acme"');
+  });
+
+  /* #488: the rate form's title="Hourly rate" fired the OS-native tooltip on
+     top of the Save button's data-tip bubble (two tooltips at once); the
+     color label's title="Client color" duplicated its visible "Color" text.
+     Both fields keep their accessible names. */
+  test("rate form and color label carry no redundant native title", () => {
+    const detail = detailHtml();
+    expect(detail).not.toContain('title="Hourly rate"');
+    expect(detail).toContain('aria-label="Save hourly rate for Acme"');
+    const page = pageHtml();
+    expect(page).not.toContain('title="Client color"');
+    expect(page).toContain('aria-label="Client color"');
   });
 });
