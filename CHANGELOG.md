@@ -2,6 +2,15 @@
 
 What's new in Timekeep, newest first.
 
+## 2026-09-25
+
+- **Repeat an entry.** Restart any finished entry from the Today list with one tap — description and project come along.
+- **Confirm dialogs look like the app.** The six native browser confirms (deleting entries, draft invoices, clients, projects, client links) are now the app's own M3 confirm dialog. Deleting the running entry is off the table — stop it first.
+- **Everything ticks.** The running entry's time ticks live in the Today list, and the browser tab shows elapsed time while a timer runs.
+- **Keyboard and screen-reader pass.** A skip link, focus stays trapped inside dialogs, and closing a dialog puts focus back where you were.
+- **Touch tooltips.** Press-and-hold shows tooltips on touch screens; the native browser tooltips are gone everywhere else too.
+- **Phones.** Invoice line items stack instead of squeezing, and dates stay glued to their labels.
+
 ## 2026-09-18
 
 - **Material 3 navigation.** The four destinations moved out of the top app bar into proper M3 navigation: a bottom bar on phones, a leading navigation rail on larger screens, and a slimmer app bar with just the brand mark and account menu.
