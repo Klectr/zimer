@@ -114,4 +114,24 @@
     delete document.body.dataset.timerStart;
     ticker.stop();
   }
+
+  /* #496: M3 plain tooltips need a 450ms long-press on touch, where hover
+     doesn't exist. Used to live inline per page (#69 calendar day heads,
+     #432 invoice icon buttons); now site-wide so timer/manage icon buttons
+     get it too. Document-level delegation survives htmx swaps. */
+  (() => {
+    let tipTimer = null, tipEl = null;
+    document.addEventListener("pointerdown", (e) => {
+      const t = e.target && e.target.closest && e.target.closest("[data-tip]");
+      if (!t) return;
+      tipEl = t;
+      tipTimer = setTimeout(() => t.classList.add("tip-show"), 450);
+    });
+    ["pointerup", "pointercancel"].forEach((type) => {
+      document.addEventListener(type, () => {
+        if (tipTimer) { clearTimeout(tipTimer); tipTimer = null; }
+        if (tipEl) { tipEl.classList.remove("tip-show"); tipEl = null; }
+      }, { passive: true });
+    });
+  })();
 })();

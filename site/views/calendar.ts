@@ -630,20 +630,6 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       window.addEventListener('pointermove',move);
       window.addEventListener('pointerup',up);
     });
-    /* #69: long-press (450ms) reveals the day-head stats tooltip on touch, where hover doesn't exist. */
-    var tipTimer=null,tipEl=null;
-    document.addEventListener('pointerdown',function(e){
-      var head=e.target.closest('.cal-day-head[data-tip]');
-      if(!head) return;
-      tipEl=head;
-      tipTimer=setTimeout(function(){ head.classList.add('tip-show'); },450);
-    });
-    ['pointerup','pointercancel'].forEach(function(t){
-      document.addEventListener(t,function(){
-        if(tipTimer){ clearTimeout(tipTimer); tipTimer=null; }
-        if(tipEl){ tipEl.classList.remove('tip-show'); tipEl=null; }
-      },{passive:true});
-    });
     /* #213: the server's clock may be in another timezone (e.g. a UTC VPS),
        so every "right now" presentation follows the viewer's local time:
        the now-line (column + position), the .today highlight, and running
