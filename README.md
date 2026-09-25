@@ -1,8 +1,15 @@
 <div align="center">
 
+<img src="docs/assets/readme-banner.webp" alt="timekeep — timer → invoice" />
+
 # Timekeep
 
 Self-hostable time tracker — timer → invoice. One Bun server, one SQLite file, your data never leaves the machine.
+
+[![runtime: bun](https://img.shields.io/badge/runtime-bun-1a1c1e?logo=bun&logoColor=white)](https://bun.sh)
+[![ui: htmx](https://img.shields.io/badge/ui-htmx-1a1c1e?logo=htmx&logoColor=white)](https://htmx.org)
+[![database: sqlite](https://img.shields.io/badge/database-sqlite-1a1c1e?logo=sqlite&logoColor=white)](https://sqlite.org)
+[![license: MIT](https://img.shields.io/badge/license-MIT-1a1c1e)](LICENSE)
 
 </div>
 
@@ -10,6 +17,7 @@ Self-hostable time tracker — timer → invoice. One Bun server, one SQLite fil
 <summary><kbd>Table of contents</kbd></summary>
 
 - [Features](#features)
+- [Screenshots](#screenshots)
 - [Install](#install)
 - [Quickstart](#quickstart)
 - [Browser extension](#browser-extension)
@@ -33,6 +41,22 @@ Self-hostable time tracker — timer → invoice. One Bun server, one SQLite fil
 - **Check for updates** — in-app, from the signed release feed.
 - **Offline license** — free and full-featured through beta; post-beta takes a one-time key checked entirely offline against an embedded public key. No network call, no telemetry.
 - Your data is one SQLite file. Back it up, move it, done.
+
+## Screenshots
+
+*All screenshots use fictional demo data — the app ships with a one-click sample workspace.*
+
+**Timer** — start/stop card, today's entries, live revenue pane.
+
+![timekeep timer page](docs/assets/screenshot-timer.png)
+
+**Calendar** — week grid with entries, per-day totals, this-week summary.
+
+![timekeep calendar page](docs/assets/screenshot-calendar.png)
+
+**Invoices** — unbilled time per client, draft → sent → paid pipeline.
+
+![timekeep invoices page](docs/assets/screenshot-invoices.png)
 
 ## Install
 
