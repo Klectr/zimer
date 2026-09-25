@@ -135,6 +135,9 @@ describe("paid-on date", () => {
     expect(chip).toContain("<svg");
     expect(chip).toContain("Paid via Stripe");
     expect(chip).not.toContain("⚡");
+    /* #494: the chip carries no native title — the visible label already
+       says "Paid via Stripe", so the tooltip restated it (#488 class). */
+    expect(html).not.toContain('stripe-paid-chip" title=');
     const plain = views([]).invoiceDetailBody(detailInv("paid", "2026-09-21") as any, "http://x");
     expect(plain).not.toContain("stripe-paid-chip");
   });
