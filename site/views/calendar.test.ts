@@ -112,3 +112,58 @@ describe("week-nav tooltips (#486)", () => {
     expect(html).not.toContain('title="Next week"');
   });
 });
+
+/** #500: finish the data-tip sweep — the calendar entry card's invoiced-mark
+ *  info was the last native title= tooltip on the grid; it now uses the house
+ *  M3 plain tooltip (data-tip) like the timer page's inv-mark chip (#498). */
+describe("calendar entry invoiced-mark tooltip (#500)", () => {
+  const stubQuery = () => ({
+    get: (..._a: unknown[]) => ({ n: 1 }),
+    all: (..._a: unknown[]) => [],
+  });
+  const plain = {
+    id: 20, description: "plain entry", project_id: null, project_name: null,
+    client_name: null, client_color: null, invoice_id: null,
+    invoice_number: null, invoice_status: null,
+    start_time: "2026-09-21T15:00:00.000Z", end_time: "2026-09-21T16:00:00.000Z",
+  };
+  const invoiced = {
+    id: 21, description: "billed work", project_id: null, project_name: null,
+    client_name: null, client_color: null, invoice_id: 5,
+    invoice_number: "INV-0042", invoice_status: "sent",
+    start_time: "2026-09-21T17:00:00.000Z", end_time: "2026-09-21T18:00:00.000Z",
+  };
+  function weekInnerHtml(entries: unknown[]) {
+    const db = {
+      query: (_sql: string) => ({ get: () => ({ n: 1 }), all: () => entries }),
+    } as unknown as Database;
+    const views = createCalendarViews({
+      db,
+      qOne: stubQuery(),
+      qRange: stubQuery(),
+      entrySelect: "SELECT",
+      layout: (_t: string, b: string) => b,
+      projectOptions: () => "",
+      weekTargetBar: () => "",
+      calHourPx: 64,
+    } as any);
+    return views.weekInner("2026-09-20", "America/Chicago");
+  }
+  function cardTag(html: string, id: number): string {
+    const m = html.match(new RegExp(`<div class="cal-entry[^>]*data-id="${id}"[^>]*>`));
+    if (!m) throw new Error(`no cal-entry card with data-id=${id}`);
+    return m[0];
+  }
+  test("invoiced entry card uses data-tip, not the native title", () => {
+    const html = weekInnerHtml([plain, invoiced]);
+    const tag = cardTag(html, 21);
+    expect(tag).toContain('data-tip="Invoiced on INV-0042"');
+    expect(tag).not.toContain("title=");
+  });
+  test("plain entries get no mark tip at all", () => {
+    const html = weekInnerHtml([plain, invoiced]);
+    const tag = cardTag(html, 20);
+    expect(tag).not.toContain("data-tip=");
+    expect(tag).not.toContain("title=");
+  });
+});

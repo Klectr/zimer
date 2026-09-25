@@ -207,7 +207,11 @@ export function createCalendarViews(deps: CalendarViewDeps) {
            hover tooltip + aria-label. */
         const mark = entryInvoiceMark(e);
         const markA11y = mark ? `, ${mark.label} ${esc(e.invoice_number || "")}` : "";
-        const markTitle = mark ? ` title="${esc(mark.title)}"` : "";
+        /* #500: house M3 plain tooltip (data-tip) instead of the native title —
+           same mark info the timer page's inv-mark chip shows via #498; hover,
+           450ms touch long-press (site-wide [data-tip] handler), and
+           :focus-visible (the card is keyboard-focusable). */
+        const markTip = mark ? ` data-tip="${esc(mark.title)}"` : "";
         /* #479: the aria-label is a plain-text accessible name — `desc`
            carries <em> markup for untitled entries, which screen readers
            would announce as literal tags. */
@@ -217,7 +221,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
             data-id="${e.id}" data-desc="${esc(e.description)}" data-project-id="${e.project_id ?? ""}"
             data-date="${day}" data-start="${toHM(a)}" data-end="${running ? "" : toHM(Math.min(b, 1439))}"
             data-locked="${locked ? esc(e.invoice_number || "") : ""}"
-            tabindex="0" role="button" aria-label="${label}"${markTitle}>
+            tabindex="0" role="button" aria-label="${label}"${markTip}>
           <div class="cal-entry-desc">${e.project_name ? `<strong>${esc(e.project_name)}</strong> · ` : ""}${desc}</div>
           <div class="cal-entry-dur">${dur}</div>
           ${resizable ? `<div class="cal-resize top" data-resize="start" title="Drag to change start" aria-hidden="true"></div><div class="cal-resize" data-resize="end" title="Drag to resize" aria-hidden="true"></div>` : ""}
