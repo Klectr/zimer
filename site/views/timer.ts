@@ -45,7 +45,10 @@ export function createTimerViews(deps: TimerViewDeps) {
     const desc = e.description ? esc(e.description) : "<em>No description</em>";
     /* #330: mark time that's already on an invoice (sent/paid) or in a draft. */
     const mark = entryInvoiceMark(e);
-    const invMark = mark ? `<span class="inv-mark ${mark.cls}" title="${esc(mark.title)}">${mark.label}</span>` : "";
+    /* #498: house M3 plain tooltip (data-tip) instead of the native title —
+       matches the site's tooltip language and gives touch users the 450ms
+       long-press (#496). */
+    const invMark = mark ? `<span class="inv-mark ${mark.cls}" data-tip="${esc(mark.title)}">${mark.label}</span>` : "";
     /* #469: the running row's duration ticks live from the card's 1s interval
        (found by data-live-start); finished rows stay static. */
     const durSpan = !e.end_time
