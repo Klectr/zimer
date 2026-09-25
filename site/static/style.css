@@ -223,8 +223,8 @@ h2.md-headline-small { margin: 24px 0 12px; }
 }
 .md-card.tracking .muted { color: var(--md-sys-color-on-primary-container); opacity: 0.75; }
 
-/* ---------------- buttons (5 types, pill, 40dp, 48dp target) ---------------- */
-.md-filled-button, .md-tonal-button, .md-outlined-button, .md-text-button {
+/* ---------------- buttons (4 types, pill, 40dp, 48dp target) ---------------- */
+.md-filled-button, .md-tonal-button, .md-text-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -245,7 +245,7 @@ h2.md-headline-small { margin: 24px 0 12px; }
 }
 /* hover state layer 8% */
 .md-filled-button:hover::after, .md-tonal-button:hover::after,
-.md-outlined-button:hover::after, .md-text-button:hover::after,
+.md-text-button:hover::after,
 .md-icon-button:hover::after {
   content: "";
   position: absolute;
@@ -256,7 +256,7 @@ h2.md-headline-small { margin: 24px 0 12px; }
   pointer-events: none;
 }
 .md-filled-button:active::after, .md-tonal-button:active::after,
-.md-outlined-button:active::after, .md-text-button:active::after {
+.md-text-button:active::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -268,16 +268,11 @@ h2.md-headline-small { margin: 24px 0 12px; }
 
 .md-filled-button { background: var(--md-sys-color-primary); color: var(--md-sys-color-on-primary); }
 .md-tonal-button { background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container); }
-.md-outlined-button {
-  background: transparent;
-  color: var(--md-sys-color-primary);
-  border: 1px solid var(--md-sys-color-outline);
-}
 .md-text-button { background: transparent; color: var(--md-sys-color-primary); padding: 0 16px; }
 .md-text-button.danger { color: var(--md-sys-color-error); }
 
 /* ---------------- icons (inline SVG, M3 outlined 24px) ---------------- */
-.md-filled-button svg, .md-tonal-button svg, .md-outlined-button svg, .md-text-button svg {
+.md-filled-button svg, .md-tonal-button svg, .md-text-button svg {
   width: 18px; height: 18px; flex: none; }
 
 /* ---------------- update-check progress state (#406) ---------------- */
@@ -299,7 +294,7 @@ h2.md-headline-small { margin: 24px 0 12px; }
 }
 /* disabled buttons (used by hx-disabled-elt on #check-updates-btn) */
 .md-filled-button:disabled, .md-tonal-button:disabled,
-.md-outlined-button:disabled, .md-text-button:disabled {
+.md-text-button:disabled {
   opacity: 0.45;
   cursor: default;
 }
