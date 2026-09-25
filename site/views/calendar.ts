@@ -91,16 +91,25 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     return guess;
   }
 
-  /** Inner HTML of the #week section (everything that changes when entries do).
-      Served full-page via weekGrid() and in-place via GET /partial/week (#65). */
-  function weekInner(weekStr?: string, tzParam?: string): string {
-    const tz = validTz(tzParam);
+  /** #521: week-scoped data shared by the week grid and the single-column
+      day view — the week's entries bucketed by client-local day, plus the
+      summary figures the supporting pane shows (always week-scoped). */
+  interface CalWeekData {
+    tz: string | null;
+    today: string;
+    sun: string;
+    rows: Entry[];
+    byDay: Map<string, Entry[]>;
+    weekTotal: number;
+    weekBillable: number;
+    clientRows: { name: string; color: string | null; secs: number }[];
+    uninvoiced: number;
+    prevBillable: number;
+  }
+
+  function weekData(sun: string, tz: string | null): CalWeekData {
     /* "today" in the client's zone — the server may be on a different date. */
     const today = ymdOf(tzParts(new Date(), tz));
-    const sun = weekStr && /^\d{4}-\d{2}-\d{2}$/.test(weekStr) ? weekStr : sundayOfYmd(today);
-    const prev = addDays(sun, -7), next = addDays(sun, 7);
-    const isThisWeek = sun === sundayOfYmd(today);
-
     // Fetch the whole week in one query, then bucket entries by the client's local day.
     const [wFrom, wTo] = weekBoundsISO(sun, tz);
     const rows = db.query(
@@ -111,14 +120,18 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       if (!byDay.has(key)) byDay.set(key, []);
       byDay.get(key)!.push(e);
     }
-
     /* Per-client week totals from the same query (no extra DB hit), sorted
        descending. Entries without a client roll into a "No client" bucket. */
     const byClient = new Map<string, { name: string; color: string | null; secs: number }>();
+    let weekTotal = 0, weekBillable = 0;
     for (const e of rows) {
+      const secs = durationSeconds(e.start_time, e.end_time);
+      weekTotal += secs;
+      /* Billable = entry has a project (hence a client); non-billable = no project. */
+      if (e.project_id != null) weekBillable += secs;
       const key = e.client_name ?? "__none";
       const cur = byClient.get(key) ?? { name: e.client_name ?? "No client", color: e.client_color, secs: 0 };
-      cur.secs += durationSeconds(e.start_time, e.end_time);
+      cur.secs += secs;
       byClient.set(key, cur);
     }
     const clientRows = [...byClient.values()].sort((a, b) => b.secs - a.secs);
@@ -126,6 +139,169 @@ export function createCalendarViews(deps: CalendarViewDeps) {
        project. Non-project time can never land on an invoice. */
     const uninvoiced = rows.reduce(
       (s, e) => s + (e.invoice_id == null && e.project_id != null ? durationSeconds(e.start_time, e.end_time) : 0), 0);
+    /* #351: week-over-week delta vs the immediately preceding week — billable
+       vs billable, since it sits next to the billable figure. */
+    const [pFrom, pTo] = weekBoundsISO(addDays(sun, -7), tz);
+    const prevRows = qRange.all(pFrom, pTo) as Entry[];
+    const prevBillable = prevRows.reduce(
+      (a, e) => a + (e.project_id != null ? durationSeconds(e.start_time, e.end_time) : 0), 0);
+    return { tz, today, sun, rows, byDay, weekTotal, weekBillable, clientRows, uninvoiced, prevBillable };
+  }
+
+  /** #521: one .cal-day column. Extracted from weekInner's loop body so the
+      week grid and the day view render identical lanes. */
+  function dayColumnHtml(day: string, data: CalWeekData, animDelay: number): string {
+    const { tz, today } = data;
+    const toMin = (iso: string) => { const p = tzParts(new Date(iso), tz); return p.hh * 60 + p.mm; };
+    const toHM = (mins: number) => `${String(Math.floor(mins / 60)).padStart(2, "0")}:${String(mins % 60).padStart(2, "0")}`;
+
+    const [y, m, d] = day.split("-").map(Number);
+    const wd = weekdayOf(y, m, d).slice(0, 3);
+    const entries = data.byDay.get(day) ?? [];
+    const total = entries.reduce((a, e) => a + durationSeconds(e.start_time, e.end_time), 0);
+    /* Billable = entry has a project (hence a client); non-billable = no project. */
+    const billable = entries.reduce(
+      (a, e) => a + (e.project_id != null ? durationSeconds(e.start_time, e.end_time) : 0), 0);
+    const isToday = day === today;
+    /* Subtle tint for past days under 8h; never tint today or future days. */
+    const pastShort = day < today && total < 8 * 3600;
+
+    // Entries render full-width; an entry involved in an overlap gets a top
+    // drop shadow so it reads as elevated above the entry beneath it.
+    const nowP = tzParts(new Date(), tz);
+    const nowMin = nowP.hh * 60 + nowP.mm;
+    const sortedBlocks = entries
+      .map((e) => {
+        const a = toMin(e.start_time);
+        const b = Math.max(e.end_time ? toMin(e.end_time) : nowMin, a + 15);
+        return { e, a, b };
+      })
+      .sort((x, y) => x.a - y.a);
+    const entryHtml = sortedBlocks
+      .map(({ e, a, b }, i) => {
+      const top = (a / 60) * calHourPx;
+      const trueH = ((b - a) / 60) * calHourPx;
+      /* #275: sub-30-minute entries would be unreadably thin at true scale,
+         but the old 26px floor read too chunky — floor at 22px with compact
+         styling (tighter padding, smaller text, no duration line). */
+      const compact = trueH < 26;
+      /* #279: a floored short entry overflows its true slot and the next
+         card paints over it, burying the 4px gap — cap the floor at the
+         room before the next entry starts. Back-to-back short entries
+         render at true height (thin but truthful, gap preserved); the
+         floor still applies when there's room. Never shrink below true
+         height, so overlapping entries keep full height. */
+      const nextA = i + 1 < sortedBlocks.length ? sortedBlocks[i + 1].a : Infinity;
+      const roomPx = ((nextA - a) / 60) * calHourPx;
+      const h = Math.min(Math.max(trueH, 22), Math.max(roomPx, trueH));
+      /* #273: 2px visual inset top and bottom so stacked cards don't touch.
+         The positioning slot is unchanged; only the painted card shrinks. */
+      const color = e.client_color || "#9aa0a6"; // no-client: neutral gray, distinct from client colors
+      const running = !e.end_time;
+      const overlap = sortedBlocks.some((o) => o.e !== e && o.a < b && o.b > a);
+      /* #277: resize handles only on entries of 1 hour or more — the 12px
+         hit areas swallow taps on short entries. Shorter entries stay
+         fully tappable and resize via the edit dialog. */
+      const locked = entryIsLocked(e); /* #334: sent/paid time is a frozen record */
+      const resizable = !running && (b - a) >= 60 && !locked;
+      const desc = e.description ? esc(e.description) : "<em>No description</em>";
+      const dur = fmtDur(durationSeconds(e.start_time, e.end_time));
+      /* #332: invoiced time dims instead of a chip — the week grid is too
+         dense for a pill on every card. The invoice number lives in the
+         hover tooltip + aria-label. */
+      const mark = entryInvoiceMark(e);
+      const markA11y = mark ? `, ${mark.label} ${esc(e.invoice_number || "")}` : "";
+      /* #500: house M3 plain tooltip (data-tip) instead of the native title —
+         same mark info the timer page's inv-mark chip shows via #498; hover,
+         450ms touch long-press (site-wide [data-tip] handler), and
+         :focus-visible (the card is keyboard-focusable). */
+      const markTip = mark ? ` data-tip="${esc(mark.title)}"` : "";
+      /* #504: resize handles carry no tooltip at all — they're aria-hidden
+         and gestural (grip + resize cursor on entry hover). This removes
+         the last two native title= tooltips in the app. */
+      const resizeHandles = resizable
+        ? `<div class="cal-resize top" data-resize="start" aria-hidden="true"></div><div class="cal-resize" data-resize="end" aria-hidden="true"></div>`
+        : "";
+      /* #479: the aria-label is a plain-text accessible name — `desc`
+         carries <em> markup for untitled entries, which screen readers
+         would announce as literal tags. */
+      const label = `${esc(e.description || "No description")}, ${dur}${markA11y}`;
+      return `<div class="cal-entry${running ? " running" : ""}${overlap ? " overlap" : ""}${compact ? " cal-compact" : ""}${mark ? " invoiced" : ""}"
+          style="top:${(top + 2).toFixed(1)}px;height:${(h - 4).toFixed(1)}px;--c:${esc(color)}"
+          data-id="${e.id}" data-desc="${esc(e.description)}" data-project-id="${e.project_id ?? ""}"
+          data-date="${day}" data-start="${toHM(a)}" data-end="${running ? "" : toHM(Math.min(b, 1439))}"
+          data-locked="${locked ? esc(e.invoice_number || "") : ""}"
+          tabindex="0" role="button" aria-label="${label}"${markTip}>
+        <div class="cal-entry-desc">${e.project_name ? `<strong>${esc(e.project_name)}</strong> · ` : ""}${desc}</div>
+        <div class="cal-entry-dur">${dur}</div>
+        ${resizeHandles}
+      </div>`;
+    }).join("");
+    /* #213: "now" is a client concept (the server may be in another
+       timezone). The line is placed by placeNow() in calScript. */
+    const nowLine = "";
+    // #69: day stats live in an M3 plain tooltip on the header (hover / focus / long-press),
+    // not in the layout — the header stays two lines so time slots sit higher.
+    const tip = total > 0 ? `${fmtDur(total)} total · ${fmtDur(billable)} billable` : "";
+    const headAttrs = tip
+      ? ` tabindex="0" data-tip="${tip}" aria-label="${esc(wd)} ${d}: ${tip}"`
+      : "";
+    return `<div class="cal-day${isToday ? " today" : ""}${pastShort ? " paced-short" : ""}" style="animation-delay:${animDelay}ms">
+      <div class="cal-day-head"${headAttrs}>
+        <div class="md-label-large muted">${esc(wd)}</div>
+        <div class="cal-day-num${isToday ? " today" : ""}">${d}</div>
+      </div>
+      <div class="cal-day-col" data-date="${day}"><div class="cal-night cal-night-am" aria-hidden="true">${WAVE_AM}${nightStars(NIGHT_STARS_AM)}</div><div class="cal-night cal-night-pm" aria-hidden="true">${WAVE_PM}${nightStars(NIGHT_STARS_PM)}</div>${entryHtml}${nowLine}</div>
+    </div>`;
+  }
+
+  /** Inner HTML of the #week section (everything that changes when entries do).
+      Served full-page via weekGrid() and in-place via GET /partial/week (#65). */
+  function weekInner(weekStr?: string, tzParam?: string): string {
+    const tz = validTz(tzParam);
+    /* "today" in the client's zone — the server may be on a different date. */
+    const today = ymdOf(tzParts(new Date(), tz));
+    const sun = weekStr && /^\d{4}-\d{2}-\d{2}$/.test(weekStr) ? weekStr : sundayOfYmd(today);
+    const wd = weekData(sun, tz);
+    const prev = addDays(sun, -7), next = addDays(sun, 7);
+    const isThisWeek = sun === sundayOfYmd(today);
+    const weekLabel = new Date(sun + "T12:00:00").toLocaleDateString([], { month: "short", day: "numeric" });
+    const navTitle = isThisWeek ? "This week" : `Week of ${weekLabel}`;
+    const navActions = `
+      ${isThisWeek ? "" : `<a class="md-text-button" href="/calendar" hx-get="/partial/week" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar">Today</a>`}
+      <a class="md-icon-button" href="/calendar?week=${prev}" hx-get="/partial/week?week=${prev}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?week=${prev}" data-tip="Previous week" aria-label="Previous week">${icon("chevron_left")}</a>
+      <a class="md-icon-button" href="/calendar?week=${next}" hx-get="/partial/week?week=${next}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?week=${next}" data-tip="Next week" aria-label="Next week">${icon("chevron_right")}</a>`;
+    const lanes: string[] = [];
+    for (let i = 0; i < 7; i++) lanes.push(dayColumnHtml(addDays(sun, i), wd, i * 40));
+    return calShell(wd, navTitle, navActions, lanes.join(""), "week");
+  }
+
+  /** #521: single-column day view, served full-page via weekGrid(day) and
+      in-place via GET /partial/day. The supporting pane stays week-scoped
+      (the selected day's containing week); only the lanes and the nav change. */
+  function dayInner(dayStr?: string, tzParam?: string): string {
+    const tz = validTz(tzParam);
+    /* "today" in the client's zone — the server may be on a different date. */
+    const today = ymdOf(tzParts(new Date(), tz));
+    const day = dayStr && /^\d{4}-\d{2}-\d{2}$/.test(dayStr) ? dayStr : today;
+    const wd = weekData(sundayOfYmd(day), tz);
+    const prevDay = addDays(day, -1), nextDay = addDays(day, 1);
+    const isToday = day === today;
+    const navTitle = isToday ? "Today"
+      : new Date(day + "T12:00:00").toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
+    const navActions = `
+      ${isToday ? "" : `<a class="md-text-button" href="/calendar?day=${today}" hx-get="/partial/day?day=${today}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?day=${today}">Today</a>`}
+      <a class="md-icon-button" href="/calendar?day=${prevDay}" hx-get="/partial/day?day=${prevDay}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?day=${prevDay}" data-tip="Previous day" aria-label="Previous day">${icon("chevron_left")}</a>
+      <a class="md-icon-button" href="/calendar?day=${nextDay}" hx-get="/partial/day?day=${nextDay}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?day=${nextDay}" data-tip="Next day" aria-label="Next day">${icon("chevron_right")}</a>`;
+    return calShell(wd, navTitle, navActions, dayColumnHtml(day, wd, 0), "day");
+  }
+
+  /** #521: the #week section shared by week and day modes — supporting pane
+      (always week-scoped) plus the scroll region. `mode` drives the grid's
+      column count through [data-mode]. */
+  function calShell(wd: CalWeekData, navTitle: string, navActions: string,
+      lanesHtml: string, mode: "week" | "day"): string {
+    const { sun, weekTotal, weekBillable, clientRows, uninvoiced, prevBillable } = wd;
     const nudgeChip = uninvoiced > 0 ? `
       <a class="nudge-chip" href="/invoices/new?from=${sun}&to=${addDays(sun, 7)}">
         <span class="md-label-large">${fmtDur(uninvoiced)} not yet invoiced</span>
@@ -140,147 +316,25 @@ export function createCalendarViews(deps: CalendarViewDeps) {
             <span class="md-label-medium muted">${fmtDur(c.secs)}</span>
           </span>`).join("")}
       </div>`;
-
-    const toMin = (iso: string) => { const p = tzParts(new Date(iso), tz); return p.hh * 60 + p.mm; };
-    const toHM = (mins: number) => `${String(Math.floor(mins / 60)).padStart(2, "0")}:${String(mins % 60).padStart(2, "0")}`;
-
-    let weekTotal = 0;
-    let weekBillable = 0;
-    const days: string[] = [];
-    for (let i = 0; i < 7; i++) {
-      const day = addDays(sun, i);
-      const [y, m, d] = day.split("-").map(Number);
-      const wd = weekdayOf(y, m, d).slice(0, 3);
-      const entries = byDay.get(day) ?? [];
-      const total = entries.reduce((a, e) => a + durationSeconds(e.start_time, e.end_time), 0);
-      /* Billable = entry has a project (hence a client); non-billable = no project. */
-      const billable = entries.reduce(
-        (a, e) => a + (e.project_id != null ? durationSeconds(e.start_time, e.end_time) : 0), 0);
-      weekTotal += total;
-      weekBillable += billable;
-      const isToday = day === today;
-      /* Subtle tint for past days under 8h; never tint today or future days. */
-      const pastShort = day < today && total < 8 * 3600;
-
-      // Entries render full-width; an entry involved in an overlap gets a top
-      // drop shadow so it reads as elevated above the entry beneath it.
-      const nowP = tzParts(new Date(), tz);
-      const nowMin = nowP.hh * 60 + nowP.mm;
-      const sortedBlocks = entries
-        .map((e) => {
-          const a = toMin(e.start_time);
-          const b = Math.max(e.end_time ? toMin(e.end_time) : nowMin, a + 15);
-          return { e, a, b };
-        })
-        .sort((x, y) => x.a - y.a);
-      const entryHtml = sortedBlocks
-        .map(({ e, a, b }, i) => {
-        const top = (a / 60) * calHourPx;
-        const trueH = ((b - a) / 60) * calHourPx;
-        /* #275: sub-30-minute entries would be unreadably thin at true scale,
-           but the old 26px floor read too chunky — floor at 22px with compact
-           styling (tighter padding, smaller text, no duration line). */
-        const compact = trueH < 26;
-        /* #279: a floored short entry overflows its true slot and the next
-           card paints over it, burying the 4px gap — cap the floor at the
-           room before the next entry starts. Back-to-back short entries
-           render at true height (thin but truthful, gap preserved); the
-           floor still applies when there's room. Never shrink below true
-           height, so overlapping entries keep full height. */
-        const nextA = i + 1 < sortedBlocks.length ? sortedBlocks[i + 1].a : Infinity;
-        const roomPx = ((nextA - a) / 60) * calHourPx;
-        const h = Math.min(Math.max(trueH, 22), Math.max(roomPx, trueH));
-        /* #273: 2px visual inset top and bottom so stacked cards don't touch.
-           The positioning slot is unchanged; only the painted card shrinks. */
-        const color = e.client_color || "#9aa0a6"; // no-client: neutral gray, distinct from client colors
-        const running = !e.end_time;
-        const overlap = sortedBlocks.some((o) => o.e !== e && o.a < b && o.b > a);
-        /* #277: resize handles only on entries of 1 hour or more — the 12px
-           hit areas swallow taps on short entries. Shorter entries stay
-           fully tappable and resize via the edit dialog. */
-        const locked = entryIsLocked(e); /* #334: sent/paid time is a frozen record */
-        const resizable = !running && (b - a) >= 60 && !locked;
-        const desc = e.description ? esc(e.description) : "<em>No description</em>";
-        const dur = fmtDur(durationSeconds(e.start_time, e.end_time));
-        /* #332: invoiced time dims instead of a chip — the week grid is too
-           dense for a pill on every card. The invoice number lives in the
-           hover tooltip + aria-label. */
-        const mark = entryInvoiceMark(e);
-        const markA11y = mark ? `, ${mark.label} ${esc(e.invoice_number || "")}` : "";
-        /* #500: house M3 plain tooltip (data-tip) instead of the native title —
-           same mark info the timer page's inv-mark chip shows via #498; hover,
-           450ms touch long-press (site-wide [data-tip] handler), and
-           :focus-visible (the card is keyboard-focusable). */
-        const markTip = mark ? ` data-tip="${esc(mark.title)}"` : "";
-        /* #504: resize handles carry no tooltip at all — they're aria-hidden
-           and gestural (grip + resize cursor on entry hover). This removes
-           the last two native title= tooltips in the app. */
-        const resizeHandles = resizable
-          ? `<div class="cal-resize top" data-resize="start" aria-hidden="true"></div><div class="cal-resize" data-resize="end" aria-hidden="true"></div>`
-          : "";
-        /* #479: the aria-label is a plain-text accessible name — `desc`
-           carries <em> markup for untitled entries, which screen readers
-           would announce as literal tags. */
-        const label = `${esc(e.description || "No description")}, ${dur}${markA11y}`;
-        return `<div class="cal-entry${running ? " running" : ""}${overlap ? " overlap" : ""}${compact ? " cal-compact" : ""}${mark ? " invoiced" : ""}"
-            style="top:${(top + 2).toFixed(1)}px;height:${(h - 4).toFixed(1)}px;--c:${esc(color)}"
-            data-id="${e.id}" data-desc="${esc(e.description)}" data-project-id="${e.project_id ?? ""}"
-            data-date="${day}" data-start="${toHM(a)}" data-end="${running ? "" : toHM(Math.min(b, 1439))}"
-            data-locked="${locked ? esc(e.invoice_number || "") : ""}"
-            tabindex="0" role="button" aria-label="${label}"${markTip}>
-          <div class="cal-entry-desc">${e.project_name ? `<strong>${esc(e.project_name)}</strong> · ` : ""}${desc}</div>
-          <div class="cal-entry-dur">${dur}</div>
-          ${resizeHandles}
-        </div>`;
-      }).join("");
-      /* #213: "now" is a client concept (the server may be in another
-         timezone). The line is placed by placeNow() in calScript. */
-      const nowLine = "";
-      // #69: day stats live in an M3 plain tooltip on the header (hover / focus / long-press),
-      // not in the layout — the header stays two lines so time slots sit higher.
-      const tip = total > 0 ? `${fmtDur(total)} total · ${fmtDur(billable)} billable` : "";
-      const headAttrs = tip
-        ? ` tabindex="0" data-tip="${tip}" aria-label="${esc(wd)} ${d}: ${tip}"`
-        : "";
-      days.push(`<div class="cal-day${isToday ? " today" : ""}${pastShort ? " paced-short" : ""}" style="animation-delay:${i * 40}ms">
-        <div class="cal-day-head"${headAttrs}>
-          <div class="md-label-large muted">${esc(wd)}</div>
-          <div class="cal-day-num${isToday ? " today" : ""}">${d}</div>
-        </div>
-        <div class="cal-day-col" data-date="${day}"><div class="cal-night cal-night-am" aria-hidden="true">${WAVE_AM}${nightStars(NIGHT_STARS_AM)}</div><div class="cal-night cal-night-pm" aria-hidden="true">${WAVE_PM}${nightStars(NIGHT_STARS_PM)}</div>${entryHtml}${nowLine}</div>
-      </div>`);
-    }
-
-    /* #351: week-over-week delta vs the immediately preceding week — billable
-       vs billable, since it sits next to the billable figure. */
-    const [pFrom, pTo] = weekBoundsISO(addDays(sun, -7), tz);
-    const prevRows = qRange.all(pFrom, pTo) as Entry[];
-    const prevBillable = prevRows.reduce(
-      (a, e) => a + (e.project_id != null ? durationSeconds(e.start_time, e.end_time) : 0), 0);
     const deltaHtml = (() => {
       if (prevBillable <= 0) return `<span class="muted">—</span>`;
       const pct = Math.round(((weekBillable - prevBillable) / prevBillable) * 100);
       const arrow = pct > 0 ? "↑" : pct < 0 ? "↓" : "→";
       return `<span class="muted">${arrow} ${Math.abs(pct)}% vs prev week</span>`;
     })();
-
     const hourLabels = Array.from({ length: 24 }, (_, h) => {
       const ampm = h === 0 ? "12 AM" : h < 12 ? `${h} AM` : h === 12 ? "12 PM" : `${h - 12} PM`;
       const night = h < 6 || h >= 19;
       return `<span class="cal-hour-label${night ? " night" : ""}" style="top:${(h * calHourPx - 8).toFixed(0)}px">${ampm}</span>`;
     }).join("");
 
-    const weekLabel = new Date(sun + "T12:00:00").toLocaleDateString([], { month: "short", day: "numeric" });
-
     return `
     <div class="cal-pane-layout">
       <aside class="cal-supporting" data-enter="3" aria-label="Week summary">
         <div class="week-nav">
-          <h2 class="md-headline-small">${isThisWeek ? "This week" : `Week of ${esc(weekLabel)}`}</h2>
+          <h2 class="md-headline-small">${esc(navTitle)}</h2>
           <div class="week-nav-actions">
-            ${isThisWeek ? "" : `<a class="md-text-button" href="/calendar" hx-get="/partial/week" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar">Today</a>`}
-            <a class="md-icon-button" href="/calendar?week=${prev}" hx-get="/partial/week?week=${prev}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?week=${prev}" data-tip="Previous week" aria-label="Previous week">${icon("chevron_left")}</a>
-            <a class="md-icon-button" href="/calendar?week=${next}" hx-get="/partial/week?week=${next}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?week=${next}" data-tip="Next week" aria-label="Next week">${icon("chevron_right")}</a>
+            ${navActions}
           </div>
         </div>
         <div class="cal-summary">
@@ -298,12 +352,12 @@ export function createCalendarViews(deps: CalendarViewDeps) {
         </div>` : ""}
       </aside>
       <div class="cal-scroll" data-enter="3">
-        <div class="cal-grid" id="cal-body" style="--cal-hour:${calHourPx}px">
+        <div class="cal-grid" id="cal-body" data-mode="${mode}" style="--cal-hour:${calHourPx}px">
           <div class="cal-gutter-col">
             <div class="cal-gutter-spacer"></div>
             <div class="cal-gutter cal-hours">${hourLabels}</div>
           </div>
-          ${days.join("")}
+          ${lanesHtml}
           <!-- data-now, not id: htmx's settle restores server attributes on
                swapped nodes whose id already exists in the DOM, which would
                wipe placeNow()'s positioning ~20ms after every week swap. -->
@@ -313,7 +367,6 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     </div>
     `;
   }
-
   /** Full calendar week section: the #week wrapper plus the persistent entry
       dialog and calendar script. The dialog and script live outside #week so an
       in-place week refresh (#65) never destroys dialog bindings or duplicates
@@ -321,14 +374,17 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       #256: the grid loads via htmx (tz is appended by calScript's
       htmx:configRequest) so the first paint is already in the client's zone —
       a server-rendered grid would flash server-timezone positions. */
-  function weekGrid(weekStr?: string): string {
-    const q = weekStr && /^\d{4}-\d{2}-\d{2}$/.test(weekStr) ? `?week=${weekStr}` : "";
+  function weekGrid(weekStr?: string, dayStr?: string): string {
+    /* #521: a ?day= URL loads the skeleton in day mode — one lane, with the
+       calScript init correcting to week mode when the grid is wide enough. */
+    const day = dayStr && /^\d{4}-\d{2}-\d{2}$/.test(dayStr) ? dayStr : undefined;
+    const q = day ? `?day=${day}` : (weekStr && /^\d{4}-\d{2}-\d{2}$/.test(weekStr) ? `?week=${weekStr}` : "");
     /* #322: the skeleton mirrors .cal-pane-layout (summary aside with the
-       week-nav skeleton at its top, gutter + 7 day columns with the hour
+       week-nav skeleton at its top, gutter + day columns with the hour
        rhythm) so the htmx swap lands without a layout flash. */
     const skelDay = `<div class="cal-skel-day"><div class="skel cal-skel-head"></div><div class="skel cal-skel-lane"></div></div>`;
-    const skelGrid = `<div class="cal-skel-grid">${skelDay.repeat(8)}</div>`;
-    return `<div id="week" hx-get="/partial/week${q}" hx-trigger="load" hx-swap="innerHTML">
+    const skelGrid = `<div class="cal-skel-grid"${day ? ` data-mode="day"` : ""}>${skelDay.repeat(day ? 2 : 8)}</div>`;
+    return `<div id="week" hx-get="/partial/${day ? "day" : "week"}${q}" hx-trigger="load" hx-swap="innerHTML">
         <div class="cal-skel" aria-hidden="true">
           <div class="cal-skel-aside">
             <div class="cal-skel-nav">
@@ -395,8 +451,60 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     function tzSuffix(){var o=-new Date().getTimezoneOffset();var s=o<0?"-":"+",a=Math.abs(o);
       return s+String(Math.floor(a/60)).padStart(2,"0")+":"+String(a%60).padStart(2,"0");}
     document.body.addEventListener("htmx:configRequest",function(e){
-      if(e.detail&&e.detail.path&&e.detail.path.indexOf("/partial/week")===0&&TZ)
+      if(e.detail&&e.detail.path&&(e.detail.path.indexOf("/partial/week")===0||e.detail.path.indexOf("/partial/day")===0)&&TZ)
         e.detail.parameters.tz=TZ;});
+    /* #521: collapse to a genuine server-rendered single-column day view when
+       the grid gets too narrow. The trigger is the calendar's own width, not
+       the viewport: 54px gutter + 7 lanes at ~120px + 8 gaps ≈ 960px. Mode
+       lives in the URL (?day= vs ?week=) so deep links keep working. */
+    var DAY_BREAK=960;
+    function gridWidth(){
+      var el=document.querySelector(".cal-scroll")||document.querySelector(".cal-skel-grid")||document.getElementById("week");
+      return el?el.clientWidth:0;}
+    function urlParam(n){try{return new URLSearchParams(location.search).get(n)||"";}catch(e){return "";}}
+    function ymdUTC(d){var p=function(x){return String(x).padStart(2,"0");};
+      return d.getUTCFullYear()+"-"+p(d.getUTCMonth()+1)+"-"+p(d.getUTCDate());}
+    function shiftYmd(ymd,n){var p=ymd.split("-");
+      return ymdUTC(new Date(Date.UTC(+p[0],+p[1]-1,+p[2])+n*864e5));}
+    function sundayOf(ymd){var p=ymd.split("-"),d=new Date(Date.UTC(+p[0],+p[1]-1,+p[2],12));
+      return ymdUTC(new Date(d.getTime()-d.getUTCDay()*864e5));}
+    function clientYmd(){var n=new Date(),p=function(x){return String(x).padStart(2,"0");};
+      return n.getFullYear()+"-"+p(n.getMonth()+1)+"-"+p(n.getDate());}
+    /* Entering day mode shows today when it belongs to the current week,
+       otherwise the week's Sunday (the server falls back the same way). */
+    function dayForWeek(weekStr){
+      var today=clientYmd(),sun=weekStr&&/^\\d{4}-\\d{2}-\\d{2}$/.test(weekStr)?weekStr:sundayOf(today);
+      return (today>=sun&&today<shiftYmd(sun,7))?today:sun;}
+    /* First paint: the skeleton always loads in the URL's mode, but the
+       server can't know the container width — correct it client-side before
+       htmx fires the load trigger, so there's no 7-lane skeleton flash and
+       no extra navigation. replaceState keeps the corrected URL canonical
+       without adding a history entry. */
+    (function initMode(){
+      if(urlParam("day")||gridWidth()>=DAY_BREAK) return;
+      var day=dayForWeek(urlParam("week")),weekEl=document.getElementById("week");
+      if(!weekEl) return;
+      weekEl.setAttribute("hx-get","/partial/day?day="+encodeURIComponent(day));
+      var skel=weekEl.querySelector(".cal-skel-grid");
+      if(skel){skel.setAttribute("data-mode","day");
+        var lanes=skel.querySelectorAll(".cal-skel-day");
+        for(var i=lanes.length-1;i>1;i--) lanes[i].remove();}
+      try{history.replaceState(null,"","/calendar?day="+encodeURIComponent(day));}catch(e){}
+    })();
+    /* Later resizes that cross the threshold navigate once to the other mode.
+       Each mode is stable inside its own width range, so there's no ping-pong. */
+    var modeTimer=null;
+    function checkMode(){
+      var w=gridWidth(); if(!w) return;
+      var want=w<DAY_BREAK?"day":"week",cur=urlParam("day")?"day":"week";
+      if(want===cur) return;
+      location.href=want==="day"
+        ? "/calendar?day="+encodeURIComponent(dayForWeek(urlParam("week")))
+        : "/calendar?week="+encodeURIComponent(sundayOf(urlParam("day")||clientYmd()));
+    }
+    if(window.ResizeObserver){var _w=document.getElementById("week");
+      if(_w) new ResizeObserver(function(){
+        clearTimeout(modeTimer); modeTimer=setTimeout(checkMode,200);}).observe(_w);}
     var scrim=document.getElementById('cal-scrim');
     var dialog=scrim.querySelector('.cal-dialog');
     /* M3 dialog motion: .open drives scrim fade + dialog scale/fade.
@@ -510,9 +618,11 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       var weekEl=document.getElementById('week');
       var scroller=weekEl.querySelector('.cal-scroll');
       var st=scroller?scroller.scrollTop:0;
-      var wk='';
-      try{ wk=new URLSearchParams(location.search).get('week')||''; }catch(e){}
-      fetch('/partial/week?week='+encodeURIComponent(wk)+(TZ?'&tz='+encodeURIComponent(TZ):'')).then(function(r){
+      /* #521: stay in the active mode — the server renders the correct lane
+         count for each, so a blind week refresh would clobber day mode. */
+      var day=urlParam('day');
+      var base=day?'/partial/day?day='+encodeURIComponent(day):'/partial/week?week='+encodeURIComponent(urlParam('week'));
+      fetch(base+(TZ?'&tz='+encodeURIComponent(TZ):'')).then(function(r){
         if(!r.ok) throw new Error('refresh failed');
         return r.text();
       }).then(function(html){
@@ -716,8 +826,8 @@ export function createCalendarViews(deps: CalendarViewDeps) {
   })();`;
   }
 
-  function calendarPage(week?: string): string {
-    return layout("Calendar", weekGrid(week), "calendar", true);
+  function calendarPage(week?: string, day?: string): string {
+    return layout("Calendar", weekGrid(week, day), "calendar", true);
   }
 
   /** #256: datetime-local inputs are prefilled client-side from the ISO instant
@@ -773,5 +883,5 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       })();</script>`);
   }
 
-  return { weekInner, weekGrid, calendarPage, editPage };
+  return { weekInner, dayInner, weekGrid, calendarPage, editPage };
 }
