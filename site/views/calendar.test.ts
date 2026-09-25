@@ -174,3 +174,98 @@ describe("calendar entry invoiced-mark tooltip (#500)", () => {
     expect(html).not.toContain("title=");
   });
 });
+
+/** #521: narrow containers collapse to a genuine server-rendered single-
+ *  column day view — one lane, day nav, week-scoped supporting pane. */
+describe("calendar day view (#521)", () => {
+  const stubQuery = () => ({
+    get: (..._a: unknown[]) => ({ n: 1 }),
+    all: (..._a: unknown[]) => [],
+  });
+
+  const monEntry = {
+    id: 31, description: "monday work", project_id: 5, project_name: "P",
+    client_name: "Acme", client_color: null, invoice_id: null,
+    invoice_number: null, invoice_status: null,
+    start_time: "2026-09-21T14:00:00.000Z", end_time: "2026-09-21T16:00:00.000Z",
+  };
+  const tueEntry = {
+    id: 32, description: "tuesday work", project_id: 5, project_name: "P",
+    client_name: "Acme", client_color: null, invoice_id: null,
+    invoice_number: null, invoice_status: null,
+    start_time: "2026-09-22T14:00:00.000Z", end_time: "2026-09-22T15:00:00.000Z",
+  };
+
+  function viewsFor(entries: unknown[]) {
+    const db = {
+      query: (_sql: string) => ({ get: () => ({ n: 1 }), all: () => entries }),
+    } as unknown as Database;
+    return createCalendarViews({
+      db,
+      qOne: stubQuery(),
+      qRange: stubQuery(),
+      entrySelect: "SELECT",
+      layout: (_t: string, b: string) => b,
+      projectOptions: () => "",
+      weekTargetBar: () => "",
+      calHourPx: 64,
+    } as any);
+  }
+
+  const laneCount = (html: string) => (html.match(/class="cal-day[ "]/g) || []).length;
+
+  test("dayInner renders one lane with data-mode=day", () => {
+    const html = viewsFor([monEntry, tueEntry]).dayInner("2026-09-21", "America/Chicago");
+    expect(laneCount(html)).toBe(1);
+    expect(html).toContain('data-mode="day"');
+    expect(html).toContain('data-date="2026-09-21"');
+  });
+
+  test("dayInner shows only the selected day's entries", () => {
+    const html = viewsFor([monEntry, tueEntry]).dayInner("2026-09-21", "America/Chicago");
+    expect(html).toContain("monday work");
+    expect(html).not.toContain("tuesday work");
+  });
+
+  test("dayInner keeps the week-scoped supporting pane", () => {
+    const html = viewsFor([monEntry, tueEntry]).dayInner("2026-09-21", "America/Chicago");
+    // 2h monday + 1h tuesday = 3h week total, all billable
+    expect(html).toContain("3h 00m");
+    expect(html).toContain("Acme");
+    expect(html).toContain("Invoice this week");
+  });
+
+  test("day nav uses day labels and accessible names", () => {
+    const html = viewsFor([]).dayInner("2026-09-21", "America/Chicago");
+    expect(html).toContain('aria-label="Previous day"');
+    expect(html).toContain('aria-label="Next day"');
+    expect(html).toContain('hx-get="/partial/day?day=2026-09-20"');
+    expect(html).toContain('hx-get="/partial/day?day=2026-09-22"');
+    expect(html).not.toContain("Week of");
+  });
+
+  test("dayInner falls back to today on an invalid day", () => {
+    const html = viewsFor([]).dayInner("not-a-day", "UTC");
+    expect(laneCount(html)).toBe(1);
+    expect(html).toContain('<h2 class="md-headline-small">Today</h2>');
+  });
+
+  test("weekInner still renders seven lanes with data-mode=week", () => {
+    const html = viewsFor([monEntry]).weekInner("2026-09-20", "America/Chicago");
+    expect(laneCount(html)).toBe(7);
+    expect(html).toContain('data-mode="week"');
+    expect(html).toContain('aria-label="Previous week"');
+  });
+
+  test("weekGrid loads the day skeleton for ?day=", () => {
+    const html = viewsFor([]).weekGrid(undefined, "2026-09-21");
+    expect(html).toContain('hx-get="/partial/day?day=2026-09-21"');
+    expect(html).toContain('data-mode="day"');
+  });
+
+  test("weekGrid keeps the week skeleton by default", () => {
+    const html = viewsFor([]).weekGrid("2026-09-20");
+    expect(html).toContain('hx-get="/partial/week?week=2026-09-20"');
+    expect(html).not.toContain('data-mode="day"');
+  });
+});
