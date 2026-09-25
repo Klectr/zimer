@@ -47,6 +47,9 @@
     confirmOpen = true;
     return new Promise(function (resolve) {
       var doc = document;
+      /* #513: remember the trigger so close() can hand focus back to it —
+         keyboard users strand on a hidden Cancel button otherwise. */
+      var opener = doc.activeElement;
       var scrim = doc.createElement("div");
       scrim.className = "cal-scrim";
       var box = doc.createElement("div");
@@ -82,6 +85,10 @@
         if (settled) return;
         settled = true;
         doc.removeEventListener("keydown", onKey, true);
+        /* #513: hand focus back to the trigger. The re-dispatched confirm
+           click may swap the trigger out of the DOM — the contains guard
+           keeps the restore a harmless no-op then. */
+        if (opener && typeof opener.focus === "function" && doc.contains(opener)) opener.focus();
         scrim.classList.remove("open");
         /* #467: the guard stays raised until the fading dialog is actually
            removed — resetting it here opened a 220ms window where a second

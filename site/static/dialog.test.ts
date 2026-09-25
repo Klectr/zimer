@@ -34,7 +34,7 @@ function fakeDomEl(tag = "div") {
     setAttribute(k: string, v: string) { this._attrs[k] = v; },
     getAttribute(k: string) { return k in this._attrs ? this._attrs[k] : null; },
     appendChild(c: any) { this.children.push(c); c.parentNode = this; return c; },
-    remove() { this.removed = true; if (this.parentNode) this.parentNode.children = this.parentNode.children.filter((x: any) => x !== this); },
+    remove() { this.removed = true; if (this.parentNode) { this.parentNode.children = this.parentNode.children.filter((x: any) => x !== this); this.parentNode = null; } },
     addEventListener(t: string, h: Function) { (this._handlers[t] ||= []).push(h); },
     removeEventListener(t: string, h: Function) { this._handlers[t] = (this._handlers[t] || []).filter((x) => x !== h); },
     focus() { this.focusCount++; g.document.activeElement = this; },
@@ -66,6 +66,11 @@ g.document = {
   removeEventListener(t: string, h: Function) { this._listeners[t] = (this._listeners[t] || []).filter((x) => x !== h); },
   createElement: (tag: string) => fakeDomEl(tag),
   body: fakeDomEl("body"),
+  /* #513: walk the parentNode chain like real document.contains */
+  contains(el: any) {
+    for (let n: any = el; n; n = n.parentNode) if (n === this.body) return true;
+    return false;
+  },
 };
 
 await import("./dialog.js");
@@ -315,8 +320,42 @@ describe("tkConfirm", () => {
   });
 });
 
-describe("data-confirm delegation", () => {
-  function confirmButton(message: string, label: string | null = null) {
+describe("tkConfirm focus restore (#513)", () => {
+  function triggerInBody() {
+    const t: any = fakeDomEl("button");
+    g.document.body.appendChild(t);
+    g.document.activeElement = t;
+    return t;
+  }
+  test("Cancel hands focus back to the trigger", async () => {
+    const trigger = triggerInBody();
+    const p = tkConfirm("Delete this entry?");
+    expect(g.document.activeElement).not.toBe(trigger); /* Cancel takes focus */
+    clickFirst(dlgParts(lastScrim()).cancel);
+    expect(await p).toBe(false);
+    expect(trigger.focusCount).toBe(1);
+    trigger.remove();
+  });
+  test("Escape hands focus back to the trigger", async () => {
+    const trigger = triggerInBody();
+    const p = tkConfirm("Delete this entry?");
+    const onKey = g.document._listeners["keydown"][0];
+    onKey({ key: "Escape", preventDefault() {} });
+    expect(await p).toBe(false);
+    expect(trigger.focusCount).toBe(1);
+    trigger.remove();
+  });
+  test("detached trigger is skipped without throwing", async () => {
+    const trigger: any = fakeDomEl("button"); /* never appended to body */
+    g.document.activeElement = trigger;
+    const p = tkConfirm("Delete this entry?");
+    clickFirst(dlgParts(lastScrim()).cancel);
+    expect(await p).toBe(false);
+    expect(trigger.focusCount).toBe(0);
+  });
+});
+
+describe("data-confirm delegation", () => {  function confirmButton(message: string, label: string | null = null) {
     const btn: any = fakeDomEl("button");
     btn._attrs = { "data-confirm": message };
     if (label) btn._attrs["data-confirm-label"] = label;
