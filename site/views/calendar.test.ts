@@ -79,3 +79,36 @@ describe("calendar entry aria-label (#479)", () => {
     expect(label).toContain("fix &quot;quotes&quot; &amp; ampersands");
   });
 });
+
+/** #486: finish the data-tip sweep — week-nav chevrons used the OS-native
+ *  title= tooltip while the rest of the app shows M3 plain tooltips. */
+describe("week-nav tooltips (#486)", () => {
+  const stubQuery = () => ({
+    get: (..._a: unknown[]) => ({ n: 1 }),
+    all: (..._a: unknown[]) => [],
+  });
+  function headerHtml() {
+    const db = {
+      query: (_sql: string) => ({ get: () => ({ n: 1 }), all: () => [] }),
+    } as unknown as Database;
+    const views = createCalendarViews({
+      db,
+      qOne: stubQuery(),
+      qRange: stubQuery(),
+      entrySelect: "SELECT",
+      layout: (_t: string, b: string) => b,
+      projectOptions: () => "",
+      weekTargetBar: () => "",
+      calHourPx: 64,
+    } as any);
+    // the week-nav chevrons render in weekInner's header
+    return views.weekInner("2026-09-20", "America/Chicago");
+  }
+  test("prev/next chevrons use data-tip, not the native title", () => {
+    const html = headerHtml();
+    expect(html).toContain('data-tip="Previous week"');
+    expect(html).toContain('data-tip="Next week"');
+    expect(html).not.toContain('title="Previous week"');
+    expect(html).not.toContain('title="Next week"');
+  });
+});

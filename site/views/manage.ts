@@ -104,7 +104,7 @@ export function createManageViews(deps: ManageViewDeps) {
   const projectRow = (p: any) => `<li class="md-list-item" style="min-height:56px">
             <div class="md-list-item-content"><div class="md-list-item-headline">${esc(p.name)}</div></div>
             <div class="md-list-item-trailing">
-              <form method="post" action="/projects/${p.id}/delete" class="inline" hx-post="/projects/${p.id}/delete" hx-target="#client-detail" hx-swap="outerHTML"><button class="md-icon-button danger" data-confirm="Delete project? Entries keep their history." aria-label="Delete project ${esc(p.name)}" title="Delete">${icon("delete")}</button></form>
+              <form method="post" action="/projects/${p.id}/delete" class="inline" hx-post="/projects/${p.id}/delete" hx-target="#client-detail" hx-swap="outerHTML"><button class="md-icon-button danger" data-confirm="Delete project? Entries keep their history." aria-label="Delete project ${esc(p.name)}" data-tip="Delete">${icon("delete")}</button></form>
             </div>
           </li>`;
 
@@ -115,7 +115,7 @@ export function createManageViews(deps: ManageViewDeps) {
                 <input type="text" name="name" placeholder=" " required aria-label="New project name">
                 <label>New project</label>
               </div>
-              <button class="md-icon-button" type="submit" title="Add project" aria-label="Add project">${icon("add")}</button>
+              <button class="md-icon-button" type="submit" data-tip="Add project" aria-label="Add project">${icon("add")}</button>
             </form>
           </li>`;
 
@@ -147,7 +147,7 @@ export function createManageViews(deps: ManageViewDeps) {
           <input type="number" name="rate" value="${c.rate || ""}" min="0" step="0.01" placeholder="0" aria-label="Hourly rate for ${esc(c.name)}">
           <span class="affix suffix" aria-hidden="true">/hr</span>
         </div>
-        <button class="md-icon-button" type="submit" title="Save" aria-label="Save hourly rate for ${esc(c.name)}">${icon("save")}</button>
+        <button class="md-icon-button" type="submit" data-tip="Save" aria-label="Save hourly rate for ${esc(c.name)}">${icon("save")}</button>
       </form>
       <form method="post" action="/clients/${c.id}/terms" class="terms-form detail-form" hx-post="/clients/${c.id}/terms" ${hxDetail}>
         <div class="md-text-field compact" style="flex:1;min-width:120px">
@@ -157,7 +157,7 @@ export function createManageViews(deps: ManageViewDeps) {
           </select>
           <label>Payment terms</label>
         </div>
-        <button class="md-icon-button" type="submit" title="Save" aria-label="Save payment terms for ${esc(c.name)}">${icon("save")}</button>
+        <button class="md-icon-button" type="submit" data-tip="Save" aria-label="Save payment terms for ${esc(c.name)}">${icon("save")}</button>
       </form>
       <p class="terms-desc muted">${esc(termsDescription(termsKey(c.payment_terms, globalTerms())))}</p>` : ""}
       <h3 class="md-title-medium manage-subhead">Projects</h3>
