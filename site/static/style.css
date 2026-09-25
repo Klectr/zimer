@@ -1318,8 +1318,6 @@ button.m3-menu-item {
   font-size: 0.75rem; font-weight: 500; letter-spacing: 0.4px; vertical-align: middle; }
 .pill-draft { background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container); }
 .pill-sent { background: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container); }
-.pill-paid { background: #1f3d2b; color: #b8e6c5; }
-.pill-unpaid { background: var(--md-sys-color-error-container); color: var(--md-sys-color-on-error-container); }
 
 /* #330: "Invoiced"/"Draft" mark on timer entry rows — tonal pill, no border. */
 .inv-mark { display: inline-flex; align-items: center; height: 18px; padding: 0 8px;

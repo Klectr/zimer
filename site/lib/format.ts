@@ -40,13 +40,6 @@ export function entryIsLocked(e: { invoice_status: string | null }): boolean {
   return e.invoice_status === "sent" || e.invoice_status === "paid";
 }
 
-/** Payment-state pill for the invoice document itself (#222): the document
- *  only ever communicates Unpaid vs Paid — draft/sent are internal workflow. */
-export function payPill(paid: boolean): string {
-  return paid ? `<span class="pill pill-paid">Paid</span>`
-              : `<span class="pill pill-unpaid">Unpaid</span>`;
-}
-
 /** Milestone 10: quote a CSV cell when it contains a comma, quote, or newline. */
 export function csvCell(v: string): string {
   return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
@@ -67,11 +60,6 @@ export function money(n: number): string {
 }
 
 /* ---------------- dates ---------------- */
-export function fmtTime(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-}
-
 export function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString([], { month: "short", day: "numeric" });
 }
@@ -117,15 +105,6 @@ export function addDays(dateStr: string, n: number): string {
   const [y, m, d] = dateStr.split("-").map(Number);
   const dt = new Date(y, m - 1, d + n);
   return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
-}
-
-/** Milestone 8: add n months to a YYYY-MM-DD date, clamped to month length. */
-export function addMonths(dateStr: string, n: number): string {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  const base = new Date(y, m - 1 + n, 1);
-  const last = new Date(base.getFullYear(), base.getMonth() + 1, 0).getDate();
-  const day = Math.min(d, last);
-  return `${base.getFullYear()}-${String(base.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
 /** Whole days between two YYYY-MM-DD dates (local). */
