@@ -432,7 +432,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     var lockNote=document.getElementById('cal-locked');
     var delBtn=document.getElementById('cal-delete');
     var saveBtn=document.getElementById('cal-save');
-    var mode='create', editId=null, dayStr='';
+    var mode='create', editId=null, dayStr='', opener=null;
     /* grid owns the scroll: land near the current time when today is in view */
     var scroller=document.querySelector('.cal-scroll'), nowEl=document.querySelector('[data-now]');
     if(scroller&&nowEl){var r=nowEl.getBoundingClientRect(),s=scroller.getBoundingClientRect();
@@ -444,7 +444,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       dur.textContent=e>s?fmtD(e-s):'';}
     startI.addEventListener('input',updDur); endI.addEventListener('input',updDur);
     function openCreate(date,a,b){
-      mode='create'; editId=null; dayStr=date;
+      mode='create'; editId=null; dayStr=date; opener=null; /* drag — no keyboard trigger */
       title.textContent='New entry'; delBtn.hidden=true; err.hidden=true;
       var d=new Date(date+'T12:00:00');
       dateLine.textContent=d.toLocaleDateString([],{weekday:'long',month:'long',day:'numeric'});
@@ -456,7 +456,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       showScrim(); desc.focus();
     }
     function openEdit(el){
-      mode='edit'; editId=el.dataset.id; dayStr=el.dataset.date;
+      mode='edit'; editId=el.dataset.id; dayStr=el.dataset.date; opener=el;
       var locked=el.dataset.locked||''; /* #334: sent/paid time opens read-only */
       var running=el.classList.contains('running'); /* #462: the timer card owns
         the running entry — deleting it here orphaned the card. */
@@ -478,7 +478,11 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       }
       showScrim(); if(!locked) desc.focus();
     }
-    function close(){ hideScrim(); }
+    /* #513: hand focus back to the entry that opened the dialog — keyboard
+       users strand on a hidden Cancel button otherwise. Save/delete
+       re-render the grid right after close, so the contains guard makes it
+       a no-op when the entry is gone. */
+    function close(){ hideScrim(); if(opener&&document.contains(opener)) opener.focus(); opener=null; }
     document.getElementById('cal-cancel').addEventListener('click',close);
     document.getElementById('cal-close').addEventListener('click',close);
     scrim.addEventListener('click',function(e){ if(e.target===scrim) close(); });
