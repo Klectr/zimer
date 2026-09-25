@@ -258,3 +258,32 @@ describe("timer card annotation hygiene (#477)", () => {
     expect(noScripts(partial(false))).not.toContain("/*");
   });
 });
+
+describe("entry row tooltips (#484)", () => {
+  const finished = {
+    id: 2, start_time: "2026-09-23T10:00:00.000Z", end_time: "2026-09-23T11:30:00.000Z",
+    description: "deep work", project_id: null, project_name: null,
+    client_name: null, client_color: null, invoice_id: null, invoice_status: null,
+  };
+  function row(entry: typeof finished) {
+    return createTimerViews({ ...baseDeps, qRunning: stubQuery() } as any).entryRow(entry as any);
+  }
+  test("edit uses the house data-tip tooltip, not the native title", () => {
+    const html = row(finished);
+    // the native OS tooltip renders differently from the M3 plain tooltips
+    // the invoice action buttons use — one house system for all of them.
+    expect(html).toContain('data-tip="Edit"');
+    expect(html).not.toContain('title="Edit"');
+  });
+  test("delete gets a data-tip tooltip", () => {
+    const html = row(finished);
+    expect(html).toContain('data-tip="Delete"');
+    expect(html).not.toContain('title="Delete"');
+  });
+  test("running row's edit keeps the tooltip; no delete on running rows", () => {
+    const html = row(runningEntry as any);
+    expect(html).toContain('data-tip="Edit"');
+    expect(html).not.toContain("hx-delete");
+    expect(html).not.toContain('data-tip="Delete"');
+  });
+});
