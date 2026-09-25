@@ -210,6 +210,28 @@ main.login { max-width: 420px; margin-top: 8vh; }
 /* #361: no horizontal inset — headings align with the M3 body-margin ruler. */
 h2.md-headline-small { margin: 24px 0 12px; }
 
+/* ---------------- skip link: keyboard users jump past nav chrome (#511) ----------------
+ * Visually hidden until keyboard focus; styled as an M3 tonal pill so the one
+ * visible element matches the house vocabulary. main:focus has no outline:
+ * the skip action already announces the new location. */
+.skip-link {
+  position: fixed;
+  left: 16px;
+  top: -72px;
+  z-index: 200;
+  padding: 10px 20px;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: top var(--motion-duration-short4) var(--motion-easing-standard);
+}
+.skip-link:focus-visible { top: 12px; }
+main:focus { outline: none; }
+@media (prefers-reduced-motion: reduce) { .skip-link { transition: none; } }
+
 /* ---------------- cards (filled: surface-container-high, 12dp) ---------------- */
 .md-card {
   background: var(--md-sys-color-surface-container-high);

@@ -44,6 +44,8 @@ export function createLayoutViews(qRunning: Statement, bannerHtml?: () => string
   <script src="/static/dialog.js" defer></script>
   </head>
   <body class="app${fixed ? " app-fixed" : ""}" data-timer-running="${running ? 1 : 0}"${startAttr}>
+  <!-- #511: skip link — keyboard users jump past the app bar and nav straight to content. -->
+  <a class="skip-link" href="#main">Skip to content</a>
   <!-- #387: the app bar and nav rail sit chromeless on the page background;
        the rounded surface sheet wraps only the content column. -->
   <header class="md-top-app-bar" data-enter="1">
@@ -59,7 +61,7 @@ export function createLayoutViews(qRunning: Statement, bannerHtml?: () => string
       ${/* #304: license honesty-box banner (launch mode only, unlicensed only).
            Rendered here so it appears on every app page; publicShell() pages
            (client invoice links) never see it. */ bannerHtml ? bannerHtml() : ""}
-      <main${active ? ` class="page-${active}"` : ""}>${body}</main>
+      <main id="main" tabindex="-1"${active ? ` class="page-${active}"` : ""}>${body}</main>
     </div>
   </div>
   <nav class="md-bottom-nav" aria-label="Primary">

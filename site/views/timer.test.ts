@@ -295,3 +295,20 @@ describe("entry row tooltips (#484)", () => {
     expect(html).not.toContain('title="Invoiced on INV-0042"');
   });
 });
+
+describe("skip link (#511)", () => {
+  test("layout renders a skip link targeting the main content", () => {
+    const html = layoutHtml(false);
+    expect(html).toContain('<a class="skip-link" href="#main">Skip to content</a>');
+    expect(html).toContain('<main id="main" tabindex="-1"');
+  });
+
+  test("skip link is the first focusable thing inside body", () => {
+    const html = layoutHtml(false);
+    const bodyStart = html.indexOf("<body");
+    const linkPos = html.indexOf('<a class="skip-link"');
+    expect(linkPos).toBeGreaterThan(bodyStart);
+    // nothing focusable precedes it — keyboard users land on it first
+    expect(html.slice(bodyStart, linkPos)).not.toMatch(/<(a|button|input|select|textarea)[ >]/);
+  });
+});
