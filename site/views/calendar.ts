@@ -455,9 +455,12 @@ export function createCalendarViews(deps: CalendarViewDeps) {
         e.detail.parameters.tz=TZ;});
     /* #521: collapse to a genuine server-rendered single-column day view when
        the grid gets too narrow. The trigger is the calendar's own width, not
-       the viewport: 54px gutter + 7 lanes at ~120px + 8 gaps ≈ 960px. Mode
+       the viewport: 54px gutter + 7 lanes at ~100px + 6 gaps ≈ 800px. The
+       desktop week grid maxes out around 866px (lanes ~108px — the designed
+       week view), so this threshold leaves desktop untouched and collapses
+       only containers where the lanes would become unreadable slivers. Mode
        lives in the URL (?day= vs ?week=) so deep links keep working. */
-    var DAY_BREAK=960;
+    var DAY_BREAK=800;
     function gridWidth(){
       var el=document.querySelector(".cal-scroll")||document.querySelector(".cal-skel-grid")||document.getElementById("week");
       return el?el.clientWidth:0;}
