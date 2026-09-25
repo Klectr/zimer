@@ -141,7 +141,7 @@ export function createManageViews(deps: ManageViewDeps) {
         </div>
       </div>
       ${isClient ? `
-      <form method="post" action="/clients/${c.id}/rate" class="rate-form detail-form" hx-post="/clients/${c.id}/rate" ${hxDetail} title="Hourly rate">
+      <form method="post" action="/clients/${c.id}/rate" class="rate-form detail-form" hx-post="/clients/${c.id}/rate" ${hxDetail}>
         <div class="md-text-field has-prefix has-suffix compact" style="width:104px">
           <span class="affix prefix" aria-hidden="true">$</span>
           <input type="number" name="rate" value="${c.rate || ""}" min="0" step="0.01" placeholder="0" aria-label="Hourly rate for ${esc(c.name)}">
@@ -194,7 +194,7 @@ export function createManageViews(deps: ManageViewDeps) {
             <label>Hourly rate</label>
             <span class="affix suffix" aria-hidden="true">/hr</span>
           </div>
-          <label class="md-color-control" title="Client color">
+          <label class="md-color-control">
             ${icon("palette")}
             <span>Color</span>
             <input type="color" name="color" value="#f2c14e" aria-label="Client color">
