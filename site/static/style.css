@@ -1338,6 +1338,31 @@ button.m3-menu-item {
 .md-list-item-supporting .inv-mark { background: var(--md-sys-color-secondary-container);
   color: var(--md-sys-color-on-secondary-container); margin-right: 6px; }
 .md-list-item-supporting .inv-mark.draft { opacity: 0.7; }
+/* #500: house M3 plain tooltip for the calendar entry card's invoiced mark
+   (hover + :focus-visible + 450ms touch long-press via the site-wide
+   [data-tip] handler). Mirrors the inv-mark tooltip (#498); the card uses no
+   other pseudo-element. overflow:visible scoped to [data-tip] so the tooltip
+   paints outside the card — the desc keeps its own overflow:hidden ellipsis. */
+.cal-entry[data-tip] { overflow: visible; }
+.cal-entry[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute; left: 50%; top: calc(100% + 4px); /* M3: 4dp anchor gap */
+  transform: translateX(-50%) translateY(-2px);
+  background: var(--md-sys-color-inverse-surface);
+  color: var(--md-sys-color-inverse-on-surface);
+  border-radius: var(--md-sys-shape-corner-extra-small); /* M3 plain tooltip shape */
+  padding: 4px 8px; /* M3 plain tooltip padding */
+  white-space: nowrap; max-width: 200px; /* M3 plain tooltip max width */
+  font-size: 0.75rem; line-height: 16px; font-weight: 400;
+  opacity: 0; pointer-events: none; z-index: 30;
+  transition: opacity var(--motion-duration-short2) var(--motion-easing-standard),
+    transform var(--motion-duration-short2) var(--motion-easing-standard);
+}
+.cal-entry[data-tip]:hover::after,
+.cal-entry[data-tip]:focus-visible::after,
+.cal-entry[data-tip].tip-show::after {
+  opacity: 1; transform: translateX(-50%) translateY(0);
+}
 /* #498: M3 plain tooltip for the inv-mark chip (hover + 450ms touch long-press
    via the site-wide [data-tip] handler). ::after; the chip uses no other
    pseudo-element, and the supporting line clips nothing. */
