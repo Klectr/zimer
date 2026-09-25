@@ -1,8 +1,11 @@
 /** #303: public changelog. Reads CHANGELOG.md (repo root, deployed with the
  *  app), parses "## YYYY-MM-DD" sections and "- " bullets, and renders them
- *  with a tiny markdown subset (paragraphs, **bold**). Zero dependencies. */
+ *  with a tiny markdown subset (paragraphs, **bold**). Zero dependencies.
+ *  #519: in a compiled binary the file ships in the exe-relative
+ *  resources dir instead. */
 
 import { esc } from "./format.ts";
+import { resourcePath } from "./paths.ts";
 
 export interface ChangelogEntry {
   date: string;
@@ -18,7 +21,7 @@ function inlineMd(s: string): string {
 
 export async function loadChangelog(): Promise<ChangelogEntry[]> {
   if (cache) return cache;
-  const path = new URL("../../CHANGELOG.md", import.meta.url).pathname;
+  const path = resourcePath("CHANGELOG.md", new URL("../../CHANGELOG.md", import.meta.url).pathname);
   let text = "";
   try {
     text = await Bun.file(path).text();

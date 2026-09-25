@@ -11,7 +11,8 @@
  */
 
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { join } from "node:path";
+import { resourcePath } from "./lib/paths.ts"; /* #519 */
 
 export type PdfLineItem = {
   description: string;
@@ -187,7 +188,11 @@ function loadLogoArt(): LogoArt | null {
   if (logoArt !== undefined) return logoArt;
   logoArt = null;
   try {
-    const svg = readFileSync(resolve(import.meta.dir, "static", "logo.svg"), "utf8");
+    const svg = readFileSync(
+      /* #519: logo ships in the exe-relative resources dir in a compiled binary */
+      join(resourcePath("static", resolve(import.meta.dir, "static")), "logo.svg"),
+      "utf8",
+    );
     const strokeW = parseFloat(svg.match(/stroke-width="([\d.]+)"/)?.[1] || "4") || 4;
     const strokes: LogoCmd[][] = [];
     for (const m of svg.matchAll(/<path\b[^>]*?d="([^"]*)"[^>]*?>/g)) {

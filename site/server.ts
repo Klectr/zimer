@@ -16,6 +16,7 @@ import { entryToJson, csvResponse, statusPill } from "./lib/format.ts";
 import { json, html, isHtmx, publicOrigin } from "./lib/http.ts";
 import { getToken, tokensEqual, authedApi, authedPage } from "./lib/auth.ts";
 import { createDb, getMeta } from "./db.ts";
+import { resourcePath } from "./lib/paths.ts"; /* #519 */
 import { isLicensed, licenseBannerHtml } from "./lib/license.ts"; /* #304 */
 import { createRevenue } from "./lib/revenue.ts";
 import { workspaceEmpty, demoIds, seedDemoData, removeDemoData, demoBanner } from "./lib/demo.ts";
@@ -38,7 +39,9 @@ const HOST = process.env.HOST || "127.0.0.1";
    downloaded over Tailscale. */
 const PUBLIC_BASE_URL = (process.env.PUBLIC_BASE_URL || "").trim().replace(/\/+$/, "");
 const DATA_DIR = process.env.DATA_DIR || resolve(import.meta.dir, "data");
-const STATIC_DIR = resolve(import.meta.dir, "static");
+/* #519: static assets ship in the exe-relative resources dir in a compiled
+   binary; dev/tarball runs keep the import.meta-relative dir. */
+const STATIC_DIR = resourcePath("static", resolve(import.meta.dir, "static"));
 mkdirSync(DATA_DIR, { recursive: true });
 
 const TOKEN = getToken(DATA_DIR);
