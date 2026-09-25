@@ -212,6 +212,12 @@ export function createCalendarViews(deps: CalendarViewDeps) {
            450ms touch long-press (site-wide [data-tip] handler), and
            :focus-visible (the card is keyboard-focusable). */
         const markTip = mark ? ` data-tip="${esc(mark.title)}"` : "";
+        /* #504: resize handles carry no tooltip at all — they're aria-hidden
+           and gestural (grip + resize cursor on entry hover). This removes
+           the last two native title= tooltips in the app. */
+        const resizeHandles = resizable
+          ? `<div class="cal-resize top" data-resize="start" aria-hidden="true"></div><div class="cal-resize" data-resize="end" aria-hidden="true"></div>`
+          : "";
         /* #479: the aria-label is a plain-text accessible name — `desc`
            carries <em> markup for untitled entries, which screen readers
            would announce as literal tags. */
@@ -224,7 +230,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
             tabindex="0" role="button" aria-label="${label}"${markTip}>
           <div class="cal-entry-desc">${e.project_name ? `<strong>${esc(e.project_name)}</strong> · ` : ""}${desc}</div>
           <div class="cal-entry-dur">${dur}</div>
-          ${resizable ? `<div class="cal-resize top" data-resize="start" title="Drag to change start" aria-hidden="true"></div><div class="cal-resize" data-resize="end" title="Drag to resize" aria-hidden="true"></div>` : ""}
+          ${resizeHandles}
         </div>`;
       }).join("");
       /* #213: "now" is a client concept (the server may be in another
