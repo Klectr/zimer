@@ -66,27 +66,33 @@ export function seedDemoData(db: Database): void {
   const dayStr = (d: Date) => d.toISOString().slice(0, 10);
   const fromD = new Date(); fromD.setDate(fromD.getDate() - 6);
   const toD = new Date(); toD.setDate(toD.getDate() - 1);
+  const demoFrom = dayStr(fromD), demoTo = dayStr(toD);
   db.query("INSERT OR REPLACE INTO meta (key, value) VALUES ('demo_from', ?), ('demo_to', ?)")
-    .run(dayStr(fromD), dayStr(toD));
-  /* Three invoices: paid, sent, draft. */
+    .run(demoFrom, demoTo);
+  /* Three invoices: paid, sent, draft. #492: items carry date ranges so the
+     invoice sheet's Date column renders — NULL dates left empty cells on
+     every first-run demo invoice. */
   const invQ = db.query("INSERT INTO invoices (client_id, number, issue_date, due_date, status, tax_rate, notes) VALUES (?, ?, ?, ?, ?, ?, ?)");
-  const itemQ = db.query("INSERT INTO invoice_items (invoice_id, description, hours, rate, amount) VALUES (?, ?, ?, ?, ?)");
+  const itemQ = db.query("INSERT INTO invoice_items (invoice_id, description, hours, rate, amount, date_from, date_to) VALUES (?, ?, ?, ?, ?, ?, ?)");
   const mk = (cid: number | null, num: string, issue: string, due: string, status: string,
-              items: [string, number, number][], notes = "") => {
+              items: [string, number, number, string?, string?][], notes = "") => {
     const id = Number(invQ.run(cid, num, issue, due, status, 0, notes).lastInsertRowid);
-    for (const [desc, hours, rate] of items) itemQ.run(id, desc, hours, rate, hours * rate);
+    for (const [desc, hours, rate, from, to] of items)
+      itemQ.run(id, desc, hours, rate, hours * rate, from ?? null, to ?? from ?? null);
     ids.invoices.push(id);
   };
   const lastMonth = new Date(); lastMonth.setMonth(lastMonth.getMonth() - 1);
   const lm = lastMonth.toISOString().slice(0, 10);
+  const today = dayStr(new Date());
+  const monthStart = today.slice(0, 8) + "01";
   mk(clientIds[0], "DEMO-001", lm, lm, "paid",
-    [["Brand refresh — design", 24, 120]], "Paid in full. Thank you!");
+    [["Brand refresh — design", 24, 120, lm, lm]], "Paid in full. Thank you!");
   mk(clientIds[1], "DEMO-002", new Date().toISOString().slice(0, 10),
     new Date(Date.now() + 15 * 864e5).toISOString().slice(0, 10), "sent",
-    [["Mobile app — onboarding flow", 18.5, 95]]);
+    [["Mobile app — onboarding flow", 18.5, 95, demoFrom, demoTo]]);
   mk(clientIds[2], "DEMO-003", new Date().toISOString().slice(0, 10),
     new Date(Date.now() + 15 * 864e5).toISOString().slice(0, 10), "draft",
-    [["Advisory retainer — September", 1, 150]], "Demo draft — not a real invoice.");
+    [["Advisory retainer — September", 1, 150, monthStart, today]], "Demo draft — not a real invoice.");
   db.query("INSERT OR REPLACE INTO meta (key, value) VALUES ('demo_ids', ?)")
     .run(JSON.stringify(ids));
 }
