@@ -434,10 +434,10 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       document.querySelectorAll(".share-lines").forEach(wire);
     })();</script>`;
     const copyBtn = (url: string) => `
-      <button class="md-icon-button" type="button" data-copy data-url="${esc(url)}" title="Copy link" aria-label="Copy link">${icon("copy")}</button>`;
-    const actBtn = (action: string, ic: string, label: string, cls = "", confirm = "", confirmLabel = "Delete") => `
+      <button class="md-icon-button" type="button" data-copy data-url="${esc(url)}" data-tip="Copy link" aria-label="Copy link">${icon("copy")}</button>`;
+    const actBtn = (action: string, ic: string, label: string, cls = "", confirm = "", confirmLabel = "Delete", tip = label) => `
       <form method="post" action="${action}" hx-post="${action}" ${hxDetail}>
-        <button class="md-icon-button ${cls}" type="submit" title="${label}" aria-label="${label}"${confirm ? ` data-confirm="${confirm}" data-confirm-label="${confirmLabel}"` : ""}>${icon(ic)}</button>
+        <button class="md-icon-button ${cls}" type="submit" data-tip="${tip}" aria-label="${label}"${confirm ? ` data-confirm="${confirm}" data-confirm-label="${confirmLabel}"` : ""}>${icon(ic)}</button>
       </form>`;
     const clientLine = clientLink ? `
       <div class="share-line">
@@ -445,7 +445,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
         <span class="share-url" title="${esc(clientLink)}">${esc(clientLink)}</span>
         <span class="share-icons">
           ${copyBtn(clientLink)}
-          ${actBtn(`/invoices/${inv.id}/public-token/regenerate`, "refresh", "Regenerate link (invalidates the old one)")}
+          ${actBtn(`/invoices/${inv.id}/public-token/regenerate`, "refresh", "Regenerate link (invalidates the old one)", "", "", "Delete", "Regenerate link")}
           ${actBtn(`/invoices/${inv.id}/public-token/revoke`, "delete", "Revoke link", "danger", "Revoke the client link? The current URL will stop working.", "Revoke")}
         </span>
       </div>` : `

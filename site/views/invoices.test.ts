@@ -15,13 +15,13 @@ const stubQuery = () => ({
 });
 const stubDb = { query: (_sql: string) => stubQuery() } as unknown as Database;
 
-function views(rows: any[]) {
+function views(rows: any[], opts: { publicToken?: string | null } = {}) {
   return createInvoiceViews({
     db: stubDb,
     qInvoices: { all: () => rows } as unknown as Statement,
     layout: (_t: string, b: string) => b,
     clientOptions: () => "",
-    getPublicToken: () => null,
+    getPublicToken: () => opts.publicToken ?? null,
     stripeConfigured: () => false,
     nextInvoiceNumber: () => "INV-0001",
     invoiceTotals: (items: any[], taxRate: number) => {
@@ -151,5 +151,26 @@ describe("paid-on date", () => {
     expect(html).toContain('<span class="affix suffix" aria-hidden="true">%</span>');
     expect(html).toContain('aria-label="Tax"><label>Tax</label>');
     expect(html).not.toContain("Tax %");
+  });
+});
+
+/** #486: finish the data-tip sweep — the invoice share-section buttons
+ *  (copy link, regenerate/revoke) used the OS-native title= tooltip while the
+ *  detail header actions already show M3 plain tooltips. */
+describe("share-section tooltips (#486)", () => {
+  const html = views([], { publicToken: "tok_test" }).invoiceDetailBody(detailInv("draft", null) as any, "http://x");
+  test("copy link uses data-tip, not the native title", () => {
+    expect(html).toContain('data-tip="Copy link"');
+    expect(html).not.toContain('title="Copy link"');
+  });
+  test("regenerate keeps the full accessible name; tip stays short", () => {
+    // the M3 tooltip caps at 200px nowrap — the long label would overflow it
+    expect(html).toContain('data-tip="Regenerate link"');
+    expect(html).toContain('aria-label="Regenerate link (invalidates the old one)"');
+    expect(html).not.toContain('title="Regenerate link');
+  });
+  test("revoke uses data-tip, not the native title", () => {
+    expect(html).toContain('data-tip="Revoke link"');
+    expect(html).not.toContain('title="Revoke link"');
   });
 });

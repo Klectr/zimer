@@ -269,8 +269,8 @@ export function createCalendarViews(deps: CalendarViewDeps) {
           <h2 class="md-headline-small">${isThisWeek ? "This week" : `Week of ${esc(weekLabel)}`}</h2>
           <div class="week-nav-actions">
             ${isThisWeek ? "" : `<a class="md-text-button" href="/calendar" hx-get="/partial/week" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar">Today</a>`}
-            <a class="md-icon-button" href="/calendar?week=${prev}" hx-get="/partial/week?week=${prev}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?week=${prev}" title="Previous week" aria-label="Previous week">${icon("chevron_left")}</a>
-            <a class="md-icon-button" href="/calendar?week=${next}" hx-get="/partial/week?week=${next}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?week=${next}" title="Next week" aria-label="Next week">${icon("chevron_right")}</a>
+            <a class="md-icon-button" href="/calendar?week=${prev}" hx-get="/partial/week?week=${prev}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?week=${prev}" data-tip="Previous week" aria-label="Previous week">${icon("chevron_left")}</a>
+            <a class="md-icon-button" href="/calendar?week=${next}" hx-get="/partial/week?week=${next}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?week=${next}" data-tip="Next week" aria-label="Next week">${icon("chevron_right")}</a>
           </div>
         </div>
         <div class="cal-summary">
