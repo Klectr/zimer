@@ -176,4 +176,9 @@ describe("share-section tooltips (#486)", () => {
     expect(html).toContain('data-tip="Revoke link"');
     expect(html).not.toContain('title="Revoke link"');
   });
+  test("client-link URL uses data-tip, not the native title (#502)", () => {
+    const url = "http://x/i/tok_test";
+    expect(html).toContain(`<span class="share-url-wrap" data-tip="${url}"><span class="share-url">${url}</span></span>`);
+    expect(html).not.toContain(`title="${url}"`);
+  });
 });
