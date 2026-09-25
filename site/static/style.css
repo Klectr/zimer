@@ -1338,6 +1338,28 @@ button.m3-menu-item {
 .md-list-item-supporting .inv-mark { background: var(--md-sys-color-secondary-container);
   color: var(--md-sys-color-on-secondary-container); margin-right: 6px; }
 .md-list-item-supporting .inv-mark.draft { opacity: 0.7; }
+/* #498: M3 plain tooltip for the inv-mark chip (hover + 450ms touch long-press
+   via the site-wide [data-tip] handler). ::after; the chip uses no other
+   pseudo-element, and the supporting line clips nothing. */
+.inv-mark[data-tip] { position: relative; overflow: visible; }
+.inv-mark[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute; left: 50%; top: calc(100% + 4px); /* M3: 4dp anchor gap */
+  transform: translateX(-50%) translateY(-2px);
+  background: var(--md-sys-color-inverse-surface);
+  color: var(--md-sys-color-inverse-on-surface);
+  border-radius: var(--md-sys-shape-corner-extra-small);
+  padding: 4px 8px; /* M3 plain tooltip padding */
+  white-space: nowrap; max-width: 200px;
+  font-size: 0.75rem; line-height: 16px; font-weight: 400;
+  opacity: 0; pointer-events: none; z-index: 30;
+  transition: opacity var(--motion-duration-short2) var(--motion-easing-standard),
+    transform var(--motion-duration-short2) var(--motion-easing-standard);
+}
+.inv-mark[data-tip]:hover::after,
+.inv-mark[data-tip].tip-show::after {
+  opacity: 1; transform: translateX(-50%) translateY(0);
+}
 
 .two-field { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 /* #353: content-driven — form field stacking, not an M3 window size class. */
