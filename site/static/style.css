@@ -870,9 +870,9 @@ body.app-fixed .cal-gutter-spacer {
   display: grid;
   grid-template-columns: 54px repeat(7, minmax(0, 1fr));
   gap: 8px;
+}
 /* #521: day mode — the single lane takes the freed columns. */
 .cal-grid[data-mode="day"] { grid-template-columns: 54px minmax(0, 1fr); }
-}
 .cal-gutter-spacer { height: 64px; } /* matches the two-line day header */
 .cal-gutter { position: relative; }
 .cal-hours { height: calc(var(--cal-hour) * 24); }
