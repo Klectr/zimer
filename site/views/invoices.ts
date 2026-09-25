@@ -508,25 +508,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       ${invoiceDoc(inv)}
       ${internalBlock}
       ${shareLines}
-      <script>(function(){
-        /* #432: M3 plain tooltips need a 450ms long-press on touch, where
-           hover doesn't exist (same pattern as the calendar day heads, #69).
-           Guarded: the fragment re-renders on every hx swap. */
-        if(window.__invIconTip) return; window.__invIconTip=true;
-        var tipTimer=null,tipEl=null;
-        document.addEventListener('pointerdown',function(e){
-          var b=e.target.closest('.md-icon-button[data-tip]');
-          if(!b) return;
-          tipEl=b;
-          tipTimer=setTimeout(function(){ b.classList.add('tip-show'); },450);
-        });
-        ['pointerup','pointercancel'].forEach(function(t){
-          document.addEventListener(t,function(){
-            if(tipTimer){ clearTimeout(tipTimer); tipTimer=null; }
-            if(tipEl){ tipEl.classList.remove('tip-show'); tipEl=null; }
-          },{passive:true});
-        });
-      })();</script></div>`;
+      </div>`;
   }
 
   /* #364: list-detail replaced the standalone detail page — the detail body
