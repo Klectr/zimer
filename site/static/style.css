@@ -1618,6 +1618,32 @@ button.m3-menu-item {
 .share-label.warn { color: var(--md-sys-color-error); }
 .share-url { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   color: var(--md-sys-color-on-surface-variant); font-size: 0.8125rem; }
+/* #502: the client link truncates with ellipsis — its full URL lives in the
+   house M3 plain tooltip (hover / focus / 450ms touch long-press via the
+   site-wide [data-tip] handler) instead of a native title. The wrapper anchors
+   the tooltip because the ellipsis span's overflow:hidden would clip it; the
+   tooltip wraps the long URL across lines instead of clipping it. */
+.share-url-wrap { flex: 1; min-width: 0; position: relative; }
+.share-url-wrap > .share-url { display: block; flex: none; }
+.share-url-wrap[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute; left: 0; top: calc(100% + 4px); /* M3: 4dp anchor gap */
+  background: var(--md-sys-color-inverse-surface);
+  color: var(--md-sys-color-inverse-on-surface);
+  border-radius: var(--md-sys-shape-corner-extra-small); /* M3 plain tooltip shape */
+  padding: 4px 8px; /* M3 plain tooltip padding */
+  font-size: 0.75rem; line-height: 16px;
+  max-width: 320px; white-space: normal; overflow-wrap: anywhere;
+  opacity: 0; pointer-events: none; z-index: 30;
+  transition: opacity var(--motion-duration-short2) var(--motion-easing-standard),
+    transform var(--motion-duration-short2) var(--motion-easing-standard);
+  transform: translateY(-2px);
+}
+.share-url-wrap[data-tip]:hover::after,
+.share-url-wrap[data-tip]:focus-visible::after,
+.share-url-wrap[data-tip].tip-show::after {
+  opacity: 1; transform: translateY(0);
+}
 .share-icons { display: flex; align-items: center; gap: 2px; margin-left: auto; flex-shrink: 0; }
 .share-icons form { display: inline; margin: 0; }
 .share-icons .md-icon-button { width: 36px; height: 36px; }

@@ -444,7 +444,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     const clientLine = clientLink ? `
       <div class="share-line">
         <span class="share-label">Client link</span>
-        <span class="share-url" title="${esc(clientLink)}">${esc(clientLink)}</span>
+        <span class="share-url-wrap" data-tip="${esc(clientLink)}"><span class="share-url">${esc(clientLink)}</span></span>
         <span class="share-icons">
           ${copyBtn(clientLink)}
           ${actBtn(`/invoices/${inv.id}/public-token/regenerate`, "refresh", "Regenerate link (invalidates the old one)", "", "", "Delete", "Regenerate link")}
