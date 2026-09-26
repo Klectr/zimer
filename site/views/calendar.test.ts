@@ -175,8 +175,8 @@ describe("calendar entry invoiced-mark tooltip (#500)", () => {
   });
 });
 
-/** Day stack: narrow containers reflow the 7 lanes into full-width stacked
- *  day sections — pure CSS via [data-stacked], no view modes. The server
+/** Day stack: narrow containers reflow the 7 lanes into a 2-column day-card
+ *  grid — pure CSS via [data-stacked], no view modes. The server
  *  trims each day to its entries (±1h) through --lo/--span. */
 describe("calendar day stack", () => {
   const stubQuery = () => ({
@@ -318,12 +318,17 @@ describe("calendar day stack", () => {
     expect(html).not.toContain("data-mode=");
   });
 
-  test("supporting pane stays week-scoped", () => {
+  test("summary strip replaces the trailing aside — week gets full width", () => {
     const html = viewsFor([monEntry, tueEntry]).weekInner("2026-09-20", "America/Chicago");
     // 2h monday + 1h tuesday = 3h week total, all billable
     expect(html).toContain("3h 00m");
     expect(html).toContain("Acme");
     expect(html).toContain("Invoice this week");
     expect(html).toContain('aria-label="Previous week"');
+    expect(html).toContain('class="cal-strip"');
+    expect(html).toContain("cal-strip-row");
+    expect(html).toContain("cal-strip-totals");
+    expect(html).not.toContain("cal-supporting");
+    expect(html).not.toContain("<aside");
   });
 });

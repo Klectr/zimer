@@ -831,30 +831,24 @@ main.page-invoices { max-width: 760px; }
   .pane-focus { flex: 1; }
   .pane-supporting { flex: 0 0 var(--layout-supporting-pane); }
 }
-/* ---------------- calendar supporting pane (M3 canonical, #67) ----------------
- * The week grid is the primary content, the week summary is supplementary —
- * the same canonical layout as the timer page (840px breakpoint; supporting
- * pane 360px at expanded, 412px at large/XL via --layout-supporting-pane).
- * <840px: single column, the summary keeps its position above the grid (its
- * long-standing spot; the grid is an internally-scrolling 24h surface, so the
- * spec's below-the-fold placement would bury the summary and its invoice CTA).
- * ≥840px: the summary trails beside the grid, which takes the freed vertical
- * space. #347: the week-nav lives at the top of the summary aside, so the
- * grid is just summary + grid areas; DOM order aside → grid stacks the
- * summary above the grid on narrow screens without a wrapper. */
-.cal-pane-layout { display: grid; flex: 1; min-height: 0; min-width: 0;
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-areas: "summary" "grid";
-  grid-template-rows: auto minmax(0, 1fr); }
-.cal-supporting { grid-area: summary; display: flex; flex-direction: column; gap: 14px; margin: 10px 0 12px; min-width: 0; }
-.cal-supporting .week-nav { margin: 0; }
-.cal-supporting .m3-progress, .cal-supporting .week-clients, .cal-supporting .cal-hint { margin: 0; }
-.cal-pane-layout .cal-scroll { grid-area: grid; }
-@media (min-width: 840px) {
-  .cal-pane-layout { grid-template-columns: minmax(0, 1fr) var(--layout-supporting-pane);
-    grid-template-areas: "grid summary"; grid-template-rows: minmax(0, 1fr); column-gap: var(--layout-pane-gap); }
-  .cal-supporting { margin: 8px 0 0; min-height: 0; overflow-y: auto; }
-}
+/* ---------------- calendar summary strip (spike iteration) ----------------
+ * Week-first: the summary is a horizontal strip above the grid, so the 7 day
+ * lanes always get the full container width. The trailing 360px aside
+ * squeezed the lanes and duplicated per-day totals already in the day-header
+ * tooltips; the strip keeps every summary element (nav, totals, target bar,
+ * nudge CTA, clients, hint) in two wrapping rows. */
+.cal-pane-layout { display: flex; flex-direction: column; flex: 1; min-height: 0; min-width: 0; }
+.cal-pane-layout > .cal-scroll { flex: 1 1 auto; min-height: 0; }
+.cal-strip { display: flex; flex-direction: column; gap: 10px; padding: 10px 4px 12px; min-width: 0; }
+.cal-strip-row { display: flex; align-items: center; gap: 28px; flex-wrap: wrap; min-width: 0; }
+.cal-strip-row .week-nav { margin: 0; justify-content: flex-start; gap: 12px; }
+.cal-strip-totals { display: flex; flex-direction: column; gap: 2px; }
+.cal-strip-target { flex: 1 1 220px; max-width: 440px; min-width: 200px; }
+.cal-strip-target .week-target { margin: 0; }
+.cal-strip-row .nudge-chip { margin: 0 0 0 auto; align-self: center; }
+.cal-strip-meta { display: flex; align-items: center; gap: 8px 20px; flex-wrap: wrap; min-width: 0; }
+.cal-strip-meta .week-clients { margin: 0; }
+.cal-strip-meta .cal-hint { margin: 0 0 0 auto; }
 /* calendar specifics: the week grid is the scroll region, headers stick */
 body.app-fixed #week { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
@@ -872,13 +866,27 @@ body.app-fixed .cal-gutter-spacer {
   gap: 8px;
 }
 /* Day stack: when the grid's own width can't fit 7 readable lanes, JS sets
-   [data-stacked] and the lanes reflow into full-width stacked day sections.
+   [data-stacked] and the lanes reflow into a 2-column day-card grid —
+   auto-fit drops to 1 column on very narrow screens (min() picks 100%).
    Each day's column slides up by its --lo trim so only the entry window
    (--span hours) shows; entries stay 24h-relative, so drag, resize, and the
-   now-line work untouched. The ±1h trim pad keeps entry tooltips unclipped. */
+   now-line work untouched. The ±1h trim pad keeps entry tooltips unclipped.
+   The 7th day spans full width so it never orphans as a half-width card. */
 .cal-day-body, .cal-day-shift { display: contents; }
 .cal-day-gutter { display: none; }
-.cal-grid[data-stacked="true"] { grid-template-columns: minmax(0, 1fr); }
+.cal-grid[data-stacked="true"] {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+  align-items: start;
+}
+.cal-grid[data-stacked="true"] .cal-day {
+  background: var(--md-sys-color-surface-container);
+  border-radius: var(--md-sys-shape-corner-large);
+  padding: 2px 12px 12px;
+}
+.cal-grid[data-stacked="true"] .cal-day:last-child { grid-column: 1 / -1; }
+/* Cards are short — the sticky section heads from the 1-column stack would
+   collide in 2 columns, so heads stay static here. */
+.cal-grid[data-stacked="true"] .cal-day-head { position: static; text-align: left; padding: 10px 2px 8px; }
 .cal-grid[data-stacked="true"] .cal-gutter-col { display: none; }
 .cal-grid[data-stacked="true"] .cal-day-gutter { display: block; }
 .cal-grid[data-stacked="true"] .cal-day-body {
@@ -1795,22 +1803,15 @@ button.m3-menu-item {
 .skel-line { height: 14px; border-radius: 7px; }
 .skel-row { height: 64px; border-radius: var(--md-sys-shape-corner-medium); }
 
-/* -------- calendar skeleton (#322): mirrors .cal-pane-layout so the htmx
-   week swap has no layout flash. Same grid areas and 840px breakpoint as the
-   real grid; lanes echo the 80px hour rhythm of .cal-day-col. The aside width
-   tracks the real pane through --layout-supporting-pane. */
-.cal-skel { display: grid; flex: 1; min-height: 0; min-width: 0;
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-areas: "summary" "grid";
-  grid-template-rows: auto minmax(0, 1fr); row-gap: 12px; }
-.cal-skel-nav { display: flex; align-items: center; justify-content: space-between; }
+/* -------- calendar skeleton (#322): mirrors .cal-pane-layout (summary strip
+   on top, week grid below) so the htmx week swap has no layout flash. Lanes
+   echo the 80px hour rhythm of .cal-day-col. */
+.cal-skel { display: flex; flex-direction: column; flex: 1; min-height: 0; min-width: 0; row-gap: 12px; }
+.cal-skel-strip { display: flex; align-items: center; gap: 24px; padding: 10px 4px 0; }
 .cal-skel-title { width: 140px; height: 28px; border-radius: 8px; }
-.cal-skel-actions { display: flex; gap: 4px; }
-.cal-skel-dot { width: 40px; height: 40px; border-radius: 50%; }
-.cal-skel-aside { grid-area: summary; display: flex; flex-direction: column; gap: 12px; margin: 10px 0 12px; min-width: 0; }
 .cal-skel-big { width: 120px; height: 36px; border-radius: 10px; }
-.cal-skel-bar { height: 8px; border-radius: 4px; }
-.cal-skel-grid { grid-area: grid; display: grid; min-width: 0; min-height: 0;
+.cal-skel-bar { flex: 1; max-width: 440px; height: 8px; border-radius: 4px; }
+.cal-skel-grid { display: grid; min-width: 0; min-height: 0; flex: 1;
   grid-template-columns: 54px repeat(7, minmax(0, 1fr)); gap: 8px; }
 .cal-skel-day { display: flex; flex-direction: column; gap: 8px; min-width: 0; min-height: 0; }
 .cal-skel-head { height: 64px; flex: none; border-radius: var(--md-sys-shape-corner-medium); }
@@ -1820,11 +1821,6 @@ button.m3-menu-item {
     transparent 0, transparent 79px,
     color-mix(in srgb, var(--md-sys-color-outline-variant) 30%, transparent) 79px,
     color-mix(in srgb, var(--md-sys-color-outline-variant) 30%, transparent) 80px); }
-@media (min-width: 840px) {
-  .cal-skel { grid-template-columns: minmax(0, 1fr) var(--layout-supporting-pane);
-    grid-template-areas: "grid summary"; column-gap: var(--layout-pane-gap); }
-  .cal-skel-aside { margin: 8px 0 0; }
-}
 
 /* M3 press ripple (JS-driven, see motion.js). Buttons already clip with
    overflow: hidden; the span paints above the ::after state layer. */

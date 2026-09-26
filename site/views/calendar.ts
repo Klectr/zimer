@@ -318,9 +318,12 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     return calShell(wd, navTitle, navActions, lanes.join(""));
   }
 
-  /** The #week section — supporting pane (always week-scoped) plus the
-      scroll region. Narrow containers reflow the lanes into a day stack
-      through [data-stacked] (see calScript); there are no view modes. */
+  /** The #week section — summary strip above the scroll region. The week grid
+      always gets the full container width (spike iteration: the 360px trailing
+      aside squeezed the 7 lanes and duplicated per-day totals already in the
+      day-header tooltips). Narrow containers reflow the lanes into a 2-column
+      day-card grid through [data-stacked] (see calScript); there are no view
+      modes. */
   function calShell(wd: CalWeekData, navTitle: string, navActions: string,
       lanesHtml: string): string {
     const { sun, weekTotal, weekBillable, clientRows, uninvoiced, prevBillable } = wd;
@@ -348,27 +351,31 @@ export function createCalendarViews(deps: CalendarViewDeps) {
 
     return `
     <div class="cal-pane-layout">
-      <aside class="cal-supporting" data-enter="3" aria-label="Week summary">
-        <div class="week-nav">
-          <h2 class="md-headline-small">${esc(navTitle)}</h2>
-          <div class="week-nav-actions">
-            ${navActions}
+      <header class="cal-strip" data-enter="3" aria-label="Week summary">
+        <div class="cal-strip-row">
+          <div class="week-nav">
+            <h2 class="md-headline-small">${esc(navTitle)}</h2>
+            <div class="week-nav-actions">
+              ${navActions}
+            </div>
           </div>
+          <div class="cal-strip-totals">
+            <div class="md-headline-small">${fmtDur(weekTotal)}</div>
+            <div class="md-label-medium muted">${fmtDur(weekBillable)} billable · ${deltaHtml}</div>
+          </div>
+          <div class="cal-strip-target">${weekTargetBar(weekTotal)}</div>
+          ${nudgeChip}
         </div>
-        <div class="cal-summary">
-          <div class="md-headline-small">${fmtDur(weekTotal)}</div>
-          <div class="md-label-medium muted">${fmtDur(weekBillable)} billable · ${deltaHtml}</div>
+        <div class="cal-strip-meta">
+          ${clientStrip}
+          <p class="muted tiny cal-hint">Drag on the grid to log time. Click an entry to edit it.</p>
         </div>
-        ${nudgeChip}
-        ${weekTargetBar(weekTotal)}
-        ${clientStrip}
-        <p class="muted tiny cal-hint">Drag on the grid to log time. Click an entry to edit it.</p>
         ${workspaceEmpty(db) ? `<div class="cal-first-run">
           ${icon("info")}
           <p class="md-label-large"><strong>New here?</strong> Load fictional sample data to explore the calendar.</p>
           <form method="post" action="/demo/load" class="inline"><button class="md-text-button" type="submit">Load demo data</button></form>
         </div>` : ""}
-      </aside>
+      </header>
       <div class="cal-scroll" data-enter="3">
         <div class="cal-grid" id="cal-body" style="--cal-hour:${calHourPx}px">
           <div class="cal-gutter-col">
@@ -394,21 +401,15 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       a server-rendered grid would flash server-timezone positions. */
   function weekGrid(weekStr?: string): string {
     const q = weekStr && /^\d{4}-\d{2}-\d{2}$/.test(weekStr) ? `?week=${weekStr}` : "";
-    /* #322: the skeleton mirrors .cal-pane-layout (summary aside with the
-       week-nav skeleton at its top, gutter + day columns with the hour
-       rhythm) so the htmx swap lands without a layout flash. */
+    /* #322: the skeleton mirrors .cal-pane-layout (summary strip on top,
+       week grid below) so the htmx swap lands without a layout flash. */
     const skelDay = `<div class="cal-skel-day"><div class="skel cal-skel-head"></div><div class="skel cal-skel-lane"></div></div>`;
     const skelGrid = `<div class="cal-skel-grid">${skelDay.repeat(8)}</div>`;
     return `<div id="week" hx-get="/partial/week${q}" hx-trigger="load" hx-swap="innerHTML">
         <div class="cal-skel" aria-hidden="true">
-          <div class="cal-skel-aside">
-            <div class="cal-skel-nav">
-              <div class="skel cal-skel-title"></div>
-              <div class="cal-skel-actions"><div class="skel cal-skel-dot"></div><div class="skel cal-skel-dot"></div><div class="skel cal-skel-dot"></div></div>
-            </div>
+          <div class="cal-skel-strip">
+            <div class="skel cal-skel-title"></div>
             <div class="skel cal-skel-big"></div>
-            <div class="skel skel-line" style="width:75%"></div>
-            <div class="skel skel-line" style="width:55%"></div>
             <div class="skel cal-skel-bar"></div>
           </div>
           ${skelGrid}
@@ -470,7 +471,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
         e.detail.parameters.tz=TZ;});
     /* Day stack: when the calendar's own width drops below the point where 7
        lanes stay readable (54px gutter + 7 lanes at ~100px + gaps ≈ 800px),
-       the lanes reflow into full-width stacked day sections — pure CSS via
+       the lanes reflow into a 2-column day-card grid — pure CSS via
        [data-stacked] on the grid. One attribute, no URL modes, no
        navigation. The server trims each day to its entries (--lo/--span);
        entries stay 24h-relative so drag, resize, and the now-line need no
