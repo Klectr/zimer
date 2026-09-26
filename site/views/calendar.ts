@@ -335,6 +335,10 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       return `<span class="cal-hour-label${night ? " night" : ""}" style="top:${(h * calHourPx - 8).toFixed(0)}px">${ampm}</span>`;
     }).join("");
 
+    /* #544: day mode's heading names a day ("Today") while the pane is
+       week-scoped — the bare numbers read as day totals (timer page says
+       Today 0s, calendar said Today 24h). Scope-label them in day mode. */
+    const scopeLabel = mode === "day" ? " · this week" : "";
     return `
     <div class="cal-pane-layout">
       <aside class="cal-supporting" data-enter="3" aria-label="Week summary">
@@ -346,7 +350,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
         </div>
         <div class="cal-summary">
           <div class="md-headline-small">${fmtDur(weekTotal)}</div>
-          <div class="md-label-medium muted">${fmtDur(weekBillable)} billable${deltaHtml}</div>
+          <div class="md-label-medium muted">${fmtDur(weekBillable)} billable${scopeLabel}${deltaHtml}</div>
         </div>
         ${nudgeChip}
         ${weekTargetBar(weekTotal)}

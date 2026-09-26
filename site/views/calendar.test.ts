@@ -235,6 +235,17 @@ describe("calendar day view (#521)", () => {
     expect(html).toContain("Invoice this week");
   });
 
+  test("#544: day mode scope-labels the week numbers", () => {
+    const html = viewsFor([monEntry, tueEntry]).dayInner("2026-09-21", "America/Chicago");
+    expect(html).toContain("3h 00m billable · this week");
+  });
+
+  test("#544: week mode needs no scope label (the heading already names the week)", () => {
+    const html = viewsFor([monEntry, tueEntry]).weekInner("2026-09-20", "America/Chicago");
+    expect(html).toContain("3h 00m billable");
+    expect(html).not.toContain("billable · this week");
+  });
+
   test("day nav uses day labels and accessible names", () => {
     const html = viewsFor([]).dayInner("2026-09-21", "America/Chicago");
     expect(html).toContain('aria-label="Previous day"');
