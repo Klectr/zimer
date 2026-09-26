@@ -315,3 +315,20 @@ describe("week summary delta (#524)", () => {
     expect(s).toContain("·");
   });
 });
+
+/** #530: entry cards are tabindex="0" role="button" — Enter/Space must
+ *  activate them (openEdit), not just land focus on them. */
+describe("calendar entry keyboard activation (#530)", () => {
+  test("keydown handler opens the dialog on Enter/Space over an entry card", async () => {
+    const src = await Bun.file("site/views/calendar.ts").text();
+    const handler = src.slice(
+      src.indexOf("document.addEventListener('keydown'"),
+      src.indexOf("function fail(msg)")
+    );
+    expect(handler).toContain("e.key==='Enter'");
+    expect(handler).toContain("e.key===' '");
+    expect(handler).toMatch(/closest\('\.cal-entry'\)/);
+    expect(handler).toContain("openEdit(card)");
+    expect(handler).toContain("e.preventDefault()");
+  });
+});

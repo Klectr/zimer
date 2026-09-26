@@ -605,6 +605,13 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     document.addEventListener('keydown',function(e){
       if(e.key==='Escape'&&!scrim.hidden) close();
       else if(e.key==='Tab'&&!scrim.hidden&&window.tkTrapTab) window.tkTrapTab(scrim,e);
+      /* #530: entry cards are tabindex="0" role="button" — Enter/Space must
+         activate them like real buttons. openEdit sets the focus-return
+         opener, and preventDefault stops Space from scrolling the page. */
+      else if(e.key==='Enter'||e.key===' '){
+        var card=e.target&&e.target.closest?e.target.closest('.cal-entry'):null;
+        if(card){ e.preventDefault(); openEdit(card); }
+      }
     });
     function fail(msg){ err.textContent=msg; err.hidden=false; }
     /* In-place week refresh (#65): re-render the #week section without a full
