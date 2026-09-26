@@ -9,7 +9,7 @@
  *  auto-repeat is ignored, and a second press while a toggle request is in
  *  flight fires no second request.
  */
-import { beforeEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 
 const g = globalThis as any;
 g.window = {};
