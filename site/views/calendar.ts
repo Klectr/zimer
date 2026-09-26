@@ -335,10 +335,11 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     return calShell(wd, navTitle, navActions, lanes.join(""), wlo, whi - wlo);
   }
 
-  /** The #week section — summary strip above the scroll region. The week grid
+  /** The #week section — week nav strip above the scroll region. The week grid
       always gets the full container width (spike iteration: the 360px trailing
       aside squeezed the 7 lanes and duplicated per-day totals already in the
-      day-header tooltips). Narrow containers scale the week down to a compact
+      day-header tooltips). The summary details live in the week-details sheet
+      behind the semicircle tab. Narrow containers scale the week down to a compact
       mini-week through [data-compact] (see calScript): same 7 lanes, shorter
       hour, one shared time window (--wlo/--wspan). There are no view modes. */
   function calShell(wd: CalWeekData, navTitle: string, navActions: string,
@@ -843,13 +844,11 @@ export function createCalendarViews(deps: CalendarViewDeps) {
         calGrid=null; applyCompact(); placeNow(); centerOnNow();
       }
     });
-    /* Week-details sheet: on narrow screens the strip's summary details hide
-       behind a FAB-pinned M3 modal bottom sheet; on wide screens the sheet
-       is display:contents so the strip renders exactly as before. Delegated
-       listeners survive HTMX week swaps, which replace #week wholesale. */
-    var sheetMQ=window.matchMedia?window.matchMedia("(max-width: 839px)"):null;
+    /* Week-details sheet: on every screen size the strip's summary details hide
+       behind the semicircle tab as an M3 modal bottom sheet; the week nav
+       stays visible in the strip. Delegated listeners survive HTMX week
+       swaps, which replace #week wholesale. */
     var sheetWasOpen=false;
-    function sheetNarrow(){ return sheetMQ?sheetMQ.matches:false; }
     function setSheetOpen(open){
       var sheet=document.getElementById("cal-sheet"),
           fab=document.getElementById("cal-sheet-tab"),
@@ -862,26 +861,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       fab.setAttribute("aria-expanded",open?"true":"false");
       if(scrim) scrim.hidden=!open;
     }
-    function syncSheetChrome(){
-      var sheet=document.getElementById("cal-sheet");
-      if(!sheet) return;
-      if(!sheetNarrow()){
-        /* desktop: plain inline content, no dialog semantics. */
-        sheet.removeAttribute("role"); sheet.removeAttribute("aria-modal");
-        sheet.removeAttribute("inert"); sheet.removeAttribute("aria-hidden");
-        sheet.classList.remove("open");
-        document.body.classList.remove("cal-sheet-open");
-        var fab=document.getElementById("cal-sheet-tab");
-        if(fab) fab.setAttribute("aria-expanded","false");
-        var scrim=document.getElementById("cal-sheet-scrim");
-        if(scrim) scrim.hidden=true;
-      }else{
-        sheet.setAttribute("role","dialog"); sheet.setAttribute("aria-modal","true");
-        setSheetOpen(sheet.classList.contains("open"));
-      }
-    }
     function toggleSheet(force){
-      if(!sheetNarrow()) return;
       var sheet=document.getElementById("cal-sheet");
       if(!sheet) return;
       var open=typeof force==="boolean"?force:!sheet.classList.contains("open");
@@ -905,15 +885,12 @@ export function createCalendarViews(deps: CalendarViewDeps) {
         if(sheet&&sheet.classList.contains("open")) toggleSheet(false);
       }
     });
-    if(sheetMQ&&sheetMQ.addEventListener) sheetMQ.addEventListener("change",syncSheetChrome);
-    syncSheetChrome();
     document.body.addEventListener("htmx:beforeSwap",function(e){
       var s=document.getElementById("cal-sheet");
-      sheetWasOpen=!!(s&&s.classList.contains("open")&&sheetNarrow());
+      sheetWasOpen=!!(s&&s.classList.contains("open"));
     });
     document.body.addEventListener("htmx:afterSwap",function(e){
       if(e.target&&e.target.id==="week"){
-        syncSheetChrome();
         if(sheetWasOpen) setSheetOpen(true);
         sheetWasOpen=false;
       }

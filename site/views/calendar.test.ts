@@ -356,9 +356,9 @@ describe("calendar compact mini-week", () => {
   });
 });
 
-/** Week-details sheet: below 840px the strip's summary details hide behind a
- *  FAB-pinned M3 modal bottom sheet; the week nav stays visible. Desktop
- *  keeps .cal-sheet as display:contents (strip renders unchanged). */
+/** Week-details sheet: on every screen size the strip's summary details hide
+ *  behind the semicircle tab as an M3 modal bottom sheet; the week nav stays
+ *  visible in the strip. */
 describe("calendar week-details sheet", () => {
   const stubQuery = () => ({
     get: (..._a: unknown[]) => ({ n: 1 }),
@@ -426,9 +426,11 @@ describe("calendar week-details sheet", () => {
     expect(count(html, 'id="cal-sheet-scrim"')).toBe(1);
   });
 
-  test("sheet script syncs dialog semantics by breakpoint", async () => {
+  test("sheet script treats the sheet as a dialog on every screen size", async () => {
     const src = await Bun.file("site/views/calendar.ts").text();
-    expect(src).toContain('matchMedia("(max-width: 839px)")');
+    // no breakpoint gating: the tab opens the sheet on desktop too
+    expect(src).not.toContain('matchMedia("(max-width: 839px)")');
+    expect(src).not.toContain("sheetNarrow");
     expect(src).toContain("toggleSheet");
     expect(src).toContain('e.key==="Escape"');
     expect(src).toContain("cal-sheet-scrim");

@@ -832,11 +832,12 @@ main.page-invoices { max-width: 760px; }
   .pane-supporting { flex: 0 0 var(--layout-supporting-pane); }
 }
 /* ---------------- calendar summary strip (spike iteration) ----------------
- * Week-first: the summary is a horizontal strip above the grid, so the 7 day
- * lanes always get the full container width. The trailing 360px aside
- * squeezed the lanes and duplicated per-day totals already in the day-header
- * tooltips; the strip keeps every summary element (nav, totals, target bar,
- * nudge CTA, clients, hint) in two wrapping rows. */
+ * Week-first: the strip holds the week nav above the grid, so the 7 day
+ * lanes always get the full container width. The summary details (totals,
+ * target bar, nudge CTA, clients, hint) live in the week-details sheet
+ * behind the semicircle tab (see below). The trailing 360px aside squeezed
+ * the lanes and duplicated per-day totals already in the day-header
+ * tooltips. */
 .cal-pane-layout { display: flex; flex-direction: column; flex: 1; min-height: 0; min-width: 0; }
 .cal-pane-layout > .cal-scroll { flex: 1 1 auto; min-height: 0; }
 .cal-strip { display: flex; flex-direction: column; gap: 10px; padding: 10px 4px 12px; min-width: 0; }
@@ -849,67 +850,67 @@ main.page-invoices { max-width: 760px; }
 .cal-strip-meta { display: flex; align-items: center; gap: 8px 20px; flex-wrap: wrap; min-width: 0; }
 .cal-strip-meta .week-clients { margin: 0; }
 .cal-strip-meta .cal-hint { margin: 0 0 0 auto; }
-/* Week-details sheet: below 840px the strip's summary details hide behind a
+/* Week-details sheet: on every screen size the summary details hide behind a
    semicircle tab stuck to the bottom center — pressing it opens the drawer.
-   Desktop keeps .cal-sheet as display:contents — the strip renders exactly
-   as before. */
-.cal-sheet-tab, .cal-sheet-scrim { display: none; }
-@media (min-width: 840px) {
-  .cal-sheet { display: contents; }
-  /* flattened into the strip row: the meta row and first-run keep their own
-     lines, preserving the desktop strip layout exactly */
-  .cal-sheet > .cal-strip-meta,
-  .cal-sheet > .cal-first-run { flex: 1 1 100%; }
-  .cal-strip-row { row-gap: 10px; }
+   The week nav stays visible in the strip; the totals, target, nudge action,
+   client breakdown, and hint live in the sheet. */
+.cal-sheet {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
+  display: flex; flex-direction: column; gap: 14px;
+  max-height: 75dvh; overflow-y: auto; overscroll-behavior: contain;
+  padding: 12px 20px calc(20px + env(safe-area-inset-bottom, 0px));
+  background: var(--md-sys-color-surface-container-high);
+  border-radius: 28px 28px 0 0;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.45);
+  transform: translateY(102%);
+  visibility: hidden;
+  transition: transform 300ms cubic-bezier(0.2, 0, 0, 1), visibility 300ms;
 }
-@media (max-width: 839px) {
+.cal-sheet.open { transform: translateY(0); visibility: visible; }
+.cal-sheet::before {
+  content: ""; align-self: center; flex: none;
+  width: 32px; height: 4px; border-radius: 2px;
+  background: var(--md-sys-color-outline-variant);
+}
+/* inside the sheet the strip children stack — undo row flex-item sizing */
+.cal-sheet .cal-strip-target { flex: none; max-width: none; min-width: 0; }
+.cal-sheet .nudge-chip { margin: 0; align-self: flex-start; }
+.cal-sheet .cal-strip-meta .cal-hint { margin: 0; }
+.cal-sheet-tab {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px;
+  position: fixed; left: 50%; bottom: env(safe-area-inset-bottom, 0px); z-index: 55;
+  transform: translateX(-50%);
+  width: 136px; height: 68px;
+  border: none; border-radius: 68px 68px 0 0; cursor: pointer;
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+.cal-sheet-tab .md-label-large { font-weight: 600; }
+.cal-sheet-tab svg { width: 20px; height: 20px; }
+/* the tab melts into the drawer as the sheet opens */
+body.cal-sheet-open .cal-sheet-tab {
+  opacity: 0; transform: translateX(-50%) translateY(10px) scale(0.92);
+  pointer-events: none;
+}
+.cal-sheet-scrim {
+  display: block; position: fixed; inset: 0; z-index: 59;
+  background: rgba(0, 0, 0, 0.5);
+}
+.cal-sheet-scrim[hidden] { display: none; }
+/* desktop: the sheet floats centered instead of stretching edge to edge */
+@media (min-width: 840px) {
   .cal-sheet {
-    position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
-    display: flex; flex-direction: column; gap: 14px;
-    max-height: 75dvh; overflow-y: auto; overscroll-behavior: contain;
-    padding: 12px 20px calc(20px + env(safe-area-inset-bottom, 0px));
-    background: var(--md-sys-color-surface-container-high);
-    border-radius: 28px 28px 0 0;
-    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.45);
-    transform: translateY(102%);
-    visibility: hidden;
-    transition: transform 300ms cubic-bezier(0.2, 0, 0, 1), visibility 300ms;
+    left: 50%; right: auto;
+    width: min(560px, calc(100vw - 48px));
+    margin-bottom: 24px;
+    border-radius: 28px;
+    transform: translate(-50%, calc(102% + 24px));
   }
-  .cal-sheet.open { transform: translateY(0); visibility: visible; }
-  .cal-sheet::before {
-    content: ""; align-self: center; flex: none;
-    width: 32px; height: 4px; border-radius: 2px;
-    background: var(--md-sys-color-outline-variant);
-  }
-  /* inside the sheet the strip children stack — undo row flex-item sizing */
-  .cal-sheet .cal-strip-target { flex: none; max-width: none; min-width: 0; }
-  .cal-sheet .nudge-chip { margin: 0; align-self: flex-start; }
-  .cal-sheet .cal-strip-meta .cal-hint { margin: 0; }
-  .cal-sheet-tab {
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 2px;
-    position: fixed; left: 50%; bottom: env(safe-area-inset-bottom, 0px); z-index: 55;
-    transform: translateX(-50%);
-    width: 136px; height: 68px;
-    border: none; border-radius: 68px 68px 0 0; cursor: pointer;
-    background: var(--md-sys-color-primary-container);
-    color: var(--md-sys-color-on-primary-container);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-    -webkit-tap-highlight-color: transparent;
-    transition: opacity 180ms ease, transform 180ms ease;
-  }
-  .cal-sheet-tab .md-label-large { font-weight: 600; }
-  .cal-sheet-tab svg { width: 20px; height: 20px; }
-  /* the tab melts into the drawer as the sheet opens */
-  body.cal-sheet-open .cal-sheet-tab {
-    opacity: 0; transform: translateX(-50%) translateY(10px) scale(0.92);
-    pointer-events: none;
-  }
-  .cal-sheet-scrim {
-    display: block; position: fixed; inset: 0; z-index: 59;
-    background: rgba(0, 0, 0, 0.5);
-  }
-  .cal-sheet-scrim[hidden] { display: none; }
+  .cal-sheet.open { transform: translate(-50%, 0); }
 }
 @media (max-width: 599px) {
   /* tab sits stuck to the top of the fixed bottom navigation bar */
