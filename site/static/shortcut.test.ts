@@ -124,13 +124,16 @@ describe("long-press tooltips", () => {
   });
 });
 
-/* #534: t-shortcut toggle guard — fetch faked with controllable resolution. */
+/* #534: t-shortcut toggle guard — fetch faked with controllable resolution.
+   Installed per-test and restored after, so the fake never leaks into other
+   test files sharing this process's globalThis. */
 const fetchCalls: string[] = [];
 let fetchResolvers: ((v: any) => void)[] = [];
-g.fetch = (url: string) => {
+const realFetch = g.fetch;
+function fakeFetch(url: string) {
   fetchCalls.push(url);
   return new Promise((resolve) => fetchResolvers.push(resolve as (v: any) => void));
-};
+}
 function resolveFetches() {
   const rs = fetchResolvers;
   fetchResolvers = [];
@@ -157,9 +160,13 @@ describe("t toggle guard", () => {
   beforeEach(() => {
     fetchCalls.length = 0;
     fetchResolvers = [];
+    g.fetch = fakeFetch;
     /* Stop path: disarmTicker is a no-op without a live interval, so the
        real setInterval in ticker.start is never armed. */
     g.document.body.dataset.timerRunning = "1";
+  });
+  afterEach(() => {
+    g.fetch = realFetch;
   });
 
   test("key auto-repeat never toggles", () => {
