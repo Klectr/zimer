@@ -4,6 +4,10 @@
  *  fakes so bun can exercise the long-press logic: tip-show is added after
  *  450ms on a [data-tip] target, cleared on pointerup/pointercancel, nothing
  *  is scheduled for non-tip targets, and releasing early cancels the timer.
+ *
+ *  #534: the same fakes also cover the t-shortcut toggle guard — key
+ *  auto-repeat is ignored, and a second press while a toggle request is in
+ *  flight fires no second request.
  */
 import { beforeEach, describe, expect, test } from "bun:test";
 
@@ -45,9 +49,20 @@ function fireTimers() {
   for (const t of due) if (!t.cleared) t.cb();
 }
 
+function fakeDiv() {
+  const el: any = { _class: new Set<string>(), textContent: "" };
+  el.classList = {
+    add: (...cs: string[]) => cs.forEach((c) => el._class.add(c)),
+    remove: (...cs: string[]) => cs.forEach((c) => el._class.delete(c)),
+  };
+  el.setAttribute = (_k: string, _v: string) => {};
+  return el;
+}
+
 g.document = {
   title: "Timekeep",
-  body: { dataset: {} },
+  body: { dataset: {}, appendChild: (_el: any) => {} },
+  createElement: (_tag: string) => fakeDiv(),
   _listeners: {} as Record<string, Function[]>,
   addEventListener(t: string, h: Function) {
     (this._listeners[t] ||= []).push(h);
@@ -106,5 +121,64 @@ describe("long-press tooltips", () => {
   test("non-tip targets schedule nothing", () => {
     down({ target: fakePlainEl() });
     expect(timers.size).toBe(0);
+  });
+});
+
+/* #534: t-shortcut toggle guard — fetch faked with controllable resolution. */
+const fetchCalls: string[] = [];
+let fetchResolvers: ((v: any) => void)[] = [];
+g.fetch = (url: string) => {
+  fetchCalls.push(url);
+  return new Promise((resolve) => fetchResolvers.push(resolve as (v: any) => void));
+};
+function resolveFetches() {
+  const rs = fetchResolvers;
+  fetchResolvers = [];
+  rs.forEach((r) => r({ ok: true }));
+}
+async function flush() {
+  for (let i = 0; i < 10; i++) await Promise.resolve();
+}
+
+const key = on("keydown");
+function keyT(repeat = false) {
+  key({
+    key: "t",
+    repeat,
+    target: {},
+    ctrlKey: false,
+    metaKey: false,
+    altKey: false,
+    preventDefault: () => {},
+  });
+}
+
+describe("t toggle guard", () => {
+  beforeEach(() => {
+    fetchCalls.length = 0;
+    fetchResolvers = [];
+    /* Stop path: disarmTicker is a no-op without a live interval, so the
+       real setInterval in ticker.start is never armed. */
+    g.document.body.dataset.timerRunning = "1";
+  });
+
+  test("key auto-repeat never toggles", () => {
+    keyT(true);
+    expect(fetchCalls.length).toBe(0);
+  });
+
+  test("a press while a toggle is in flight fires no second request", async () => {
+    keyT();
+    expect(fetchCalls).toEqual(["/timer/stop"]);
+    keyT(); // still in flight — ignored
+    expect(fetchCalls.length).toBe(1);
+    resolveFetches();
+    await flush();
+    expect(fetchCalls.length).toBe(1);
+    g.document.body.dataset.timerRunning = "1"; // back to the stop path
+    keyT(); // flight done — allowed again
+    expect(fetchCalls).toEqual(["/timer/stop", "/timer/stop"]);
+    resolveFetches();
+    await flush();
   });
 });
