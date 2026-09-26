@@ -182,3 +182,37 @@ describe("share-section tooltips (#486)", () => {
     expect(html).not.toContain(`title="${url}"`);
   });
 });
+
+/** #526: line-item table headers must carry scope="col" (WCAG H63) so screen
+ *  readers announce the column (Hours, Rate, Amount) for each numeric cell.
+ *  Covers both the new-invoice preview table and the rendered sheet, which
+ *  also serves the client-facing public invoice page. */
+describe("#526: line-item table headers carry scope=col", () => {
+  const scoped = [
+    `<th scope="col">Date</th>`,
+    `<th scope="col">Description</th>`,
+    `<th scope="col" class="num">Hours</th>`,
+    `<th scope="col" class="num">Rate</th>`,
+    `<th scope="col" class="num">Amount</th>`,
+  ];
+  const previewParams = () => views([]).defaultNewInvParams();
+
+  test("preview table scopes all five column headers", () => {
+    const html = views([]).invoiceStep2(previewParams(), { items: [] });
+    for (const th of scoped) expect(html).toContain(th);
+    expect(html).not.toContain("<th>Date</th>");
+  });
+
+  test("rendered sheet scopes all five column headers", () => {
+    const html = views([]).invoiceSheet(detailInv("sent", null));
+    for (const th of scoped) expect(html).toContain(th);
+    expect(html).not.toContain("<th>Date</th>");
+  });
+
+  test("the two tables share one header row — no drift", () => {
+    const step2 = views([]).invoiceStep2(previewParams(), { items: [] });
+    const sheet = views([]).invoiceSheet(detailInv("sent", null));
+    const headOf = (html: string) => html.slice(html.indexOf("<thead>"), html.indexOf("</thead>"));
+    expect(headOf(step2)).toBe(headOf(sheet));
+  });
+});
