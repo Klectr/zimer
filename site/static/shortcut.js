@@ -30,7 +30,13 @@
     if (card && window.htmx) htmx.ajax("GET", "/partial/timer", "#timer-card");
   }
 
+  /* #534: ignore presses while a toggle request is in flight — a fast
+     double-press races the first request, and the loser 409s on the start
+     path, flashing a bogus "Couldn't toggle the timer" error. */
+  let toggling = false;
   async function toggle() {
+    if (toggling) return;
+    toggling = true;
     const running = document.body.dataset.timerRunning === "1";
     const path = running ? "/timer/stop" : "/timer/start";
     try {
@@ -49,12 +55,16 @@
       snackbar(running ? "Timer stopped" : "Timer started — press t to stop");
     } catch (e) {
       snackbar("Couldn't toggle the timer");
+    } finally {
+      toggling = false;
     }
   }
 
   document.addEventListener("keydown", (e) => {
     if (e.key !== "t" && e.key !== "T") return;
     if (e.ctrlKey || e.metaKey || e.altKey) return;
+    /* #534: holding t must not machine-gun the timer via key auto-repeat. */
+    if (e.repeat) return;
     if (isEditable(e.target)) return;
     e.preventDefault();
     toggle();
