@@ -317,10 +317,12 @@ export function createCalendarViews(deps: CalendarViewDeps) {
           </span>`).join("")}
       </div>`;
     const deltaHtml = (() => {
-      if (prevBillable <= 0) return `<span class="muted">—</span>`;
+      /* #524: no previous-week data → omit the delta AND its separator. A
+         dangling "· —" reads like a half-loaded widget. */
+      if (prevBillable <= 0) return "";
       const pct = Math.round(((weekBillable - prevBillable) / prevBillable) * 100);
       const arrow = pct > 0 ? "↑" : pct < 0 ? "↓" : "→";
-      return `<span class="muted">${arrow} ${Math.abs(pct)}% vs prev week</span>`;
+      return ` · <span class="muted">${arrow} ${Math.abs(pct)}% vs prev week</span>`;
     })();
     const hourLabels = Array.from({ length: 24 }, (_, h) => {
       const ampm = h === 0 ? "12 AM" : h < 12 ? `${h} AM` : h === 12 ? "12 PM" : `${h - 12} PM`;
@@ -339,7 +341,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
         </div>
         <div class="cal-summary">
           <div class="md-headline-small">${fmtDur(weekTotal)}</div>
-          <div class="md-label-medium muted">${fmtDur(weekBillable)} billable · ${deltaHtml}</div>
+          <div class="md-label-medium muted">${fmtDur(weekBillable)} billable${deltaHtml}</div>
         </div>
         ${nudgeChip}
         ${weekTargetBar(weekTotal)}
