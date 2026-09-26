@@ -36,6 +36,12 @@ export const ICONS: Record<string, string> = {
   /* #448: bolt for the "Paid via Stripe" chip — the last emoji in the UI
      leaves the icon system here. M3 outlined 24px, matches the set. */
   bolt: `<path d="M13 2L4.5 13.5H11L9.5 22L18.5 10.5H12Z"/>`,
+  /* #542: trend trio for the calendar week-over-week delta — the last text
+     glyphs (↑/↓/→) in the UI give way to the icon system. Feather-style,
+     M3 outlined 24px, matches the set. */
+  trend_up: `<path d="M22 7l-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/>`,
+  trend_down: `<path d="M22 17l-8.5-8.5-5 5L2 7"/><path d="M16 17h6v-6"/>`,
+  trend_flat: `<path d="M4 12h16"/><path d="M14 6l6 6-6 6"/>`,
 };
 
 export function icon(name: keyof typeof ICONS): string {

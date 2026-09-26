@@ -321,8 +321,13 @@ export function createCalendarViews(deps: CalendarViewDeps) {
          dangling "· —" reads like a half-loaded widget. */
       if (prevBillable <= 0) return "";
       const pct = Math.round(((weekBillable - prevBillable) / prevBillable) * 100);
-      const arrow = pct > 0 ? "↑" : pct < 0 ? "↓" : "→";
-      return ` · <span class="muted">${arrow} ${Math.abs(pct)}% vs prev week</span>`;
+      /* #542: trend icon comes from the icon system, not a text glyph (↑/↓/→)
+         — house rule, see #448. The svg is aria-hidden; the direction word
+         lives in the span's accessible label so the info survives the swap. */
+      const trend = pct > 0 ? "trend_up" : pct < 0 ? "trend_down" : "trend_flat";
+      const dirWord = pct > 0 ? "up" : pct < 0 ? "down" : "unchanged";
+      const abs = Math.abs(pct);
+      return ` · <span class="muted cal-delta" aria-label="${abs}% ${dirWord} vs prev week">${icon(trend)} ${abs}% vs prev week</span>`;
     })();
     const hourLabels = Array.from({ length: 24 }, (_, h) => {
       const ampm = h === 0 ? "12 AM" : h < 12 ? `${h} AM` : h === 12 ? "12 PM" : `${h - 12} PM`;

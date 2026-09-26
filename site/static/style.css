@@ -873,6 +873,9 @@ main.page-invoices { max-width: 760px; }
 .cal-supporting { grid-area: summary; display: flex; flex-direction: column; gap: 14px; margin: 10px 0 12px; min-width: 0; }
 .cal-supporting .week-nav { margin: 0; }
 .cal-supporting .m3-progress, .cal-supporting .week-clients, .cal-supporting .cal-hint { margin: 0; }
+/* #542: the week-over-week delta's trend icon rides the muted label baseline
+   at label size — the same 14px treatment the Stripe paid chip's icon gets. */
+.cal-summary .cal-delta svg { width: 14px; height: 14px; vertical-align: -2px; margin-right: 2px; }
 .cal-pane-layout .cal-scroll { grid-area: grid; }
 @media (min-width: 840px) {
   .cal-pane-layout { grid-template-columns: minmax(0, 1fr) var(--layout-supporting-pane);

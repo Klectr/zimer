@@ -314,6 +314,27 @@ describe("week summary delta (#524)", () => {
     expect(s).toContain("vs prev week");
     expect(s).toContain("·");
   });
+
+  /** #542: the delta's trend marker is an icon-system SVG, never a text
+   *  glyph — and the direction survives for assistive tech via the span's
+   *  accessible label (the svg itself is aria-hidden). */
+  test("delta uses an icon, not an arrow glyph; direction in the label", () => {
+    const prev = [{ ...entry, start_time: "2026-09-14T15:00:00.000Z", end_time: "2026-09-14T15:30:00.000Z" }];
+    const s = summaryHtml(prev);
+    expect(s).not.toContain("↑");
+    expect(s).not.toContain("↓");
+    expect(s).not.toContain("→");
+    expect(s).toContain("<svg");
+    expect(s).toContain('aria-label="100% up vs prev week"');
+    expect(s).toContain("M22 7l-8.5 8.5-5-5L2 17"); /* trend_up path */
+  });
+
+  test("flat delta: trend_flat with an unchanged label", () => {
+    const prev = [{ ...entry, start_time: "2026-09-14T15:00:00.000Z", end_time: "2026-09-14T16:00:00.000Z" }];
+    const s = summaryHtml(prev);
+    expect(s).toContain('aria-label="0% unchanged vs prev week"');
+    expect(s).toContain("M4 12h16"); /* trend_flat path */
+  });
 });
 
 /** #530: entry cards are tabindex="0" role="button" — Enter/Space must
