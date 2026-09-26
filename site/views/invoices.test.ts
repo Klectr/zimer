@@ -216,3 +216,29 @@ describe("#526: line-item table headers carry scope=col", () => {
     expect(headOf(step2)).toBe(headOf(sheet));
   });
 });
+
+/** #536: hidden per-row inputs must not be direct children of <tr> — only
+ *  td/th are valid there. The parser foster-parents stray inputs before the
+ *  <table>; they still land inside the <form> today, but if the table ever
+ *  moves out of the form (or the fragment is serialized standalone), the
+ *  entry IDs and date ranges silently drop and invoices would be created
+ *  with zero entries linked. */
+describe("#536: line-item hidden inputs live inside a td", () => {
+  const items = [
+    { description: "d", hours: 1, rate: 40, amount: 40, entry_ids: [1, 2], date_from: "2026-09-20", date_to: "2026-09-21" },
+    { description: "e", hours: 2, rate: 40, amount: 80, entry_ids: [3], date_from: "2026-09-22", date_to: "2026-09-22" },
+  ];
+  test("no input sits directly under a tr", () => {
+    const html = views([]).invoiceStep2(views([]).defaultNewInvParams(), { items } as any);
+    /* the editable cell inputs already live inside <td>s, so any input right
+       after a <tr> or </td> boundary is a stray tr child. */
+    expect(html).not.toMatch(/<tr>\s*<input/);
+    expect(html).not.toMatch(/<\/td>\s*<input/);
+    // the three hidden fields are still emitted per row, inside the form
+    for (const i of [0, 1]) {
+      expect(html).toContain(`name="g${i}_ids"`);
+      expect(html).toContain(`name="g${i}_date_from"`);
+      expect(html).toContain(`name="g${i}_date_to"`);
+    }
+  });
+});
