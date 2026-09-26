@@ -269,3 +269,49 @@ describe("calendar day view (#521)", () => {
     expect(html).not.toContain('data-mode="day"');
   });
 });
+
+/** #524: the supporting-pane summary's week-over-week delta slot — with no
+ *  previous-week billable time, the "· —" placeholder reads like a
+ *  half-loaded widget, so the delta (and its separator) is omitted. */
+describe("week summary delta (#524)", () => {
+  const entry = {
+    id: 21, description: "work", project_id: 3, project_name: "p",
+    client_name: "Acme", client_color: null, invoice_id: null,
+    invoice_number: null, invoice_status: null,
+    start_time: "2026-09-21T15:00:00.000Z", end_time: "2026-09-21T16:00:00.000Z",
+  };
+
+  function summaryHtml(prevRows: unknown[]) {
+    const db = {
+      query: (_sql: string) => ({ get: () => ({ n: 1 }), all: () => [entry] }),
+    } as unknown as Database;
+    const views = createCalendarViews({
+      db,
+      qOne: { get: (..._a: unknown[]) => ({ n: 1 }), all: (..._a: unknown[]) => [] },
+      qRange: { get: (..._a: unknown[]) => ({ n: 1 }), all: (..._a: unknown[]) => prevRows },
+      entrySelect: "SELECT",
+      layout: (_t: string, b: string) => b,
+      projectOptions: () => "",
+      weekTargetBar: () => "",
+      calHourPx: 64,
+    } as any);
+    const html = views.weekInner("2026-09-20", "America/Chicago");
+    const m = html.match(/<div class="cal-summary">[\s\S]*?<\/div>\s*<\/div>/);
+    if (!m) throw new Error("no cal-summary block");
+    return m[0];
+  }
+
+  test("no previous-week data: billable figure stands alone, no dash", () => {
+    const s = summaryHtml([]);
+    expect(s).toContain("1h 00m billable");
+    expect(s).not.toContain("·");
+    expect(s).not.toContain("—");
+  });
+
+  test("previous-week data present: delta shows with separator", () => {
+    const prev = [{ ...entry, start_time: "2026-09-14T15:00:00.000Z", end_time: "2026-09-14T16:00:00.000Z" }];
+    const s = summaryHtml(prev);
+    expect(s).toContain("vs prev week");
+    expect(s).toContain("·");
+  });
+});
