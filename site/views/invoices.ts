@@ -31,6 +31,15 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     unbilledByClient,
   } = deps;
 
+  /* #526: both line-item tables (the new-invoice preview and the rendered
+     sheet) share one header row — scope="col" lets screen readers announce
+     the column ("Hours", "Rate", "Amount") for each numeric cell. */
+  function itemHead(): string {
+    return `<tr><th scope="col">Date</th><th scope="col">Description</th>` +
+      `<th scope="col" class="num">Hours</th><th scope="col" class="num">Rate</th>` +
+      `<th scope="col" class="num">Amount</th></tr>`;
+  }
+
   /* #300: first-run empty state — a fresh install gets a one-click path to
      fictional sample data; everyone else gets straight to a new invoice. */
   function emptyInvoices(): string {
@@ -276,7 +285,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
           <input type="hidden" name="internal_notes" value="${esc(p.internal_notes)}">
           <input type="hidden" name="groups" value="${preview.items.length}">
           <div class="table-wrap"><table class="md-table">
-            <thead><tr><th>Date</th><th>Description</th><th class="num">Hours</th><th class="num">Rate</th><th class="num">Amount</th></tr></thead>
+            <thead>${itemHead()}</thead>
             <tbody>${rows}</tbody>
             <tfoot>
               <tr><td colspan="4">Subtotal</td><td class="num">${money(t.subtotal)}</td></tr>
@@ -340,7 +349,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     return `<div class="md-card invoice-sheet template-modern" id="invoice-sheet">
         ${head}
         <div class="table-wrap"><table class="md-table">
-          <thead><tr><th>Date</th><th>Description</th><th class="num">Hours</th><th class="num">Rate</th><th class="num">Amount</th></tr></thead>
+          <thead>${itemHead()}</thead>
           <tbody>${items || `<tr><td colspan="5" class="muted">No line items.</td></tr>`}</tbody>
           <tfoot>
             <tr><td colspan="4">Subtotal</td><td class="num">${money(t.subtotal)}</td></tr>
