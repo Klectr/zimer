@@ -94,7 +94,8 @@ export function createTimerViews(deps: TimerViewDeps) {
       return `<div class="md-card tracking" id="timer-card">
         <div class="timer-top-row">
           <div class="timer-state-label"><span class="live-dot" aria-hidden="true"></span>TRACKING${proj}</div>
-        <button class="md-filled-button stop" hx-post="/timer/stop" hx-target="#timer-card" hx-swap="outerHTML swap:200ms">
+        <button class="md-filled-button stop" hx-post="/timer/stop" hx-target="#timer-card" hx-swap="outerHTML swap:200ms"
+          data-tip="Stop (t)" aria-keyshortcuts="t">
             ${icon("stop")}Stop
           </button>
         </div>
@@ -134,7 +135,7 @@ export function createTimerViews(deps: TimerViewDeps) {
           <select name="project_id" aria-label="Project"><option value="">No project</option>${projectOptions()}</select>
           <label>Project</label>
         </div>
-        <button class="md-filled-button" type="submit">
+        <button class="md-filled-button" type="submit" data-tip="Start (t)" aria-keyshortcuts="t">
           ${icon("play")}Start
         </button>
       </form>

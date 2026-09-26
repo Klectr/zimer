@@ -312,3 +312,22 @@ describe("skip link (#511)", () => {
     expect(html.slice(bodyStart, linkPos)).not.toMatch(/<(a|button|input|select|textarea)[ >]/);
   });
 });
+
+describe("timer shortcut hint (#532)", () => {
+  test("Start button advertises the t shortcut in its tooltip", () => {
+    const html = partial(false);
+    expect(html).toContain('data-tip="Start (t)"');
+    expect(html).toContain('aria-keyshortcuts="t"');
+  });
+  test("Stop button advertises the t shortcut in its tooltip", () => {
+    const html = partial(true);
+    expect(html).toContain('data-tip="Stop (t)"');
+    expect(html).toContain('aria-keyshortcuts="t"');
+  });
+  test("filled-button tooltip styles exist in the house data-tip system", async () => {
+    const css = await Bun.file("site/static/style.css").text();
+    expect(css).toContain(".md-filled-button[data-tip]");
+    expect(css).toContain(".md-filled-button[data-tip]:focus-visible::before");
+    expect(css).toContain(".md-filled-button[data-tip].tip-show::before");
+  });
+});

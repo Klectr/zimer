@@ -372,6 +372,30 @@ main:focus { outline: none; }
 .md-icon-button[data-tip].tip-right:hover::before,
 .md-icon-button[data-tip].tip-right:focus-visible::before,
 .md-icon-button[data-tip].tip-right.tip-show::before { transform: translateY(0); }
+/* #532: M3 plain tooltip for filled buttons — the timer Start/Stop buttons
+   advertise the t shortcut. Mirrors the #432 icon-button tooltip: ::before
+   so it doesn't clobber the ::after hover state layer; overflow:visible so
+   the tooltip escapes the button's clip. */
+.md-filled-button[data-tip] { overflow: visible; }
+.md-filled-button[data-tip]::before {
+  content: attr(data-tip);
+  position: absolute; left: 50%; top: calc(100% + 4px); /* M3: 4dp anchor gap */
+  transform: translateX(-50%) translateY(-2px);
+  background: var(--md-sys-color-inverse-surface);
+  color: var(--md-sys-color-inverse-on-surface);
+  border-radius: var(--md-sys-shape-corner-extra-small); /* M3 plain tooltip shape */
+  padding: 4px 8px; /* M3 plain tooltip padding */
+  white-space: nowrap; max-width: 200px;
+  font-size: 0.75rem; line-height: 16px; font-weight: 400;
+  opacity: 0; pointer-events: none; z-index: 30;
+  transition: opacity var(--motion-duration-short2) var(--motion-easing-standard),
+    transform var(--motion-duration-short2) var(--motion-easing-standard);
+}
+.md-filled-button[data-tip]:hover::before,
+.md-filled-button[data-tip]:focus-visible::before,
+.md-filled-button[data-tip].tip-show::before {
+  opacity: 1; transform: translateX(-50%) translateY(0);
+}
 
 /* ---------------- text fields (borderless tonal, 56dp) ----------------
  * No indicator lines: separation comes from the tonal container + whitespace.
