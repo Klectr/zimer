@@ -265,10 +265,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
           <td><input type="text" name="g${i}_desc" value="${esc(it.description)}" class="cell-input" aria-label="Item description"></td>
           <td><input type="number" name="g${i}_hours" value="${it.hours}" min="0" step="0.01" class="cell-input num" aria-label="Hours"></td>
           <td><input type="number" name="g${i}_rate" value="${it.rate}" min="0" step="0.01" class="cell-input num" aria-label="Rate"></td>
-          <td class="num">${money(it.amount)}</td>
-          <input type="hidden" name="g${i}_ids" value="${it.entry_ids.join(",")}">
-          <input type="hidden" name="g${i}_date_from" value="${esc(it.date_from || "")}">
-          <input type="hidden" name="g${i}_date_to" value="${esc(it.date_to || "")}">
+          <td class="num">${money(it.amount)}<input type="hidden" name="g${i}_ids" value="${it.entry_ids.join(",")}"><input type="hidden" name="g${i}_date_from" value="${esc(it.date_from || "")}"><input type="hidden" name="g${i}_date_to" value="${esc(it.date_to || "")}"></td>
         </tr>`).join("");
     const t = invoiceTotals(preview.items, Number(p.tax_rate) || 0);
     return `
