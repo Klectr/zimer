@@ -1340,8 +1340,6 @@ button.m3-menu-item {
 
 .pill { display: inline-block; padding: 2px 12px; border-radius: var(--md-sys-shape-corner-full);
   font-size: 0.75rem; font-weight: 500; letter-spacing: 0.4px; vertical-align: middle; }
-.pill-draft { background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container); }
-.pill-sent { background: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container); }
 
 /* #330: "Invoiced"/"Draft" mark on timer entry rows — tonal pill, no border. */
 .inv-mark { display: inline-flex; align-items: center; height: 18px; padding: 0 8px;
