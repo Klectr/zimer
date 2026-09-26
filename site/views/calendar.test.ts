@@ -305,20 +305,29 @@ describe("calendar compact mini-week", () => {
     const html = viewsFor([monEntry, tueEntry]).weekInner("2026-09-20", "America/Chicago");
     const g = html.match(/<div class="cal-grid" id="cal-body"[^>]*>/);
     if (!g) throw new Error("cal-body not rendered");
-    const wlo = +g[0].match(/--wlo:(\d+)/)![1];
-    const wspan = +g[0].match(/--wspan:(\d+)/)![1];
+    const wlo = +g[0].match(/--wlo:([\d.]+)/)![1];
+    const wspan = +g[0].match(/--wspan:([\d.]+)/)![1];
     // mon 9–11 → 8–12, tue 9–10 → 8–11: the entry window is always inside
     // (today's lane may widen it further when today is in the week)
     expect(wlo).toBeLessThanOrEqual(8);
     expect(wlo + wspan).toBeGreaterThanOrEqual(12);
   });
 
-  test("all-empty week (not containing today) defaults to 8:00–18:00", () => {
+  test("all-empty week (not containing today) defaults to 8:00–18:00, padded a half hour each side for label legibility", () => {
     const html = viewsFor([]).weekInner("2026-01-04", "America/Chicago");
     const g = html.match(/<div class="cal-grid" id="cal-body"[^>]*>/);
     if (!g) throw new Error("cal-body not rendered");
-    expect(g[0]).toContain("--wlo:8");
-    expect(g[0]).toContain("--wspan:10");
+    expect(g[0]).toContain("--wlo:7.5");
+    expect(g[0]).toContain("--wspan:11");
+  });
+
+  test("day columns are quiet — no night-sky bands, waves, or glyph stars", () => {
+    const html = viewsFor([monEntry]).weekInner("2026-09-20", "America/Chicago");
+    expect(html).not.toContain("cal-night");
+    expect(html).not.toContain("cal-wave");
+    expect(html).not.toContain("cal-star");
+    expect(html).not.toContain("✦");
+    expect(html).not.toContain("hour-label night");
   });
 
   test("no view modes remain — one grid, one partial, one attribute", () => {

@@ -980,8 +980,6 @@ body.app-fixed .cal-gutter-spacer {
   top: calc(var(--h, 0) * var(--cal-hour) - 8px);
   font-size: 0.6875rem; color: var(--md-sys-color-on-surface-variant); white-space: nowrap;
 }
-/* Night hours (7 PM – 6 AM) read lavender in the gutter. */
-.cal-hour-label.night { color: #b9a8e8; }
 .cal-day { display: flex; flex-direction: column; min-width: 0; }
 /* Grid entrance (#49): columns stagger in left→right inside the #48 region
    entrance; per-column delay rendered inline by weekGrid. */
@@ -1043,39 +1041,14 @@ body.app-fixed .cal-gutter-spacer {
 .cal-day.paced-short .cal-day-col {
   background-color: var(--md-sys-color-surface-container);
 }
-/* Night bands (7 PM – 6 AM): deep purple with stars. Translucent so the hour
-   lines show through; behind entries; pointer-events none so drag-create
-   still works over them. */
-.cal-night {
-  position: absolute; left: 0; right: 0; pointer-events: none;
-  background: color-mix(in srgb, #4a2b8f 48%, transparent);
-}
-/* Wavy horizon on the day-facing edge of each night band. The wave fill is
-   the same translucent purple, so it composites seamlessly with the band. */
-.cal-wave { position: absolute; left: 0; width: 100%; height: 12px; display: block; }
-.cal-wave path { fill: color-mix(in srgb, #4a2b8f 48%, transparent); }
-.cal-wave-am { bottom: -10px; }
-.cal-wave-pm { top: -10px; }
-.cal-night-am { top: 0; height: calc(var(--cal-hour) * 6);
-  border-radius: var(--md-sys-shape-corner-medium) var(--md-sys-shape-corner-medium) 0 0; }
-.cal-night-pm { top: calc(var(--cal-hour) * 19); height: calc(var(--cal-hour) * 5);
-  border-radius: 0 0 var(--md-sys-shape-corner-medium) var(--md-sys-shape-corner-medium); }
-.cal-star {
-  position: absolute; color: #d9cdf7; font-size: 0.625rem; line-height: 1;
-  opacity: .55; animation: cal-twinkle 3.2s ease-in-out infinite;
-}
-.cal-star:nth-child(3n) { font-size: 0.5rem; opacity: .4; }
-.cal-star:nth-child(4n) { font-size: 0.75rem; opacity: .65; }
-@keyframes cal-twinkle { 50% { opacity: .22; } }
-@media (prefers-reduced-motion: reduce) {
-  .cal-star { animation: none; }
-}
 .cal-entry {
   position: absolute; left: 4px; right: 4px; border-radius: var(--md-sys-shape-corner-small);
   background: var(--c, var(--md-sys-color-primary)); color: #16161c;
   padding: 4px 8px; overflow: hidden; cursor: pointer;
   font-size: 0.75rem; line-height: 1.35;
   min-width: 0;
+  /* soft lift off the quiet lane — the entry is the color on the column */
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
   /* hour-based geometry (--t start, --d duration in hours) so the compact
      mini-week scales entries with --cal-hour; the 2px/4px #273 inset stays. */
   top: calc(var(--t, 0) * var(--cal-hour) + 2px);

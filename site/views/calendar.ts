@@ -21,22 +21,6 @@ export interface CalendarViewDeps {
 }
 
 export function createCalendarViews(deps: CalendarViewDeps) {
-  /** Night = 7 PM – 6 AM. Star scatter per night band, as [left%, top%] pairs. */
-  const NIGHT_STARS_AM = [[12, 8], [68, 20], [34, 40], [82, 58], [50, 78], [22, 90]];
-  const NIGHT_STARS_PM = [[30, 10], [70, 28], [48, 50], [16, 72], [62, 90]];
-  /** Wavy horizon where day meets night: filled with the same translucent
-      purple so it composites seamlessly with the band. */
-  const WAVE_AM = `<svg class="cal-wave cal-wave-am" viewBox="0 0 120 12" preserveAspectRatio="none" aria-hidden="true"><path d="M0 0H120V5Q105 11 90 5T60 5T30 5T0 5Z"/></svg>`;
-  const WAVE_PM = `<svg class="cal-wave cal-wave-pm" viewBox="0 0 120 12" preserveAspectRatio="none" aria-hidden="true"><path d="M0 12H120V7Q105 1 90 7T60 7T30 7T0 7Z"/></svg>`;
-  /** #324: each star gets a random twinkle phase (negative delay) and a
-      slightly varied duration, so the night bands shimmer organically
-      instead of twinkling in lockstep across all 7 day columns. */
-  function nightStars(list: number[][]): string {
-    return list.map(([x, y]) =>
-      `<span class="cal-star" style="left:${x}%;top:${y}%;animation-delay:${(-(Math.random() * 3.2)).toFixed(2)}s;animation-duration:${(2.6 + Math.random() * 1.6).toFixed(2)}s">✦</span>`
-    ).join("");
-  }
-
   const { db, qOne, qRange, entrySelect: ENTRY_SELECT, layout, projectOptions, weekTargetBar, calHourPx } = deps;
 
   /* #256: the server may be in another timezone (VPS is UTC), so every
@@ -164,8 +148,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
   function hourLabelsHtml(): string {
     return Array.from({ length: 24 }, (_, h) => {
       const ampm = h === 0 ? "12 AM" : h < 12 ? `${h} AM` : h === 12 ? "12 PM" : `${h - 12} PM`;
-      const night = h < 6 || h >= 19;
-      return `<span class="cal-hour-label${night ? " night" : ""}" style="--h:${h}">${ampm}</span>`;
+      return `<span class="cal-hour-label" style="--h:${h}">${ampm}</span>`;
     }).join("");
   }
 
@@ -292,7 +275,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       <div class="cal-day-body">
         <div class="cal-day-shift">
           <div class="cal-day-gutter cal-hours" aria-hidden="true">${hourLabelsHtml()}</div>
-          <div class="cal-day-col" data-date="${day}"><div class="cal-night cal-night-am" aria-hidden="true">${WAVE_AM}${nightStars(NIGHT_STARS_AM)}</div><div class="cal-night cal-night-pm" aria-hidden="true">${WAVE_PM}${nightStars(NIGHT_STARS_PM)}</div>${entryHtml}${nowLine}</div>
+          <div class="cal-day-col" data-date="${day}">${entryHtml}${nowLine}</div>
         </div>
         ${empty ? `<div class="cal-empty-hint md-label-medium muted">No entries yet</div>` : ""}
       </div>
@@ -330,8 +313,12 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     }
     /* Compact mini-week aligns all 7 lanes to one window: the extremes of
        the per-day trims (±1h pad already baked in). An all-empty week gets
-       a default 8:00–18:00 window instead of collapsing to zero height. */
+       a default 8:00–18:00 window instead of collapsing to zero height.
+       Half-hour breathing room each side: hour labels sit centered on the
+       hour line, so an exact-hour window would clip the boundary labels
+       against the compact viewport edges. */
     if (!(whi > wlo)) { wlo = 8; whi = 18; }
+    wlo -= 0.5; whi += 0.5;
     return calShell(wd, navTitle, navActions, lanes.join(""), wlo, whi - wlo);
   }
 
