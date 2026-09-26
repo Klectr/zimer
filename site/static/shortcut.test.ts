@@ -182,7 +182,10 @@ describe("t toggle guard", () => {
     /* The start path arms the tab ticker — fake the interval so no real
        timer is scheduled in the test process. */
     g.setInterval = () => 1;
-    g.document.querySelector = (_sel: string) => fakeForm;
+    /* #540: no modal dialog open by default — the scrim selector matches
+       nothing, everything else gets the fake start form. */
+    g.document.querySelector = (sel) =>
+      sel === ".cal-scrim:not([hidden])" ? null : fakeForm;
     /* Stop path: disarmTicker is a no-op without a live interval, so the
        real setInterval in ticker.start is never armed. */
     g.document.body.dataset.timerRunning = "1";
@@ -242,5 +245,16 @@ describe("t toggle guard", () => {
     expect(formDataArgs).toEqual(["empty"]);
     resolveFetches();
     await flush();
+  });
+
+  /* #540: a press with a modal dialog open never toggles — the timer must
+     not flip behind the scrim. */
+  test("press with an open modal dialog fires nothing", async () => {
+    g.document.querySelector = (sel: string) =>
+      sel === ".cal-scrim:not([hidden])" ? { tagName: "DIV" } : fakeForm;
+    keyT();
+    expect(fetchCalls.length).toBe(0);
+    await flush();
+    expect(fetchCalls.length).toBe(0);
   });
 });

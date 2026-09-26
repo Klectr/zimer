@@ -72,6 +72,11 @@
     /* #534: holding t must not machine-gun the timer via key auto-repeat. */
     if (e.repeat) return;
     if (isEditable(e.target)) return;
+    /* #540: a modal dialog is open — M3 modal dialogs capture all
+       interaction until dismissed, so the shortcut must not toggle the
+       timer behind the scrim. Both dialogs (calendar, settings) use
+       .cal-scrim, hidden when closed. */
+    if (document.querySelector(".cal-scrim:not([hidden])")) return;
     e.preventDefault();
     toggle();
   });
