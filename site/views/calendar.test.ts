@@ -175,9 +175,10 @@ describe("calendar entry invoiced-mark tooltip (#500)", () => {
   });
 });
 
-/** #521: narrow containers collapse to a genuine server-rendered single-
- *  column day view — one lane, day nav, week-scoped supporting pane. */
-describe("calendar day view (#521)", () => {
+/** Day stack: narrow containers reflow the 7 lanes into full-width stacked
+ *  day sections — pure CSS via [data-stacked], no view modes. The server
+ *  trims each day to its entries (±1h) through --lo/--span. */
+describe("calendar day stack", () => {
   const stubQuery = () => ({
     get: (..._a: unknown[]) => ({ n: 1 }),
     all: (..._a: unknown[]) => [],
@@ -213,59 +214,96 @@ describe("calendar day view (#521)", () => {
   }
 
   const laneCount = (html: string) => (html.match(/class="cal-day[ "]/g) || []).length;
+  const laneTag = (html: string, date: string) => {
+    // lane opens only: `cal-day` followed by space or quote (not cal-day-head etc.)
+    const re = /<div class="cal-day([ "][^>]*)>/g;
+    const opens: { tag: string; index: number }[] = [];
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(html)) !== null) opens.push({ tag: m[0], index: m.index });
+    for (let i = 0; i < opens.length; i++) {
+      const end = i + 1 < opens.length ? opens[i + 1].index : html.length;
+      if (html.slice(opens[i].index, end).includes(`data-date="${date}"`)) return opens[i].tag;
+    }
+    throw new Error(`no cal-day lane for ${date}`);
+  };
 
-  test("dayInner renders one lane with data-mode=day", () => {
-    const html = viewsFor([monEntry, tueEntry]).dayInner("2026-09-21", "America/Chicago");
-    expect(laneCount(html)).toBe(1);
-    expect(html).toContain('data-mode="day"');
-    expect(html).toContain('data-date="2026-09-21"');
+  test("dayTrim is empty-aware and pads ±1h", () => {
+    const { dayTrim } = viewsFor([]);
+    expect(dayTrim([])).toEqual({ lo: 0, span: 0 });
+    // 9:00–11:00 → 8:00–12:00
+    expect(dayTrim([{ a: 540, b: 660 }])).toEqual({ lo: 8, span: 4 });
+    // multi-block spans the extremes
+    expect(dayTrim([{ a: 540, b: 600 }, { a: 840, b: 1020 }])).toEqual({ lo: 8, span: 10 });
   });
 
-  test("dayInner shows only the selected day's entries", () => {
-    const html = viewsFor([monEntry, tueEntry]).dayInner("2026-09-21", "America/Chicago");
-    expect(html).toContain("monday work");
-    expect(html).not.toContain("tuesday work");
+  test("dayTrim clamps to the 0–24 day", () => {
+    const { dayTrim } = viewsFor([]);
+    expect(dayTrim([{ a: 30, b: 60 }])).toEqual({ lo: 0, span: 2 });
+    expect(dayTrim([{ a: 1320, b: 1410 }])).toEqual({ lo: 21, span: 3 });
   });
 
-  test("dayInner keeps the week-scoped supporting pane", () => {
-    const html = viewsFor([monEntry, tueEntry]).dayInner("2026-09-21", "America/Chicago");
+  test("each lane carries its --lo/--span trim", () => {
+    const html = viewsFor([monEntry, tueEntry]).weekInner("2026-09-20", "America/Chicago");
+    expect(laneCount(html)).toBe(7);
+    // monday 9:00–11:00 CDT → --lo:8;--span:4 ; tuesday 9:00–10:00 CDT → --lo:8;--span:3
+    expect(laneTag(html, "2026-09-21")).toContain("--lo:8;--span:4");
+    expect(laneTag(html, "2026-09-22")).toContain("--lo:8;--span:3");
+  });
+
+  test("lanes wrap the column in body/shift with a per-day gutter", () => {
+    const html = viewsFor([monEntry]).weekInner("2026-09-20", "America/Chicago");
+    const gutters = html.match(/class="cal-day-gutter cal-hours"/g) || [];
+    expect(gutters.length).toBe(7);
+    const labels = html.match(/class="cal-hour-label/g) || [];
+    // 24 labels × 7 per-day gutters + 24 in the shared week gutter
+    expect(labels.length).toBe(24 * 8);
+    expect(html).toContain('class="cal-day-body"');
+    expect(html).toContain('class="cal-day-shift"');
+  });
+
+  test("empty days collapse with a hint", () => {
+    const html = viewsFor([monEntry]).weekInner("2026-09-20", "America/Chicago");
+    // wednesday has no entries
+    const tag = laneTag(html, "2026-09-23");
+    expect(tag).toContain("--span:0");
+    expect(tag).toContain("cal-empty");
+    expect(html).toContain("cal-empty-hint");
+  });
+
+  test("entries stay 24h-relative (no stacked-mode position math)", () => {
+    const html = viewsFor([monEntry]).weekInner("2026-09-20", "America/Chicago");
+    // 9:00 at 64px/hour → top:578.0px (576 + 2px inset), height 126px (2h − 4px inset)
+    const m = html.match(/<div class="cal-entry[^>]*data-id="31"[^>]*>/);
+    if (!m) throw new Error("entry 31 not rendered");
+    expect(m[0]).toContain("top:578.0px");
+  });
+
+  test("no view modes remain — one grid, one partial, one attribute", () => {
+    const views = viewsFor([monEntry]);
+    const html = views.weekInner("2026-09-20", "America/Chicago");
+    expect(html).not.toContain("data-mode=");
+    expect(html).not.toContain("/partial/day");
+    expect(html).toContain('id="cal-body"');
+    const page = views.calendarPage("2026-09-20");
+    expect(page).not.toContain("DAY_BREAK");
+    expect(page).not.toContain("initMode");
+    expect(page).toContain("data-stacked");
+    expect(page).toContain("STACK_BREAK");
+  });
+
+  test("weekGrid always loads the week partial with the 7-lane skeleton", () => {
+    const html = viewsFor([]).weekGrid("2026-09-20");
+    expect(html).toContain('hx-get="/partial/week?week=2026-09-20"');
+    expect(html).not.toContain("/partial/day");
+    expect(html).not.toContain("data-mode=");
+  });
+
+  test("supporting pane stays week-scoped", () => {
+    const html = viewsFor([monEntry, tueEntry]).weekInner("2026-09-20", "America/Chicago");
     // 2h monday + 1h tuesday = 3h week total, all billable
     expect(html).toContain("3h 00m");
     expect(html).toContain("Acme");
     expect(html).toContain("Invoice this week");
-  });
-
-  test("day nav uses day labels and accessible names", () => {
-    const html = viewsFor([]).dayInner("2026-09-21", "America/Chicago");
-    expect(html).toContain('aria-label="Previous day"');
-    expect(html).toContain('aria-label="Next day"');
-    expect(html).toContain('hx-get="/partial/day?day=2026-09-20"');
-    expect(html).toContain('hx-get="/partial/day?day=2026-09-22"');
-    expect(html).not.toContain("Week of");
-  });
-
-  test("dayInner falls back to today on an invalid day", () => {
-    const html = viewsFor([]).dayInner("not-a-day", "UTC");
-    expect(laneCount(html)).toBe(1);
-    expect(html).toContain('<h2 class="md-headline-small">Today</h2>');
-  });
-
-  test("weekInner still renders seven lanes with data-mode=week", () => {
-    const html = viewsFor([monEntry]).weekInner("2026-09-20", "America/Chicago");
-    expect(laneCount(html)).toBe(7);
-    expect(html).toContain('data-mode="week"');
     expect(html).toContain('aria-label="Previous week"');
-  });
-
-  test("weekGrid loads the day skeleton for ?day=", () => {
-    const html = viewsFor([]).weekGrid(undefined, "2026-09-21");
-    expect(html).toContain('hx-get="/partial/day?day=2026-09-21"');
-    expect(html).toContain('data-mode="day"');
-  });
-
-  test("weekGrid keeps the week skeleton by default", () => {
-    const html = viewsFor([]).weekGrid("2026-09-20");
-    expect(html).toContain('hx-get="/partial/week?week=2026-09-20"');
-    expect(html).not.toContain('data-mode="day"');
   });
 });

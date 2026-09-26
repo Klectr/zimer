@@ -91,9 +91,8 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     return guess;
   }
 
-  /** #521: week-scoped data shared by the week grid and the single-column
-      day view — the week's entries bucketed by client-local day, plus the
-      summary figures the supporting pane shows (always week-scoped). */
+  /** Week-scoped data: the week's entries bucketed by client-local day, plus
+      the summary figures the supporting pane shows (always week-scoped). */
   interface CalWeekData {
     tz: string | null;
     today: string;
@@ -148,8 +147,28 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     return { tz, today, sun, rows, byDay, weekTotal, weekBillable, clientRows, uninvoiced, prevBillable };
   }
 
-  /** #521: one .cal-day column. Extracted from weekInner's loop body so the
-      week grid and the day view render identical lanes. */
+  /** Day-stack trim: a stacked day shows its entries ±1h, so a narrow week
+      reflows into compact full-width sections instead of seven slivers.
+      Pure (exported for tests); hours, clamped to the 0–24 day. */
+  function dayTrim(blocks: { a: number; b: number }[]): { lo: number; span: number } {
+    if (blocks.length === 0) return { lo: 0, span: 0 };
+    const lo = Math.max(0, Math.floor(Math.min(...blocks.map((x) => x.a)) / 60) - 1);
+    const hi = Math.min(24, Math.ceil(Math.max(...blocks.map((x) => x.b)) / 60) + 1);
+    return { lo, span: Math.max(hi - lo, 1) };
+  }
+
+  /** 24 hour labels, 24h-relative — shared by the week gutter and each
+      stacked day's own gutter. */
+  function hourLabelsHtml(): string {
+    return Array.from({ length: 24 }, (_, h) => {
+      const ampm = h === 0 ? "12 AM" : h < 12 ? `${h} AM` : h === 12 ? "12 PM" : `${h - 12} PM`;
+      const night = h < 6 || h >= 19;
+      return `<span class="cal-hour-label${night ? " night" : ""}" style="top:${(h * calHourPx - 8).toFixed(0)}px">${ampm}</span>`;
+    }).join("");
+  }
+
+  /** One .cal-day column: header, trimmable body (per-day gutter + lane),
+      and the entry cards. The week grid and the day stack share it. */
   function dayColumnHtml(day: string, data: CalWeekData, animDelay: number): string {
     const { tz, today } = data;
     const toMin = (iso: string) => { const p = tzParts(new Date(iso), tz); return p.hh * 60 + p.mm; };
@@ -246,12 +265,23 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     const headAttrs = tip
       ? ` tabindex="0" data-tip="${tip}" aria-label="${esc(wd)} ${d}: ${tip}"`
       : "";
-    return `<div class="cal-day${isToday ? " today" : ""}${pastShort ? " paced-short" : ""}" style="animation-delay:${animDelay}ms">
+    /* Day stack: entries stay 24h-relative; the --lo/--span trim lets the
+       stacked layout slide each day's column up so only the entry window
+       (±1h) shows. Week mode ignores the trim (display:contents wrappers). */
+    const trim = dayTrim(sortedBlocks);
+    const empty = trim.span === 0;
+    return `<div class="cal-day${isToday ? " today" : ""}${pastShort ? " paced-short" : ""}${empty ? " cal-empty" : ""}" style="--lo:${trim.lo};--span:${trim.span};animation-delay:${animDelay}ms">
       <div class="cal-day-head"${headAttrs}>
         <div class="md-label-large muted">${esc(wd)}</div>
         <div class="cal-day-num${isToday ? " today" : ""}">${d}</div>
       </div>
-      <div class="cal-day-col" data-date="${day}"><div class="cal-night cal-night-am" aria-hidden="true">${WAVE_AM}${nightStars(NIGHT_STARS_AM)}</div><div class="cal-night cal-night-pm" aria-hidden="true">${WAVE_PM}${nightStars(NIGHT_STARS_PM)}</div>${entryHtml}${nowLine}</div>
+      <div class="cal-day-body">
+        <div class="cal-day-shift">
+          <div class="cal-day-gutter cal-hours" aria-hidden="true">${hourLabelsHtml()}</div>
+          <div class="cal-day-col" data-date="${day}"><div class="cal-night cal-night-am" aria-hidden="true">${WAVE_AM}${nightStars(NIGHT_STARS_AM)}</div><div class="cal-night cal-night-pm" aria-hidden="true">${WAVE_PM}${nightStars(NIGHT_STARS_PM)}</div>${entryHtml}${nowLine}</div>
+        </div>
+        ${empty ? `<div class="cal-empty-hint md-label-medium muted">No entries yet</div>` : ""}
+      </div>
     </div>`;
   }
 
@@ -273,34 +303,14 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       <a class="md-icon-button" href="/calendar?week=${next}" hx-get="/partial/week?week=${next}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?week=${next}" data-tip="Next week" aria-label="Next week">${icon("chevron_right")}</a>`;
     const lanes: string[] = [];
     for (let i = 0; i < 7; i++) lanes.push(dayColumnHtml(addDays(sun, i), wd, i * 40));
-    return calShell(wd, navTitle, navActions, lanes.join(""), "week");
+    return calShell(wd, navTitle, navActions, lanes.join(""));
   }
 
-  /** #521: single-column day view, served full-page via weekGrid(day) and
-      in-place via GET /partial/day. The supporting pane stays week-scoped
-      (the selected day's containing week); only the lanes and the nav change. */
-  function dayInner(dayStr?: string, tzParam?: string): string {
-    const tz = validTz(tzParam);
-    /* "today" in the client's zone — the server may be on a different date. */
-    const today = ymdOf(tzParts(new Date(), tz));
-    const day = dayStr && /^\d{4}-\d{2}-\d{2}$/.test(dayStr) ? dayStr : today;
-    const wd = weekData(sundayOfYmd(day), tz);
-    const prevDay = addDays(day, -1), nextDay = addDays(day, 1);
-    const isToday = day === today;
-    const navTitle = isToday ? "Today"
-      : new Date(day + "T12:00:00").toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
-    const navActions = `
-      ${isToday ? "" : `<a class="md-text-button" href="/calendar?day=${today}" hx-get="/partial/day?day=${today}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?day=${today}">Today</a>`}
-      <a class="md-icon-button" href="/calendar?day=${prevDay}" hx-get="/partial/day?day=${prevDay}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?day=${prevDay}" data-tip="Previous day" aria-label="Previous day">${icon("chevron_left")}</a>
-      <a class="md-icon-button" href="/calendar?day=${nextDay}" hx-get="/partial/day?day=${nextDay}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?day=${nextDay}" data-tip="Next day" aria-label="Next day">${icon("chevron_right")}</a>`;
-    return calShell(wd, navTitle, navActions, dayColumnHtml(day, wd, 0), "day");
-  }
-
-  /** #521: the #week section shared by week and day modes — supporting pane
-      (always week-scoped) plus the scroll region. `mode` drives the grid's
-      column count through [data-mode]. */
+  /** The #week section — supporting pane (always week-scoped) plus the
+      scroll region. Narrow containers reflow the lanes into a day stack
+      through [data-stacked] (see calScript); there are no view modes. */
   function calShell(wd: CalWeekData, navTitle: string, navActions: string,
-      lanesHtml: string, mode: "week" | "day"): string {
+      lanesHtml: string): string {
     const { sun, weekTotal, weekBillable, clientRows, uninvoiced, prevBillable } = wd;
     const nudgeChip = uninvoiced > 0 ? `
       <a class="nudge-chip" href="/invoices/new?from=${sun}&to=${addDays(sun, 7)}">
@@ -322,11 +332,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       const arrow = pct > 0 ? "↑" : pct < 0 ? "↓" : "→";
       return `<span class="muted">${arrow} ${Math.abs(pct)}% vs prev week</span>`;
     })();
-    const hourLabels = Array.from({ length: 24 }, (_, h) => {
-      const ampm = h === 0 ? "12 AM" : h < 12 ? `${h} AM` : h === 12 ? "12 PM" : `${h - 12} PM`;
-      const night = h < 6 || h >= 19;
-      return `<span class="cal-hour-label${night ? " night" : ""}" style="top:${(h * calHourPx - 8).toFixed(0)}px">${ampm}</span>`;
-    }).join("");
+    const hourLabels = hourLabelsHtml();
 
     return `
     <div class="cal-pane-layout">
@@ -352,7 +358,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
         </div>` : ""}
       </aside>
       <div class="cal-scroll" data-enter="3">
-        <div class="cal-grid" id="cal-body" data-mode="${mode}" style="--cal-hour:${calHourPx}px">
+        <div class="cal-grid" id="cal-body" style="--cal-hour:${calHourPx}px">
           <div class="cal-gutter-col">
             <div class="cal-gutter-spacer"></div>
             <div class="cal-gutter cal-hours">${hourLabels}</div>
@@ -374,17 +380,14 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       #256: the grid loads via htmx (tz is appended by calScript's
       htmx:configRequest) so the first paint is already in the client's zone —
       a server-rendered grid would flash server-timezone positions. */
-  function weekGrid(weekStr?: string, dayStr?: string): string {
-    /* #521: a ?day= URL loads the skeleton in day mode — one lane, with the
-       calScript init correcting to week mode when the grid is wide enough. */
-    const day = dayStr && /^\d{4}-\d{2}-\d{2}$/.test(dayStr) ? dayStr : undefined;
-    const q = day ? `?day=${day}` : (weekStr && /^\d{4}-\d{2}-\d{2}$/.test(weekStr) ? `?week=${weekStr}` : "");
+  function weekGrid(weekStr?: string): string {
+    const q = weekStr && /^\d{4}-\d{2}-\d{2}$/.test(weekStr) ? `?week=${weekStr}` : "";
     /* #322: the skeleton mirrors .cal-pane-layout (summary aside with the
        week-nav skeleton at its top, gutter + day columns with the hour
        rhythm) so the htmx swap lands without a layout flash. */
     const skelDay = `<div class="cal-skel-day"><div class="skel cal-skel-head"></div><div class="skel cal-skel-lane"></div></div>`;
-    const skelGrid = `<div class="cal-skel-grid"${day ? ` data-mode="day"` : ""}>${skelDay.repeat(day ? 2 : 8)}</div>`;
-    return `<div id="week" hx-get="/partial/${day ? "day" : "week"}${q}" hx-trigger="load" hx-swap="innerHTML">
+    const skelGrid = `<div class="cal-skel-grid">${skelDay.repeat(8)}</div>`;
+    return `<div id="week" hx-get="/partial/week${q}" hx-trigger="load" hx-swap="innerHTML">
         <div class="cal-skel" aria-hidden="true">
           <div class="cal-skel-aside">
             <div class="cal-skel-nav">
@@ -451,63 +454,27 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     function tzSuffix(){var o=-new Date().getTimezoneOffset();var s=o<0?"-":"+",a=Math.abs(o);
       return s+String(Math.floor(a/60)).padStart(2,"0")+":"+String(a%60).padStart(2,"0");}
     document.body.addEventListener("htmx:configRequest",function(e){
-      if(e.detail&&e.detail.path&&(e.detail.path.indexOf("/partial/week")===0||e.detail.path.indexOf("/partial/day")===0)&&TZ)
+      if(e.detail&&e.detail.path&&e.detail.path.indexOf("/partial/week")===0&&TZ)
         e.detail.parameters.tz=TZ;});
-    /* #521: collapse to a genuine server-rendered single-column day view when
-       the grid gets too narrow. The trigger is the calendar's own width, not
-       the viewport: 54px gutter + 7 lanes at ~100px + 6 gaps ≈ 800px. The
-       desktop week grid maxes out around 866px (lanes ~108px — the designed
-       week view), so this threshold leaves desktop untouched and collapses
-       only containers where the lanes would become unreadable slivers. Mode
-       lives in the URL (?day= vs ?week=) so deep links keep working. */
-    var DAY_BREAK=800;
-    function gridWidth(){
-      var el=document.querySelector(".cal-scroll")||document.querySelector(".cal-skel-grid")||document.getElementById("week");
-      return el?el.clientWidth:0;}
-    function urlParam(n){try{return new URLSearchParams(location.search).get(n)||"";}catch(e){return "";}}
-    function ymdUTC(d){var p=function(x){return String(x).padStart(2,"0");};
-      return d.getUTCFullYear()+"-"+p(d.getUTCMonth()+1)+"-"+p(d.getUTCDate());}
-    function shiftYmd(ymd,n){var p=ymd.split("-");
-      return ymdUTC(new Date(Date.UTC(+p[0],+p[1]-1,+p[2])+n*864e5));}
-    function sundayOf(ymd){var p=ymd.split("-"),d=new Date(Date.UTC(+p[0],+p[1]-1,+p[2],12));
-      return ymdUTC(new Date(d.getTime()-d.getUTCDay()*864e5));}
-    function clientYmd(){var n=new Date(),p=function(x){return String(x).padStart(2,"0");};
-      return n.getFullYear()+"-"+p(n.getMonth()+1)+"-"+p(n.getDate());}
-    /* Entering day mode shows today when it belongs to the current week,
-       otherwise the week's Sunday (the server falls back the same way). */
-    function dayForWeek(weekStr){
-      var today=clientYmd(),sun=weekStr&&/^\\d{4}-\\d{2}-\\d{2}$/.test(weekStr)?weekStr:sundayOf(today);
-      return (today>=sun&&today<shiftYmd(sun,7))?today:sun;}
-    /* First paint: the skeleton always loads in the URL's mode, but the
-       server can't know the container width — correct it client-side before
-       htmx fires the load trigger, so there's no 7-lane skeleton flash and
-       no extra navigation. replaceState keeps the corrected URL canonical
-       without adding a history entry. */
-    (function initMode(){
-      if(urlParam("day")||gridWidth()>=DAY_BREAK) return;
-      var day=dayForWeek(urlParam("week")),weekEl=document.getElementById("week");
-      if(!weekEl) return;
-      weekEl.setAttribute("hx-get","/partial/day?day="+encodeURIComponent(day));
-      var skel=weekEl.querySelector(".cal-skel-grid");
-      if(skel){skel.setAttribute("data-mode","day");
-        var lanes=skel.querySelectorAll(".cal-skel-day");
-        for(var i=lanes.length-1;i>1;i--) lanes[i].remove();}
-      try{history.replaceState(null,"","/calendar?day="+encodeURIComponent(day));}catch(e){}
-    })();
-    /* Later resizes that cross the threshold navigate once to the other mode.
-       Each mode is stable inside its own width range, so there's no ping-pong. */
-    var modeTimer=null;
-    function checkMode(){
-      var w=gridWidth(); if(!w) return;
-      var want=w<DAY_BREAK?"day":"week",cur=urlParam("day")?"day":"week";
-      if(want===cur) return;
-      location.href=want==="day"
-        ? "/calendar?day="+encodeURIComponent(dayForWeek(urlParam("week")))
-        : "/calendar?week="+encodeURIComponent(sundayOf(urlParam("day")||clientYmd()));
+    /* Day stack: when the calendar's own width drops below the point where 7
+       lanes stay readable (54px gutter + 7 lanes at ~100px + gaps ≈ 800px),
+       the lanes reflow into full-width stacked day sections — pure CSS via
+       [data-stacked] on the grid. One attribute, no URL modes, no
+       navigation. The server trims each day to its entries (--lo/--span);
+       entries stay 24h-relative so drag, resize, and the now-line need no
+       stacked-mode math. */
+    var STACK_BREAK=800;
+    var calGrid=null;
+    function applyStack(){
+      if(!calGrid) calGrid=document.getElementById("cal-body");
+      var scroller=document.querySelector(".cal-scroll");
+      if(!calGrid||!scroller) return;
+      calGrid.setAttribute("data-stacked",scroller.clientWidth<STACK_BREAK?"true":"false");
     }
+    applyStack();
     if(window.ResizeObserver){var _w=document.getElementById("week");
-      if(_w) new ResizeObserver(function(){
-        clearTimeout(modeTimer); modeTimer=setTimeout(checkMode,200);}).observe(_w);}
+      if(_w) new ResizeObserver(function(){applyStack();}).observe(_w);}
+    function urlParam(n){try{return new URLSearchParams(location.search).get(n)||"";}catch(e){return "";}}
     var scrim=document.getElementById('cal-scrim');
     var dialog=scrim.querySelector('.cal-dialog');
     /* M3 dialog motion: .open drives scrim fade + dialog scale/fade.
@@ -621,10 +588,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       var weekEl=document.getElementById('week');
       var scroller=weekEl.querySelector('.cal-scroll');
       var st=scroller?scroller.scrollTop:0;
-      /* #521: stay in the active mode — the server renders the correct lane
-         count for each, so a blind week refresh would clobber day mode. */
-      var day=urlParam('day');
-      var base=day?'/partial/day?day='+encodeURIComponent(day):'/partial/week?week='+encodeURIComponent(urlParam('week'));
+      var base='/partial/week?week='+encodeURIComponent(urlParam('week'));
       fetch(base+(TZ?'&tz='+encodeURIComponent(TZ):'')).then(function(r){
         if(!r.ok) throw new Error('refresh failed');
         return r.text();
@@ -824,13 +788,17 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     setTimeout(function(){ centerOnNow(true); }, 650);
     setInterval(placeNow,30000);
     document.body.addEventListener('htmx:afterSwap',function(e){
-      if(e.detail&&e.detail.target&&e.detail.target.id==='week'){ placeNow(); centerOnNow(); }
+      if(e.detail&&e.detail.target&&e.detail.target.id==='week'){
+        /* the grid node is new after a swap — drop the cached reference so
+           applyStack measures the live layout */
+        calGrid=null; applyStack(); placeNow(); centerOnNow();
+      }
     });
   })();`;
   }
 
-  function calendarPage(week?: string, day?: string): string {
-    return layout("Calendar", weekGrid(week, day), "calendar", true);
+  function calendarPage(week?: string): string {
+    return layout("Calendar", weekGrid(week), "calendar", true);
   }
 
   /** #256: datetime-local inputs are prefilled client-side from the ISO instant
@@ -886,5 +854,5 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       })();</script>`);
   }
 
-  return { weekInner, dayInner, weekGrid, calendarPage, editPage };
+  return { weekInner, weekGrid, calendarPage, editPage, dayTrim };
 }

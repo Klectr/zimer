@@ -871,8 +871,31 @@ body.app-fixed .cal-gutter-spacer {
   grid-template-columns: 54px repeat(7, minmax(0, 1fr));
   gap: 8px;
 }
-/* #521: day mode — the single lane takes the freed columns. */
-.cal-grid[data-mode="day"] { grid-template-columns: 54px minmax(0, 1fr); }
+/* Day stack: when the grid's own width can't fit 7 readable lanes, JS sets
+   [data-stacked] and the lanes reflow into full-width stacked day sections.
+   Each day's column slides up by its --lo trim so only the entry window
+   (--span hours) shows; entries stay 24h-relative, so drag, resize, and the
+   now-line work untouched. The ±1h trim pad keeps entry tooltips unclipped. */
+.cal-day-body, .cal-day-shift { display: contents; }
+.cal-day-gutter { display: none; }
+.cal-grid[data-stacked="true"] { grid-template-columns: minmax(0, 1fr); }
+.cal-grid[data-stacked="true"] .cal-gutter-col { display: none; }
+.cal-grid[data-stacked="true"] .cal-day-gutter { display: block; }
+.cal-grid[data-stacked="true"] .cal-day-body {
+  display: block; position: relative; overflow: hidden;
+  height: max(calc(var(--span) * var(--cal-hour)), 60px);
+}
+.cal-grid[data-stacked="true"] .cal-day-shift {
+  display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: 8px;
+  transform: translateY(calc(var(--lo) * var(--cal-hour) * -1));
+}
+.cal-day-gutter { position: relative; height: calc(var(--cal-hour) * 24); }
+/* already-sticky day heads (app-fixed) pin each section while scrolling */
+.cal-empty-hint { display: none; }
+.cal-grid[data-stacked="true"] .cal-day.cal-empty .cal-empty-hint {
+  display: flex; position: absolute; inset: 0;
+  align-items: center; justify-content: center;
+}
 .cal-gutter-spacer { height: 64px; } /* matches the two-line day header */
 .cal-gutter { position: relative; }
 .cal-hours { height: calc(var(--cal-hour) * 24); }
@@ -1789,8 +1812,6 @@ button.m3-menu-item {
 .cal-skel-bar { height: 8px; border-radius: 4px; }
 .cal-skel-grid { grid-area: grid; display: grid; min-width: 0; min-height: 0;
   grid-template-columns: 54px repeat(7, minmax(0, 1fr)); gap: 8px; }
-/* #521: the day-mode skeleton mirrors the one-column layout. */
-.cal-skel-grid[data-mode="day"] { grid-template-columns: 54px minmax(0, 1fr); }
 .cal-skel-day { display: flex; flex-direction: column; gap: 8px; min-width: 0; min-height: 0; }
 .cal-skel-head { height: 64px; flex: none; border-radius: var(--md-sys-shape-corner-medium); }
 .cal-skel-lane { flex: 1; min-height: 120px; border-radius: var(--md-sys-shape-corner-medium);
