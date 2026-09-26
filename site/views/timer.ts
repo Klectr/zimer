@@ -28,6 +28,20 @@ export function createTimerViews(deps: TimerViewDeps) {
   const { db, qRunning, qRange, layout, demoBanner, projectOptions,
     revenueTotals, revenueMonthly, revenueByClient, revenueOverdue, m3ProgressBar, dayTargetSecs } = deps;
 
+  /* #546: description suggestions for the start form — the 15 most recently
+     used non-blank descriptions, deduped. Rendered as a browser-native
+     datalist: zero visual surface until the field is focused or typed in. */
+  const qDescSuggest = db.query(`
+    SELECT description FROM time_entries
+    WHERE description IS NOT NULL AND TRIM(description) != ''
+    GROUP BY description ORDER BY MAX(start_time) DESC LIMIT 15`);
+
+  function descDatalist(): string {
+    const rows = qDescSuggest.all() as { description: string }[];
+    if (!rows.length) return "";
+    return `<datalist id="tk-desc-suggest">${rows.map(r => `<option value="${esc(r.description)}">`).join("")}</datalist>`;
+  }
+
   /* #473: canRepeat — one-tap restart of a finished entry. Hidden on the
      running row (no end_time) and while another timer is running (POST
      /timer/start 409s there); posts to the existing route, whose HX-Trigger
@@ -128,9 +142,10 @@ export function createTimerViews(deps: TimerViewDeps) {
       <div class="md-title-medium muted">Nothing tracking</div>
       <form hx-post="/timer/start" hx-target="#timer-card" hx-swap="outerHTML swap:200ms" class="start-form">
         <div class="md-text-field grow">
-          <input type="text" name="description" placeholder=" " autocomplete="off" aria-label="What are you working on?">
+          <input type="text" name="description" placeholder=" " autocomplete="off" aria-label="What are you working on?" list="tk-desc-suggest">
           <label>What are you working on?</label>
         </div>
+        ${descDatalist()}
         <div class="md-text-field shrink filled">
           <select name="project_id" aria-label="Project"><option value="">No project</option>${projectOptions()}</select>
           <label>Project</label>

@@ -12,6 +12,7 @@
  */
 import { describe, expect, test } from "bun:test";
 import type { Database, Statement } from "bun:sqlite";
+import { Database as BunDatabase } from "bun:sqlite";
 import { createTimerViews } from "./timer.ts";
 import { createLayoutViews } from "./layout.ts";
 
@@ -329,5 +330,80 @@ describe("timer shortcut hint (#532)", () => {
     expect(css).toContain(".md-filled-button[data-tip]");
     expect(css).toContain(".md-filled-button[data-tip]:focus-visible::before");
     expect(css).toContain(".md-filled-button[data-tip].tip-show::before");
+  });
+});
+
+/** #546: the stopped card's start form suggests past descriptions through a
+ *  browser-native datalist — the 15 most recently used non-blank
+ *  descriptions, deduped, HTML-escaped. Zero visual surface until the field
+ *  is focused or typed in; the running card has no input and gets none. */
+describe("timer description suggestions (#546)", () => {
+  function dbWith(descs: { d: string; t: string }[]) {
+    const db = new BunDatabase(":memory:");
+    db.exec(`CREATE TABLE time_entries (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      project_id INTEGER,
+      description TEXT NOT NULL DEFAULT '',
+      start_time TEXT NOT NULL,
+      end_time TEXT
+    )`);
+    const ins = db.query("INSERT INTO time_entries (description, start_time) VALUES (?, ?)");
+    for (const { d, t } of descs) ins.run(d, t);
+    return db;
+  }
+
+  function partialWithDb(db: unknown, running: boolean) {
+    const deps = {
+      ...baseDeps,
+      db,
+      qRunning: { get: () => (running ? runningEntry : null) } as unknown as Statement,
+    };
+    return createTimerViews(deps as any).timerPartial();
+  }
+
+  test("stopped card lists distinct non-blank descriptions, newest first", () => {
+    const db = dbWith([
+      { d: "PriceBook work", t: "2026-09-26T08:00:00.000Z" },
+      { d: "emails", t: "2026-09-26T09:00:00.000Z" },
+      { d: "PriceBook work", t: "2026-09-26T10:00:00.000Z" },
+      { d: "  ", t: "2026-09-26T11:00:00.000Z" },
+      { d: "", t: "2026-09-26T12:00:00.000Z" },
+    ]);
+    const html = partialWithDb(db, false);
+    expect(html).toContain('list="tk-desc-suggest"');
+    expect(html).toContain('<datalist id="tk-desc-suggest">');
+    const opts = html.slice(html.indexOf('<datalist id="tk-desc-suggest">'), html.indexOf("</datalist>"));
+    expect(opts.match(/<option value="/g)?.length).toBe(2);
+    // deduped and ordered by most recent use: PriceBook (10:00) before emails (09:00)
+    expect(opts.indexOf('value="PriceBook work"')).toBeLessThan(opts.indexOf('value="emails"'));
+  });
+
+  test("suggestions are capped at 15", () => {
+    const descs = Array.from({ length: 20 }, (_, i) => ({
+      d: `task ${i}`, t: `2026-09-26T${String(i).padStart(2, "0")}:00:00.000Z`,
+    }));
+    const html = partialWithDb(dbWith(descs), false);
+    const opts = html.slice(html.indexOf('<datalist id="tk-desc-suggest">'), html.indexOf("</datalist>"));
+    expect(opts.match(/<option value="/g)?.length).toBe(15);
+  });
+
+  test("values are HTML-escaped", () => {
+    const db = dbWith([{ d: 'Foo & "Bar" <x>', t: "2026-09-26T08:00:00.000Z" }]);
+    const html = partialWithDb(db, false);
+    expect(html).toContain('value="Foo &amp; &quot;Bar&quot; &lt;x&gt;"');
+    expect(html).not.toContain('Foo & "Bar" <x>');
+  });
+
+  test("no datalist when nothing has been described yet", () => {
+    const html = partialWithDb(dbWith([]), false);
+    expect(html).not.toContain("<datalist");
+    // the input still renders plainly — nothing visual changes
+    expect(html).toContain('name="description"');
+  });
+
+  test("running card gets no suggestion list (it has no description input)", () => {
+    const db = dbWith([{ d: "PriceBook work", t: "2026-09-26T08:00:00.000Z" }]);
+    const html = partialWithDb(db, true);
+    expect(html).not.toContain("<datalist");
   });
 });
