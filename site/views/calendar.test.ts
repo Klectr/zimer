@@ -355,3 +355,80 @@ describe("calendar compact mini-week", () => {
     expect(html).not.toContain("<aside");
   });
 });
+
+/** Week-details sheet: below 840px the strip's summary details hide behind a
+ *  FAB-pinned M3 modal bottom sheet; the week nav stays visible. Desktop
+ *  keeps .cal-sheet as display:contents (strip renders unchanged). */
+describe("calendar week-details sheet", () => {
+  const stubQuery = () => ({
+    get: (..._a: unknown[]) => ({ n: 1 }),
+    all: (..._a: unknown[]) => [],
+  });
+
+  const monEntry = {
+    id: 41, description: "monday work", project_id: 5, project_name: "P",
+    client_name: "Acme", client_color: null, invoice_id: null,
+    invoice_number: null, invoice_status: null,
+    start_time: "2026-09-21T14:00:00.000Z", end_time: "2026-09-21T16:00:00.000Z",
+  };
+
+  function viewsFor(entries: unknown[]) {
+    const db = {
+      query: (_sql: string) => ({ get: () => ({ n: 1 }), all: () => entries }),
+    } as unknown as Database;
+    return createCalendarViews({
+      db,
+      qOne: stubQuery(),
+      qRange: stubQuery(),
+      entrySelect: "SELECT",
+      layout: (_t: string, b: string) => b,
+      projectOptions: () => "",
+      weekTargetBar: () => `<div class="week-target">target</div>`,
+      calHourPx: 64,
+    } as any);
+  }
+
+  const count = (html: string, sub: string) => html.split(sub).length - 1;
+
+  test("FAB shows the week total and controls the sheet", () => {
+    const html = viewsFor([monEntry]).weekInner("2026-09-20", "America/Chicago");
+    expect(html).toContain('id="cal-sheet-fab"');
+    expect(html).toContain('aria-controls="cal-sheet"');
+    expect(html).toContain('aria-expanded="false"');
+    // 2h monday entry → FAB label carries the week total
+    expect(html).toMatch(/cal-sheet-fab"[^>]*>[\s\S]*?2h 00m/);
+  });
+
+  test("sheet wraps the summary details with dialog semantics", () => {
+    const html = viewsFor([monEntry]).weekInner("2026-09-20", "America/Chicago");
+    const sheetIdx = html.indexOf('id="cal-sheet"');
+    expect(sheetIdx).toBeGreaterThan(-1);
+    const sheetHtml = html.slice(sheetIdx);
+    expect(sheetHtml).toContain('role="dialog"');
+    expect(sheetHtml).toContain('aria-modal="true"');
+    expect(sheetHtml).toContain("cal-strip-totals");
+    expect(sheetHtml).toContain("cal-strip-target");
+    expect(sheetHtml).toContain("Invoice this week");
+    expect(sheetHtml).toContain("Acme");
+    expect(sheetHtml).toContain("cal-hint");
+    // week nav stays outside the sheet, always visible
+    const navIdx = html.indexOf('aria-label="Previous week"');
+    expect(navIdx).toBeGreaterThan(-1);
+    expect(navIdx).toBeLessThan(sheetIdx);
+  });
+
+  test("sheet, fab, and scrim ids are unique (htmx-safe)", () => {
+    const html = viewsFor([monEntry]).weekInner("2026-09-20", "America/Chicago");
+    expect(count(html, 'id="cal-sheet"')).toBe(1);
+    expect(count(html, 'id="cal-sheet-fab"')).toBe(1);
+    expect(count(html, 'id="cal-sheet-scrim"')).toBe(1);
+  });
+
+  test("sheet script syncs dialog semantics by breakpoint", async () => {
+    const src = await Bun.file("site/views/calendar.ts").text();
+    expect(src).toContain('matchMedia("(max-width: 839px)")');
+    expect(src).toContain("toggleSheet");
+    expect(src).toContain('e.key==="Escape"');
+    expect(src).toContain("cal-sheet-scrim");
+  });
+});

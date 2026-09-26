@@ -36,6 +36,8 @@ export const ICONS: Record<string, string> = {
   /* #448: bolt for the "Paid via Stripe" chip — the last emoji in the UI
      leaves the icon system here. M3 outlined 24px, matches the set. */
   bolt: `<path d="M13 2L4.5 13.5H11L9.5 22L18.5 10.5H12Z"/>`,
+  /* week-summary sheet FAB: three bars, M3 outlined 24px. */
+  chart: `<path d="M5 20v-8M12 20V4M19 20v-5"/>`,
 };
 
 export function icon(name: keyof typeof ICONS): string {

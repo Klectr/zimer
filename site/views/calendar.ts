@@ -376,23 +376,30 @@ export function createCalendarViews(deps: CalendarViewDeps) {
               ${navActions}
             </div>
           </div>
-          <div class="cal-strip-totals">
-            <div class="md-headline-small">${fmtDur(weekTotal)}</div>
-            <div class="md-label-medium muted">${fmtDur(weekBillable)} billable · ${deltaHtml}</div>
+          <div class="cal-sheet" id="cal-sheet" role="dialog" aria-modal="true" aria-label="Week details" inert aria-hidden="true">
+            <div class="cal-strip-totals">
+              <div class="md-headline-small">${fmtDur(weekTotal)}</div>
+              <div class="md-label-medium muted">${fmtDur(weekBillable)} billable · ${deltaHtml}</div>
+            </div>
+            <div class="cal-strip-target">${weekTargetBar(weekTotal)}</div>
+            ${nudgeChip}
+            <div class="cal-strip-meta">
+              ${clientStrip}
+              <p class="muted tiny cal-hint">Drag on the grid to log time. Click an entry to edit it.</p>
+            </div>
+            ${workspaceEmpty(db) ? `<div class="cal-first-run">
+              ${icon("info")}
+              <p class="md-label-large"><strong>New here?</strong> Load fictional sample data to explore the calendar.</p>
+              <form method="post" action="/demo/load" class="inline"><button class="md-text-button" type="submit">Load demo data</button></form>
+            </div>` : ""}
           </div>
-          <div class="cal-strip-target">${weekTargetBar(weekTotal)}</div>
-          ${nudgeChip}
         </div>
-        <div class="cal-strip-meta">
-          ${clientStrip}
-          <p class="muted tiny cal-hint">Drag on the grid to log time. Click an entry to edit it.</p>
-        </div>
-        ${workspaceEmpty(db) ? `<div class="cal-first-run">
-          ${icon("info")}
-          <p class="md-label-large"><strong>New here?</strong> Load fictional sample data to explore the calendar.</p>
-          <form method="post" action="/demo/load" class="inline"><button class="md-text-button" type="submit">Load demo data</button></form>
-        </div>` : ""}
       </header>
+      <button class="cal-sheet-fab" id="cal-sheet-fab" aria-controls="cal-sheet" aria-expanded="false" aria-label="Week details, ${fmtDur(weekTotal)} total">
+        ${icon("chart")}
+        <span class="md-label-large">${fmtDur(weekTotal)}</span>
+      </button>
+      <div class="cal-sheet-scrim" id="cal-sheet-scrim" hidden></div>
       <div class="cal-scroll" data-enter="3">
         <div class="cal-grid" id="cal-body" style="--cal-hour:${calHourPx}px;--wlo:${wlo};--wspan:${wspan}">
           <div class="cal-gutter-col">
@@ -834,6 +841,79 @@ export function createCalendarViews(deps: CalendarViewDeps) {
         /* the grid node is new after a swap — drop the cached reference so
            applyCompact measures the live layout */
         calGrid=null; applyCompact(); placeNow(); centerOnNow();
+      }
+    });
+    /* Week-details sheet: on narrow screens the strip's summary details hide
+       behind a FAB-pinned M3 modal bottom sheet; on wide screens the sheet
+       is display:contents so the strip renders exactly as before. Delegated
+       listeners survive HTMX week swaps, which replace #week wholesale. */
+    var sheetMQ=window.matchMedia?window.matchMedia("(max-width: 839px)"):null;
+    var sheetWasOpen=false;
+    function sheetNarrow(){ return sheetMQ?sheetMQ.matches:false; }
+    function setSheetOpen(open){
+      var sheet=document.getElementById("cal-sheet"),
+          fab=document.getElementById("cal-sheet-fab"),
+          scrim=document.getElementById("cal-sheet-scrim");
+      if(!sheet||!fab) return;
+      sheet.classList.toggle("open",open);
+      if(open){ sheet.removeAttribute("inert"); sheet.removeAttribute("aria-hidden"); }
+      else{ sheet.setAttribute("inert",""); sheet.setAttribute("aria-hidden","true"); }
+      fab.setAttribute("aria-expanded",open?"true":"false");
+      if(scrim) scrim.hidden=!open;
+    }
+    function syncSheetChrome(){
+      var sheet=document.getElementById("cal-sheet");
+      if(!sheet) return;
+      if(!sheetNarrow()){
+        /* desktop: plain inline content, no dialog semantics. */
+        sheet.removeAttribute("role"); sheet.removeAttribute("aria-modal");
+        sheet.removeAttribute("inert"); sheet.removeAttribute("aria-hidden");
+        sheet.classList.remove("open");
+        var fab=document.getElementById("cal-sheet-fab");
+        if(fab) fab.setAttribute("aria-expanded","false");
+        var scrim=document.getElementById("cal-sheet-scrim");
+        if(scrim) scrim.hidden=true;
+      }else{
+        sheet.setAttribute("role","dialog"); sheet.setAttribute("aria-modal","true");
+        setSheetOpen(sheet.classList.contains("open"));
+      }
+    }
+    function toggleSheet(force){
+      if(!sheetNarrow()) return;
+      var sheet=document.getElementById("cal-sheet");
+      if(!sheet) return;
+      var open=typeof force==="boolean"?force:!sheet.classList.contains("open");
+      setSheetOpen(open);
+      if(open){
+        var f=sheet.querySelector("a,button");
+        if(f) f.focus({preventScroll:true});
+      }else{
+        var fab=document.getElementById("cal-sheet-fab");
+        if(fab) fab.focus({preventScroll:true});
+      }
+    }
+    document.addEventListener("click",function(e){
+      if(!e.target||!e.target.closest) return;
+      if(e.target.closest("#cal-sheet-fab")){ toggleSheet(); return; }
+      if(e.target.closest("#cal-sheet-scrim")){ toggleSheet(false); }
+    });
+    document.addEventListener("keydown",function(e){
+      if(e.key==="Escape"){
+        var sheet=document.getElementById("cal-sheet");
+        if(sheet&&sheet.classList.contains("open")) toggleSheet(false);
+      }
+    });
+    if(sheetMQ&&sheetMQ.addEventListener) sheetMQ.addEventListener("change",syncSheetChrome);
+    syncSheetChrome();
+    document.body.addEventListener("htmx:beforeSwap",function(e){
+      var s=document.getElementById("cal-sheet");
+      sheetWasOpen=!!(s&&s.classList.contains("open")&&sheetNarrow());
+    });
+    document.body.addEventListener("htmx:afterSwap",function(e){
+      if(e.target&&e.target.id==="week"){
+        syncSheetChrome();
+        if(sheetWasOpen) setSheetOpen(true);
+        sheetWasOpen=false;
       }
     });
   })();`;
