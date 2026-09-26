@@ -865,52 +865,48 @@ body.app-fixed .cal-gutter-spacer {
   grid-template-columns: 54px repeat(7, minmax(0, 1fr));
   gap: 8px;
 }
-/* Day stack: when the grid's own width can't fit 7 readable lanes, JS sets
-   [data-stacked] and the lanes reflow into a 2-column day-card grid —
-   auto-fit drops to 1 column on very narrow screens (min() picks 100%).
-   Each day's column slides up by its --lo trim so only the entry window
-   (--span hours) shows; entries stay 24h-relative, so drag, resize, and the
-   now-line work untouched. The ±1h trim pad keeps entry tooltips unclipped.
-   The 7th day spans full width so it never orphans as a half-width card. */
+/* Compact mini-week: when the grid's own width can't fit 7 readable lanes,
+   JS sets [data-compact] and the week scales down instead of reflowing —
+   same 7 lanes, shorter hour (44px via applyCompact), one shared time
+   window (--wlo/--wspan on the grid) so lanes stay aligned. Entries, hour
+   labels, and the gutter are all --cal-hour-relative, so they scale along.
+   Entries become tappable color bars (text hidden, tooltip/edit on tap);
+   the ±1h trim pad keeps entry tooltips unclipped at the window edges. */
 .cal-day-body, .cal-day-shift { display: contents; }
 .cal-day-gutter { display: none; }
-.cal-grid[data-stacked="true"] {
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
-  align-items: start;
-}
-.cal-grid[data-stacked="true"] .cal-day {
-  background: var(--md-sys-color-surface-container);
-  border-radius: var(--md-sys-shape-corner-large);
-  padding: 2px 12px 12px;
-}
-.cal-grid[data-stacked="true"] .cal-day:last-child { grid-column: 1 / -1; }
-/* Slimmer gutter inside cards — entries need the room at ~200px card width. */
-.cal-grid[data-stacked="true"] .cal-day-shift { grid-template-columns: 44px minmax(0, 1fr); }
-/* Cards are short — the sticky section heads from the 1-column stack would
-   collide in 2 columns, so heads stay static here. */
-.cal-grid[data-stacked="true"] .cal-day-head { position: static; text-align: left; padding: 10px 2px 8px; }
-.cal-grid[data-stacked="true"] .cal-gutter-col { display: none; }
-.cal-grid[data-stacked="true"] .cal-day-gutter { display: block; }
-.cal-grid[data-stacked="true"] .cal-day-body {
+.cal-grid[data-compact="true"] { grid-template-columns: 30px repeat(7, minmax(0, 1fr)); gap: 2px; }
+.cal-grid[data-compact="true"] .cal-day-body {
   display: block; position: relative; overflow: hidden;
-  height: max(calc(var(--span) * var(--cal-hour)), 60px);
+  height: calc(var(--wspan) * var(--cal-hour));
 }
-.cal-grid[data-stacked="true"] .cal-day-shift {
-  display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: 8px;
-  transform: translateY(calc(var(--lo) * var(--cal-hour) * -1));
+.cal-grid[data-compact="true"] .cal-day-shift {
+  display: block;
+  transform: translateY(calc(var(--wlo) * var(--cal-hour) * -1));
 }
-.cal-day-gutter { position: relative; height: calc(var(--cal-hour) * 24); }
-/* already-sticky day heads (app-fixed) pin each section while scrolling */
+/* shared gutter shows the same window: shift the 24h label strip to match */
+.cal-grid[data-compact="true"] .cal-gutter-col { overflow: hidden; }
+.cal-grid[data-compact="true"] .cal-gutter-spacer { height: 44px; }
+.cal-grid[data-compact="true"] .cal-gutter.cal-hours {
+  transform: translateY(calc(var(--wlo) * var(--cal-hour) * -1));
+}
+.cal-grid[data-compact="true"] .cal-hour-label { font-size: 0.5625rem; right: 2px; }
+.cal-grid[data-compact="true"] .cal-day-head { min-height: 0; padding: 6px 2px 4px; }
+.cal-grid[data-compact="true"] .cal-day-head .md-label-large { font-size: 0.625rem; }
+.cal-grid[data-compact="true"] .cal-day-num { font-size: 0.8125rem; line-height: 1.2; }
+.cal-grid[data-compact="true"] .cal-entry { padding: 0; border-radius: 3px; min-height: 8px; }
+.cal-grid[data-compact="true"] .cal-entry-desc,
+.cal-grid[data-compact="true"] .cal-entry-dur { display: none; }
+/* resize handles stay desktop-only — 8px bars are tap targets, not grips */
+.cal-grid[data-compact="true"] .cal-resize { display: none; }
+.cal-grid[data-compact="true"] .cal-empty-hint { display: none; }
 .cal-empty-hint { display: none; }
-.cal-grid[data-stacked="true"] .cal-day.cal-empty .cal-empty-hint {
-  display: flex; position: absolute; inset: 0;
-  align-items: center; justify-content: center;
-}
 .cal-gutter-spacer { height: 64px; } /* matches the two-line day header */
 .cal-gutter { position: relative; }
 .cal-hours { height: calc(var(--cal-hour) * 24); }
 .cal-hour-label {
   position: absolute; right: 8px; transform: translateY(-50%);
+  /* --h is the hour; --cal-hour-relative so the compact mini-week scales */
+  top: calc(var(--h, 0) * var(--cal-hour) - 8px);
   font-size: 0.6875rem; color: var(--md-sys-color-on-surface-variant); white-space: nowrap;
 }
 /* Night hours (7 PM – 6 AM) read lavender in the gutter. */
@@ -1009,6 +1005,10 @@ body.app-fixed .cal-gutter-spacer {
   padding: 4px 8px; overflow: hidden; cursor: pointer;
   font-size: 0.75rem; line-height: 1.35;
   min-width: 0;
+  /* hour-based geometry (--t start, --d duration in hours) so the compact
+     mini-week scales entries with --cal-hour; the 2px/4px #273 inset stays. */
+  top: calc(var(--t, 0) * var(--cal-hour) + 2px);
+  height: calc(var(--d, 0) * var(--cal-hour) - 4px);
 }
 /* #275: sub-30-minute entries render at the 22px floor — tighter padding,
    smaller single-line text, and no duration line (no room for two lines).
@@ -1063,6 +1063,8 @@ body.app-fixed .cal-gutter-spacer {
   position: absolute; left: 2px; right: 2px; border-radius: var(--md-sys-shape-corner-small);
   background: color-mix(in srgb, var(--md-sys-color-primary) 35%, transparent);
   border: 1px solid var(--md-sys-color-primary); pointer-events: none; z-index: 3;
+  top: calc(var(--t, 0) * var(--cal-hour) + 2px);
+  height: calc(var(--d, 0) * var(--cal-hour) - 4px);
 }
 /* M3 dialog */
 .cal-scrim {

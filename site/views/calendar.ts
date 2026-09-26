@@ -147,9 +147,10 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     return { tz, today, sun, rows, byDay, weekTotal, weekBillable, clientRows, uninvoiced, prevBillable };
   }
 
-  /** Day-stack trim: a stacked day shows its entries ±1h, so a narrow week
-      reflows into compact full-width sections instead of seven slivers.
-      Pure (exported for tests); hours, clamped to the 0–24 day. */
+  /** Compact-window trim: each day reports its entries ±1h; weekInner merges
+      the 7 trims into the week-shared window (--wlo/--wspan) the compact
+      mini-week aligns all lanes to. Pure (exported for tests); hours,
+      clamped to the 0–24 day. */
   function dayTrim(blocks: { a: number; b: number }[]): { lo: number; span: number } {
     if (blocks.length === 0) return { lo: 0, span: 0 };
     const lo = Math.max(0, Math.floor(Math.min(...blocks.map((x) => x.a)) / 60) - 1);
@@ -158,18 +159,21 @@ export function createCalendarViews(deps: CalendarViewDeps) {
   }
 
   /** 24 hour labels, 24h-relative — shared by the week gutter and each
-      stacked day's own gutter. */
+      compact lane's own gutter. Positioned via --h so the compact hour
+      scales them. */
   function hourLabelsHtml(): string {
     return Array.from({ length: 24 }, (_, h) => {
       const ampm = h === 0 ? "12 AM" : h < 12 ? `${h} AM` : h === 12 ? "12 PM" : `${h - 12} PM`;
       const night = h < 6 || h >= 19;
-      return `<span class="cal-hour-label${night ? " night" : ""}" style="top:${(h * calHourPx - 8).toFixed(0)}px">${ampm}</span>`;
+      return `<span class="cal-hour-label${night ? " night" : ""}" style="--h:${h}">${ampm}</span>`;
     }).join("");
   }
 
   /** One .cal-day column: header, trimmable body (per-day gutter + lane),
-      and the entry cards. The week grid and the day stack share it. */
-  function dayColumnHtml(day: string, data: CalWeekData, animDelay: number): string {
+      and the entry cards. Returns the trim too — weekInner merges the 7
+      trims into the week-shared window (--wlo/--wspan) the compact
+      mini-week aligns all lanes to. */
+  function dayColumnHtml(day: string, data: CalWeekData, animDelay: number): { html: string, trim: { lo: number, span: number } } {
     const { tz, today } = data;
     const toMin = (iso: string) => { const p = tzParts(new Date(iso), tz); return p.hh * 60 + p.mm; };
     const toHM = (mins: number) => `${String(Math.floor(mins / 60)).padStart(2, "0")}:${String(mins % 60).padStart(2, "0")}`;
@@ -198,22 +202,20 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       .sort((x, y) => x.a - y.a);
     const entryHtml = sortedBlocks
       .map(({ e, a, b }, i) => {
-      const top = (a / 60) * calHourPx;
+      /* Entry geometry is hour-based (--t start, --d duration in hours) so
+         the compact mini-week can scale the hour via --cal-hour and
+         everything (entries, labels, now-line) scales along. The #275 floor
+         and #279 room cap are computed in px at calHourPx, then expressed
+         back in hours — identical paint at the default hour. */
       const trueH = ((b - a) / 60) * calHourPx;
       /* #275: sub-30-minute entries would be unreadably thin at true scale,
          but the old 26px floor read too chunky — floor at 22px with compact
          styling (tighter padding, smaller text, no duration line). */
       const compact = trueH < 26;
-      /* #279: a floored short entry overflows its true slot and the next
-         card paints over it, burying the 4px gap — cap the floor at the
-         room before the next entry starts. Back-to-back short entries
-         render at true height (thin but truthful, gap preserved); the
-         floor still applies when there's room. Never shrink below true
-         height, so overlapping entries keep full height. */
       const nextA = i + 1 < sortedBlocks.length ? sortedBlocks[i + 1].a : Infinity;
       const roomPx = ((nextA - a) / 60) * calHourPx;
-      const h = Math.min(Math.max(trueH, 22), Math.max(roomPx, trueH));
-      /* #273: 2px visual inset top and bottom so stacked cards don't touch.
+      const hPx = Math.min(Math.max(trueH, 22), Math.max(roomPx, trueH));
+      /* #273: 2px visual inset top and bottom so entry cards don't touch.
          The positioning slot is unchanged; only the painted card shrinks. */
       const color = e.client_color || "#9aa0a6"; // no-client: neutral gray, distinct from client colors
       const running = !e.end_time;
@@ -246,7 +248,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
          would announce as literal tags. */
       const label = `${esc(e.description || "No description")}, ${dur}${markA11y}`;
       return `<div class="cal-entry${running ? " running" : ""}${overlap ? " overlap" : ""}${compact ? " cal-compact" : ""}${mark ? " invoiced" : ""}"
-          style="top:${(top + 2).toFixed(1)}px;height:${(h - 4).toFixed(1)}px;--c:${esc(color)}"
+          style="--t:${(a / 60).toFixed(3)};--d:${(hPx / calHourPx).toFixed(3)};--c:${esc(color)}"
           data-id="${e.id}" data-desc="${esc(e.description)}" data-project-id="${e.project_id ?? ""}"
           data-date="${day}" data-start="${toHM(a)}" data-end="${running ? "" : toHM(Math.min(b, 1439))}"
           data-locked="${locked ? esc(e.invoice_number || "") : ""}"
@@ -265,11 +267,11 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     const headAttrs = tip
       ? ` tabindex="0" data-tip="${tip}" aria-label="${esc(wd)} ${d}: ${tip}"`
       : "";
-    /* Day stack: entries stay 24h-relative; the --lo/--span trim lets the
-       stacked layout slide each day's column up so only the entry window
-       (±1h) shows. Week mode ignores the trim (display:contents wrappers).
-       Today always keeps the current time visible — otherwise the now-line
-       would hide inside a collapsed section. */
+    /* Compact mini-week: lanes stay 24h-relative; the grid carries the
+       week-shared window (--wlo/--wspan, see weekInner) and each lane's
+       column slides by it, so all 7 days align. Per-lane --lo/--span remain
+       for potential per-day trims. Today always keeps the current time
+       visible — otherwise the now-line would hide outside the window. */
     const trim = dayTrim(sortedBlocks);
     if (isToday) {
       const loN = Math.max(0, Math.floor(nowMin / 60) - 2);
@@ -282,7 +284,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       }
     }
     const empty = trim.span === 0;
-    return `<div class="cal-day${isToday ? " today" : ""}${pastShort ? " paced-short" : ""}${empty ? " cal-empty" : ""}" style="--lo:${trim.lo};--span:${trim.span};animation-delay:${animDelay}ms">
+    const html = `<div class="cal-day${isToday ? " today" : ""}${pastShort ? " paced-short" : ""}${empty ? " cal-empty" : ""}" style="--lo:${trim.lo};--span:${trim.span};animation-delay:${animDelay}ms">
       <div class="cal-day-head"${headAttrs}>
         <div class="md-label-large muted">${esc(wd)}</div>
         <div class="cal-day-num${isToday ? " today" : ""}">${d}</div>
@@ -295,6 +297,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
         ${empty ? `<div class="cal-empty-hint md-label-medium muted">No entries yet</div>` : ""}
       </div>
     </div>`;
+    return { html, trim };
   }
 
   /** Inner HTML of the #week section (everything that changes when entries do).
@@ -314,18 +317,32 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       <a class="md-icon-button" href="/calendar?week=${prev}" hx-get="/partial/week?week=${prev}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?week=${prev}" data-tip="Previous week" aria-label="Previous week">${icon("chevron_left")}</a>
       <a class="md-icon-button" href="/calendar?week=${next}" hx-get="/partial/week?week=${next}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?week=${next}" data-tip="Next week" aria-label="Next week">${icon("chevron_right")}</a>`;
     const lanes: string[] = [];
-    for (let i = 0; i < 7; i++) lanes.push(dayColumnHtml(addDays(sun, i), wd, i * 40));
-    return calShell(wd, navTitle, navActions, lanes.join(""));
+    let wlo = Infinity, whi = -Infinity;
+    for (let i = 0; i < 7; i++) {
+      const { html, trim } = dayColumnHtml(addDays(sun, i), wd, i * 40);
+      lanes.push(html);
+      /* empty days report {lo:0, span:0} — they'd drag the window to the
+         full 24h, so only days with entries (or today's expansion) vote. */
+      if (trim.span > 0) {
+        wlo = Math.min(wlo, trim.lo);
+        whi = Math.max(whi, trim.lo + trim.span);
+      }
+    }
+    /* Compact mini-week aligns all 7 lanes to one window: the extremes of
+       the per-day trims (±1h pad already baked in). An all-empty week gets
+       a default 8:00–18:00 window instead of collapsing to zero height. */
+    if (!(whi > wlo)) { wlo = 8; whi = 18; }
+    return calShell(wd, navTitle, navActions, lanes.join(""), wlo, whi - wlo);
   }
 
   /** The #week section — summary strip above the scroll region. The week grid
       always gets the full container width (spike iteration: the 360px trailing
       aside squeezed the 7 lanes and duplicated per-day totals already in the
-      day-header tooltips). Narrow containers reflow the lanes into a 2-column
-      day-card grid through [data-stacked] (see calScript); there are no view
-      modes. */
+      day-header tooltips). Narrow containers scale the week down to a compact
+      mini-week through [data-compact] (see calScript): same 7 lanes, shorter
+      hour, one shared time window (--wlo/--wspan). There are no view modes. */
   function calShell(wd: CalWeekData, navTitle: string, navActions: string,
-      lanesHtml: string): string {
+      lanesHtml: string, wlo: number, wspan: number): string {
     const { sun, weekTotal, weekBillable, clientRows, uninvoiced, prevBillable } = wd;
     const nudgeChip = uninvoiced > 0 ? `
       <a class="nudge-chip" href="/invoices/new?from=${sun}&to=${addDays(sun, 7)}">
@@ -377,7 +394,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
         </div>` : ""}
       </header>
       <div class="cal-scroll" data-enter="3">
-        <div class="cal-grid" id="cal-body" style="--cal-hour:${calHourPx}px">
+        <div class="cal-grid" id="cal-body" style="--cal-hour:${calHourPx}px;--wlo:${wlo};--wspan:${wspan}">
           <div class="cal-gutter-col">
             <div class="cal-gutter-spacer"></div>
             <div class="cal-gutter cal-hours">${hourLabels}</div>
@@ -458,7 +475,6 @@ export function createCalendarViews(deps: CalendarViewDeps) {
   /** Inline script: drag-to-create, click-to-edit, now-line ticking. No htmx needed. */
   function calScript(): string {
     return `(function(){
-    var HOUR=${calHourPx};
     /* #256: the client's IANA zone. Appended to every /partial/week request
        (htmx:configRequest covers nav links; refreshWeek appends it to fetch),
        and as a ±HH:MM suffix on posted datetimes so the server stores the
@@ -469,24 +485,35 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     document.body.addEventListener("htmx:configRequest",function(e){
       if(e.detail&&e.detail.path&&e.detail.path.indexOf("/partial/week")===0&&TZ)
         e.detail.parameters.tz=TZ;});
-    /* Day stack: when the calendar's own width drops below the point where 7
-       lanes stay readable (54px gutter + 7 lanes at ~100px + gaps ≈ 800px),
-       the lanes reflow into a 2-column day-card grid — pure CSS via
-       [data-stacked] on the grid. One attribute, no URL modes, no
-       navigation. The server trims each day to its entries (--lo/--span);
-       entries stay 24h-relative so drag, resize, and the now-line need no
-       stacked-mode math. */
-    var STACK_BREAK=800;
+    /* Compact mini-week: when the calendar's own width drops below the point
+       where 7 lanes stay readable (30px gutter + 7 lanes at ~100px + gaps ≈
+       800px), the week scales down instead of reflowing — pure CSS via
+       [data-compact] on the grid. Same 7 lanes, shorter hour (44px), one
+       shared time window (--wlo/--wspan). One attribute, no URL modes, no
+       navigation. Entries stay 24h-relative (--t/--d in hours, scaled by
+       --cal-hour) so drag, resize, and the now-line need no compact-mode
+       math beyond reading the effective hour. */
+    var COMPACT_BREAK=800, COMPACT_HOUR=44, HOUR_PX=${calHourPx};
     var calGrid=null;
-    function applyStack(){
+    function hourPx(){ var v=calGrid?parseFloat(getComputedStyle(calGrid).getPropertyValue("--cal-hour")):NaN; return v||HOUR_PX; }
+    /* minutesAt's y is in the visible (shifted) space — add the window's
+       start back so drag-create lands on the true 24h time. */
+    function winLo(){ if(!calGrid||calGrid.getAttribute("data-compact")!=="true") return 0;
+      var v=parseFloat(getComputedStyle(calGrid).getPropertyValue("--wlo")); return v||0; }
+    function applyCompact(){
       if(!calGrid) calGrid=document.getElementById("cal-body");
       var scroller=document.querySelector(".cal-scroll");
       if(!calGrid||!scroller) return;
-      calGrid.setAttribute("data-stacked",scroller.clientWidth<STACK_BREAK?"true":"false");
+      var compact=scroller.clientWidth<COMPACT_BREAK;
+      calGrid.setAttribute("data-compact",compact?"true":"false");
+      calGrid.style.setProperty("--cal-hour",(compact?COMPACT_HOUR:HOUR_PX)+"px");
+      /* the hour changed — re-seat the now-line (and running entries),
+         which placeNow positions in --cal-hour-relative px. */
+      placeNow();
     }
-    applyStack();
+    applyCompact();
     if(window.ResizeObserver){var _w=document.getElementById("week");
-      if(_w) new ResizeObserver(function(){applyStack();}).observe(_w);}
+      if(_w) new ResizeObserver(function(){applyCompact();}).observe(_w);}
     function urlParam(n){try{return new URLSearchParams(location.search).get(n)||"";}catch(e){return "";}}
     var scrim=document.getElementById('cal-scrim');
     var dialog=scrim.querySelector('.cal-dialog');
@@ -651,15 +678,17 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     function minsAt(ev,col){
       var r=col.getBoundingClientRect();
       var y=Math.max(0,Math.min(r.height,ev.clientY-r.top));
-      return Math.floor(y/HOUR*(60/15))*(15);
+      return Math.floor((y/hourPx()+winLo())*(60/15))*(15);
     }
     function place(el,a,b){
       /* #273: same 2px inset as the server render, so resize/drag-preview
          cards match the painted cards. #275: keep the compact class in sync
-         while resizing. */
-      el.style.top=(a/60*HOUR+2)+'px';
-      el.style.height=Math.max((b-a)/60*HOUR,22)-4+'px';
-      el.classList.toggle('cal-compact',(b-a)/60*HOUR<26);
+         while resizing. Geometry goes through --t/--d like the server
+         markup so the compact hour scales it. */
+      var H=hourPx();
+      el.style.setProperty("--t",(a/60).toFixed(3));
+      el.style.setProperty("--d",Math.max((b-a)/60,22/H).toFixed(3));
+      el.classList.toggle("cal-compact",(b-a)/60*H<26);
     }
     /* Milestone 17: drag the bottom edge of a finished entry to resize it.
        Delegated on document so it survives in-place #week refreshes. */
@@ -758,12 +787,12 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       var num=day.querySelector('.cal-day-num'); if(num) num.classList.add('today');
       day.classList.remove('paced-short'); /* the viewer's today is never "past" */
       if(line){ col.appendChild(line);
-        line.style.top=((nowMin/60)*HOUR).toFixed(1)+'px'; line.hidden=false; }
+        line.style.top=((nowMin/60)*hourPx()).toFixed(1)+'px'; line.hidden=false; }
       var run=col.querySelectorAll('.cal-entry.running');
       for(var i=0;i<run.length;i++){
         var st=run[i].getAttribute('data-start'); if(!st) continue;
         var pp=st.split(':'),sm=(+pp[0])*60+(+pp[1]);
-        run[i].style.height=Math.max(((nowMin-sm)/60)*HOUR,26).toFixed(1)+'px';
+        run[i].style.setProperty('--d',Math.max((nowMin-sm)/60,26/hourPx()).toFixed(3));
       }
     }
     /* #215: on load (and after week-nav swaps), center the now-line in the
@@ -803,8 +832,8 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     document.body.addEventListener('htmx:afterSwap',function(e){
       if(e.detail&&e.detail.target&&e.detail.target.id==='week'){
         /* the grid node is new after a swap — drop the cached reference so
-           applyStack measures the live layout */
-        calGrid=null; applyStack(); placeNow(); centerOnNow();
+           applyCompact measures the live layout */
+        calGrid=null; applyCompact(); placeNow(); centerOnNow();
       }
     });
   })();`;

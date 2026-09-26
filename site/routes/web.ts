@@ -206,8 +206,8 @@ export function createWebRouter(deps: WebDeps) {
             const tz = new URL(req.url).searchParams.get("tz") || undefined;
             return html(weekInner(w || undefined, tz || undefined));
           }
-          /* The day stack is a pure CSS reflow of the week grid ([data-stacked]);
-             there are no view modes and no day partial. */
+          /* The compact mini-week is a pure CSS scale-down of the week grid
+             ([data-compact]); there are no view modes and no day partial. */
           /* #255: the client passes its own day bounds as UTC instants
              (?from=&to=, from client-local midnight); validate strictly,
              fall back to the server's day. */

@@ -175,10 +175,11 @@ describe("calendar entry invoiced-mark tooltip (#500)", () => {
   });
 });
 
-/** Day stack: narrow containers reflow the 7 lanes into a 2-column day-card
- *  grid — pure CSS via [data-stacked], no view modes. The server
- *  trims each day to its entries (±1h) through --lo/--span. */
-describe("calendar day stack", () => {
+/** Compact mini-week: narrow containers keep the 7 lanes but scale the week
+ *  down — pure CSS via [data-compact], no view modes. Entry geometry is
+ *  hour-based (--t/--d) so the compact hour scales it; the server merges the
+ *  per-day trims into the week-shared window (--wlo/--wspan). */
+describe("calendar compact mini-week", () => {
   const stubQuery = () => ({
     get: (..._a: unknown[]) => ({ n: 1 }),
     all: (..._a: unknown[]) => [],
@@ -290,12 +291,34 @@ describe("calendar day stack", () => {
     expect((lo + span) * 60).toBeGreaterThanOrEqual(nowMin);
   });
 
-  test("entries stay 24h-relative (no stacked-mode position math)", () => {
+  test("entries carry hour-based geometry (--t/--d), not px positions", () => {
     const html = viewsFor([monEntry]).weekInner("2026-09-20", "America/Chicago");
-    // 9:00 at 64px/hour → top:578.0px (576 + 2px inset), height 126px (2h − 4px inset)
+    // 9:00–11:00 → --t:9 (start hours), --d:2 (duration hours at any --cal-hour)
     const m = html.match(/<div class="cal-entry[^>]*data-id="31"[^>]*>/);
     if (!m) throw new Error("entry 31 not rendered");
-    expect(m[0]).toContain("top:578.0px");
+    expect(m[0]).toContain("--t:9.000");
+    expect(m[0]).toContain("--d:2.000");
+    expect(m[0]).not.toContain("top:");
+  });
+
+  test("grid carries the week-shared compact window (--wlo/--wspan)", () => {
+    const html = viewsFor([monEntry, tueEntry]).weekInner("2026-09-20", "America/Chicago");
+    const g = html.match(/<div class="cal-grid" id="cal-body"[^>]*>/);
+    if (!g) throw new Error("cal-body not rendered");
+    const wlo = +g[0].match(/--wlo:(\d+)/)![1];
+    const wspan = +g[0].match(/--wspan:(\d+)/)![1];
+    // mon 9–11 → 8–12, tue 9–10 → 8–11: the entry window is always inside
+    // (today's lane may widen it further when today is in the week)
+    expect(wlo).toBeLessThanOrEqual(8);
+    expect(wlo + wspan).toBeGreaterThanOrEqual(12);
+  });
+
+  test("all-empty week (not containing today) defaults to 8:00–18:00", () => {
+    const html = viewsFor([]).weekInner("2026-01-04", "America/Chicago");
+    const g = html.match(/<div class="cal-grid" id="cal-body"[^>]*>/);
+    if (!g) throw new Error("cal-body not rendered");
+    expect(g[0]).toContain("--wlo:8");
+    expect(g[0]).toContain("--wspan:10");
   });
 
   test("no view modes remain — one grid, one partial, one attribute", () => {
@@ -307,8 +330,8 @@ describe("calendar day stack", () => {
     const page = views.calendarPage("2026-09-20");
     expect(page).not.toContain("DAY_BREAK");
     expect(page).not.toContain("initMode");
-    expect(page).toContain("data-stacked");
-    expect(page).toContain("STACK_BREAK");
+    expect(page).toContain("data-compact");
+    expect(page).toContain("COMPACT_BREAK");
   });
 
   test("weekGrid always loads the week partial with the 7-lane skeleton", () => {
