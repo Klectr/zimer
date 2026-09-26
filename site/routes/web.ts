@@ -45,8 +45,9 @@ export interface WebDeps {
   dashboardPage: () => string;
   timerPartial: () => string;
   todayPartial: () => string;
-  weekInner: (weekStr?: string) => string;
-  calendarPage: (week?: string) => string;
+  weekInner: (weekStr?: string, tz?: string) => string;
+  dayInner: (dayStr?: string, tz?: string) => string;
+  calendarPage: (week?: string, day?: string) => string;
   editPage: (id: number) => string | null;
   managePage: (selected: ClientSel | null) => string; /* #367 */
   clientSelection: (raw: string | null) => ClientSel | null; /* #367 */
@@ -86,7 +87,7 @@ export function createWebRouter(deps: WebDeps) {
     db, qRunning, qOne, qRange, qInvoice, qInvoices,
     DATA_DIR, STATIC_DIR, TOKEN, authedPage, tokensEqual, html, json, csvResponse, isHtmx,
     shareOrigin, PORT, loginPage, publicInvoicePage, changelogPage, termsPage, notFoundPage, noSuchInvoicePage, rateLimitPage, errorPage, /* #341: +termsPage */
-    dashboardPage, timerPartial, todayPartial, weekInner,
+    dashboardPage, timerPartial, todayPartial, weekInner, dayInner,
     calendarPage, editPage, managePage, clientSelection, clientDetailBody, clientListOob, bizProfileSection, invoicesPage, invoiceNewPage,
     defaultNewInvParams, invoiceStep2, invoiceDetailBody, invoiceListOob, invoiceDoc,
     getInvoice, invoiceTotals,
@@ -206,6 +207,13 @@ export function createWebRouter(deps: WebDeps) {
             const tz = new URL(req.url).searchParams.get("tz") || undefined;
             return html(weekInner(w || undefined, tz || undefined));
           }
+          /* #521: single-column day view — same shape as /partial/week, with
+             the selected day. The supporting pane stays week-scoped. */
+          if (path === "/partial/day" && method === "GET") {
+            const d = new URL(req.url).searchParams.get("day") || undefined;
+            const tz = new URL(req.url).searchParams.get("tz") || undefined;
+            return html(dayInner(d || undefined, tz || undefined));
+          }
           /* #255: the client passes its own day bounds as UTC instants
              (?from=&to=, from client-local midnight); validate strictly,
              fall back to the server's day. */
@@ -243,7 +251,12 @@ export function createWebRouter(deps: WebDeps) {
             if (running) db.query("UPDATE time_entries SET end_time = ? WHERE id = ?").run(new Date().toISOString(), running.id);
             return html(timerPartial(), 200, { "HX-Trigger": "timer-updated" });
           }
-          if (path === "/calendar" && method === "GET") return html(calendarPage(url.searchParams.get("week") || undefined));
+          if (path === "/calendar" && method === "GET") {
+            /* #521: ?day= selects day mode; invalid values fall back to today. */
+            const dp = url.searchParams.get("day");
+            const day = dp && /^\d{4}-\d{2}-\d{2}$/.test(dp) ? dp : undefined;
+            return html(calendarPage(url.searchParams.get("week") || undefined, day));
+          }
 
           if (path === "/entries" && method === "POST") {
             const form = await req.formData();
