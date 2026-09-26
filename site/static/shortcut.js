@@ -40,10 +40,16 @@
     const running = document.body.dataset.timerRunning === "1";
     const path = running ? "/timer/stop" : "/timer/start";
     try {
+      /* #538: the t shortcut mirrors the Start button — serialize the card's
+         start form on the start path, so a typed description (and the picked
+         project) isn't silently dropped the way the old empty-FormData post
+         dropped it. The stop route reads nothing from the body, and there's
+         no card form on other pages, so both keep the empty body. */
+      const form = running ? null : document.querySelector("#timer-card .start-form");
       const res = await fetch(path, {
         method: "POST",
         headers: { "HX-Request": "true" },
-        body: new FormData(), // keeps req.formData() on the route happy
+        body: form ? new FormData(form) : new FormData(), // keeps req.formData() on the route happy
       });
       if (!res.ok) throw new Error("toggle failed");
       if (running) disarmTicker(); else armTicker();

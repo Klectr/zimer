@@ -68,6 +68,8 @@ g.document = {
     (this._listeners[t] ||= []).push(h);
   },
   getElementById: () => null,
+  /* #538: overridable per test — returns the timer card's start form or null. */
+  querySelector: (_sel: string) => null,
 };
 
 await import("./shortcut.js");
@@ -157,16 +159,39 @@ function keyT(repeat = false) {
 }
 
 describe("t toggle guard", () => {
+  /* #538: stub FormData so the tests can see what the toggle serialized —
+     bun has no DOM forms. querySelector returns a fake start form by
+     default; FormData/setInterval are restored after so nothing leaks into
+     other test files sharing this process's globalThis. */
+  const realFormData = g.FormData;
+  const realSetInterval = g.setInterval;
+  const realQuerySelector = g.document.querySelector;
+  const fakeForm = { tagName: "FORM" };
+  let formDataArgs: unknown[] = [];
+  class FakeFormData {
+    constructor(form?: unknown) {
+      formDataArgs.push(form === undefined ? "empty" : form);
+    }
+  }
   beforeEach(() => {
     fetchCalls.length = 0;
     fetchResolvers = [];
+    formDataArgs = [];
     g.fetch = fakeFetch;
+    g.FormData = FakeFormData;
+    /* The start path arms the tab ticker — fake the interval so no real
+       timer is scheduled in the test process. */
+    g.setInterval = () => 1;
+    g.document.querySelector = (_sel: string) => fakeForm;
     /* Stop path: disarmTicker is a no-op without a live interval, so the
        real setInterval in ticker.start is never armed. */
     g.document.body.dataset.timerRunning = "1";
   });
   afterEach(() => {
     g.fetch = realFetch;
+    g.FormData = realFormData;
+    g.setInterval = realSetInterval;
+    g.document.querySelector = realQuerySelector;
   });
 
   test("key auto-repeat never toggles", () => {
@@ -185,6 +210,36 @@ describe("t toggle guard", () => {
     g.document.body.dataset.timerRunning = "1"; // back to the stop path
     keyT(); // flight done — allowed again
     expect(fetchCalls).toEqual(["/timer/stop", "/timer/stop"]);
+    resolveFetches();
+    await flush();
+  });
+
+  /* #538: pressing t with a description typed must behave like clicking
+     Start — the card's start form is serialized on the start path. */
+  test("start serializes the timer card's start form", async () => {
+    g.document.body.dataset.timerRunning = "0";
+    keyT();
+    expect(fetchCalls).toEqual(["/timer/start"]);
+    expect(formDataArgs).toEqual([fakeForm]);
+    resolveFetches();
+    await flush();
+  });
+
+  test("stop keeps an empty body", async () => {
+    g.document.body.dataset.timerRunning = "1";
+    keyT();
+    expect(fetchCalls).toEqual(["/timer/stop"]);
+    expect(formDataArgs).toEqual(["empty"]);
+    resolveFetches();
+    await flush();
+  });
+
+  test("start with no card form falls back to an empty body", async () => {
+    g.document.body.dataset.timerRunning = "0";
+    g.document.querySelector = (_sel: string) => null; // other pages have no timer card
+    keyT();
+    expect(fetchCalls).toEqual(["/timer/start"]);
+    expect(formDataArgs).toEqual(["empty"]);
     resolveFetches();
     await flush();
   });
