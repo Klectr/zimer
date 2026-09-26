@@ -390,13 +390,15 @@ describe("calendar week-details sheet", () => {
 
   const count = (html: string, sub: string) => html.split(sub).length - 1;
 
-  test("FAB shows the week total and controls the sheet", () => {
+  test("tab shows the week total and controls the sheet", () => {
     const html = viewsFor([monEntry]).weekInner("2026-09-20", "America/Chicago");
-    expect(html).toContain('id="cal-sheet-fab"');
+    expect(html).toContain('id="cal-sheet-tab"');
     expect(html).toContain('aria-controls="cal-sheet"');
     expect(html).toContain('aria-expanded="false"');
-    // 2h monday entry → FAB label carries the week total
-    expect(html).toMatch(/cal-sheet-fab"[^>]*>[\s\S]*?2h 00m/);
+    // 2h monday entry → tab label carries the week total
+    expect(html).toMatch(/cal-sheet-tab"[\s\S]*?2h 00m/);
+    // semicircle tab carries an up-chevron affordance
+    expect(html).toContain("M6 14.5l6-6 6 6");
   });
 
   test("sheet wraps the summary details with dialog semantics", () => {
@@ -417,10 +419,10 @@ describe("calendar week-details sheet", () => {
     expect(navIdx).toBeLessThan(sheetIdx);
   });
 
-  test("sheet, fab, and scrim ids are unique (htmx-safe)", () => {
+  test("sheet, tab, and scrim ids are unique (htmx-safe)", () => {
     const html = viewsFor([monEntry]).weekInner("2026-09-20", "America/Chicago");
     expect(count(html, 'id="cal-sheet"')).toBe(1);
-    expect(count(html, 'id="cal-sheet-fab"')).toBe(1);
+    expect(count(html, 'id="cal-sheet-tab"')).toBe(1);
     expect(count(html, 'id="cal-sheet-scrim"')).toBe(1);
   });
 
@@ -430,5 +432,17 @@ describe("calendar week-details sheet", () => {
     expect(src).toContain("toggleSheet");
     expect(src).toContain('e.key==="Escape"');
     expect(src).toContain("cal-sheet-scrim");
+    // the tab melts into the drawer via a body class
+    expect(src).toContain("cal-sheet-open");
+  });
+
+  test("tab is a bottom-center semicircle in CSS", async () => {
+    const css = await Bun.file("site/static/style.css").text();
+    expect(css).toContain(".cal-sheet-tab");
+    // bottom-center: horizontally centered, stuck to the bottom edge
+    expect(css).toMatch(/\.cal-sheet-tab\s*\{[^}]*left:\s*50%/);
+    expect(css).toMatch(/\.cal-sheet-tab\s*\{[^}]*translateX\(-50%\)/);
+    // semicircle: top corners fully round, flat bottom edge
+    expect(css).toMatch(/\.cal-sheet-tab\s*\{[^}]*border-radius:\s*68px 68px 0 0/);
   });
 });

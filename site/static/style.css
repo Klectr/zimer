@@ -850,9 +850,10 @@ main.page-invoices { max-width: 760px; }
 .cal-strip-meta .week-clients { margin: 0; }
 .cal-strip-meta .cal-hint { margin: 0 0 0 auto; }
 /* Week-details sheet: below 840px the strip's summary details hide behind a
-   FAB-pinned M3 modal bottom sheet. Desktop keeps .cal-sheet as
-   display:contents — the strip renders exactly as before. */
-.cal-sheet-fab, .cal-sheet-scrim { display: none; }
+   semicircle tab stuck to the bottom center — pressing it opens the drawer.
+   Desktop keeps .cal-sheet as display:contents — the strip renders exactly
+   as before. */
+.cal-sheet-tab, .cal-sheet-scrim { display: none; }
 @media (min-width: 840px) {
   .cal-sheet { display: contents; }
   /* flattened into the strip row: the meta row and first-run keep their own
@@ -884,16 +885,26 @@ main.page-invoices { max-width: 760px; }
   .cal-sheet .cal-strip-target { flex: none; max-width: none; min-width: 0; }
   .cal-sheet .nudge-chip { margin: 0; align-self: flex-start; }
   .cal-sheet .cal-strip-meta .cal-hint { margin: 0; }
-  .cal-sheet-fab {
-    display: inline-flex; align-items: center; gap: 8px;
-    position: fixed; right: 16px; bottom: 16px; z-index: 55;
-    height: 56px; padding: 0 20px 0 16px;
-    border: none; border-radius: 16px; cursor: pointer;
+  .cal-sheet-tab {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 2px;
+    position: fixed; left: 50%; bottom: env(safe-area-inset-bottom, 0px); z-index: 55;
+    transform: translateX(-50%);
+    width: 136px; height: 68px;
+    border: none; border-radius: 68px 68px 0 0; cursor: pointer;
     background: var(--md-sys-color-primary-container);
     color: var(--md-sys-color-on-primary-container);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    -webkit-tap-highlight-color: transparent;
+    transition: opacity 180ms ease, transform 180ms ease;
   }
-  .cal-sheet-fab .md-label-large { font-weight: 600; }
+  .cal-sheet-tab .md-label-large { font-weight: 600; }
+  .cal-sheet-tab svg { width: 20px; height: 20px; }
+  /* the tab melts into the drawer as the sheet opens */
+  body.cal-sheet-open .cal-sheet-tab {
+    opacity: 0; transform: translateX(-50%) translateY(10px) scale(0.92);
+    pointer-events: none;
+  }
   .cal-sheet-scrim {
     display: block; position: fixed; inset: 0; z-index: 59;
     background: rgba(0, 0, 0, 0.5);
@@ -901,8 +912,8 @@ main.page-invoices { max-width: 760px; }
   .cal-sheet-scrim[hidden] { display: none; }
 }
 @media (max-width: 599px) {
-  /* clear the fixed bottom navigation bar */
-  .cal-sheet-fab { bottom: calc(var(--md-nav-bar-height) + 16px); }
+  /* tab sits stuck to the top of the fixed bottom navigation bar */
+  .cal-sheet-tab { bottom: calc(var(--md-nav-bar-height) + env(safe-area-inset-bottom, 0px)); }
   .cal-sheet { padding-bottom: calc(var(--md-nav-bar-height) + 20px + env(safe-area-inset-bottom, 0px)); }
 }
 @media (prefers-reduced-motion: reduce) {

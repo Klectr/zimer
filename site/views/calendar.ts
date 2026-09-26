@@ -395,8 +395,8 @@ export function createCalendarViews(deps: CalendarViewDeps) {
           </div>
         </div>
       </header>
-      <button class="cal-sheet-fab" id="cal-sheet-fab" aria-controls="cal-sheet" aria-expanded="false" aria-label="Week details, ${fmtDur(weekTotal)} total">
-        ${icon("chart")}
+      <button class="cal-sheet-tab" id="cal-sheet-tab" aria-controls="cal-sheet" aria-expanded="false" aria-label="Week details, ${fmtDur(weekTotal)} total">
+        ${icon("chevron_up")}
         <span class="md-label-large">${fmtDur(weekTotal)}</span>
       </button>
       <div class="cal-sheet-scrim" id="cal-sheet-scrim" hidden></div>
@@ -852,10 +852,11 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     function sheetNarrow(){ return sheetMQ?sheetMQ.matches:false; }
     function setSheetOpen(open){
       var sheet=document.getElementById("cal-sheet"),
-          fab=document.getElementById("cal-sheet-fab"),
+          fab=document.getElementById("cal-sheet-tab"),
           scrim=document.getElementById("cal-sheet-scrim");
       if(!sheet||!fab) return;
       sheet.classList.toggle("open",open);
+      document.body.classList.toggle("cal-sheet-open",open);
       if(open){ sheet.removeAttribute("inert"); sheet.removeAttribute("aria-hidden"); }
       else{ sheet.setAttribute("inert",""); sheet.setAttribute("aria-hidden","true"); }
       fab.setAttribute("aria-expanded",open?"true":"false");
@@ -869,7 +870,8 @@ export function createCalendarViews(deps: CalendarViewDeps) {
         sheet.removeAttribute("role"); sheet.removeAttribute("aria-modal");
         sheet.removeAttribute("inert"); sheet.removeAttribute("aria-hidden");
         sheet.classList.remove("open");
-        var fab=document.getElementById("cal-sheet-fab");
+        document.body.classList.remove("cal-sheet-open");
+        var fab=document.getElementById("cal-sheet-tab");
         if(fab) fab.setAttribute("aria-expanded","false");
         var scrim=document.getElementById("cal-sheet-scrim");
         if(scrim) scrim.hidden=true;
@@ -888,13 +890,13 @@ export function createCalendarViews(deps: CalendarViewDeps) {
         var f=sheet.querySelector("a,button");
         if(f) f.focus({preventScroll:true});
       }else{
-        var fab=document.getElementById("cal-sheet-fab");
+        var fab=document.getElementById("cal-sheet-tab");
         if(fab) fab.focus({preventScroll:true});
       }
     }
     document.addEventListener("click",function(e){
       if(!e.target||!e.target.closest) return;
-      if(e.target.closest("#cal-sheet-fab")){ toggleSheet(); return; }
+      if(e.target.closest("#cal-sheet-tab")){ toggleSheet(); return; }
       if(e.target.closest("#cal-sheet-scrim")){ toggleSheet(false); }
     });
     document.addEventListener("keydown",function(e){

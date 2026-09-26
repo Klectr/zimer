@@ -12,6 +12,7 @@ export const ICONS: Record<string, string> = {
   add: `<path d="M12 5v14M5 12h14"/>`,
   chevron_left: `<path d="M14.5 6l-6 6 6 6"/>`,
   chevron_right: `<path d="M9.5 6l6 6-6 6"/>`,
+  chevron_up: `<path d="M6 14.5l6-6 6 6"/>`,
   arrow_left: `<path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/>`,
   copy: `<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/>`,
   refresh: `<path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 3.5V8h-4.5"/>`,
