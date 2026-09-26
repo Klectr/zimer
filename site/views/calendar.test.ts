@@ -263,11 +263,31 @@ describe("calendar day stack", () => {
 
   test("empty days collapse with a hint", () => {
     const html = viewsFor([monEntry]).weekInner("2026-09-20", "America/Chicago");
-    // wednesday has no entries
+    // wednesday has no entries (and is not today)
     const tag = laneTag(html, "2026-09-23");
     expect(tag).toContain("--span:0");
     expect(tag).toContain("cal-empty");
     expect(html).toContain("cal-empty-hint");
+  });
+
+  test("today always keeps the current time visible", () => {
+    const html = viewsFor([monEntry]).weekInner("2026-09-20", "America/Chicago");
+    // today in Chicago falls inside the 2026-09-20 week
+    const chi = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Chicago", year: "numeric", month: "2-digit", day: "numeric",
+    }).format(new Date());
+    const tag = laneTag(html, chi);
+    expect(tag).not.toContain("cal-empty");
+    const m = tag.match(/--lo:(\d+);--span:(\d+)/)!;
+    const lo = +m[1], span = +m[2];
+    expect(span).toBeGreaterThan(0);
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Chicago", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+    }).formatToParts(new Date());
+    const nowMin = +parts.find((p) => p.type === "hour")!.value * 60
+      + +parts.find((p) => p.type === "minute")!.value;
+    expect(lo * 60).toBeLessThanOrEqual(nowMin);
+    expect((lo + span) * 60).toBeGreaterThanOrEqual(nowMin);
   });
 
   test("entries stay 24h-relative (no stacked-mode position math)", () => {

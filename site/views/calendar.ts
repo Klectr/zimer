@@ -267,8 +267,20 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       : "";
     /* Day stack: entries stay 24h-relative; the --lo/--span trim lets the
        stacked layout slide each day's column up so only the entry window
-       (±1h) shows. Week mode ignores the trim (display:contents wrappers). */
+       (±1h) shows. Week mode ignores the trim (display:contents wrappers).
+       Today always keeps the current time visible — otherwise the now-line
+       would hide inside a collapsed section. */
     const trim = dayTrim(sortedBlocks);
+    if (isToday) {
+      const loN = Math.max(0, Math.floor(nowMin / 60) - 2);
+      const hiN = Math.min(24, Math.ceil(nowMin / 60) + 3);
+      if (trim.span === 0) { trim.lo = loN; trim.span = hiN - loN; }
+      else {
+        const hi = Math.max(trim.lo + trim.span, hiN);
+        trim.lo = Math.min(trim.lo, loN);
+        trim.span = hi - trim.lo;
+      }
+    }
     const empty = trim.span === 0;
     return `<div class="cal-day${isToday ? " today" : ""}${pastShort ? " paced-short" : ""}${empty ? " cal-empty" : ""}" style="--lo:${trim.lo};--span:${trim.span};animation-delay:${animDelay}ms">
       <div class="cal-day-head"${headAttrs}>
