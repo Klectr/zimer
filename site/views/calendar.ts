@@ -39,6 +39,22 @@ export function createCalendarViews(deps: CalendarViewDeps) {
 
   const { db, qOne, qRange, entrySelect: ENTRY_SELECT, layout, projectOptions, weekTargetBar, calHourPx } = deps;
 
+  /* #578: description suggestions for the entry dialog — the 15 most recently
+     used non-blank descriptions, deduped. Same pattern as the timer start
+     form (#546): a browser-native datalist, zero visual surface until the
+     field is focused or typed in. Own id so it never collides with the
+     timer page's tk-desc-suggest. */
+  const qDescSuggest = db.query(`
+    SELECT description FROM time_entries
+    WHERE description IS NOT NULL AND TRIM(description) != ''
+    GROUP BY description ORDER BY MAX(start_time) DESC LIMIT 15`);
+
+  function descDatalist(): string {
+    const rows = qDescSuggest.all() as { description: string }[];
+    if (!rows.length) return "";
+    return `<datalist id="tk-desc-suggest-dialog">${rows.map(r => `<option value="${esc(r.description)}">`).join("")}</datalist>`;
+  }
+
   /* #256: the server may be in another timezone (VPS is UTC), so every
      "local" computation — day bucketing, entry positioning, today highlight,
      week bounds — is done in the *client's* IANA zone, plumbed through as
@@ -458,9 +474,10 @@ export function createCalendarViews(deps: CalendarViewDeps) {
           </div>
           <p class="muted md-body-medium" id="cal-dialog-date"></p>
           <div class="md-text-field">
-            <input type="text" id="cal-desc" placeholder=" " autocomplete="off">
+            <input type="text" id="cal-desc" placeholder=" " autocomplete="off" list="tk-desc-suggest-dialog">
             <label for="cal-desc">Description</label>
           </div>
+          ${descDatalist()}
           <div class="md-text-field filled">
             <select id="cal-project" aria-label="Project"><option value="">No project</option>${projectOptions()}</select>
             <label for="cal-project">Project</label>
