@@ -117,7 +117,7 @@ describe("week-nav tooltips (#486)", () => {
  *  centered tooltip hangs past the edge and the pane (overflow-y: auto)
  *  renders a horizontal scrollbar. Right-edge buttons use tip-right,
  *  the same class the invoice actions already use. */
-describe("calendar nav edge tooltips (#554)", () => {
+describe("calendar nav edge tooltips (#554, #572)", () => {
   const stubQuery = () => ({
     get: (..._a: unknown[]) => ({ n: 1 }),
     all: (..._a: unknown[]) => [],
@@ -142,23 +142,20 @@ describe("calendar nav edge tooltips (#554)", () => {
     expect(html).toContain('class="md-icon-button tip-right" href="/calendar?week=2026-09-27"');
     expect(html).not.toContain('class="md-icon-button tip-right" href="/calendar?week=2026-09-13"');
   });
-  test("day mode: next-strip chevron right-aligns its tooltip", () => {
-    const html = views().dayInner("2026-09-21", "America/Chicago");
-    expect(html).toContain('class="md-icon-button tip-right" href="/calendar?day=2026-09-24"');
-    expect(html).not.toContain('class="md-icon-button tip-right" href="/calendar?day=2026-09-18"');
-  });
-  test("day mode: chevrons step a full strip (three days)", () => {
-    const html = views().dayInner("2026-09-21", "America/Chicago");
-    expect(html).toContain('href="/calendar?day=2026-09-18"');
-    expect(html).toContain('href="/calendar?day=2026-09-24"');
-    expect(html).toContain('hx-push-url="/calendar?day=2026-09-18"');
-    expect(html).toContain('hx-push-url="/calendar?day=2026-09-24"');
+  test("carousel: chevrons step a full week in each direction", () => {
+    const html = views().weekInner("2026-09-20", "America/Chicago");
+    expect(html).toContain('href="/calendar?week=2026-09-13"');
+    expect(html).toContain('href="/calendar?week=2026-09-27"');
+    expect(html).toContain('hx-push-url="/calendar?week=2026-09-13"');
+    expect(html).toContain('hx-push-url="/calendar?week=2026-09-27"');
   });
 });
 
-/** #567: chevron day/week navigation slides instead of swapping instantly —
- *  the chevrons carry a data-slide direction the client script intercepts. */
-describe("calendar slide navigation (#567)", () => {
+/** #572: the week carousel — three pre-rendered week strips (prev/current/next)
+ *  in an overflow-hidden viewport; chevron pans translate the track ±100%.
+ *  The chevrons carry a data-slide direction the client script intercepts;
+ *  hrefs stay as the no-JS fallback. */
+describe("calendar week carousel (#572)", () => {
   const stubQuery = () => ({
     get: (..._a: unknown[]) => ({ n: 1 }),
     all: (..._a: unknown[]) => [],
@@ -178,21 +175,56 @@ describe("calendar slide navigation (#567)", () => {
       calHourPx: 64,
     } as any);
   }
-  test("week chevrons carry slide directions", () => {
+  const stripCount = (html: string) => (html.match(/class="cal-strip"/g) || []).length;
+  const laneCount = (html: string) => (html.match(/class="cal-day[ "]/g) || []).length;
+
+  test("weekInner renders three strips tagged with their Sundays", () => {
     const html = views().weekInner("2026-09-20", "America/Chicago");
-    expect(html).toContain('data-slide="prev"');
-    expect(html).toContain('data-slide="next"');
+    expect(stripCount(html)).toBe(3);
+    expect(html).toContain('data-sun="2026-09-13"');
+    expect(html).toContain('data-sun="2026-09-20"');
+    expect(html).toContain('data-sun="2026-09-27"');
+  });
+  test("each strip renders seven day lanes", () => {
+    const html = views().weekInner("2026-09-20", "America/Chicago");
+    expect(laneCount(html)).toBe(21);
+  });
+  test("the track starts centered on the current week", async () => {
+    const html = views().weekInner("2026-09-20", "America/Chicago");
+    expect(html).toContain("cal-track");
+    // the resting position lives in the stylesheet (initCarousel also sets it)
+    const css = await Bun.file("site/static/style.css").text();
+    expect(css).toMatch(/\.cal-track\s*\{[^}]*transform:\s*translateX\(-100%\)/);
+  });
+  test("chevrons carry slide directions and keep htmx fallbacks", () => {
+    const html = views().weekInner("2026-09-20", "America/Chicago");
     expect(html).toContain('data-slide="prev" data-tip="Previous week"');
+    expect(html).toContain('data-slide="next" data-tip="Next week"');
+    expect(html).toContain('hx-get="/partial/week?week=2026-09-13"');
+    expect(html).toContain('hx-push-url="/calendar?week=2026-09-13"');
   });
-  test("day chevrons carry slide directions", () => {
-    const html = views().dayInner("2026-09-21", "America/Chicago");
-    expect(html).toContain('data-slide="prev" data-tip="Previous 3 days"');
-    expect(html).toContain('data-slide="next" data-tip="Next 3 days"');
+  test("each strip carries its week's pane in a template", () => {
+    const html = views().weekInner("2026-09-20", "America/Chicago");
+    expect((html.match(/class="cal-pane-tpl"/g) || []).length).toBe(3);
   });
-  test("chevrons keep their htmx fallback attributes", () => {
-    const html = views().dayInner("2026-09-21", "America/Chicago");
-    expect(html).toContain('hx-get="/partial/day?day=2026-09-18"');
-    expect(html).toContain('hx-push-url="/calendar?day=2026-09-18"');
+  test("the supporting pane sits outside the moving track", () => {
+    const html = views().weekInner("2026-09-20", "America/Chicago");
+    const asideAt = html.indexOf('class="cal-supporting"');
+    const trackAt = html.indexOf('class="cal-track"');
+    expect(asideAt).toBeGreaterThan(-1);
+    expect(trackAt).toBeGreaterThan(-1);
+    expect(asideAt).toBeLessThan(trackAt);
+  });
+  test("weekStrip renders one week's inner HTML", () => {
+    const html = views().weekStrip("2026-09-20", "America/Chicago");
+    expect(laneCount(html)).toBe(7);
+    expect(html).toContain('data-date="2026-09-20"');
+    expect(html).toContain('data-date="2026-09-26"');
+    expect(html).not.toContain('class="cal-strip"');
+    expect(html).toContain('class="cal-pane-tpl"');
+  });
+  test("dayInner is gone", () => {
+    expect((views() as any).dayInner).toBeUndefined();
   });
 });
 
@@ -258,10 +290,10 @@ describe("calendar entry invoiced-mark tooltip (#500)", () => {
   });
 });
 
-/** #521: narrow containers collapse to a genuine server-rendered day view —
- *  #566: a three-day strip (selected day flanked by its neighbors), day nav,
- *  week-scoped supporting pane. */
-describe("calendar day view (#521, #566)", () => {
+/** #572: week-only calendar — the three-day strip is gone; every strip is a
+ *  full week, and narrow strips get a seven-section agenda instead of hour
+ *  lanes. */
+describe("calendar week-only carousel (#572)", () => {
   const stubQuery = () => ({
     get: (..._a: unknown[]) => ({ n: 1 }),
     all: (..._a: unknown[]) => [],
@@ -278,12 +310,6 @@ describe("calendar day view (#521, #566)", () => {
     client_name: "Acme", client_color: null, invoice_id: null,
     invoice_number: null, invoice_status: null,
     start_time: "2026-09-22T14:00:00.000Z", end_time: "2026-09-22T15:00:00.000Z",
-  };
-  const wedEntry = {
-    id: 33, description: "wednesday work", project_id: 5, project_name: "P",
-    client_name: "Acme", client_color: null, invoice_id: null,
-    invoice_number: null, invoice_status: null,
-    start_time: "2026-09-23T14:00:00.000Z", end_time: "2026-09-23T15:00:00.000Z",
   };
 
   function viewsFor(entries: unknown[], qRangeEntries: unknown[] = []) {
@@ -307,93 +333,67 @@ describe("calendar day view (#521, #566)", () => {
   }
 
   const laneCount = (html: string) => (html.match(/class="cal-day[ "]/g) || []).length;
+  const agSectionCount = (html: string) => (html.match(/class="cal-ag-day[ "]/g) || []).length;
 
-  test("#566: dayInner renders a three-day strip with data-mode=day", () => {
-    const html = viewsFor([monEntry, tueEntry]).dayInner("2026-09-21", "America/Chicago");
-    expect(laneCount(html)).toBe(3);
-    expect(html).toContain('data-mode="day"');
-    expect(html).toContain('data-date="2026-09-20"');
+  test("weekInner renders three full weeks: 21 lanes and 21 agenda sections", () => {
+    const html = viewsFor([monEntry, tueEntry]).weekInner("2026-09-20", "America/Chicago");
+    expect(laneCount(html)).toBe(21);
+    expect(agSectionCount(html)).toBe(21);
+  });
+
+  test("strips cover the previous, current, and next week", () => {
+    const html = viewsFor([]).weekInner("2026-09-20", "America/Chicago");
+    expect(html).toContain('data-sun="2026-09-13"');
+    expect(html).toContain('data-sun="2026-09-20"');
+    expect(html).toContain('data-sun="2026-09-27"');
+  });
+
+  test("agenda rows carry the entry's data attributes", () => {
+    const html = viewsFor([monEntry]).weekInner("2026-09-20", "America/Chicago");
+    expect(html).toContain('data-id="31"');
+    expect(html).toContain('data-desc="monday work"');
     expect(html).toContain('data-date="2026-09-21"');
-    expect(html).toContain('data-date="2026-09-22"');
+    expect(html).toContain('data-start="09:00"');
   });
 
-  test("#566: dayInner shows the selected day plus its neighbors, not the whole week", () => {
-    const html = viewsFor([monEntry, tueEntry, wedEntry]).dayInner("2026-09-21", "America/Chicago");
-    expect(html).toContain("monday work");
-    expect(html).toContain("tuesday work");
-    expect(html).not.toContain("wednesday work");
+  test("every agenda day gets an add button", () => {
+    const html = viewsFor([]).weekInner("2026-09-20", "America/Chicago");
+    // 7 per strip x 3 strips
+    expect((html.match(/data-ag-new="/g) || []).length).toBe(21);
+    expect(html).toContain('aria-label="Log time Monday"');
   });
 
-  test("#566: an adjacent day outside the week still renders its entries", () => {
-    // 2026-09-20 is a Sunday: the strip's previous lane (Sat 9/19) falls in
-    // the prior week, so its entries come from the straggler query (qRange).
-    const satEntry = {
-      id: 34, description: "saturday work", project_id: 5, project_name: "P",
-      client_name: "Acme", client_color: null, invoice_id: null,
-      invoice_number: null, invoice_status: null,
-      start_time: "2026-09-19T14:00:00.000Z", end_time: "2026-09-19T15:00:00.000Z",
-    };
-    const html = viewsFor([], [satEntry]).dayInner("2026-09-20", "America/Chicago");
-    expect(laneCount(html)).toBe(3);
-    expect(html).toContain("saturday work");
-    expect(html).toContain('data-date="2026-09-19"');
-  });
-
-  test("dayInner keeps the week-scoped supporting pane", () => {
-    const html = viewsFor([monEntry, tueEntry]).dayInner("2026-09-21", "America/Chicago");
+  test("the supporting pane stays week-scoped", () => {
+    const html = viewsFor([monEntry, tueEntry]).weekInner("2026-09-20", "America/Chicago");
     // 2h monday + 1h tuesday = 3h week total, all billable
     expect(html).toContain("3h 00m");
     expect(html).toContain("Acme");
     expect(html).toContain("Invoice this week");
   });
 
-  test("#544: day mode scope-labels the week numbers", () => {
-    const html = viewsFor([monEntry, tueEntry]).dayInner("2026-09-21", "America/Chicago");
-    expect(html).toContain("3h 00m billable · this week");
-  });
-
-  test("#544: week mode needs no scope label (the heading already names the week)", () => {
-    const html = viewsFor([monEntry, tueEntry]).weekInner("2026-09-20", "America/Chicago");
-    expect(html).toContain("3h 00m billable");
-    expect(html).not.toContain("billable · this week");
-  });
-
-  test("day nav uses day labels and accessible names", () => {
-    const html = viewsFor([]).dayInner("2026-09-21", "America/Chicago");
-    expect(html).toContain('aria-label="Previous 3 days"');
-    expect(html).toContain('aria-label="Next 3 days"');
-    expect(html).toContain('hx-get="/partial/day?day=2026-09-18"');
-    expect(html).toContain('hx-get="/partial/day?day=2026-09-24"');
-    expect(html).not.toContain("Week of");
-  });
-
-  test("dayInner falls back to today on an invalid day", () => {
-    const html = viewsFor([]).dayInner("not-a-day", "UTC");
-    expect(laneCount(html)).toBe(3);
-    expect(html).toContain('<h2 class="md-headline-small">Today</h2>');
-  });
-
-  test("weekInner still renders seven lanes with data-mode=week", () => {
-    const html = viewsFor([monEntry]).weekInner("2026-09-20", "America/Chicago");
-    expect(laneCount(html)).toBe(7);
-    expect(html).toContain('data-mode="week"');
-    expect(html).toContain('aria-label="Previous week"');
-  });
-
-  test("weekGrid loads the day skeleton for ?day=", () => {
-    const html = viewsFor([]).weekGrid(undefined, "2026-09-21");
-    expect(html).toContain('hx-get="/partial/day?day=2026-09-21"');
-    expect(html).toContain('data-mode="day"');
-  });
-
-  test("weekGrid keeps the week skeleton by default", () => {
+  test("weekGrid loads the week skeleton with no day param", () => {
     const html = viewsFor([]).weekGrid("2026-09-20");
     expect(html).toContain('hx-get="/partial/week?week=2026-09-20"');
-    expect(html).not.toContain('data-mode="day"');
+    expect(html).toContain("cal-carousel");
+    expect(html).not.toContain("/partial/day");
+  });
+
+  test("weekStrip fills one recycled strip", () => {
+    const html = viewsFor([monEntry]).weekStrip("2026-09-20", "America/Chicago");
+    expect(html).toContain("monday work");
+    expect(html).toContain('data-date="2026-09-20"');
+    expect(laneCount(html)).toBe(7);
+    expect(agSectionCount(html)).toBe(7);
+  });
+
+  test("no day mode survives", () => {
+    const html = viewsFor([]).weekInner("2026-09-20", "America/Chicago");
+    expect(html).not.toContain("data-mode=");
+    expect(html).not.toContain("/partial/day");
   });
 });
 
-/** #524: the supporting-pane summary's week-over-week delta slot — with no
+/** #524:/** #524: the supporting-pane summary's week-over-week delta slot — with no
  *  previous-week billable time, the "· —" placeholder reads like a
  *  half-loaded widget, so the delta (and its separator) is omitted. */
 describe("week summary delta (#524)", () => {
@@ -471,7 +471,7 @@ describe("calendar entry keyboard activation (#530)", () => {
     );
     expect(handler).toContain("e.key==='Enter'");
     expect(handler).toContain("e.key===' '");
-    expect(handler).toMatch(/closest\('\.cal-entry'\)/);
+    expect(handler).toMatch(/closest\('\.cal-entry,.cal-ag-row'\)/);
     expect(handler).toContain("openEdit(card)");
     expect(handler).toContain("e.preventDefault()");
   });

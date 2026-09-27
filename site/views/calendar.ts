@@ -91,9 +91,9 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     return guess;
   }
 
-  /** #521: week-scoped data shared by the week grid and the three-day
-      strip — the week's entries bucketed by client-local day, plus the
-      summary figures the supporting pane shows (always week-scoped). */
+  /** #572: week-scoped data shared by the carousel strips, the week grid
+      and the agenda — the week's entries bucketed by client-local day, plus
+      the summary figures the supporting pane shows (always week-scoped). */
   interface CalWeekData {
     tz: string | null;
     today: string;
@@ -255,14 +255,11 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     </div>`;
   }
 
-  /** Inner HTML of the #week section (everything that changes when entries do).
-      Served full-page via weekGrid() and in-place via GET /partial/week (#65). */
-  function weekInner(weekStr?: string, tzParam?: string): string {
-    const tz = validTz(tzParam);
-    /* "today" in the client's zone — the server may be on a different date. */
-    const today = ymdOf(tzParts(new Date(), tz));
-    const sun = weekStr && /^\d{4}-\d{2}-\d{2}$/.test(weekStr) ? weekStr : sundayOfYmd(today);
-    const wd = weekData(sun, tz);
+  /** #572: the supporting pane's inner HTML for one week. Rendered live in
+      the aside and once per carousel strip inside a <template>, so the pane
+      swaps instantly (no fetch) when a pan settles on a pre-rendered week. */
+  function paneInner(wd: CalWeekData): string {
+    const { sun, today, weekTotal, weekBillable, clientRows, uninvoiced, prevBillable } = wd;
     const prev = addDays(sun, -7), next = addDays(sun, 7);
     const isThisWeek = sun === sundayOfYmd(today);
     const weekLabel = new Date(sun + "T12:00:00").toLocaleDateString([], { month: "short", day: "numeric" });
@@ -271,59 +268,6 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       ${isThisWeek ? "" : `<a class="md-text-button" href="/calendar" hx-get="/partial/week" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar">Today</a>`}
       <a class="md-icon-button" href="/calendar?week=${prev}" hx-get="/partial/week?week=${prev}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?week=${prev}" data-slide="prev" data-tip="Previous week" aria-label="Previous week">${icon("chevron_left")}</a>
       <a class="md-icon-button tip-right" href="/calendar?week=${next}" hx-get="/partial/week?week=${next}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?week=${next}" data-slide="next" data-tip="Next week" aria-label="Next week">${icon("chevron_right")}</a>`;
-    const lanes: string[] = [];
-    for (let i = 0; i < 7; i++) lanes.push(dayColumnHtml(addDays(sun, i), wd, i * 40));
-    return calShell(wd, navTitle, navActions, lanes.join(""), "week");
-  }
-
-  /** #521: day view, served full-page via weekGrid(day) and in-place via
-      GET /partial/day. The supporting pane stays week-scoped (the selected
-      day's containing week); only the lanes and the nav change.
-      #566: three-day strip — the selected day flanked by its neighbors —
-      instead of a single column. */
-  function dayInner(dayStr?: string, tzParam?: string): string {
-    const tz = validTz(tzParam);
-    /* "today" in the client's zone — the server may be on a different date. */
-    const today = ymdOf(tzParts(new Date(), tz));
-    const day = dayStr && /^\d{4}-\d{2}-\d{2}$/.test(dayStr) ? dayStr : today;
-    const wd = weekData(sundayOfYmd(day), tz);
-    const prevDay = addDays(day, -1), nextDay = addDays(day, 1);
-    /* #566: an adjacent day can fall outside the containing week (Sunday's
-       previous day, Saturday's next day). Fetch those stragglers separately
-       and merge them into byDay — the week-scoped totals stay untouched. */
-    for (const d of [prevDay, nextDay]) {
-      if (d >= wd.sun && d < addDays(wd.sun, 7)) continue;
-      /* Same null-tz fallback as weekBoundsISO: naive-local day bounds. */
-      const from = tz ? new Date(localMidnightUTC(tz, d)).toISOString() : d + "T00:00:00";
-      const to = tz ? new Date(localMidnightUTC(tz, addDays(d, 1))).toISOString() : addDays(d, 1) + "T00:00:00";
-      for (const e of qRange.all(from, to) as Entry[]) {
-        const key = ymdOf(tzParts(new Date(e.start_time), tz));
-        if (!wd.byDay.has(key)) wd.byDay.set(key, []);
-        wd.byDay.get(key)!.push(e);
-      }
-    }
-    const isToday = day === today;
-    const navTitle = isToday ? "Today"
-      : new Date(day + "T12:00:00").toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
-    /* #566: the strip shows three days, so the chevrons step a full strip
-       (±3 days) — the calendar slides by another set of 3, like week mode
-       slides by another set of 7. */
-    const prevStrip = addDays(day, -3), nextStrip = addDays(day, 3);
-    const navActions = `
-      ${isToday ? "" : `<a class="md-text-button" href="/calendar?day=${today}" hx-get="/partial/day?day=${today}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?day=${today}">Today</a>`}
-      <a class="md-icon-button" href="/calendar?day=${prevStrip}" hx-get="/partial/day?day=${prevStrip}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?day=${prevStrip}" data-slide="prev" data-tip="Previous 3 days" aria-label="Previous 3 days">${icon("chevron_left")}</a>
-      <a class="md-icon-button tip-right" href="/calendar?day=${nextStrip}" hx-get="/partial/day?day=${nextStrip}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?day=${nextStrip}" data-slide="next" data-tip="Next 3 days" aria-label="Next 3 days">${icon("chevron_right")}</a>`;
-    /* #566: the strip centers on the selected day. */
-    const lanes = [prevDay, day, nextDay].map((d, i) => dayColumnHtml(d, wd, i * 40)).join("");
-    return calShell(wd, navTitle, navActions, lanes, "day");
-  }
-
-  /** #521: the #week section shared by week and day modes — supporting pane
-      (always week-scoped) plus the scroll region. `mode` drives the grid's
-      column count through [data-mode]. */
-  function calShell(wd: CalWeekData, navTitle: string, navActions: string,
-      lanesHtml: string, mode: "week" | "day"): string {
-    const { sun, weekTotal, weekBillable, clientRows, uninvoiced, prevBillable } = wd;
     const nudgeChip = uninvoiced > 0 ? `
       <a class="nudge-chip" href="/invoices/new?from=${sun}&to=${addDays(sun, 7)}">
         <span class="md-label-large">${fmtDur(uninvoiced)} not yet invoiced</span>
@@ -351,55 +295,150 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       const abs = Math.abs(pct);
       return ` · <span class="muted cal-delta" aria-label="${abs}% ${dirWord} vs prev week">${icon(trend)} ${abs}% vs prev week</span>`;
     })();
+    return `
+      <div class="week-nav">
+        <h2 class="md-headline-small">${esc(navTitle)}</h2>
+        <div class="week-nav-actions">
+          ${navActions}
+        </div>
+      </div>
+      <div class="cal-summary">
+        <div class="md-headline-small">${fmtDur(weekTotal)}</div>
+        <div class="md-label-medium muted">${fmtDur(weekBillable)} billable${deltaHtml}</div>
+      </div>
+      ${nudgeChip}
+      ${weekTargetBar(weekTotal)}
+      ${clientStrip}
+      <p class="muted tiny cal-hint">Drag on the grid to log time. Click an entry to edit it.</p>
+      ${workspaceEmpty(db) ? `<div class="cal-first-run">
+        ${icon("info")}
+        <p class="md-label-large"><strong>New here?</strong> Load fictional sample data to explore the calendar.</p>
+        <form method="post" action="/demo/load" class="inline"><button class="md-text-button" type="submit">Load demo data</button></form>
+      </div>` : ""}`;
+  }
+
+  /** #572: the narrow-container week presentation — seven stacked day sections
+      instead of hour lanes. Picked by container query (the strip is the
+      container), so no JS mode-switching. Entry rows carry the same data-*
+      attributes as grid cards, so the edit dialog opens unchanged. */
+  function agendaHtml(wd: CalWeekData): string {
+    const { tz, today } = wd;
+    const toMin = (iso: string) => { const p = tzParts(new Date(iso), tz); return p.hh * 60 + p.mm; };
+    const toHM = (mins: number) => `${String(Math.floor(mins / 60)).padStart(2, "0")}:${String(mins % 60).padStart(2, "0")}`;
+    const nowP = tzParts(new Date(), tz);
+    const nowMin = nowP.hh * 60 + nowP.mm;
+    const sections: string[] = [];
+    for (let i = 0; i < 7; i++) {
+      const day = addDays(wd.sun, i);
+      const [y, m, d] = day.split("-").map(Number);
+      const wdName = weekdayOf(y, m, d);
+      const entries = (wd.byDay.get(day) ?? []).slice().sort((a, b) =>
+        a.start_time < b.start_time ? -1 : a.start_time > b.start_time ? 1 : 0);
+      const total = entries.reduce((a, e) => a + durationSeconds(e.start_time, e.end_time), 0);
+      const rows = entries.map((e) => {
+        const a = toMin(e.start_time);
+        const b = e.end_time ? toMin(e.end_time) : nowMin;
+        const color = e.client_color || "#9aa0a6"; // no-client: neutral gray, distinct from client colors
+        const running = !e.end_time;
+        const locked = entryIsLocked(e); /* #334: sent/paid time is a frozen record */
+        const mark = entryInvoiceMark(e);
+        const markA11y = mark ? `, ${mark.label} ${esc(e.invoice_number || "")}` : "";
+        const label = `${esc(e.description || "No description")}, ${fmtDur(durationSeconds(e.start_time, e.end_time))}${markA11y}`;
+        const desc = e.description ? esc(e.description) : "<em>No description</em>";
+        return `<div class="cal-ag-row${running ? " running" : ""}${mark ? " invoiced" : ""}" style="--c:${esc(color)}"
+            data-id="${e.id}" data-desc="${esc(e.description)}" data-project-id="${e.project_id ?? ""}"
+            data-date="${day}" data-start="${toHM(a)}" data-end="${running ? "" : toHM(Math.min(b, 1439))}"
+            data-locked="${locked ? esc(e.invoice_number || "") : ""}"
+            tabindex="0" role="button" aria-label="${label}">
+          <span class="cal-ag-time md-label-small muted">${toHM(a)}&ndash;${running ? "now" : toHM(Math.min(b, 1439))}</span>
+          <span class="cal-ag-desc md-body-medium">${e.project_name ? `<strong>${esc(e.project_name)}</strong> · ` : ""}${desc}</span>
+          <span class="cal-ag-dur md-label-medium">${fmtDur(durationSeconds(e.start_time, e.end_time))}</span>
+        </div>`;
+      }).join("");
+      sections.push(`<section class="cal-ag-day${day === today ? " today" : ""}" data-date="${day}">
+        <div class="cal-ag-head">
+          <span class="md-title-small">${esc(wdName.slice(0, 3))}</span>
+          <span class="cal-ag-num${day === today ? " today" : ""}">${d}</span>
+          ${total > 0 ? `<span class="md-label-medium muted">${fmtDur(total)}</span>` : ""}
+          <span class="cal-spacer"></span>
+          <button class="md-icon-button cal-ag-new" data-ag-new="${day}" aria-label="Log time ${esc(wdName)}">${icon("add")}</button>
+        </div>
+        ${rows || `<p class="muted tiny cal-ag-empty">No entries</p>`}
+      </section>`);
+    }
+    return `<div class="cal-agenda">${sections.join("")}</div>`;
+  }
+
+  /** #572: a carousel strip's inner HTML for one week — the 24h grid, the
+      narrow agenda, and the week's supporting pane in a <template>. */
+  function stripInnerHtml(sun: string, tz: string | null): string {
+    const wd = weekData(sun, tz);
+    const lanes: string[] = [];
+    for (let i = 0; i < 7; i++) lanes.push(dayColumnHtml(addDays(sun, i), wd, i * 40));
     const hourLabels = Array.from({ length: 24 }, (_, h) => {
       const ampm = h === 0 ? "12 AM" : h < 12 ? `${h} AM` : h === 12 ? "12 PM" : `${h - 12} PM`;
       const night = h < 6 || h >= 19;
       return `<span class="cal-hour-label${night ? " night" : ""}" style="top:${(h * calHourPx - 8).toFixed(0)}px">${ampm}</span>`;
     }).join("");
-
-    /* #544: day mode's heading names a day ("Today") while the pane is
-       week-scoped — the bare numbers read as day totals (timer page says
-       Today 0s, calendar said Today 24h). Scope-label them in day mode. */
-    const scopeLabel = mode === "day" ? " · this week" : "";
     return `
-    <div class="cal-pane-layout">
-      <aside class="cal-supporting" data-enter="3" aria-label="Week summary">
-        <div class="week-nav">
-          <h2 class="md-headline-small">${esc(navTitle)}</h2>
-          <div class="week-nav-actions">
-            ${navActions}
-          </div>
-        </div>
-        <div class="cal-summary">
-          <div class="md-headline-small">${fmtDur(weekTotal)}</div>
-          <div class="md-label-medium muted">${fmtDur(weekBillable)} billable${scopeLabel}${deltaHtml}</div>
-        </div>
-        ${nudgeChip}
-        ${weekTargetBar(weekTotal)}
-        ${clientStrip}
-        <p class="muted tiny cal-hint">Drag on the grid to log time. Click an entry to edit it.</p>
-        ${workspaceEmpty(db) ? `<div class="cal-first-run">
-          ${icon("info")}
-          <p class="md-label-large"><strong>New here?</strong> Load fictional sample data to explore the calendar.</p>
-          <form method="post" action="/demo/load" class="inline"><button class="md-text-button" type="submit">Load demo data</button></form>
-        </div>` : ""}
-      </aside>
       <div class="cal-scroll" data-enter="3">
-        <div class="cal-grid" id="cal-body" data-mode="${mode}" style="--cal-hour:${calHourPx}px">
+        <div class="cal-grid" style="--cal-hour:${calHourPx}px">
           <div class="cal-gutter-col">
             <div class="cal-gutter-spacer"></div>
             <div class="cal-gutter cal-hours">${hourLabels}</div>
           </div>
-          ${lanesHtml}
-          <!-- data-now, not id: htmx's settle restores server attributes on
-               swapped nodes whose id already exists in the DOM, which would
-               wipe placeNow()'s positioning ~20ms after every week swap. -->
+          ${lanes.join("")}
+          <!-- data-now, not id: one line per strip; placeNow() positions each.
+               htmx's settle restores server attributes on swapped nodes whose
+               id already exists in the DOM, which would wipe placeNow()'s
+               positioning ~20ms after every week swap (#215). -->
           <div class="cal-now" data-now hidden></div>
+        </div>
+      </div>
+      ${agendaHtml(wd)}
+      <template class="cal-pane-tpl">${paneInner(wd)}</template>`;
+  }
+
+  /** #572: one carousel strip — a full week, tagged with its Sunday. */
+  function stripHtml(sun: string, tz: string | null): string {
+    return `<div class="cal-strip" data-sun="${sun}">${stripInnerHtml(sun, tz)}</div>`;
+  }
+
+  /** Inner HTML of the #week section (everything that changes when entries do).
+      Served full-page via weekGrid() and in-place via GET /partial/week (#65).
+      #572: a three-week carousel — previous, current, and next week strips
+      pre-rendered side by side. Chevron pans translate the track; the far
+      strip is recycled and repopulated in the background after each settle. */
+  function weekInner(weekStr?: string, tzParam?: string): string {
+    const tz = validTz(tzParam);
+    /* "today" in the client's zone — the server may be on a different date. */
+    const today = ymdOf(tzParts(new Date(), tz));
+    const sun = weekStr && /^\d{4}-\d{2}-\d{2}$/.test(weekStr) ? weekStr : sundayOfYmd(today);
+    const wd = weekData(sun, tz);
+    const strips = [addDays(sun, -7), sun, addDays(sun, 7)].map((s) => stripHtml(s, tz)).join("");
+    return `
+    <div class="cal-pane-layout">
+      <aside class="cal-supporting" data-enter="3" aria-label="Week summary">
+        ${paneInner(wd)}
+      </aside>
+      <div class="cal-carousel">
+        <div class="cal-track">
+          ${strips}
         </div>
       </div>
     </div>
     `;
   }
+
+  /** #572: a single strip's inner HTML — GET /partial/week?week=&strip=1, the
+      background fill when a pan recycles the far strip. */
+  function weekStrip(weekStr?: string, tzParam?: string): string {
+    const tz = validTz(tzParam);
+    const today = ymdOf(tzParts(new Date(), tz));
+    const sun = weekStr && /^\d{4}-\d{2}-\d{2}$/.test(weekStr) ? weekStr : sundayOfYmd(today);
+    return stripInnerHtml(sun, tz);
+  }
+
   /** Full calendar week section: the #week wrapper plus the persistent entry
       dialog and calendar script. The dialog and script live outside #week so an
       in-place week refresh (#65) never destroys dialog bindings or duplicates
@@ -407,32 +446,11 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       #256: the grid loads via htmx (tz is appended by calScript's
       htmx:configRequest) so the first paint is already in the client's zone —
       a server-rendered grid would flash server-timezone positions. */
-  function weekGrid(weekStr?: string, dayStr?: string): string {
-    /* #521: a ?day= URL loads the skeleton in day mode — three lanes, with the
-       calScript init correcting to week mode when the grid is wide enough. */
-    const day = dayStr && /^\d{4}-\d{2}-\d{2}$/.test(dayStr) ? dayStr : undefined;
-    const q = day ? `?day=${day}` : (weekStr && /^\d{4}-\d{2}-\d{2}$/.test(weekStr) ? `?week=${weekStr}` : "");
-    /* #322: the skeleton mirrors .cal-pane-layout (summary aside with the
-       week-nav skeleton at its top, gutter + day columns with the hour
-       rhythm) so the htmx swap lands without a layout flash. */
-    const skelDay = `<div class="cal-skel-day"><div class="skel cal-skel-head"></div><div class="skel cal-skel-lane"></div></div>`;
-    const skelGrid = `<div class="cal-skel-grid"${day ? ` data-mode="day"` : ""}>${skelDay.repeat(day ? 4 : 8)}</div>`;
-    return `<div id="week" hx-get="/partial/${day ? "day" : "week"}${q}" hx-trigger="load" hx-swap="innerHTML">
-        <div class="cal-skel" aria-hidden="true">
-          <div class="cal-skel-aside">
-            <div class="cal-skel-nav">
-              <div class="skel cal-skel-title"></div>
-              <div class="cal-skel-actions"><div class="skel cal-skel-dot"></div><div class="skel cal-skel-dot"></div><div class="skel cal-skel-dot"></div></div>
-            </div>
-            <div class="skel cal-skel-big"></div>
-            <div class="skel skel-line" style="width:75%"></div>
-            <div class="skel skel-line" style="width:55%"></div>
-            <div class="skel cal-skel-bar"></div>
-          </div>
-          ${skelGrid}
-        </div>
-      </div>
-      <div class="cal-scrim" id="cal-scrim" hidden>
+  /** The persistent entry dialog — lives outside #week so an in-place week
+      refresh (#65) never destroys its bindings. Rendered once in the page
+      skeleton; the carousel strips never include it. */
+  function calDialog(): string {
+    return `<div class="cal-scrim" id="cal-scrim" hidden>
         <div class="cal-dialog" role="dialog" aria-modal="true" aria-labelledby="cal-dialog-title">
           <div class="cal-dialog-head">
             <h2 class="md-headline-small" id="cal-dialog-title">New entry</h2>
@@ -467,7 +485,34 @@ export function createCalendarViews(deps: CalendarViewDeps) {
             <button class="md-filled-button" id="cal-save">Save</button>
           </div>
         </div>
+      </div>`;
+  }
+
+  function weekGrid(weekStr?: string): string {
+    const q = weekStr && /^\d{4}-\d{2}-\d{2}$/.test(weekStr) ? `?week=${weekStr}` : "";
+    /* #322: the skeleton mirrors the carousel pane layout (summary aside with
+       the week-nav skeleton at its top, gutter + day columns with the hour
+       rhythm) so the htmx swap lands without a layout flash. */
+    const skelDay = `<div class="cal-skel-day"><div class="skel cal-skel-head"></div><div class="skel cal-skel-lane"></div></div>`;
+    const skelGrid = `<div class="cal-skel-grid">${skelDay.repeat(8)}</div>`;
+    return `<div id="week" hx-get="/partial/week${q}" hx-trigger="load" hx-swap="innerHTML">
+      <div class="cal-pane-layout" style="--i:3">
+        <aside class="cal-supporting">
+          <div class="week-nav">
+            <div class="skel cal-skel-nav-title"></div>
+            <div class="skel cal-skel-nav-actions"></div>
+          </div>
+          <div class="skel cal-skel-summary"></div>
+        </aside>
+        <div class="cal-carousel">
+          <div class="cal-track">
+            <div class="cal-strip"><div class="cal-scroll" style="padding:4px">${skelGrid}</div></div>
+            <div class="cal-strip"><div class="cal-scroll" style="padding:4px">${skelGrid}</div></div>
+            <div class="cal-strip"><div class="cal-scroll" style="padding:4px">${skelGrid}</div></div>
+          </div>
+        </div>
       </div>
+      ${calDialog()}
       <script>${calScript()}</script>
   `;
   }
@@ -484,63 +529,32 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     function tzSuffix(){var o=-new Date().getTimezoneOffset();var s=o<0?"-":"+",a=Math.abs(o);
       return s+String(Math.floor(a/60)).padStart(2,"0")+":"+String(a%60).padStart(2,"0");}
     document.body.addEventListener("htmx:configRequest",function(e){
-      if(e.detail&&e.detail.path&&(e.detail.path.indexOf("/partial/week")===0||e.detail.path.indexOf("/partial/day")===0)&&TZ)
+      if(e.detail&&e.detail.path&&e.detail.path.indexOf("/partial/week")===0&&TZ)
         e.detail.parameters.tz=TZ;});
-    /* #521: collapse to a genuine server-rendered three-day strip when
-       the grid gets too narrow. The trigger is the calendar's own width, not
-       the viewport: 54px gutter + 7 lanes at ~100px + 6 gaps ≈ 800px. The
-       desktop week grid maxes out around 866px (lanes ~108px — the designed
-       week view), so this threshold leaves desktop untouched and collapses
-       only containers where the lanes would become unreadable slivers. Mode
-       lives in the URL (?day= vs ?week=) so deep links keep working. */
-    var DAY_BREAK=800;
-    function gridWidth(){
-      var el=document.querySelector(".cal-scroll")||document.querySelector(".cal-skel-grid")||document.getElementById("week");
-      return el?el.clientWidth:0;}
-    function urlParam(n){try{return new URLSearchParams(location.search).get(n)||"";}catch(e){return "";}}
+    /* #572: week carousel state. Three pre-rendered week strips sit side by
+       side in .cal-track (translateX(-100%) at rest); chevron pans translate
+       ±100% on a pure transform. stripWeeks tracks each strip's Sunday in
+       DOM order. */
+    var trackEl=null, stripWeeks=[], panning=false;
+    var panReduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    function trackStrips(){ return trackEl?Array.prototype.slice.call(trackEl.children):[]; }
+    function initCarousel(){
+      trackEl=document.querySelector('#week .cal-track');
+      stripWeeks=trackStrips().map(function(s){return s.getAttribute('data-sun');});
+      panning=false;
+      if(trackEl){ trackEl.classList.add('no-anim');
+        trackEl.style.transform='translateX(-100%)';
+        void trackEl.offsetWidth; trackEl.classList.remove('no-anim'); }
+    }
     function ymdUTC(d){var p=function(x){return String(x).padStart(2,"0");};
       return d.getUTCFullYear()+"-"+p(d.getUTCMonth()+1)+"-"+p(d.getUTCDate());}
     function shiftYmd(ymd,n){var p=ymd.split("-");
       return ymdUTC(new Date(Date.UTC(+p[0],+p[1]-1,+p[2])+n*864e5));}
-    function sundayOf(ymd){var p=ymd.split("-"),d=new Date(Date.UTC(+p[0],+p[1]-1,+p[2],12));
-      return ymdUTC(new Date(d.getTime()-d.getUTCDay()*864e5));}
-    function clientYmd(){var n=new Date(),p=function(x){return String(x).padStart(2,"0");};
-      return n.getFullYear()+"-"+p(n.getMonth()+1)+"-"+p(n.getDate());}
-    /* Entering day mode shows today when it belongs to the current week,
-       otherwise the week's Sunday (the server falls back the same way). */
-    function dayForWeek(weekStr){
-      var today=clientYmd(),sun=weekStr&&/^\\d{4}-\\d{2}-\\d{2}$/.test(weekStr)?weekStr:sundayOf(today);
-      return (today>=sun&&today<shiftYmd(sun,7))?today:sun;}
-    /* First paint: the skeleton always loads in the URL's mode, but the
-       server can't know the container width — correct it client-side before
-       htmx fires the load trigger, so there's no 7-lane skeleton flash and
-       no extra navigation. replaceState keeps the corrected URL canonical
-       without adding a history entry. */
-    (function initMode(){
-      if(urlParam("day")||gridWidth()>=DAY_BREAK) return;
-      var day=dayForWeek(urlParam("week")),weekEl=document.getElementById("week");
-      if(!weekEl) return;
-      weekEl.setAttribute("hx-get","/partial/day?day="+encodeURIComponent(day));
-      var skel=weekEl.querySelector(".cal-skel-grid");
-      if(skel){skel.setAttribute("data-mode","day");
-        var lanes=skel.querySelectorAll(".cal-skel-day");
-        for(var i=lanes.length-1;i>3;i--) lanes[i].remove();}
-      try{history.replaceState(null,"","/calendar?day="+encodeURIComponent(day));}catch(e){}
-    })();
-    /* Later resizes that cross the threshold navigate once to the other mode.
-       Each mode is stable inside its own width range, so there's no ping-pong. */
-    var modeTimer=null;
-    function checkMode(){
-      var w=gridWidth(); if(!w) return;
-      var want=w<DAY_BREAK?"day":"week",cur=urlParam("day")?"day":"week";
-      if(want===cur) return;
-      location.href=want==="day"
-        ? "/calendar?day="+encodeURIComponent(dayForWeek(urlParam("week")))
-        : "/calendar?week="+encodeURIComponent(sundayOf(urlParam("day")||clientYmd()));
+    function stripUrl(sun){
+      var u='/partial/week?week='+encodeURIComponent(sun)+'&strip=1';
+      return u+(TZ?'&tz='+encodeURIComponent(TZ):'');
     }
-    if(window.ResizeObserver){var _w=document.getElementById("week");
-      if(_w) new ResizeObserver(function(){
-        clearTimeout(modeTimer); modeTimer=setTimeout(checkMode,200);}).observe(_w);}
+
     var scrim=document.getElementById('cal-scrim');
     var dialog=scrim.querySelector('.cal-dialog');
     /* M3 dialog motion: .open drives scrim fade + dialog scale/fade.
@@ -633,6 +647,13 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     /* #456: keep Tab cycling inside the modal entry dialog — it's
        aria-modal="true", so focus must not wander behind the scrim. The
        scrim's only child is the dialog itself. */
+    /* #572: the narrow week agenda has no hour lanes — each day gets a +
+       button that opens the create dialog for that day (9–10 AM default). */
+    document.addEventListener('click',function(e){
+      var b=e.target&&e.target.closest?e.target.closest('[data-ag-new]'):null;
+      if(!b) return;
+      openCreate(b.getAttribute('data-ag-new'),540,600);
+    });
     document.addEventListener('keydown',function(e){
       if(e.key==='Escape'&&!scrim.hidden) close();
       else if(e.key==='Tab'&&!scrim.hidden&&window.tkTrapTab) window.tkTrapTab(scrim,e);
@@ -640,7 +661,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
          activate them like real buttons. openEdit sets the focus-return
          opener, and preventDefault stops Space from scrolling the page. */
       else if(e.key==='Enter'||e.key===' '){
-        var card=e.target&&e.target.closest?e.target.closest('.cal-entry'):null;
+        var card=e.target&&e.target.closest?e.target.closest('.cal-entry,.cal-ag-row'):null;
         if(card){ e.preventDefault(); openEdit(card); }
       }
     });
@@ -657,21 +678,25 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       if(e.detail && e.detail.target && e.detail.target.id==='week')
         document.getElementById('week').classList.add('no-enter');
     });
+    /* In-place week refresh (#65): re-render the whole carousel window
+       (three strips + pane) without a full page reload. Load-entrance
+       animations are suppressed for the swap (no-enter); the visible strip
+       keeps its scroll position, and the new/updated entry gets a one-time
+       highlight. */
     function refreshWeek(highlightId){
       var weekEl=document.getElementById('week');
-      var scroller=weekEl.querySelector('.cal-scroll');
-      var st=scroller?scroller.scrollTop:0;
-      /* #521: stay in the active mode — the server renders the correct lane
-         count for each, so a blind week refresh would clobber day mode. */
-      var day=urlParam('day');
-      var base=day?'/partial/day?day='+encodeURIComponent(day):'/partial/week?week='+encodeURIComponent(urlParam('week'));
-      fetch(base+(TZ?'&tz='+encodeURIComponent(TZ):'')).then(function(r){
-        if(!r.ok) throw new Error('refresh failed');
-        return r.text();
-      }).then(function(html){
+      var mid=trackStrips()[1];
+      var sc=mid&&mid.querySelector('.cal-scroll');
+      var st=sc?sc.scrollTop:0;
+      var sun=stripWeeks[1]||'';
+      var u='/partial/week?week='+encodeURIComponent(sun)+(TZ?'&tz='+encodeURIComponent(TZ):'');
+      fetch(u).then(function(r){ if(!r.ok) throw new Error('refresh failed'); return r.text(); })
+      .then(function(html){
         weekEl.classList.add('no-enter');
         weekEl.innerHTML=html;
-        var sc2=weekEl.querySelector('.cal-scroll');
+        initCarousel();
+        var mid2=trackStrips()[1];
+        var sc2=mid2&&mid2.querySelector('.cal-scroll');
         if(sc2) sc2.scrollTop=st;
         if(highlightId){
           var el=weekEl.querySelector('.cal-entry[data-id="'+highlightId+'"]');
@@ -680,100 +705,70 @@ export function createCalendarViews(deps: CalendarViewDeps) {
         placeNow();
       }).catch(function(){ location.reload(); /* last resort: never leave stale data */ });
     }
-    /* #567: chevron day/week navigation slides the CALENDAR — not the
-       supporting pane — by a full page of days (3 in day mode, 7 in week
-       mode). The aside (chevrons + summary) swaps instantly; only the grid
-       cross-slides. The adjacent partial is prefetched on hover/focus (and
-       after every slide), so the slide usually has its data ready.
+    /* #572: chevron week navigation pans the pre-rendered carousel — no
+       fetch on the critical path. On settle the far strip is recycled to the
+       other end and its new week populates in the background; the supporting
+       pane swaps instantly from the incoming strip's <template>.
        Capture-phase click interception beats htmx to the link; the href
-       stays as the no-JS fallback. During a slide, further nav clicks are
+       stays as the no-JS fallback. During a pan, further nav clicks are
        consumed. */
-    var slideCache={}, slideInflight={}, sliding=false;
-    var slideReduceMotion=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    function slideUrl(a){
-      var base=a.getAttribute('hx-get')||a.getAttribute('href')||'';
-      if(!base||base.charAt(0)!=='/') return '';
-      return base+(TZ?(base.indexOf('?')>=0?'&':'?')+'tz='+encodeURIComponent(TZ):'');
-    }
-    function prefetch(a){
-      var u=slideUrl(a); if(!u||slideCache[u]||slideInflight[u]) return;
-      slideInflight[u]=fetch(u).then(function(r){ return r.ok?r.text():''; }).then(function(html){
-        delete slideInflight[u]; if(html) slideCache[u]=html;
-      }).catch(function(){ delete slideInflight[u]; });
-    }
-    document.addEventListener('pointerover',function(e){
-      var a=e.target&&e.target.closest?e.target.closest('a[data-slide]'):null;
-      if(a) prefetch(a);
-    });
-    document.addEventListener('focusin',function(e){
-      var a=e.target&&e.target.closest?e.target.closest('a[data-slide]'):null;
-      if(a) prefetch(a);
-    });
     document.addEventListener('click',function(e){
       var a=e.target&&e.target.closest?e.target.closest('a[data-slide]'):null;
       if(!a) return;
-      /* Consume nav clicks during a slide — without this, htmx (or the
-         default link navigation) would fire under the running animation. */
-      if(sliding){ e.preventDefault(); e.stopPropagation(); return; }
-      var weekEl=document.getElementById('week');
-      var cur=weekEl&&weekEl.querySelector('.cal-pane-layout');
-      var grid=cur&&cur.querySelector('.cal-scroll');
-      if(!cur||!grid) return; /* skeleton or foreign content — let htmx handle it */
+      if(panning){ e.preventDefault(); e.stopPropagation(); return; }
+      if(!trackEl||stripWeeks.length!==3) return; /* foreign content — let htmx handle it */
       e.preventDefault(); e.stopPropagation();
-      var dir=a.getAttribute('data-slide')==='prev'?-1:1;
-      var pushUrl=a.getAttribute('hx-push-url')||a.getAttribute('href');
-      var u=slideUrl(a); if(!u) return;
-      sliding=true;
-      function ready(html){ slideGrid(weekEl,cur,grid,html,dir,pushUrl); }
-      if(slideCache[u]) ready(slideCache[u]);
-      else fetch(u).then(function(r){ if(!r.ok) throw 0; return r.text(); }).then(ready)
-        .catch(function(){ sliding=false; location.href=a.getAttribute('href')||'/calendar'; });
+      pan(a.getAttribute('data-slide')==='prev'?-1:1);
     },true);
-    function slideGrid(weekEl,pane,oldGrid,html,dir,pushUrl){
-      var tmp=document.createElement('div');
-      tmp.innerHTML=html;
-      var newAside=tmp.querySelector('.cal-supporting');
-      var newGrid=tmp.querySelector('.cal-scroll');
-      if(!newAside||!newGrid){ /* unexpected shape — full swap, no slide */
-        weekEl.innerHTML=html;
-        try{ history.pushState(null,'',pushUrl); }catch(e){}
-        sliding=false; placeNow(); centerOnNow(); return;
-      }
-      /* The supporting pane (chevrons + summary) swaps instantly — only the
-         calendar grid slides. */
-      var oldAside=pane.querySelector('.cal-supporting');
-      if(oldAside) oldAside.replaceWith(newAside);
-      /* Keep the new grid's scroller at top; the enter animation is
-         suppressed for the swap, matching the htmx path. */
-      weekEl.classList.add('no-enter');
-      newGrid.scrollTop=0;
-      var track=document.createElement('div');
-      track.className='cal-slide-track';
-      var ref=oldGrid.nextSibling;
-      pane.removeChild(oldGrid);
-      if(dir>0){ track.appendChild(oldGrid); track.appendChild(newGrid); }
-      else { track.appendChild(newGrid); track.appendChild(oldGrid);
-        track.style.transform='translateX(-100%)'; /* start on the old grid */ }
-      pane.insertBefore(track,ref);
-      /* Force layout so the transition starts from the set position. */
-      void track.offsetWidth;
-      track.style.transform=dir>0?'translateX(-100%)':'translateX(0)';
+    function pan(dir){
+      panning=true;
+      if(panReduce){ settlePan(dir); return; }
+      trackEl.style.transform=dir>0?'translateX(-200%)':'translateX(0)';
       var done=false;
-      function settle(){
-        if(done) return; done=true;
-        track.replaceWith(newGrid);
-        try{ history.pushState(null,'',pushUrl); }catch(e){}
-        sliding=false;
-        placeNow(); centerOnNow();
-        /* Prime the cache for the new chevrons' targets. */
-        var links=pane.querySelectorAll('a[data-slide]');
-        for(var i=0;i<links.length;i++) prefetch(links[i]);
-      }
-      if(slideReduceMotion){ settle(); return; } /* no animation — swap now */
-      track.addEventListener('transitionend',settle);
-      /* transitionend can be swallowed (tab hidden) — this is the backstop. */
-      setTimeout(settle,450);
+      function onEnd(){ if(done) return; done=true; settlePan(dir); }
+      trackEl.addEventListener('transitionend',onEnd,{once:true});
+      setTimeout(onEnd,450); /* transitionend can be swallowed (tab hidden) */
     }
+    function settlePan(dir){
+      var strips=trackStrips();
+      var newWeeks=dir>0
+        ? [stripWeeks[1],stripWeeks[2],shiftYmd(stripWeeks[2],7)]
+        : [shiftYmd(stripWeeks[0],-7),stripWeeks[0],stripWeeks[1]];
+      var recycle=dir>0?strips[0]:strips[2];
+      if(dir>0) trackEl.appendChild(recycle);
+      else trackEl.insertBefore(recycle,trackEl.firstChild);
+      stripWeeks=newWeeks;
+      var farSun=dir>0?newWeeks[2]:newWeeks[0];
+      recycle.setAttribute('data-sun',farSun);
+      /* Reset to the resting position without animating. */
+      trackEl.classList.add('no-anim');
+      trackEl.style.transform='translateX(-100%)';
+      void trackEl.offsetWidth;
+      trackEl.classList.remove('no-anim');
+      /* The pane is week-scoped: swap it instantly from the incoming
+         (middle) strip's pre-rendered template. */
+      var mid=trackStrips()[1];
+      var tpl=mid.querySelector('.cal-pane-tpl');
+      var aside=document.querySelector('#week .cal-supporting');
+      if(tpl&&aside) aside.innerHTML=tpl.innerHTML;
+      try{ history.pushState(null,'','/calendar?week='+newWeeks[1]); }catch(e){}
+      panning=false;
+      placeNow();
+      initStripScroll(mid);
+      populateStrip(recycle,farSun);
+    }
+    /* Fill a recycled strip with its new week in the background. A generation
+       guard drops the response if the strip was recycled again meanwhile. */
+    function populateStrip(strip,sun){
+      strip.classList.add('no-enter');
+      fetch(stripUrl(sun)).then(function(r){ if(!r.ok) throw 0; return r.text(); })
+      .then(function(html){
+        if(strip.getAttribute('data-sun')!==sun) return;
+        strip.innerHTML=html;
+        placeNow(); initStripScroll(strip);
+      }).catch(function(){ /* keep the stale strip; the next pan recycles it again */ });
+    }
+
     document.getElementById('cal-save').addEventListener('click',function(){
       var s=toMin(startI.value),e=toMin(endI.value);
       if(!(e>s)) return fail('End time must be after start time.');
@@ -867,7 +862,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
         window.addEventListener('pointerup',rup);
         return;
       }
-      var entryEl=e.target.closest('.cal-entry');
+      var entryEl=e.target.closest('.cal-entry,.cal-ag-row');
       if(entryEl){ openEdit(entryEl); return; }
       var col=e.target.closest('.cal-day-col');
       if(!col) return;
@@ -900,6 +895,8 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       var n=new Date();var p=function(x){return String(x).padStart(2,'0');};
       return n.getFullYear()+'-'+p(n.getMonth()+1)+'-'+p(n.getDate());
     }
+    /* Position every strip's now-line; strips whose week has no today
+       column keep theirs hidden. */
     function placeNow(){
       var today=clientToday();
       var n=new Date();var nowMin=n.getHours()*60+n.getMinutes();
@@ -907,34 +904,50 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       for(var i=0;i<t.length;i++) t[i].classList.remove('today');
       var nm=document.querySelectorAll('.cal-day-num.today');
       for(var i=0;i<nm.length;i++) nm[i].classList.remove('today');
-      var line=document.querySelector('[data-now]');
-      var col=document.querySelector('.cal-day-col[data-date="'+today+'"]');
-      if(!col){ if(line) line.hidden=true; return; }
-      var day=col.closest('.cal-day');
-      day.classList.add('today');
-      var num=day.querySelector('.cal-day-num'); if(num) num.classList.add('today');
-      day.classList.remove('paced-short'); /* the viewer's today is never "past" */
-      if(line){ col.appendChild(line);
-        line.style.top=((nowMin/60)*HOUR).toFixed(1)+'px'; line.hidden=false; }
-      var run=col.querySelectorAll('.cal-entry.running');
-      for(var i=0;i<run.length;i++){
-        var st=run[i].getAttribute('data-start'); if(!st) continue;
-        var pp=st.split(':'),sm=(+pp[0])*60+(+pp[1]);
-        run[i].style.height=Math.max(((nowMin-sm)/60)*HOUR,26).toFixed(1)+'px';
+      var ag=document.querySelectorAll('.cal-ag-day.today');
+      for(var j=0;j<ag.length;j++) ag[j].classList.remove('today');
+      var strips=document.querySelectorAll('#week .cal-strip');
+      for(var s=0;s<strips.length;s++){
+        (function(strip){
+          var line=strip.querySelector('[data-now]');
+          var col=strip.querySelector('.cal-day-col[data-date="'+today+'"]');
+          var agd=strip.querySelector('.cal-ag-day[data-date="'+today+'"]');
+          if(agd) agd.classList.add('today');
+          if(!col){ if(line) line.hidden=true; return; }
+          var day=col.closest('.cal-day');
+          day.classList.add('today');
+          var num=day.querySelector('.cal-day-num'); if(num) num.classList.add('today');
+          day.classList.remove('paced-short'); /* the viewer's today is never "past" */
+          if(line){ col.appendChild(line);
+            line.style.top=((nowMin/60)*HOUR).toFixed(1)+'px'; line.hidden=false; }
+          var run=col.querySelectorAll('.cal-entry.running');
+          for(var i=0;i<run.length;i++){
+            var st=run[i].getAttribute('data-start'); if(!st) continue;
+            var pp=st.split(':'),sm=(+pp[0])*60+(+pp[1]);
+            run[i].style.height=Math.max(((nowMin-sm)/60)*HOUR,26).toFixed(1)+'px';
+          }
+        })(strips[s]);
       }
     }
-    /* #215: on load (and after week-nav swaps), center the now-line in the
-       scroll viewport when it's visible. Entry create/edit/delete keeps the
-       user's scroll untouched. #219: the initial-load centering smooth-scrolls
-       (eased, ~600ms); week-nav swaps stay instant. */
-    function centerOnNow(smooth){
-      var line=document.querySelector('[data-now]');
-      var sc=document.querySelector('.cal-scroll');
+    /* Scroll one strip: center the now-line when today is visible, else top. */
+    function initStripScroll(strip){
+      var sc=strip.querySelector('.cal-scroll'); if(!sc) return;
+      var line=strip.querySelector('[data-now]');
+      if(!line||line.hidden){ sc.scrollTop=0; return; }
+      var lr=line.getBoundingClientRect(),sr=sc.getBoundingClientRect();
+      sc.scrollTop=Math.max(0,sc.scrollTop+(lr.top-sr.top)-sr.height/2);
+    }
+    /* #219: the visible strip's centering smooth-glides (eased, ~600ms);
+       every other path sets instantly. Reduced motion always sets instantly. */
+    function centerVisible(smooth){
+      var strips=trackStrips(); if(strips.length<2) return;
+      var strip=strips[1];
+      var line=strip.querySelector('[data-now]');
+      var sc=strip.querySelector('.cal-scroll');
       if(!line||line.hidden||!sc) return;
       var lr=line.getBoundingClientRect(),sr=sc.getBoundingClientRect();
       var target=Math.max(0,sc.scrollTop+(lr.top-sr.top)-sr.height/2);
-      var reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      if(!smooth||reduce){ sc.scrollTop=target; return; }
+      if(!smooth||panReduce){ sc.scrollTop=target; return; }
       /* eased scrollTop animation; user input (wheel/touch) cancels it so the
          page never fights an in-progress gesture */
       var start=sc.scrollTop,dist=target-start,t0=null,DUR=600,cancelled=false;
@@ -951,20 +964,27 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       }
       requestAnimationFrame(step);
     }
+    initCarousel();
     placeNow();
-    /* Center after the entrance animations settle (columns rise up to ~590ms);
-       measuring mid-animation lands the scroll ~12px off. Week-nav swaps
-       suppress the entrance (#week.no-enter), so that path stays immediate. */
-    setTimeout(function(){ centerOnNow(true); }, 650);
+    /* Side strips settle instantly; the visible strip smooth-glides to the
+       now-line after the entrance animations finish (~590ms) — measuring
+       mid-animation lands the scroll ~12px off. */
+    (function initScroll(){
+      var strips=trackStrips();
+      for(var i=0;i<strips.length;i++) if(i!==1) initStripScroll(strips[i]);
+      setTimeout(function(){ centerVisible(true); }, 650);
+    })();
     setInterval(placeNow,30000);
+    /* no-JS fallback: htmx swaps the whole window; re-init the carousel. */
     document.body.addEventListener('htmx:afterSwap',function(e){
-      if(e.detail&&e.detail.target&&e.detail.target.id==='week'){ placeNow(); centerOnNow(); }
+      if(e.detail&&e.detail.target&&e.detail.target.id==='week'){
+        initCarousel(); placeNow(); centerVisible(false); }
     });
   })();`;
   }
 
-  function calendarPage(week?: string, day?: string): string {
-    return layout("Calendar", weekGrid(week, day), "calendar", true);
+  function calendarPage(week?: string): string {
+    return layout("Calendar", weekGrid(week), "calendar", true);
   }
 
   /** #256: datetime-local inputs are prefilled client-side from the ISO instant
@@ -1020,5 +1040,5 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       })();</script>`);
   }
 
-  return { weekInner, dayInner, weekGrid, calendarPage, editPage };
+  return { weekInner, weekStrip, weekGrid, calendarPage, editPage };
 }
