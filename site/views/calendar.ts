@@ -325,7 +325,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       ${nudgeChip}
       ${weekTargetBar(weekTotal)}
       ${clientStrip}
-      <p class="muted tiny cal-hint">Drag on the grid to log time. Click an entry to edit it.</p>
+      <p class="muted tiny cal-hint">Drag on the grid — or tap + on a day — to log time. Click an entry to edit it.</p>
       ${workspaceEmpty(db) ? `<div class="cal-first-run">
         ${icon("info")}
         <p class="md-label-large"><strong>New here?</strong> Load fictional sample data to explore the calendar.</p>
