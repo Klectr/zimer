@@ -346,6 +346,13 @@ main:focus { outline: none; }
    labels). ::before so it doesn't clobber the ::after hover state layer;
    overflow:visible so the tooltip escapes the button's clip. */
 .md-icon-button[data-tip] { overflow: visible; }
+/* #556: hidden tooltips collapse to zero size. The pseudo-element renders
+   even while invisible (opacity: 0), and its content-sized box (up to 200px
+   centered on a 36px button) widened the scrollable overflow area of
+   overflow-y:auto panes — overflow-x computes to auto there, so a phantom
+   horizontal scrollbar appeared. max-width: 0 + overflow: hidden keeps the
+   hidden box inside its anchor; the shown states restore the real width.
+   Visible rendering and the fade are unchanged. */
 .md-icon-button[data-tip]::before {
   content: attr(data-tip);
   position: absolute; left: 50%; top: calc(100% + 4px); /* M3: 4dp anchor gap */
@@ -354,7 +361,7 @@ main:focus { outline: none; }
   color: var(--md-sys-color-inverse-on-surface);
   border-radius: var(--md-sys-shape-corner-extra-small); /* M3 plain tooltip shape */
   padding: 4px 8px; /* M3 plain tooltip padding */
-  white-space: nowrap; max-width: 200px;
+  white-space: nowrap; max-width: 0; overflow: hidden;
   font-size: 0.75rem; line-height: 16px; font-weight: 400;
   opacity: 0; pointer-events: none; z-index: 30;
   transition: opacity var(--motion-duration-short2) var(--motion-easing-standard),
@@ -364,6 +371,7 @@ main:focus { outline: none; }
 .md-icon-button[data-tip]:focus-visible::before,
 .md-icon-button[data-tip].tip-show::before {
   opacity: 1; transform: translateX(-50%) translateY(0);
+  max-width: 200px; overflow: visible;
 }
 /* #434: tooltips on right-edge buttons anchor to the button's right edge
    instead of centering, so they extend leftward and can't run off the
@@ -385,7 +393,7 @@ main:focus { outline: none; }
   color: var(--md-sys-color-inverse-on-surface);
   border-radius: var(--md-sys-shape-corner-extra-small); /* M3 plain tooltip shape */
   padding: 4px 8px; /* M3 plain tooltip padding */
-  white-space: nowrap; max-width: 200px;
+  white-space: nowrap; max-width: 0; overflow: hidden; /* #556: collapse while hidden */
   font-size: 0.75rem; line-height: 16px; font-weight: 400;
   opacity: 0; pointer-events: none; z-index: 30;
   transition: opacity var(--motion-duration-short2) var(--motion-easing-standard),
@@ -395,6 +403,7 @@ main:focus { outline: none; }
 .md-filled-button[data-tip]:focus-visible::before,
 .md-filled-button[data-tip].tip-show::before {
   opacity: 1; transform: translateX(-50%) translateY(0);
+  max-width: 200px; overflow: visible; /* #556 */
 }
 
 /* ---------------- text fields (borderless tonal, 56dp) ----------------
@@ -927,7 +936,7 @@ body.app-fixed .cal-gutter-spacer {
   color: var(--md-sys-color-inverse-on-surface);
   border-radius: var(--md-sys-shape-corner-extra-small); /* M3 plain tooltip shape */
   padding: 4px 8px; /* M3 plain tooltip padding */
-  white-space: nowrap; max-width: 200px; /* M3 plain tooltip max width */
+  white-space: nowrap; max-width: 0; overflow: hidden; /* #556: collapse while hidden */
   font-size: 0.75rem; line-height: 16px;
   opacity: 0; pointer-events: none; z-index: 30;
   transition: opacity var(--motion-duration-short2) var(--motion-easing-standard),
@@ -937,6 +946,7 @@ body.app-fixed .cal-gutter-spacer {
 .cal-day-head[data-tip]:focus-visible::after,
 .cal-day-head[data-tip].tip-show::after {
   opacity: 1; transform: translateX(-50%) translateY(0);
+  max-width: 200px; overflow: visible; /* #556 */
 }
 /* keep edge-column tooltips inside the scroll region instead of clipping */
 .cal-day:first-child .cal-day-head[data-tip]::after { left: 0; transform: translateY(-2px); }
@@ -1394,7 +1404,7 @@ button.m3-menu-item {
   color: var(--md-sys-color-inverse-on-surface);
   border-radius: var(--md-sys-shape-corner-extra-small); /* M3 plain tooltip shape */
   padding: 4px 8px; /* M3 plain tooltip padding */
-  white-space: nowrap; max-width: 200px; /* M3 plain tooltip max width */
+  white-space: nowrap; max-width: 0; overflow: hidden; /* #556: collapse while hidden */
   font-size: 0.75rem; line-height: 16px; font-weight: 400;
   opacity: 0; pointer-events: none; z-index: 30;
   transition: opacity var(--motion-duration-short2) var(--motion-easing-standard),
@@ -1404,6 +1414,7 @@ button.m3-menu-item {
 .cal-entry[data-tip]:focus-visible::after,
 .cal-entry[data-tip].tip-show::after {
   opacity: 1; transform: translateX(-50%) translateY(0);
+  max-width: 200px; overflow: visible; /* #556 */
 }
 /* #498: M3 plain tooltip for the inv-mark chip (hover + 450ms touch long-press
    via the site-wide [data-tip] handler). ::after; the chip uses no other
@@ -1417,7 +1428,7 @@ button.m3-menu-item {
   color: var(--md-sys-color-inverse-on-surface);
   border-radius: var(--md-sys-shape-corner-extra-small);
   padding: 4px 8px; /* M3 plain tooltip padding */
-  white-space: nowrap; max-width: 200px;
+  white-space: nowrap; max-width: 0; overflow: hidden; /* #556: collapse while hidden */
   font-size: 0.75rem; line-height: 16px; font-weight: 400;
   opacity: 0; pointer-events: none; z-index: 30;
   transition: opacity var(--motion-duration-short2) var(--motion-easing-standard),
@@ -1426,6 +1437,7 @@ button.m3-menu-item {
 .inv-mark[data-tip]:hover::after,
 .inv-mark[data-tip].tip-show::after {
   opacity: 1; transform: translateX(-50%) translateY(0);
+  max-width: 200px; overflow: visible; /* #556 */
 }
 
 .two-field { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
@@ -1675,7 +1687,8 @@ button.m3-menu-item {
   border-radius: var(--md-sys-shape-corner-extra-small); /* M3 plain tooltip shape */
   padding: 4px 8px; /* M3 plain tooltip padding */
   font-size: 0.75rem; line-height: 16px;
-  max-width: 320px; white-space: normal; overflow-wrap: anywhere;
+  max-width: 0; overflow: hidden; /* #556: collapse while hidden */
+  white-space: normal; overflow-wrap: anywhere;
   opacity: 0; pointer-events: none; z-index: 30;
   transition: opacity var(--motion-duration-short2) var(--motion-easing-standard),
     transform var(--motion-duration-short2) var(--motion-easing-standard);
@@ -1685,6 +1698,7 @@ button.m3-menu-item {
 .share-url-wrap[data-tip]:focus-visible::after,
 .share-url-wrap[data-tip].tip-show::after {
   opacity: 1; transform: translateY(0);
+  max-width: 320px; overflow: visible; /* #556 */
 }
 .share-icons { display: flex; align-items: center; gap: 2px; margin-left: auto; flex-shrink: 0; }
 .share-icons form { display: inline; margin: 0; }
