@@ -46,8 +46,8 @@ export interface WebDeps {
   timerPartial: () => string;
   todayPartial: () => string;
   weekInner: (weekStr?: string, tz?: string) => string;
-  dayInner: (dayStr?: string, tz?: string) => string;
-  calendarPage: (week?: string, day?: string) => string;
+  weekStrip: (weekStr?: string, tz?: string) => string;
+  calendarPage: (week?: string) => string;
   editPage: (id: number) => string | null;
   managePage: (selected: ClientSel | null) => string; /* #367 */
   clientSelection: (raw: string | null) => ClientSel | null; /* #367 */
@@ -87,7 +87,7 @@ export function createWebRouter(deps: WebDeps) {
     db, qRunning, qOne, qRange, qInvoice, qInvoices,
     DATA_DIR, STATIC_DIR, TOKEN, authedPage, tokensEqual, html, json, csvResponse, isHtmx,
     shareOrigin, PORT, loginPage, publicInvoicePage, changelogPage, termsPage, notFoundPage, noSuchInvoicePage, rateLimitPage, errorPage, /* #341: +termsPage */
-    dashboardPage, timerPartial, todayPartial, weekInner, dayInner,
+    dashboardPage, timerPartial, todayPartial, weekInner, weekStrip,
     calendarPage, editPage, managePage, clientSelection, clientDetailBody, clientListOob, bizProfileSection, invoicesPage, invoiceNewPage,
     defaultNewInvParams, invoiceStep2, invoiceDetailBody, invoiceListOob, invoiceDoc,
     getInvoice, invoiceTotals,
@@ -202,17 +202,13 @@ export function createWebRouter(deps: WebDeps) {
 
           if (path === "/" && method === "GET") return html(dashboardPage());
           if (path === "/partial/timer" && method === "GET") return html(timerPartial());
+          /* #572: ?strip=1 fills one recycled carousel strip with a single
+             week's inner HTML; without it the full three-week window renders. */
           if (path === "/partial/week" && method === "GET") {
             const w = new URL(req.url).searchParams.get("week") || undefined;
             const tz = new URL(req.url).searchParams.get("tz") || undefined;
-            return html(weekInner(w || undefined, tz || undefined));
-          }
-          /* #521: single-column day view — same shape as /partial/week, with
-             the selected day. The supporting pane stays week-scoped. */
-          if (path === "/partial/day" && method === "GET") {
-            const d = new URL(req.url).searchParams.get("day") || undefined;
-            const tz = new URL(req.url).searchParams.get("tz") || undefined;
-            return html(dayInner(d || undefined, tz || undefined));
+            const strip = new URL(req.url).searchParams.get("strip");
+            return html(strip ? weekStrip(w || undefined, tz || undefined) : weekInner(w || undefined, tz || undefined));
           }
           /* #255: the client passes its own day bounds as UTC instants
              (?from=&to=, from client-local midnight); validate strictly,
@@ -252,10 +248,15 @@ export function createWebRouter(deps: WebDeps) {
             return html(timerPartial(), 200, { "HX-Trigger": "timer-updated" });
           }
           if (path === "/calendar" && method === "GET") {
-            /* #521: ?day= selects day mode; invalid values fall back to today. */
+            /* #572: day mode is gone; old ?day= links redirect to the
+               containing week. Invalid values fall back to this week. */
             const dp = url.searchParams.get("day");
-            const day = dp && /^\d{4}-\d{2}-\d{2}$/.test(dp) ? dp : undefined;
-            return html(calendarPage(url.searchParams.get("week") || undefined, day));
+            if (dp && /^\d{4}-\d{2}-\d{2}$/.test(dp)) {
+              const [y, m, d] = dp.split("-").map(Number);
+              const sun = addDays(dp, -new Date(Date.UTC(y, m - 1, d, 12)).getUTCDay());
+              return new Response(null, { status: 302, headers: { Location: `/calendar?week=${sun}` } });
+            }
+            return html(calendarPage(url.searchParams.get("week") || undefined));
           }
 
           if (path === "/entries" && method === "POST") {
