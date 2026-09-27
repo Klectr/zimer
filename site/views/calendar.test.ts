@@ -476,3 +476,45 @@ describe("calendar entry keyboard activation (#530)", () => {
     expect(handler).toContain("e.preventDefault()");
   });
 });
+
+/** #578: the entry dialog's description field gets the same 15-recent-
+ *  descriptions datalist the timer start form has (#546) — zero visual
+ *  surface until typed in, own id so it can't collide with the timer page. */
+describe("calendar dialog description suggestions (#578)", () => {
+  function dialogHtml(descRows: { description: string }[]) {
+    const db = {
+      query: (sql: string) => ({
+        get: () => ({ n: 1 }),
+        all: () => (sql.includes("GROUP BY description") ? descRows : []),
+      }),
+    } as unknown as Database;
+    const views = createCalendarViews({
+      db,
+      qOne: null,
+      qRange: null,
+      entrySelect: "SELECT",
+      layout: (_t: string, b: string) => b,
+      projectOptions: () => "",
+      weekTargetBar: () => "",
+      calHourPx: 64,
+    } as any);
+    return views.weekGrid("2026-09-27");
+  }
+
+  test("dialog wires a suggestion datalist, values HTML-escaped", () => {
+    const s = dialogHtml([
+      { description: "deep work" },
+      { description: 'fix "quotes" & ampersands' },
+    ]);
+    expect(s).toContain('list="tk-desc-suggest-dialog"');
+    expect(s).toContain('<datalist id="tk-desc-suggest-dialog">');
+    expect(s).toContain('<option value="deep work">');
+    expect(s).toContain('<option value="fix &quot;quotes&quot; &amp; ampersands">');
+  });
+
+  test("no datalist when nothing has been described yet", () => {
+    const s = dialogHtml([]);
+    expect(s).toContain('list="tk-desc-suggest-dialog"');
+    expect(s).not.toContain("<datalist");
+  });
+});
