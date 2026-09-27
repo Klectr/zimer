@@ -305,10 +305,14 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     const isToday = day === today;
     const navTitle = isToday ? "Today"
       : new Date(day + "T12:00:00").toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
+    /* #566: the strip shows three days, so the chevrons step a full strip
+       (±3 days) — the calendar slides by another set of 3, like week mode
+       slides by another set of 7. */
+    const prevStrip = addDays(day, -3), nextStrip = addDays(day, 3);
     const navActions = `
       ${isToday ? "" : `<a class="md-text-button" href="/calendar?day=${today}" hx-get="/partial/day?day=${today}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?day=${today}">Today</a>`}
-      <a class="md-icon-button" href="/calendar?day=${prevDay}" hx-get="/partial/day?day=${prevDay}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?day=${prevDay}" data-slide="prev" data-tip="Previous day" aria-label="Previous day">${icon("chevron_left")}</a>
-      <a class="md-icon-button tip-right" href="/calendar?day=${nextDay}" hx-get="/partial/day?day=${nextDay}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?day=${nextDay}" data-slide="next" data-tip="Next day" aria-label="Next day">${icon("chevron_right")}</a>`;
+      <a class="md-icon-button" href="/calendar?day=${prevStrip}" hx-get="/partial/day?day=${prevStrip}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?day=${prevStrip}" data-slide="prev" data-tip="Previous 3 days" aria-label="Previous 3 days">${icon("chevron_left")}</a>
+      <a class="md-icon-button tip-right" href="/calendar?day=${nextStrip}" hx-get="/partial/day?day=${nextStrip}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?day=${nextStrip}" data-slide="next" data-tip="Next 3 days" aria-label="Next 3 days">${icon("chevron_right")}</a>`;
     /* #566: the strip centers on the selected day. */
     const lanes = [prevDay, day, nextDay].map((d, i) => dayColumnHtml(d, wd, i * 40)).join("");
     return calShell(wd, navTitle, navActions, lanes, "day");
@@ -676,12 +680,16 @@ export function createCalendarViews(deps: CalendarViewDeps) {
         placeNow();
       }).catch(function(){ location.reload(); /* last resort: never leave stale data */ });
     }
-    /* #567: chevron day/week navigation slides instead of swapping instantly.
-       The adjacent partial is prefetched on hover/focus (and after every
-       slide), so the slide usually has its data ready. Capture-phase click
-       interception beats htmx to the link; the href stays as the no-JS
-       fallback. During a slide, further nav clicks are ignored. */
+    /* #567: chevron day/week navigation slides the CALENDAR — not the
+       supporting pane — by a full page of days (3 in day mode, 7 in week
+       mode). The aside (chevrons + summary) swaps instantly; only the grid
+       cross-slides. The adjacent partial is prefetched on hover/focus (and
+       after every slide), so the slide usually has its data ready.
+       Capture-phase click interception beats htmx to the link; the href
+       stays as the no-JS fallback. During a slide, further nav clicks are
+       consumed. */
     var slideCache={}, slideInflight={}, sliding=false;
+    var slideReduceMotion=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     function slideUrl(a){
       var base=a.getAttribute('hx-get')||a.getAttribute('href')||'';
       if(!base||base.charAt(0)!=='/') return '';
@@ -703,53 +711,67 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     });
     document.addEventListener('click',function(e){
       var a=e.target&&e.target.closest?e.target.closest('a[data-slide]'):null;
-      if(!a||sliding) return;
+      if(!a) return;
+      /* Consume nav clicks during a slide — without this, htmx (or the
+         default link navigation) would fire under the running animation. */
+      if(sliding){ e.preventDefault(); e.stopPropagation(); return; }
       var weekEl=document.getElementById('week');
       var cur=weekEl&&weekEl.querySelector('.cal-pane-layout');
-      if(!cur) return; /* skeleton or foreign content — let htmx handle it */
+      var grid=cur&&cur.querySelector('.cal-scroll');
+      if(!cur||!grid) return; /* skeleton or foreign content — let htmx handle it */
       e.preventDefault(); e.stopPropagation();
       var dir=a.getAttribute('data-slide')==='prev'?-1:1;
       var pushUrl=a.getAttribute('hx-push-url')||a.getAttribute('href');
       var u=slideUrl(a); if(!u) return;
       sliding=true;
-      function ready(html){ slideTo(weekEl,cur,html,dir,pushUrl); }
+      function ready(html){ slideGrid(weekEl,cur,grid,html,dir,pushUrl); }
       if(slideCache[u]) ready(slideCache[u]);
       else fetch(u).then(function(r){ if(!r.ok) throw 0; return r.text(); }).then(ready)
         .catch(function(){ sliding=false; location.href=a.getAttribute('href')||'/calendar'; });
     },true);
-    function slideTo(weekEl,cur,html,dir,pushUrl){
-      var incoming=document.createElement('div');
-      incoming.className='cal-slide-pane';
-      incoming.innerHTML=html;
-      /* Keep the new pane's scroller at top; the enter animation is
+    function slideGrid(weekEl,pane,oldGrid,html,dir,pushUrl){
+      var tmp=document.createElement('div');
+      tmp.innerHTML=html;
+      var newAside=tmp.querySelector('.cal-supporting');
+      var newGrid=tmp.querySelector('.cal-scroll');
+      if(!newAside||!newGrid){ /* unexpected shape — full swap, no slide */
+        weekEl.innerHTML=html;
+        try{ history.pushState(null,'',pushUrl); }catch(e){}
+        sliding=false; placeNow(); centerOnNow(); return;
+      }
+      /* The supporting pane (chevrons + summary) swaps instantly — only the
+         calendar grid slides. */
+      var oldAside=pane.querySelector('.cal-supporting');
+      if(oldAside) oldAside.replaceWith(newAside);
+      /* Keep the new grid's scroller at top; the enter animation is
          suppressed for the swap, matching the htmx path. */
       weekEl.classList.add('no-enter');
-      weekEl.style.overflow='hidden'; /* clip the track mid-slide */
+      newGrid.scrollTop=0;
       var track=document.createElement('div');
       track.className='cal-slide-track';
-      if(dir>0){ track.appendChild(cur); track.appendChild(incoming); }
-      else { track.appendChild(incoming); track.appendChild(cur);
-        track.style.transform='translateX(-100%)'; }
-      weekEl.innerHTML=''; weekEl.appendChild(track);
+      var ref=oldGrid.nextSibling;
+      pane.removeChild(oldGrid);
+      if(dir>0){ track.appendChild(oldGrid); track.appendChild(newGrid); }
+      else { track.appendChild(newGrid); track.appendChild(oldGrid);
+        track.style.transform='translateX(-100%)'; /* start on the old grid */ }
+      pane.insertBefore(track,ref);
       /* Force layout so the transition starts from the set position. */
       void track.offsetWidth;
       track.style.transform=dir>0?'translateX(-100%)':'translateX(0)';
       var done=false;
       function settle(){
         if(done) return; done=true;
-        weekEl.style.overflow='';
-        weekEl.innerHTML=html;
+        track.replaceWith(newGrid);
         try{ history.pushState(null,'',pushUrl); }catch(e){}
         sliding=false;
         placeNow(); centerOnNow();
         /* Prime the cache for the new chevrons' targets. */
-        var links=weekEl.querySelectorAll('a[data-slide]');
+        var links=pane.querySelectorAll('a[data-slide]');
         for(var i=0;i<links.length;i++) prefetch(links[i]);
       }
+      if(slideReduceMotion){ settle(); return; } /* no animation — swap now */
       track.addEventListener('transitionend',settle);
-      /* transitionend can be swallowed (tab hidden, reduced motion) — the
-         CSS also collapses the duration to 0 under prefers-reduced-motion,
-         which still fires transitionend; this is the backstop. */
+      /* transitionend can be swallowed (tab hidden) — this is the backstop. */
       setTimeout(settle,450);
     }
     document.getElementById('cal-save').addEventListener('click',function(){
