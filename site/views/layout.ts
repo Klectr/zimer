@@ -109,6 +109,7 @@ export function createLayoutViews(qRunning: Statement, bannerHtml?: () => string
           <a class="md-filled-button" href="/">Timer</a>
           <a class="md-text-button" href="/calendar">Calendar</a>
           <a class="md-text-button" href="/invoices">Invoices</a>
+          <a class="md-text-button" href="/manage">Clients</a>
         </div>` : ""}
       </div>`;
     if (authed) return layout("Page not found", body);
