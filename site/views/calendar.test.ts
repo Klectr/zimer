@@ -113,6 +113,42 @@ describe("week-nav tooltips (#486)", () => {
   });
 });
 
+/** #554: the next chevron sits at the summary pane's right edge — its
+ *  centered tooltip hangs past the edge and the pane (overflow-y: auto)
+ *  renders a horizontal scrollbar. Right-edge buttons use tip-right,
+ *  the same class the invoice actions already use. */
+describe("calendar nav edge tooltips (#554)", () => {
+  const stubQuery = () => ({
+    get: (..._a: unknown[]) => ({ n: 1 }),
+    all: (..._a: unknown[]) => [],
+  });
+  function views() {
+    const db = {
+      query: (_sql: string) => ({ get: () => ({ n: 1 }), all: () => [] }),
+    } as unknown as Database;
+    return createCalendarViews({
+      db,
+      qOne: stubQuery(),
+      qRange: stubQuery(),
+      entrySelect: "SELECT",
+      layout: (_t: string, b: string) => b,
+      projectOptions: () => "",
+      weekTargetBar: () => "",
+      calHourPx: 64,
+    } as any);
+  }
+  test("week mode: next-week chevron right-aligns its tooltip", () => {
+    const html = views().weekInner("2026-09-20", "America/Chicago");
+    expect(html).toContain('class="md-icon-button tip-right" href="/calendar?week=2026-09-27"');
+    expect(html).not.toContain('class="md-icon-button tip-right" href="/calendar?week=2026-09-13"');
+  });
+  test("day mode: next-day chevron right-aligns its tooltip", () => {
+    const html = views().dayInner("2026-09-21", "America/Chicago");
+    expect(html).toContain('class="md-icon-button tip-right" href="/calendar?day=2026-09-22"');
+    expect(html).not.toContain('class="md-icon-button tip-right" href="/calendar?day=2026-09-20"');
+  });
+});
+
 /** #500: finish the data-tip sweep — the calendar entry card's invoiced-mark
  *  info was the last native title= tooltip on the grid; it now uses the house
  *  M3 plain tooltip (data-tip) like the timer page's inv-mark chip (#498). */
