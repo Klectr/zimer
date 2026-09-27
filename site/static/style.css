@@ -1844,9 +1844,13 @@ button.m3-menu-item {
 @media (prefers-reduced-motion: reduce) {
   .cal-track { transition: none; }
 }
-/* Narrow strips: the 24h grid gives way to the week agenda. */
+/* Narrow strips: the 24h grid gives way to the week agenda. #580: the
+   breakpoint is on the strip, which the rail + margins + summary pane
+   narrow well below the viewport — 799px of container was ~1300px of
+   viewport, so ordinary laptops got the fallback. 639px keeps the grid
+   (lanes >= ~85px) on laptop widths; phones still get the agenda. */
 .cal-agenda { display: none; }
-@container (max-width: 799px) {
+@container (max-width: 639px) {
   .cal-strip > .cal-scroll { display: none; }
   .cal-agenda { display: flex; flex-direction: column; gap: 8px; flex: 1; min-height: 0;
     overflow-y: auto; padding: 2px 2px 16px; }
