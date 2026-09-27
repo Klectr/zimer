@@ -91,8 +91,8 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     return guess;
   }
 
-  /** #521: week-scoped data shared by the week grid and the single-column
-      day view — the week's entries bucketed by client-local day, plus the
+  /** #521: week-scoped data shared by the week grid and the three-day
+      strip — the week's entries bucketed by client-local day, plus the
       summary figures the supporting pane shows (always week-scoped). */
   interface CalWeekData {
     tz: string | null;
@@ -269,16 +269,18 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     const navTitle = isThisWeek ? "This week" : `Week of ${weekLabel}`;
     const navActions = `
       ${isThisWeek ? "" : `<a class="md-text-button" href="/calendar" hx-get="/partial/week" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar">Today</a>`}
-      <a class="md-icon-button" href="/calendar?week=${prev}" hx-get="/partial/week?week=${prev}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?week=${prev}" data-tip="Previous week" aria-label="Previous week">${icon("chevron_left")}</a>
-      <a class="md-icon-button tip-right" href="/calendar?week=${next}" hx-get="/partial/week?week=${next}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?week=${next}" data-tip="Next week" aria-label="Next week">${icon("chevron_right")}</a>`;
+      <a class="md-icon-button" href="/calendar?week=${prev}" hx-get="/partial/week?week=${prev}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?week=${prev}" data-slide="prev" data-tip="Previous week" aria-label="Previous week">${icon("chevron_left")}</a>
+      <a class="md-icon-button tip-right" href="/calendar?week=${next}" hx-get="/partial/week?week=${next}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?week=${next}" data-slide="next" data-tip="Next week" aria-label="Next week">${icon("chevron_right")}</a>`;
     const lanes: string[] = [];
     for (let i = 0; i < 7; i++) lanes.push(dayColumnHtml(addDays(sun, i), wd, i * 40));
     return calShell(wd, navTitle, navActions, lanes.join(""), "week");
   }
 
-  /** #521: single-column day view, served full-page via weekGrid(day) and
-      in-place via GET /partial/day. The supporting pane stays week-scoped
-      (the selected day's containing week); only the lanes and the nav change. */
+  /** #521: day view, served full-page via weekGrid(day) and in-place via
+      GET /partial/day. The supporting pane stays week-scoped (the selected
+      day's containing week); only the lanes and the nav change.
+      #566: three-day strip — the selected day flanked by its neighbors —
+      instead of a single column. */
   function dayInner(dayStr?: string, tzParam?: string): string {
     const tz = validTz(tzParam);
     /* "today" in the client's zone — the server may be on a different date. */
@@ -286,14 +288,30 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     const day = dayStr && /^\d{4}-\d{2}-\d{2}$/.test(dayStr) ? dayStr : today;
     const wd = weekData(sundayOfYmd(day), tz);
     const prevDay = addDays(day, -1), nextDay = addDays(day, 1);
+    /* #566: an adjacent day can fall outside the containing week (Sunday's
+       previous day, Saturday's next day). Fetch those stragglers separately
+       and merge them into byDay — the week-scoped totals stay untouched. */
+    for (const d of [prevDay, nextDay]) {
+      if (d >= wd.sun && d < addDays(wd.sun, 7)) continue;
+      /* Same null-tz fallback as weekBoundsISO: naive-local day bounds. */
+      const from = tz ? new Date(localMidnightUTC(tz, d)).toISOString() : d + "T00:00:00";
+      const to = tz ? new Date(localMidnightUTC(tz, addDays(d, 1))).toISOString() : addDays(d, 1) + "T00:00:00";
+      for (const e of qRange.all(from, to) as Entry[]) {
+        const key = ymdOf(tzParts(new Date(e.start_time), tz));
+        if (!wd.byDay.has(key)) wd.byDay.set(key, []);
+        wd.byDay.get(key)!.push(e);
+      }
+    }
     const isToday = day === today;
     const navTitle = isToday ? "Today"
       : new Date(day + "T12:00:00").toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
     const navActions = `
       ${isToday ? "" : `<a class="md-text-button" href="/calendar?day=${today}" hx-get="/partial/day?day=${today}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?day=${today}">Today</a>`}
-      <a class="md-icon-button" href="/calendar?day=${prevDay}" hx-get="/partial/day?day=${prevDay}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?day=${prevDay}" data-tip="Previous day" aria-label="Previous day">${icon("chevron_left")}</a>
-      <a class="md-icon-button tip-right" href="/calendar?day=${nextDay}" hx-get="/partial/day?day=${nextDay}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?day=${nextDay}" data-tip="Next day" aria-label="Next day">${icon("chevron_right")}</a>`;
-    return calShell(wd, navTitle, navActions, dayColumnHtml(day, wd, 0), "day");
+      <a class="md-icon-button" href="/calendar?day=${prevDay}" hx-get="/partial/day?day=${prevDay}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?day=${prevDay}" data-slide="prev" data-tip="Previous day" aria-label="Previous day">${icon("chevron_left")}</a>
+      <a class="md-icon-button tip-right" href="/calendar?day=${nextDay}" hx-get="/partial/day?day=${nextDay}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?day=${nextDay}" data-slide="next" data-tip="Next day" aria-label="Next day">${icon("chevron_right")}</a>`;
+    /* #566: the strip centers on the selected day. */
+    const lanes = [prevDay, day, nextDay].map((d, i) => dayColumnHtml(d, wd, i * 40)).join("");
+    return calShell(wd, navTitle, navActions, lanes, "day");
   }
 
   /** #521: the #week section shared by week and day modes — supporting pane
@@ -386,7 +404,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       htmx:configRequest) so the first paint is already in the client's zone —
       a server-rendered grid would flash server-timezone positions. */
   function weekGrid(weekStr?: string, dayStr?: string): string {
-    /* #521: a ?day= URL loads the skeleton in day mode — one lane, with the
+    /* #521: a ?day= URL loads the skeleton in day mode — three lanes, with the
        calScript init correcting to week mode when the grid is wide enough. */
     const day = dayStr && /^\d{4}-\d{2}-\d{2}$/.test(dayStr) ? dayStr : undefined;
     const q = day ? `?day=${day}` : (weekStr && /^\d{4}-\d{2}-\d{2}$/.test(weekStr) ? `?week=${weekStr}` : "");
@@ -394,7 +412,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
        week-nav skeleton at its top, gutter + day columns with the hour
        rhythm) so the htmx swap lands without a layout flash. */
     const skelDay = `<div class="cal-skel-day"><div class="skel cal-skel-head"></div><div class="skel cal-skel-lane"></div></div>`;
-    const skelGrid = `<div class="cal-skel-grid"${day ? ` data-mode="day"` : ""}>${skelDay.repeat(day ? 2 : 8)}</div>`;
+    const skelGrid = `<div class="cal-skel-grid"${day ? ` data-mode="day"` : ""}>${skelDay.repeat(day ? 4 : 8)}</div>`;
     return `<div id="week" hx-get="/partial/${day ? "day" : "week"}${q}" hx-trigger="load" hx-swap="innerHTML">
         <div class="cal-skel" aria-hidden="true">
           <div class="cal-skel-aside">
@@ -464,7 +482,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     document.body.addEventListener("htmx:configRequest",function(e){
       if(e.detail&&e.detail.path&&(e.detail.path.indexOf("/partial/week")===0||e.detail.path.indexOf("/partial/day")===0)&&TZ)
         e.detail.parameters.tz=TZ;});
-    /* #521: collapse to a genuine server-rendered single-column day view when
+    /* #521: collapse to a genuine server-rendered three-day strip when
        the grid gets too narrow. The trigger is the calendar's own width, not
        the viewport: 54px gutter + 7 lanes at ~100px + 6 gaps ≈ 800px. The
        desktop week grid maxes out around 866px (lanes ~108px — the designed
@@ -502,7 +520,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       var skel=weekEl.querySelector(".cal-skel-grid");
       if(skel){skel.setAttribute("data-mode","day");
         var lanes=skel.querySelectorAll(".cal-skel-day");
-        for(var i=lanes.length-1;i>1;i--) lanes[i].remove();}
+        for(var i=lanes.length-1;i>3;i--) lanes[i].remove();}
       try{history.replaceState(null,"","/calendar?day="+encodeURIComponent(day));}catch(e){}
     })();
     /* Later resizes that cross the threshold navigate once to the other mode.
@@ -657,6 +675,82 @@ export function createCalendarViews(deps: CalendarViewDeps) {
         }
         placeNow();
       }).catch(function(){ location.reload(); /* last resort: never leave stale data */ });
+    }
+    /* #567: chevron day/week navigation slides instead of swapping instantly.
+       The adjacent partial is prefetched on hover/focus (and after every
+       slide), so the slide usually has its data ready. Capture-phase click
+       interception beats htmx to the link; the href stays as the no-JS
+       fallback. During a slide, further nav clicks are ignored. */
+    var slideCache={}, slideInflight={}, sliding=false;
+    function slideUrl(a){
+      var base=a.getAttribute('hx-get')||a.getAttribute('href')||'';
+      if(!base||base.charAt(0)!=='/') return '';
+      return base+(TZ?(base.indexOf('?')>=0?'&':'?')+'tz='+encodeURIComponent(TZ):'');
+    }
+    function prefetch(a){
+      var u=slideUrl(a); if(!u||slideCache[u]||slideInflight[u]) return;
+      slideInflight[u]=fetch(u).then(function(r){ return r.ok?r.text():''; }).then(function(html){
+        delete slideInflight[u]; if(html) slideCache[u]=html;
+      }).catch(function(){ delete slideInflight[u]; });
+    }
+    document.addEventListener('pointerover',function(e){
+      var a=e.target&&e.target.closest?e.target.closest('a[data-slide]'):null;
+      if(a) prefetch(a);
+    });
+    document.addEventListener('focusin',function(e){
+      var a=e.target&&e.target.closest?e.target.closest('a[data-slide]'):null;
+      if(a) prefetch(a);
+    });
+    document.addEventListener('click',function(e){
+      var a=e.target&&e.target.closest?e.target.closest('a[data-slide]'):null;
+      if(!a||sliding) return;
+      var weekEl=document.getElementById('week');
+      var cur=weekEl&&weekEl.querySelector('.cal-pane-layout');
+      if(!cur) return; /* skeleton or foreign content — let htmx handle it */
+      e.preventDefault(); e.stopPropagation();
+      var dir=a.getAttribute('data-slide')==='prev'?-1:1;
+      var pushUrl=a.getAttribute('hx-push-url')||a.getAttribute('href');
+      var u=slideUrl(a); if(!u) return;
+      sliding=true;
+      function ready(html){ slideTo(weekEl,cur,html,dir,pushUrl); }
+      if(slideCache[u]) ready(slideCache[u]);
+      else fetch(u).then(function(r){ if(!r.ok) throw 0; return r.text(); }).then(ready)
+        .catch(function(){ sliding=false; location.href=a.getAttribute('href')||'/calendar'; });
+    },true);
+    function slideTo(weekEl,cur,html,dir,pushUrl){
+      var incoming=document.createElement('div');
+      incoming.className='cal-slide-pane';
+      incoming.innerHTML=html;
+      /* Keep the new pane's scroller at top; the enter animation is
+         suppressed for the swap, matching the htmx path. */
+      weekEl.classList.add('no-enter');
+      weekEl.style.overflow='hidden'; /* clip the track mid-slide */
+      var track=document.createElement('div');
+      track.className='cal-slide-track';
+      if(dir>0){ track.appendChild(cur); track.appendChild(incoming); }
+      else { track.appendChild(incoming); track.appendChild(cur);
+        track.style.transform='translateX(-100%)'; }
+      weekEl.innerHTML=''; weekEl.appendChild(track);
+      /* Force layout so the transition starts from the set position. */
+      void track.offsetWidth;
+      track.style.transform=dir>0?'translateX(-100%)':'translateX(0)';
+      var done=false;
+      function settle(){
+        if(done) return; done=true;
+        weekEl.style.overflow='';
+        weekEl.innerHTML=html;
+        try{ history.pushState(null,'',pushUrl); }catch(e){}
+        sliding=false;
+        placeNow(); centerOnNow();
+        /* Prime the cache for the new chevrons' targets. */
+        var links=weekEl.querySelectorAll('a[data-slide]');
+        for(var i=0;i<links.length;i++) prefetch(links[i]);
+      }
+      track.addEventListener('transitionend',settle);
+      /* transitionend can be swallowed (tab hidden, reduced motion) — the
+         CSS also collapses the duration to 0 under prefers-reduced-motion,
+         which still fires transitionend; this is the backstop. */
+      setTimeout(settle,450);
     }
     document.getElementById('cal-save').addEventListener('click',function(){
       var s=toMin(startI.value),e=toMin(endI.value);

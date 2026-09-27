@@ -149,6 +149,46 @@ describe("calendar nav edge tooltips (#554)", () => {
   });
 });
 
+/** #567: chevron day/week navigation slides instead of swapping instantly —
+ *  the chevrons carry a data-slide direction the client script intercepts. */
+describe("calendar slide navigation (#567)", () => {
+  const stubQuery = () => ({
+    get: (..._a: unknown[]) => ({ n: 1 }),
+    all: (..._a: unknown[]) => [],
+  });
+  function views() {
+    const db = {
+      query: (_sql: string) => ({ get: () => ({ n: 1 }), all: () => [] }),
+    } as unknown as Database;
+    return createCalendarViews({
+      db,
+      qOne: stubQuery(),
+      qRange: stubQuery(),
+      entrySelect: "SELECT",
+      layout: (_t: string, b: string) => b,
+      projectOptions: () => "",
+      weekTargetBar: () => "",
+      calHourPx: 64,
+    } as any);
+  }
+  test("week chevrons carry slide directions", () => {
+    const html = views().weekInner("2026-09-20", "America/Chicago");
+    expect(html).toContain('data-slide="prev"');
+    expect(html).toContain('data-slide="next"');
+    expect(html).toContain('data-slide="prev" data-tip="Previous week"');
+  });
+  test("day chevrons carry slide directions", () => {
+    const html = views().dayInner("2026-09-21", "America/Chicago");
+    expect(html).toContain('data-slide="prev" data-tip="Previous day"');
+    expect(html).toContain('data-slide="next" data-tip="Next day"');
+  });
+  test("chevrons keep their htmx fallback attributes", () => {
+    const html = views().dayInner("2026-09-21", "America/Chicago");
+    expect(html).toContain('hx-get="/partial/day?day=2026-09-20"');
+    expect(html).toContain('hx-push-url="/calendar?day=2026-09-20"');
+  });
+});
+
 /** #500: finish the data-tip sweep — the calendar entry card's invoiced-mark
  *  info was the last native title= tooltip on the grid; it now uses the house
  *  M3 plain tooltip (data-tip) like the timer page's inv-mark chip (#498). */
@@ -211,9 +251,10 @@ describe("calendar entry invoiced-mark tooltip (#500)", () => {
   });
 });
 
-/** #521: narrow containers collapse to a genuine server-rendered single-
- *  column day view — one lane, day nav, week-scoped supporting pane. */
-describe("calendar day view (#521)", () => {
+/** #521: narrow containers collapse to a genuine server-rendered day view —
+ *  #566: a three-day strip (selected day flanked by its neighbors), day nav,
+ *  week-scoped supporting pane. */
+describe("calendar day view (#521, #566)", () => {
   const stubQuery = () => ({
     get: (..._a: unknown[]) => ({ n: 1 }),
     all: (..._a: unknown[]) => [],
@@ -231,15 +272,25 @@ describe("calendar day view (#521)", () => {
     invoice_number: null, invoice_status: null,
     start_time: "2026-09-22T14:00:00.000Z", end_time: "2026-09-22T15:00:00.000Z",
   };
+  const wedEntry = {
+    id: 33, description: "wednesday work", project_id: 5, project_name: "P",
+    client_name: "Acme", client_color: null, invoice_id: null,
+    invoice_number: null, invoice_status: null,
+    start_time: "2026-09-23T14:00:00.000Z", end_time: "2026-09-23T15:00:00.000Z",
+  };
 
-  function viewsFor(entries: unknown[]) {
+  function viewsFor(entries: unknown[], qRangeEntries: unknown[] = []) {
     const db = {
       query: (_sql: string) => ({ get: () => ({ n: 1 }), all: () => entries }),
     } as unknown as Database;
+    const qr = {
+      get: (..._a: unknown[]) => ({ n: 1 }),
+      all: (..._a: unknown[]) => qRangeEntries,
+    };
     return createCalendarViews({
       db,
       qOne: stubQuery(),
-      qRange: stubQuery(),
+      qRange: qr,
       entrySelect: "SELECT",
       layout: (_t: string, b: string) => b,
       projectOptions: () => "",
@@ -250,17 +301,35 @@ describe("calendar day view (#521)", () => {
 
   const laneCount = (html: string) => (html.match(/class="cal-day[ "]/g) || []).length;
 
-  test("dayInner renders one lane with data-mode=day", () => {
+  test("#566: dayInner renders a three-day strip with data-mode=day", () => {
     const html = viewsFor([monEntry, tueEntry]).dayInner("2026-09-21", "America/Chicago");
-    expect(laneCount(html)).toBe(1);
+    expect(laneCount(html)).toBe(3);
     expect(html).toContain('data-mode="day"');
+    expect(html).toContain('data-date="2026-09-20"');
     expect(html).toContain('data-date="2026-09-21"');
+    expect(html).toContain('data-date="2026-09-22"');
   });
 
-  test("dayInner shows only the selected day's entries", () => {
-    const html = viewsFor([monEntry, tueEntry]).dayInner("2026-09-21", "America/Chicago");
+  test("#566: dayInner shows the selected day plus its neighbors, not the whole week", () => {
+    const html = viewsFor([monEntry, tueEntry, wedEntry]).dayInner("2026-09-21", "America/Chicago");
     expect(html).toContain("monday work");
-    expect(html).not.toContain("tuesday work");
+    expect(html).toContain("tuesday work");
+    expect(html).not.toContain("wednesday work");
+  });
+
+  test("#566: an adjacent day outside the week still renders its entries", () => {
+    // 2026-09-20 is a Sunday: the strip's previous lane (Sat 9/19) falls in
+    // the prior week, so its entries come from the straggler query (qRange).
+    const satEntry = {
+      id: 34, description: "saturday work", project_id: 5, project_name: "P",
+      client_name: "Acme", client_color: null, invoice_id: null,
+      invoice_number: null, invoice_status: null,
+      start_time: "2026-09-19T14:00:00.000Z", end_time: "2026-09-19T15:00:00.000Z",
+    };
+    const html = viewsFor([], [satEntry]).dayInner("2026-09-20", "America/Chicago");
+    expect(laneCount(html)).toBe(3);
+    expect(html).toContain("saturday work");
+    expect(html).toContain('data-date="2026-09-19"');
   });
 
   test("dayInner keeps the week-scoped supporting pane", () => {
@@ -293,7 +362,7 @@ describe("calendar day view (#521)", () => {
 
   test("dayInner falls back to today on an invalid day", () => {
     const html = viewsFor([]).dayInner("not-a-day", "UTC");
-    expect(laneCount(html)).toBe(1);
+    expect(laneCount(html)).toBe(3);
     expect(html).toContain('<h2 class="md-headline-small">Today</h2>');
   });
 
