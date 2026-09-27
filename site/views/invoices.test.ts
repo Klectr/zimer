@@ -242,3 +242,32 @@ describe("#536: line-item hidden inputs live inside a td", () => {
     }
   });
 });
+
+/** #560: the invoice-sheet header date phrases must wrap as units on narrow
+ *  screens. Before: "Issued 2026-09-27 ·" could trail the middot with "Due
+ *  …" on the next line, and "Sep 21 –" split the billing-period dash. The
+ *  header now mirrors the #442/#481 list-row fix: each date phrase sits in
+ *  the existing .inv-date nowrap span and the middot is a leading separator,
+ *  so wraps happen before a separator, never after one. */
+describe("#560: header date phrases stay together", () => {
+  const items = [{
+    description: "d", hours: 1, rate: 40, amount: 40, entry_ids: [1],
+    date_from: "2026-09-21", date_to: "2026-09-26",
+  }];
+  const sheet = () => views([]).invoiceSheet({ ...detailInv("sent", null), items } as any);
+  test("Issued and Due are nowrap spans with the middot leading", () => {
+    const html = sheet();
+    expect(html).toContain(`<span class="inv-date">Issued 2026-09-01</span>`);
+    expect(html).toContain(`<span class="inv-date">· <strong>Due 2026-09-30</strong></span>`);
+    // the old inline " · <strong>Due" separator is gone from the header
+    expect(html).not.toContain(" · <strong>");
+  });
+  test("billing period is one nowrap phrase", () => {
+    expect(sheet()).toContain(`Billing period: <span class="inv-date">Sep 21 – Sep 26</span>`);
+  });
+  test("no due phrase when pay-when-paid, and no period without items", () => {
+    const html = views([]).invoiceSheet({ ...detailInv("sent", null), client_payment_terms: "pay_when_paid", items: [] } as any);
+    expect(html).not.toContain("<strong>Due ");
+    expect(html).not.toContain("Billing period:");
+  });
+});

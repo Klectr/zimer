@@ -332,8 +332,14 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
           <div class="inv-modern-title">Invoice</div>
           <div class="inv-modern-right">
             <div class="inv-modern-number">${esc(inv.number)}</div>
-            <div class="inv-modern-dates">Issued ${esc(inv.issue_date)}${inv.due_date && termsKey_ !== "pay_when_paid" ? ` · <strong>Due ${esc(inv.due_date)}</strong>` : ""}</div>
-            ${period ? `<div class="inv-modern-dates">Billing period: ${esc(period)}</div>` : ""}
+            ${/* #560: header date phrases wrap mid-phrase on narrow screens
+               ("Issued … ·" trailing the middot, "Sep 21 –" splitting the
+               dash). Same treatment the list rows got in #442/#481: each
+               phrase sits in the existing .inv-date nowrap span, the middot
+               is a leading separator, and wraps happen before a separator,
+               never after one. */ ""}
+            <div class="inv-modern-dates"><span class="inv-date">Issued ${esc(inv.issue_date)}</span>${inv.due_date && termsKey_ !== "pay_when_paid" ? ` <span class="inv-date">· <strong>Due ${esc(inv.due_date)}</strong></span>` : ""}</div>
+            ${period ? `<div class="inv-modern-dates">Billing period: <span class="inv-date">${esc(period)}</span></div>` : ""}
             <span class="inv-modern-badge${inv.status === "paid" ? " paid" : ""}">${inv.status === "paid" ? "Paid" : "Unpaid"}</span>${paidChip}
           </div>
         </div>
