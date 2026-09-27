@@ -263,7 +263,7 @@ describe("#560: header date phrases stay together", () => {
     expect(html).not.toContain(" · <strong>");
   });
   test("billing period is one nowrap phrase", () => {
-    expect(sheet()).toContain(`Billing period: <span class="inv-date">Sep 21 – Sep 26</span>`);
+    expect(sheet()).toContain(`Billing period: <span class="inv-date">Sep 21 – Sep 26, 2026</span>`);
   });
   test("no due phrase when pay-when-paid, and no period without items", () => {
     const html = views([]).invoiceSheet({ ...detailInv("sent", null), client_payment_terms: "pay_when_paid", items: [] } as any);
