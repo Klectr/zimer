@@ -1841,9 +1841,11 @@ button.m3-menu-item {
 /* #567: chevron day/week navigation slides the whole week pane instead of
    swapping it instantly. Each pane is exactly one #week wide; the track
    translates one pane-width in the travel direction. */
-.cal-slide-track { display: flex; transition: transform 260ms cubic-bezier(.2,0,0,1); }
-.cal-slide-track > .cal-pane-layout,
-.cal-slide-track > .cal-slide-pane { flex: 0 0 100%; min-width: 0; }
+.cal-slide-track { display: flex; overflow: hidden; grid-area: grid; min-width: 0; min-height: 0;
+  transition: transform 260ms cubic-bezier(.2,0,0,1); }
+/* body.app-fixed .cal-scroll sets flex:1 — this needs the extra specificity
+   to keep the two panes side-by-side at full width. */
+body.app-fixed .cal-slide-track > .cal-scroll { flex: 0 0 100%; min-width: 0; }
 @media (prefers-reduced-motion: reduce) {
   .cal-slide-track { transition: none; }
 }

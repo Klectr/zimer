@@ -142,10 +142,17 @@ describe("calendar nav edge tooltips (#554)", () => {
     expect(html).toContain('class="md-icon-button tip-right" href="/calendar?week=2026-09-27"');
     expect(html).not.toContain('class="md-icon-button tip-right" href="/calendar?week=2026-09-13"');
   });
-  test("day mode: next-day chevron right-aligns its tooltip", () => {
+  test("day mode: next-strip chevron right-aligns its tooltip", () => {
     const html = views().dayInner("2026-09-21", "America/Chicago");
-    expect(html).toContain('class="md-icon-button tip-right" href="/calendar?day=2026-09-22"');
-    expect(html).not.toContain('class="md-icon-button tip-right" href="/calendar?day=2026-09-20"');
+    expect(html).toContain('class="md-icon-button tip-right" href="/calendar?day=2026-09-24"');
+    expect(html).not.toContain('class="md-icon-button tip-right" href="/calendar?day=2026-09-18"');
+  });
+  test("day mode: chevrons step a full strip (three days)", () => {
+    const html = views().dayInner("2026-09-21", "America/Chicago");
+    expect(html).toContain('href="/calendar?day=2026-09-18"');
+    expect(html).toContain('href="/calendar?day=2026-09-24"');
+    expect(html).toContain('hx-push-url="/calendar?day=2026-09-18"');
+    expect(html).toContain('hx-push-url="/calendar?day=2026-09-24"');
   });
 });
 
@@ -179,13 +186,13 @@ describe("calendar slide navigation (#567)", () => {
   });
   test("day chevrons carry slide directions", () => {
     const html = views().dayInner("2026-09-21", "America/Chicago");
-    expect(html).toContain('data-slide="prev" data-tip="Previous day"');
-    expect(html).toContain('data-slide="next" data-tip="Next day"');
+    expect(html).toContain('data-slide="prev" data-tip="Previous 3 days"');
+    expect(html).toContain('data-slide="next" data-tip="Next 3 days"');
   });
   test("chevrons keep their htmx fallback attributes", () => {
     const html = views().dayInner("2026-09-21", "America/Chicago");
-    expect(html).toContain('hx-get="/partial/day?day=2026-09-20"');
-    expect(html).toContain('hx-push-url="/calendar?day=2026-09-20"');
+    expect(html).toContain('hx-get="/partial/day?day=2026-09-18"');
+    expect(html).toContain('hx-push-url="/calendar?day=2026-09-18"');
   });
 });
 
@@ -353,10 +360,10 @@ describe("calendar day view (#521, #566)", () => {
 
   test("day nav uses day labels and accessible names", () => {
     const html = viewsFor([]).dayInner("2026-09-21", "America/Chicago");
-    expect(html).toContain('aria-label="Previous day"');
-    expect(html).toContain('aria-label="Next day"');
-    expect(html).toContain('hx-get="/partial/day?day=2026-09-20"');
-    expect(html).toContain('hx-get="/partial/day?day=2026-09-22"');
+    expect(html).toContain('aria-label="Previous 3 days"');
+    expect(html).toContain('aria-label="Next 3 days"');
+    expect(html).toContain('hx-get="/partial/day?day=2026-09-18"');
+    expect(html).toContain('hx-get="/partial/day?day=2026-09-24"');
     expect(html).not.toContain("Week of");
   });
 
