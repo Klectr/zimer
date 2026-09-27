@@ -270,7 +270,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     const navActions = `
       ${isThisWeek ? "" : `<a class="md-text-button" href="/calendar" hx-get="/partial/week" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar">Today</a>`}
       <a class="md-icon-button" href="/calendar?week=${prev}" hx-get="/partial/week?week=${prev}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?week=${prev}" data-tip="Previous week" aria-label="Previous week">${icon("chevron_left")}</a>
-      <a class="md-icon-button" href="/calendar?week=${next}" hx-get="/partial/week?week=${next}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?week=${next}" data-tip="Next week" aria-label="Next week">${icon("chevron_right")}</a>`;
+      <a class="md-icon-button tip-right" href="/calendar?week=${next}" hx-get="/partial/week?week=${next}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?week=${next}" data-tip="Next week" aria-label="Next week">${icon("chevron_right")}</a>`;
     const lanes: string[] = [];
     for (let i = 0; i < 7; i++) lanes.push(dayColumnHtml(addDays(sun, i), wd, i * 40));
     return calShell(wd, navTitle, navActions, lanes.join(""), "week");
@@ -292,7 +292,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     const navActions = `
       ${isToday ? "" : `<a class="md-text-button" href="/calendar?day=${today}" hx-get="/partial/day?day=${today}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?day=${today}">Today</a>`}
       <a class="md-icon-button" href="/calendar?day=${prevDay}" hx-get="/partial/day?day=${prevDay}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?day=${prevDay}" data-tip="Previous day" aria-label="Previous day">${icon("chevron_left")}</a>
-      <a class="md-icon-button" href="/calendar?day=${nextDay}" hx-get="/partial/day?day=${nextDay}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?day=${nextDay}" data-tip="Next day" aria-label="Next day">${icon("chevron_right")}</a>`;
+      <a class="md-icon-button tip-right" href="/calendar?day=${nextDay}" hx-get="/partial/day?day=${nextDay}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?day=${nextDay}" data-tip="Next day" aria-label="Next day">${icon("chevron_right")}</a>`;
     return calShell(wd, navTitle, navActions, dayColumnHtml(day, wd, 0), "day");
   }
 
