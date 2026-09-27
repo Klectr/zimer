@@ -1840,10 +1840,10 @@ button.m3-menu-item {
    ones the week agenda. */
 .cal-carousel { grid-area: grid; overflow: hidden; min-width: 0; min-height: 0;
   border-radius: var(--md-sys-shape-corner-large); }
-.cal-track { display: flex; height: 100%; width: 300%; transform: translateX(-100%);
+.cal-track { display: flex; height: 100%; width: 100%; transform: translateX(-100%);
   transition: transform 260ms cubic-bezier(.2,0,0,1); }
 .cal-track.no-anim { transition: none; }
-.cal-strip { flex: 0 0 calc(100% / 3); min-width: 0; min-height: 0;
+.cal-strip { flex: 0 0 100%; min-width: 0; min-height: 0;
   display: flex; flex-direction: column; container-type: inline-size; }
 .cal-strip > .cal-scroll { flex: 1; min-height: 0; min-width: 0; }
 /* Recycled strips repopulate in the background — no entrance replay. */

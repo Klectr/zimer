@@ -446,6 +446,48 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       #256: the grid loads via htmx (tz is appended by calScript's
       htmx:configRequest) so the first paint is already in the client's zone —
       a server-rendered grid would flash server-timezone positions. */
+  /** The persistent entry dialog — lives outside #week so an in-place week
+      refresh (#65) never destroys its bindings. Rendered once in the page
+      skeleton; the carousel strips never include it. */
+  function calDialog(): string {
+    return `<div class="cal-scrim" id="cal-scrim" hidden>
+        <div class="cal-dialog" role="dialog" aria-modal="true" aria-labelledby="cal-dialog-title">
+          <div class="cal-dialog-head">
+            <h2 class="md-headline-small" id="cal-dialog-title">New entry</h2>
+            <button class="md-icon-button" id="cal-close" type="button" aria-label="Close dialog">${icon("close")}</button>
+          </div>
+          <p class="muted md-body-medium" id="cal-dialog-date"></p>
+          <div class="md-text-field">
+            <input type="text" id="cal-desc" placeholder=" " autocomplete="off">
+            <label for="cal-desc">Description</label>
+          </div>
+          <div class="md-text-field filled">
+            <select id="cal-project" aria-label="Project"><option value="">No project</option>${projectOptions()}</select>
+            <label for="cal-project">Project</label>
+          </div>
+          <div class="cal-time-row">
+            <div class="md-text-field filled">
+              <input type="time" id="cal-start" required>
+              <label for="cal-start">Start</label>
+            </div>
+            <div class="md-text-field filled">
+              <input type="time" id="cal-end" required>
+              <label for="cal-end">End</label>
+            </div>
+            <span class="md-title-small" id="cal-dur"></span>
+          </div>
+          <p class="muted tiny" id="cal-locked" hidden></p>
+          <p class="error tiny" id="cal-error" hidden></p>
+          <div class="cal-dialog-actions">
+            <button class="md-text-button danger" id="cal-delete" hidden>Delete</button>
+            <span class="cal-spacer"></span>
+            <button class="md-text-button" id="cal-cancel">Cancel</button>
+            <button class="md-filled-button" id="cal-save">Save</button>
+          </div>
+        </div>
+      </div>`;
+  }
+
   function weekGrid(weekStr?: string): string {
     const q = weekStr && /^\d{4}-\d{2}-\d{2}$/.test(weekStr) ? `?week=${weekStr}` : "";
     /* #322: the skeleton mirrors the carousel pane layout (summary aside with
@@ -470,7 +512,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
           </div>
         </div>
       </div>
-      <div class="cal-entry-dialog" id="cal-dialog" hidden>...</div>
+      ${calDialog()}
       <script>${calScript()}</script>
   `;
   }
