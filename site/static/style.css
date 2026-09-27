@@ -1806,7 +1806,6 @@ button.m3-menu-item {
 }
 @keyframes skel-shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
 .skel-stack { display: flex; flex-direction: column; gap: 12px; }
-.skel-line { height: 14px; border-radius: 7px; }
 .skel-row { height: 64px; border-radius: var(--md-sys-shape-corner-medium); }
 
 /* -------- calendar skeleton (#322): mirrors .cal-pane-layout so the htmx
@@ -1817,13 +1816,7 @@ button.m3-menu-item {
   grid-template-columns: minmax(0, 1fr);
   grid-template-areas: "summary" "grid";
   grid-template-rows: auto minmax(0, 1fr); row-gap: 12px; }
-.cal-skel-nav { display: flex; align-items: center; justify-content: space-between; }
-.cal-skel-title { width: 140px; height: 28px; border-radius: 8px; }
-.cal-skel-actions { display: flex; gap: 4px; }
-.cal-skel-dot { width: 40px; height: 40px; border-radius: 50%; }
-.cal-skel-aside { grid-area: summary; display: flex; flex-direction: column; gap: 12px; margin: 10px 0 12px; min-width: 0; }
-.cal-skel-big { width: 120px; height: 36px; border-radius: 10px; }
-.cal-skel-bar { height: 8px; border-radius: 4px; }
+/* (dead pre-carousel skeleton rules removed, #576) */
 .cal-skel-grid { grid-area: grid; display: grid; min-width: 0; min-height: 0;
   grid-template-columns: 44px repeat(7, minmax(0, 1fr)); gap: 8px; }
 .cal-skel-day { display: flex; flex-direction: column; gap: 8px; min-width: 0; min-height: 0; }
@@ -1877,7 +1870,6 @@ button.m3-menu-item {
 @media (min-width: 840px) {
   .cal-skel { grid-template-columns: minmax(0, 1fr) var(--layout-supporting-pane);
     grid-template-areas: "grid summary"; column-gap: var(--layout-pane-gap); }
-  .cal-skel-aside { margin: 8px 0 0; }
 }
 
 /* M3 press ripple (JS-driven, see motion.js). Buttons already clip with
