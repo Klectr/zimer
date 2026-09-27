@@ -907,8 +907,8 @@ body.app-fixed .cal-gutter-spacer {
   grid-template-columns: 54px repeat(7, minmax(0, 1fr));
   gap: 8px;
 }
-/* #521: day mode — the single lane takes the freed columns. */
-.cal-grid[data-mode="day"] { grid-template-columns: 54px minmax(0, 1fr); }
+/* #521: day mode — three lanes take the freed columns. #566: was one lane. */
+.cal-grid[data-mode="day"] { grid-template-columns: 54px repeat(3, minmax(0, 1fr)); }
 .cal-gutter-spacer { height: 64px; } /* matches the two-line day header */
 .cal-gutter { position: relative; }
 .cal-hours { height: calc(var(--cal-hour) * 24); }
@@ -1828,8 +1828,8 @@ button.m3-menu-item {
 .cal-skel-bar { height: 8px; border-radius: 4px; }
 .cal-skel-grid { grid-area: grid; display: grid; min-width: 0; min-height: 0;
   grid-template-columns: 54px repeat(7, minmax(0, 1fr)); gap: 8px; }
-/* #521: the day-mode skeleton mirrors the one-column layout. */
-.cal-skel-grid[data-mode="day"] { grid-template-columns: 54px minmax(0, 1fr); }
+/* #521: the day-mode skeleton mirrors the three-lane layout. */
+.cal-skel-grid[data-mode="day"] { grid-template-columns: 54px repeat(3, minmax(0, 1fr)); }
 .cal-skel-day { display: flex; flex-direction: column; gap: 8px; min-width: 0; min-height: 0; }
 .cal-skel-head { height: 64px; flex: none; border-radius: var(--md-sys-shape-corner-medium); }
 .cal-skel-lane { flex: 1; min-height: 120px; border-radius: var(--md-sys-shape-corner-medium);
@@ -1838,6 +1838,15 @@ button.m3-menu-item {
     transparent 0, transparent 79px,
     color-mix(in srgb, var(--md-sys-color-outline-variant) 30%, transparent) 79px,
     color-mix(in srgb, var(--md-sys-color-outline-variant) 30%, transparent) 80px); }
+/* #567: chevron day/week navigation slides the whole week pane instead of
+   swapping it instantly. Each pane is exactly one #week wide; the track
+   translates one pane-width in the travel direction. */
+.cal-slide-track { display: flex; transition: transform 260ms cubic-bezier(.2,0,0,1); }
+.cal-slide-track > .cal-pane-layout,
+.cal-slide-track > .cal-slide-pane { flex: 0 0 100%; min-width: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .cal-slide-track { transition: none; }
+}
 @media (min-width: 840px) {
   .cal-skel { grid-template-columns: minmax(0, 1fr) var(--layout-supporting-pane);
     grid-template-areas: "grid summary"; column-gap: var(--layout-pane-gap); }
