@@ -1301,7 +1301,7 @@ button.m3-menu-item {
   background: var(--md-tertiary-container, #3a2f10); color: var(--md-on-tertiary-container, #f2e3b3);
 }
 .demo-banner svg { flex: none; width: 24px; height: 24px; }
-.demo-banner span { flex: 1; }
+.demo-banner > span { flex: 1 1 16rem; } /* #562: basis floor so CTAs wrap below instead of squeezing the text */
 .demo-banner .md-text-button { color: inherit; }
 @media (prefers-reduced-motion: no-preference) {
   .demo-banner { animation: banner-in .45s cubic-bezier(0.05, 0.7, 0.1, 1); }
