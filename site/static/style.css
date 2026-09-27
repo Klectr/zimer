@@ -904,7 +904,7 @@ body.app-fixed .cal-gutter-spacer {
 .cal-scroll { overflow-x: clip; border-radius: var(--md-sys-shape-corner-large); }
 .cal-grid {
   display: grid;
-  grid-template-columns: 54px repeat(7, minmax(0, 1fr));
+  grid-template-columns: 44px repeat(7, minmax(0, 1fr));
   gap: 8px;
 }
 .cal-gutter-spacer { height: 64px; } /* matches the two-line day header */
@@ -1825,7 +1825,7 @@ button.m3-menu-item {
 .cal-skel-big { width: 120px; height: 36px; border-radius: 10px; }
 .cal-skel-bar { height: 8px; border-radius: 4px; }
 .cal-skel-grid { grid-area: grid; display: grid; min-width: 0; min-height: 0;
-  grid-template-columns: 54px repeat(7, minmax(0, 1fr)); gap: 8px; }
+  grid-template-columns: 44px repeat(7, minmax(0, 1fr)); gap: 8px; }
 .cal-skel-day { display: flex; flex-direction: column; gap: 8px; min-width: 0; min-height: 0; }
 .cal-skel-head { height: 64px; flex: none; border-radius: var(--md-sys-shape-corner-medium); }
 .cal-skel-lane { flex: 1; min-height: 120px; border-radius: var(--md-sys-shape-corner-medium);
