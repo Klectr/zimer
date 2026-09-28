@@ -62,7 +62,7 @@ export function seedDemoData(db: Database): void {
     }
   }
   /* #300: remember the seeded week so the demo banner can link straight into
-     the invoice prefill flow (/invoices/new?from=&to=). `to` is exclusive. */
+     the invoice prefill flow (/invoices/new?from=&to=). `to` is inclusive. */
   const dayStr = (d: Date) => d.toISOString().slice(0, 10);
   const fromD = new Date(); fromD.setDate(fromD.getDate() - 6);
   const toD = new Date(); toD.setDate(toD.getDate() - 1);

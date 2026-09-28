@@ -202,7 +202,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
           </div>
           <div class="two-field" id="inv-range">
             <div class="md-text-field filled"><input type="date" id="inv-from" name="from" value="${esc(p.from)}" required placeholder=" "><label>From</label></div>
-            <div class="md-text-field filled"><input type="date" id="inv-to" name="to" value="${esc(p.to)}" required placeholder=" "><label>To (exclusive)</label></div>
+            <div class="md-text-field filled"><input type="date" id="inv-to" name="to" value="${esc(p.to)}" required placeholder=" "><label>To</label></div>
           </div>
           <div class="two-field">
             <div class="md-text-field filled has-prefix"><span class="affix prefix" aria-hidden="true">$</span><input type="number" name="rate" id="inv-rate" value="${esc(p.rate || (selClient ? String(selClient.rate || "") : ""))}" min="0" step="0.01" placeholder=" " aria-label="Hourly rate"><label>Hourly rate</label></div>

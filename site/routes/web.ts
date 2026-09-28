@@ -230,9 +230,9 @@ export function createWebRouter(deps: WebDeps) {
               const restFrom = clientRestFrom(Number(cid));
               if (restFrom) from = restFrom;
             }
-            const to = addDays(todayStr(), 1);
+            const to = todayStr();
             return html(`<div class="md-text-field filled"><input type="date" id="inv-from" name="from" value="${esc(from)}" required placeholder=" "><label>From</label></div>
-            <div class="md-text-field filled"><input type="date" id="inv-to" name="to" value="${esc(to)}" required placeholder=" "><label>To (exclusive)</label></div>`);
+            <div class="md-text-field filled"><input type="date" id="inv-to" name="to" value="${esc(to)}" required placeholder=" "><label>To</label></div>`);
           }
           if (path === "/timer/start" && method === "POST") {
             if (qRunning.get()) return html(timerPartial(), 409);
@@ -530,7 +530,7 @@ export function createWebRouter(deps: WebDeps) {
             JOIN projects pr ON pr.id = e.project_id
             JOIN clients c ON c.id = pr.client_id
             WHERE e.invoice_id IS NULL AND e.end_time IS NOT NULL
-              AND e.start_time >= ? AND e.start_time < ?`).all(f, t) as any[];
+              AND e.start_time >= ? AND e.start_time < date(?, '+1 day')`).all(f, t) as any[];
             if (billable.length !== 1) return { p };
             const c = billable[0];
             p.client_id = String(c.id);
@@ -551,7 +551,7 @@ export function createWebRouter(deps: WebDeps) {
               p.client_id = String(c.id);
               const restFrom = clientRestFrom(Number(c.id));
               if (restFrom) p.from = restFrom;
-              p.to = addDays(todayStr(), 1);
+              p.to = todayStr();
               if (c.rate !== null && c.rate !== "") p.rate = String(c.rate);
               const days = termsDays(termsKey(c.payment_terms, getMeta(db, "business_payment_terms")));
               if (days !== null) p.due_date = addDays(p.issue_date, days);
