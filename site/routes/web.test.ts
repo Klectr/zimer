@@ -1,6 +1,6 @@
-/** #618: rename a client from the Manage page — POST /clients/:id/name.
- * Wires the real web router with stub deps (plus the real manage views so
- * the re-rendered detail pane and OOB list refresh are exercised). */
+/** #630: client settings modal — GET/POST /clients/:id/settings (name +
+ * contact details). Wires the real web router with stub deps (plus the real
+ * manage views so the settings form fragment is exercised). */
 import { describe, expect, test } from "bun:test";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -39,7 +39,7 @@ function setup() {
     calendarPage: noop, editPage: () => null,
     managePage: views.managePage, clientSelection: views.clientSelection,
     clientDetailBody: views.clientDetailBody, clientListOob: views.clientListOob,
-    bizProfileSection: noop, invoicesPage: noop, invoiceNewPage: noop,
+    bizProfileSection: noop, clientSettingsForm: views.clientSettingsForm, invoicesPage: noop, invoiceNewPage: noop,
     defaultNewInvParams: () => ({}), invoiceStep2: noop,
     invoiceDetailBody: noop, invoiceListOob: noop, invoiceDoc: noop,
     getInvoice: () => null, invoiceTotals: () => ({ subtotal: 0, tax: 0, total: 0 }),
@@ -56,82 +56,71 @@ function setup() {
   return { db, client, handleWeb };
 }
 
-function postName(handleWeb: any, id: number, name: string, htmx = true) {
-  const form = new FormData();
-  form.append("name", name);
-  const headers: Record<string, string> = {};
-  if (htmx) headers["HX-Request"] = "true";
-  const req = new Request(`http://x/clients/${id}/name`, { method: "POST", body: form, headers });
-  return handleWeb(req, new URL(req.url), `/clients/${id}/name`, "POST");
-}
-
-describe("POST /clients/:id/name (#618)", () => {
-  test("renames the client and re-renders detail + OOB list", async () => {
-    const { db, client, handleWeb } = setup();
-    const res = await postName(handleWeb, client.id, "Byte Bot LLC");
-    expect(res!.status).toBe(200);
-    const row = db.query("SELECT name FROM clients WHERE id = ?").get(client.id) as any;
-    expect(row.name).toBe("Byte Bot LLC");
-    const body = await res!.text();
-    expect(body).toContain("Byte Bot LLC");
-    expect(body).toContain('action="/clients/1/name"'.replace("1", String(client.id)));
-  });
-
-  test("trims whitespace", async () => {
-    const { db, client, handleWeb } = setup();
-    await postName(handleWeb, client.id, "  Byte Bot LLC  ");
-    const row = db.query("SELECT name FROM clients WHERE id = ?").get(client.id) as any;
-    expect(row.name).toBe("Byte Bot LLC");
-  });
-
-  test("empty name is rejected with 400 and leaves the row untouched", async () => {
-    const { db, client, handleWeb } = setup();
-    const res = await postName(handleWeb, client.id, "   ");
-    expect(res!.status).toBe(400);
-    const row = db.query("SELECT name FROM clients WHERE id = ?").get(client.id) as any;
-    expect(row.name).toBe("Bytebot");
-  });
-
-  test("plain POST redirects to the manage page", async () => {
-    const { client, handleWeb } = setup();
-    const res = await postName(handleWeb, client.id, "Byte Bot LLC", false);
-    expect(res!.status).toBe(302);
-    expect(res!.headers.get("Location")).toBe(`/manage?client=${client.id}`);
-  });
-});
-
-function postContact(handleWeb: any, id: number, fields: Record<string, string>, htmx = true) {
+function postSettings(handleWeb: any, id: number, fields: Record<string, string>, htmx = true) {
   const form = new FormData();
   for (const [k, v] of Object.entries(fields)) form.append(k, v);
   const headers: Record<string, string> = {};
   if (htmx) headers["HX-Request"] = "true";
-  const req = new Request(`http://x/clients/${id}/contact`, { method: "POST", body: form, headers });
-  return handleWeb(req, new URL(req.url), `/clients/${id}/contact`, "POST");
+  const req = new Request(`http://x/clients/${id}/settings`, { method: "POST", body: form, headers });
+  return handleWeb(req, new URL(req.url), `/clients/${id}/settings`, "POST");
 }
 
-describe("POST /clients/:id/contact (#627)", () => {
+function getSettings(handleWeb: any, id: number | string, htmx = true) {
+  const headers: Record<string, string> = {};
+  if (htmx) headers["HX-Request"] = "true";
+  const req = new Request(`http://x/clients/${id}/settings`, { headers });
+  return handleWeb(req, new URL(req.url), `/clients/${id}/settings`, "GET");
+}
+
+describe("client settings (#630)", () => {
   const full = {
+    name: "  Byte Bot LLC  ",
     email: " ap@bytebot.io ", phone: " 555-0100 ", website: "bytebot.io",
-    address: " 2643 Morningside Dr\nClearwater, FL 33759 ",
+    address: " 2643 Morningside Dr\r\nClearwater, FL 33759 ",
   };
-  test("saves trimmed contact details and re-renders the detail pane", async () => {
-    const { db, client, handleWeb } = setup();
-    const res = await postContact(handleWeb, client.id, full);
+
+  test("GET returns the settings form", async () => {
+    const { client, handleWeb } = setup();
+    const res = await getSettings(handleWeb, client.id);
     expect(res!.status).toBe(200);
-    const row = db.query("SELECT email, phone, website, address FROM clients WHERE id = ?").get(client.id) as any;
+    const body = await res!.text();
+    expect(body).toContain('id="client-settings-form"');
+    expect(body).toContain('name="name" value="Bytebot"');
+  });
+
+  test("GET for an unknown client is 404", async () => {
+    const { handleWeb } = setup();
+    const res = await getSettings(handleWeb, 999);
+    expect(res!.status).toBe(404);
+  });
+
+  test("POST saves the trimmed name and contact details, returning the form", async () => {
+    const { db, client, handleWeb } = setup();
+    const res = await postSettings(handleWeb, client.id, full);
+    expect(res!.status).toBe(200);
+    const row = db.query("SELECT name, email, phone, website, address FROM clients WHERE id = ?").get(client.id) as any;
+    expect(row.name).toBe("Byte Bot LLC");
     expect(row.email).toBe("ap@bytebot.io");
     expect(row.phone).toBe("555-0100");
     expect(row.website).toBe("bytebot.io");
     expect(row.address).toBe("2643 Morningside Dr\nClearwater, FL 33759");
     const body = await res!.text();
-    expect(body).toContain('action="/clients/1/contact"'.replace("1", String(client.id)));
+    expect(body).toContain('id="client-settings-form"');
+    expect(body).toContain('name="name" value="Byte Bot LLC"');
     expect(body).toContain("ap@bytebot.io");
-    expect(body).toContain("2643 Morningside Dr");
   });
 
-  test("blank fields store NULL", async () => {
+  test("empty name is rejected with 400 and leaves the row untouched", async () => {
     const { db, client, handleWeb } = setup();
-    await postContact(handleWeb, client.id, { ...full, email: "   ", phone: "" });
+    const res = await postSettings(handleWeb, client.id, { ...full, name: "   " });
+    expect(res!.status).toBe(400);
+    const row = db.query("SELECT name FROM clients WHERE id = ?").get(client.id) as any;
+    expect(row.name).toBe("Bytebot");
+  });
+
+  test("blank contact fields store NULL", async () => {
+    const { db, client, handleWeb } = setup();
+    await postSettings(handleWeb, client.id, { ...full, email: "   ", phone: "" });
     const row = db.query("SELECT email, phone FROM clients WHERE id = ?").get(client.id) as any;
     expect(row.email).toBeNull();
     expect(row.phone).toBeNull();
@@ -139,7 +128,7 @@ describe("POST /clients/:id/contact (#627)", () => {
 
   test("plain POST redirects to the manage page", async () => {
     const { client, handleWeb } = setup();
-    const res = await postContact(handleWeb, client.id, full, false);
+    const res = await postSettings(handleWeb, client.id, full, false);
     expect(res!.status).toBe(302);
     expect(res!.headers.get("Location")).toBe(`/manage?client=${client.id}`);
   });

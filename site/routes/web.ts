@@ -54,6 +54,7 @@ export interface WebDeps {
   clientDetailBody: (sel: ClientSel) => string; /* #367 */
   clientListOob: (sel: ClientSel | null) => string; /* #367 */
   bizProfileSection: () => string;
+  clientSettingsForm: (c: any) => string; /* #630 */
   invoicesPage: (selected: (Invoice & { items: InvoiceItem[] }) | null, origin: string) => string;
   invoiceNewPage: (p: any, preview?: any) => string;
   defaultNewInvParams: () => any;
@@ -88,7 +89,7 @@ export function createWebRouter(deps: WebDeps) {
     DATA_DIR, STATIC_DIR, TOKEN, authedPage, tokensEqual, html, json, csvResponse, isHtmx,
     shareOrigin, PORT, loginPage, publicInvoicePage, changelogPage, termsPage, notFoundPage, noSuchInvoicePage, rateLimitPage, errorPage, /* #341: +termsPage */
     dashboardPage, timerPartial, todayPartial, weekInner, weekStrip,
-    calendarPage, editPage, managePage, clientSelection, clientDetailBody, clientListOob, bizProfileSection, invoicesPage, invoiceNewPage,
+    calendarPage, editPage, managePage, clientSelection, clientDetailBody, clientListOob, bizProfileSection, clientSettingsForm, invoicesPage, invoiceNewPage,
     defaultNewInvParams, invoiceStep2, invoiceDetailBody, invoiceListOob, invoiceDoc,
     getInvoice, invoiceTotals,
     nextInvoiceNumber, stripeLinkFor, unbilledEntries,
@@ -450,16 +451,29 @@ export function createWebRouter(deps: WebDeps) {
              client selected, on every width. */
           return new Response(null, { status: 302, headers: { Location: `/manage?client=${r.id}` } });
         }
-        m = path.match(/^\/clients\/(\d+)\/name$/);
+        /* #630: client settings modal — name + contact details. Replaces the
+           old inline /name and /contact routes. Name is required; contact
+           fields are trimmed with blanks stored as NULL; textarea newlines
+           arrive as CRLF (multipart normalization) — store plain LF. */
+        m = path.match(/^\/clients\/(\d+)\/settings$/);
+        if (m && method === "GET") {
+          const sel = clientSelection(m[1]);
+          if (!sel || sel.kind !== "client") return new Response("Client not found.", { status: 404 });
+          return html(clientSettingsForm(sel.client));
+        }
         if (m && method === "POST") {
-          /* #618: rename a client. Empty names are rejected; the detail pane
-             and the client list refresh (same pattern as the rate route). */
           const form = await req.formData();
           const name = String(form.get("name") || "").trim();
           if (!name) return new Response("Client name is required.", { status: 400 });
-          db.query("UPDATE clients SET name = ? WHERE id = ?").run(name, Number(m[1]));
-          const sel = clientSelection(m[1]); /* re-render the detail pane + OOB list */
-          if (isHtmx(req)) return html(sel ? clientDetailBody(sel) + clientListOob(sel) : clientListOob(null));
+          const clean = (v: unknown) => { const s = String(v || "").trim(); return s || null; };
+          const addr = clean(form.get("address"));
+          db.query("UPDATE clients SET name = ?, email = ?, phone = ?, website = ?, address = ? WHERE id = ?")
+            .run(name, clean(form.get("email")), clean(form.get("phone")),
+                 clean(form.get("website")), addr && addr.replace(/\r\n/g, "\n"), Number(m[1]));
+          if (isHtmx(req)) {
+            const sel = clientSelection(m[1]);
+            return html(sel && sel.kind === "client" ? clientSettingsForm(sel.client) : "");
+          }
           return new Response(null, { status: 302, headers: { Location: `/manage?client=${m[1]}` } });
         }
         m = path.match(/^\/clients\/(\d+)\/rate$/);
@@ -481,21 +495,6 @@ export function createWebRouter(deps: WebDeps) {
           if (terms !== "" && !isPaymentTermsKey(terms)) return new Response("Unknown payment terms.", { status: 400 });
           db.query("UPDATE clients SET payment_terms = ? WHERE id = ?")
             .run(terms || null, Number(m[1]));
-          const sel = clientSelection(m[1]); /* #367: re-render the detail pane + OOB list */
-          if (isHtmx(req)) return html(sel ? clientDetailBody(sel) + clientListOob(sel) : clientListOob(null));
-          return new Response(null, { status: 302, headers: { Location: `/manage?client=${m[1]}` } });
-        }
-        /* #627: client contact details — email, phone, website, address.
-           Trimmed; blanks store NULL. Textarea newlines arrive as CRLF
-           (multipart normalization) — store plain LF. */
-        m = path.match(/^\/clients\/(\d+)\/contact$/);
-        if (m && method === "POST") {
-          const form = await req.formData();
-          const clean = (v: unknown) => { const s = String(v || "").trim(); return s || null; };
-          const addr = clean(form.get("address"));
-          db.query("UPDATE clients SET email = ?, phone = ?, website = ?, address = ? WHERE id = ?")
-            .run(clean(form.get("email")), clean(form.get("phone")),
-                 clean(form.get("website")), addr && addr.replace(/\r\n/g, "\n"), Number(m[1]));
           const sel = clientSelection(m[1]); /* #367: re-render the detail pane + OOB list */
           if (isHtmx(req)) return html(sel ? clientDetailBody(sel) + clientListOob(sel) : clientListOob(null));
           return new Response(null, { status: 302, headers: { Location: `/manage?client=${m[1]}` } });

@@ -73,7 +73,7 @@ const { weekInner, weekStrip, weekGrid, calendarPage, editPage } = createCalenda
   db, qOne, qRange, entrySelect: ENTRY_SELECT, layout, projectOptions, weekTargetBar,
   calHourPx: CAL_HOUR_PX,
 });
-const { managePage, clientSelection, clientDetailBody, clientListOob, clientOptions, bizProfileSection } =
+const { managePage, clientSelection, clientDetailBody, clientListOob, clientOptions, bizProfileSection, clientSettingsForm } =
   createManageViews({ db, layout });
 const {
   invoicesPage, defaultNewInvParams, invoiceNewPage, invoiceStep2, invoiceSheet,
@@ -109,7 +109,7 @@ const { handleWeb } = createWebRouter({
   shareOrigin: (req: Request) => PUBLIC_BASE_URL || publicOrigin(req, PORT),
   PORT, loginPage, publicInvoicePage, changelogPage, termsPage, notFoundPage, noSuchInvoicePage, rateLimitPage, errorPage,
   dashboardPage, timerPartial, todayPartial, weekInner, weekStrip,
-  calendarPage, editPage, managePage, clientSelection, clientDetailBody, clientListOob, bizProfileSection, invoicesPage, invoiceNewPage,
+  calendarPage, editPage, managePage, clientSelection, clientDetailBody, clientListOob, bizProfileSection, clientSettingsForm, invoicesPage, invoiceNewPage,
   defaultNewInvParams, invoiceStep2, invoiceDetailBody, invoiceListOob, invoiceDoc,
   getInvoice, invoiceTotals,
   nextInvoiceNumber, stripeLinkFor, unbilledEntries,

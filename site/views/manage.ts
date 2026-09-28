@@ -139,15 +139,10 @@ export function createManageViews(deps: ManageViewDeps) {
             ? `${projects.length} project${projects.length === 1 ? "" : "s"}${c.rate ? ` · $${c.rate}/hr` : ""}`
             : "Projects not assigned to a client"}</p>
         </div>
+        ${/* #630: name + contact details moved into the settings modal. */
+          isClient ? `<button class="md-icon-button client-settings-open" type="button" data-client-id="${c.id}" data-tip="Client settings" aria-label="Client settings for ${esc(c.name)}" aria-haspopup="dialog">${icon("settings")}</button>` : ""}
       </div>
       ${isClient ? `
-      <form method="post" action="/clients/${c.id}/name" class="name-form detail-form" hx-post="/clients/${c.id}/name" ${hxDetail}>
-        <div class="md-text-field compact" style="flex:1;min-width:120px">
-          <input type="text" name="name" value="${esc(c.name)}" placeholder=" " required aria-label="Client name">
-          <label>Client name</label>
-        </div>
-        <button class="md-icon-button" type="submit" data-tip="Save" aria-label="Save client name">${icon("save")}</button>
-      </form>
       <form method="post" action="/clients/${c.id}/rate" class="rate-form detail-form" hx-post="/clients/${c.id}/rate" ${hxDetail}>
         <div class="md-text-field has-prefix has-suffix compact" style="width:104px">
           <span class="affix prefix" aria-hidden="true">$</span>
@@ -166,29 +161,7 @@ export function createManageViews(deps: ManageViewDeps) {
         </div>
         <button class="md-icon-button" type="submit" data-tip="Save" aria-label="Save payment terms for ${esc(c.name)}">${icon("save")}</button>
       </form>
-      <p class="terms-desc muted">${esc(termsDescription(termsKey(c.payment_terms, globalTerms())))}</p>
-      <h3 class="md-title-medium manage-subhead">Contact details</h3>
-      <form method="post" action="/clients/${c.id}/contact" class="contact-form detail-form" hx-post="/clients/${c.id}/contact" ${hxDetail}>
-        <div class="contact-grid">
-          <div class="md-text-field compact">
-            <input type="email" name="email" value="${esc(c.email || "")}" placeholder=" " aria-label="Client email">
-            <label>Email</label>
-          </div>
-          <div class="md-text-field compact">
-            <input type="tel" name="phone" value="${esc(c.phone || "")}" placeholder=" " aria-label="Client phone">
-            <label>Phone</label>
-          </div>
-          <div class="md-text-field compact">
-            <input type="text" name="website" value="${esc(c.website || "")}" placeholder=" " aria-label="Client website" autocapitalize="none" spellcheck="false">
-            <label>Website</label>
-          </div>
-          <div class="md-text-field compact contact-address">
-            <textarea name="address" placeholder=" " rows="2" aria-label="Client address">${esc(c.address || "")}</textarea>
-            <label>Address</label>
-          </div>
-        </div>
-        <button class="md-filled-button" type="submit">Save contact details</button>
-      </form>` : ""}
+      <p class="terms-desc muted">${esc(termsDescription(termsKey(c.payment_terms, globalTerms())))}</p>` : ""}
       <h3 class="md-title-medium manage-subhead">Projects</h3>
       <ul class="md-list">
         ${projects.map(projectRow).join("")}
@@ -203,6 +176,44 @@ export function createManageViews(deps: ManageViewDeps) {
 
   function detailPlaceholder(): string {
     return `<div class="detail-placeholder">${icon("group")}<p class="muted">Select a client to manage its projects, rate, and payment terms.</p></div>`;
+  }
+
+  /* #630: client settings form — name + contact details, lazy-loaded into
+     the settings modal. Same trimming/NULL/CRLF rules as the old inline
+     #627 contact form; the route enforces them. */
+  function clientSettingsForm(c: any): string {
+    const field = (type: string, name: string, label: string, val: string, extra = "") => `
+          <div class="md-text-field">
+            <input type="${type}" name="${name}" value="${esc(val)}" placeholder=" " aria-label="${label}"${extra}>
+            <label>${label}</label>
+          </div>`;
+    return `<form method="post" action="/clients/${c.id}/settings" id="client-settings-form" class="manage-form" hx-post="/clients/${c.id}/settings" hx-swap="outerHTML">
+        ${field("text", "name", "Client name", c.name || "", " required")}
+        ${field("email", "email", "Email", c.email || "")}
+        ${field("tel", "phone", "Phone", c.phone || "")}
+        ${field("text", "website", "Website", c.website || "", ' autocapitalize="none" spellcheck="false"')}
+        <div class="md-text-field">
+          <textarea name="address" placeholder=" " rows="3" aria-label="Client address">${esc(c.address || "")}</textarea>
+          <label>Address</label>
+        </div>
+        <button class="md-filled-button" type="submit">Save</button>
+      </form>`;
+  }
+
+  /* #630: client settings modal. Same scrim/dialog pattern as the #245
+     settings modal (scrim fade + dialog scale/fade, Escape/scrim/close,
+     focus trap, lazy-loaded body). Rendered once per manage page, outside
+     every HTMX-swapped region. */
+  function clientSettingsDialog(): string {
+    return `<div class="cal-scrim" id="client-settings-scrim" hidden>
+      <div class="settings-dialog" role="dialog" aria-modal="true" aria-labelledby="client-settings-title">
+        <div class="settings-dialog-head">
+          <h2 class="md-headline-small" id="client-settings-title">Client settings</h2>
+          <button class="md-icon-button" id="client-settings-close" type="button" aria-label="Close client settings">${icon("close")}</button>
+        </div>
+        <div id="client-settings-body"><p class="muted md-body-medium">Loading…</p></div>
+      </div>
+    </div>`;
   }
 
   /* Add-client lives in the list pane behind a toggle — a plain POST so the
@@ -251,6 +262,7 @@ export function createManageViews(deps: ManageViewDeps) {
           ${sel ? clientDetailBody(sel) : detailPlaceholder()}
         </section>
       </div>
+      ${clientSettingsDialog()}
       <script>(function(){
         /* #367: add-client toggle. The form is outside every HTMX-swapped
            region, so its id is safe to query directly. */
@@ -274,6 +286,54 @@ export function createManageViews(deps: ManageViewDeps) {
           ev.preventDefault();
           window.htmx.ajax("GET", link.getAttribute("href") + "&fragment=detail",
             { target: "#client-detail-pane", swap: "innerHTML" });
+        });
+        /* #630: client settings modal — cog opens it (delegated: the button
+           lives inside HTMX-swapped detail HTML), the form lazy-loads, and a
+           successful save closes the modal and refreshes the detail pane
+           (the fragment carries the OOB list update for renames). */
+        var dlgScrim = document.getElementById("client-settings-scrim");
+        var dlgBody = document.getElementById("client-settings-body");
+        var dlgClose = document.getElementById("client-settings-close");
+        function openClientSettings(id){
+          if(!dlgScrim || !dlgBody || !window.htmx) return;
+          dlgScrim.hidden = false; void dlgScrim.offsetWidth; dlgScrim.classList.add("open");
+          window.htmx.ajax("GET", "/clients/" + id + "/settings",
+            { target: "#client-settings-body", swap: "innerHTML" });
+          document.addEventListener("keydown", onClientSettingsKey, true);
+        }
+        function closeClientSettings(refocus){
+          if(!dlgScrim || dlgScrim.hidden) return;
+          dlgScrim.classList.remove("open");
+          document.removeEventListener("keydown", onClientSettingsKey, true);
+          var done=false, finish=function(){ if(done) return; done=true; dlgScrim.hidden=true; };
+          var onEnd=function(e){ if(e.target===dlgScrim&&e.propertyName==="opacity"){ dlgScrim.removeEventListener("transitionend",onEnd); finish(); } };
+          dlgScrim.addEventListener("transitionend",onEnd); setTimeout(finish,300);
+          if(refocus){ var btn=wrap.querySelector(".client-settings-open"); if(btn) btn.focus(); }
+        }
+        function onClientSettingsKey(e){
+          if(e.key==="Escape"){ e.preventDefault(); closeClientSettings(true); }
+          else if(e.key==="Tab" && window.tkTrapTab){ window.tkTrapTab(dlgScrim, e); }
+        }
+        if(dlgScrim){
+          dlgScrim.addEventListener("pointerdown", function(e){ if(e.target===dlgScrim) closeClientSettings(false); });
+          if(dlgClose) dlgClose.addEventListener("click", function(){ closeClientSettings(true); });
+          dlgBody.addEventListener("htmx:afterSwap", function(){
+            var f=dlgBody.querySelector("input"); if(f) f.focus();
+          });
+        }
+        wrap.addEventListener("click", function(ev){
+          var cog = ev.target.closest(".client-settings-open");
+          if(cog) openClientSettings(cog.getAttribute("data-client-id"));
+        });
+        document.body.addEventListener("htmx:afterRequest", function(e){
+          var elt=e.detail.elt;
+          if(elt && elt.id==="client-settings-form" && e.detail.successful){
+            if(window.tkSnackbar) window.tkSnackbar("Client settings saved");
+            closeClientSettings(false);
+            var m=elt.getAttribute("action").match(/\\/clients\\/(\\d+)\\/settings/);
+            if(m) window.htmx.ajax("GET", "/manage?client=" + m[1] + "&fragment=detail",
+              { target: "#client-detail-pane", swap: "innerHTML" });
+          }
         });
       })();</script>`, "manage", true);
   }
@@ -324,5 +384,5 @@ export function createManageViews(deps: ManageViewDeps) {
         </section>`;
   }
 
-  return { managePage, clientSelection, clientDetailBody, clientListOob, clientOptions, bizProfileSection };
+  return { managePage, clientSelection, clientDetailBody, clientListOob, clientOptions, bizProfileSection, clientSettingsForm };
 }

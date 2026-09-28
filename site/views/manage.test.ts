@@ -62,38 +62,58 @@ describe("manage tooltips (#486)", () => {
   });
 });
 
-describe("client name edit (#618)", () => {
-  test("detail pane carries a prefilled name form posting to /clients/:id/name", () => {
+describe("client settings modal (#630)", () => {
+  test("detail pane drops the inline name form for a header cog", () => {
     const html = detailHtml();
-    expect(html).toContain('class="name-form detail-form"');
-    expect(html).toContain('action="/clients/1/name"');
-    expect(html).toContain('hx-post="/clients/1/name"');
-    expect(html).toContain('name="name" value="Acme"');
-    expect(html).toContain('aria-label="Save client name"');
-    expect(html).toContain('data-tip="Save"');
+    expect(html).not.toContain('action="/clients/1/name"');
+    expect(html).not.toContain('class="name-form detail-form"');
+    expect(html).toContain('class="md-icon-button client-settings-open"');
+    expect(html).toContain('data-client-id="1"');
+    expect(html).toContain('aria-haspopup="dialog"');
+    expect(html).toContain('aria-label="Client settings for Acme"');
   });
-});
 
-describe("client contact details form (#627)", () => {
-  test("detail pane carries a prefilled contact form posting to /clients/:id/contact", () => {
+  test("detail pane drops the inline contact form", () => {
+    const html = detailHtml();
+    expect(html).not.toContain("Contact details");
+    expect(html).not.toContain('action="/clients/1/contact"');
+    expect(html).not.toContain('class="contact-form detail-form"');
+    /* rate, terms, and projects stay inline */
+    expect(html).toContain('action="/clients/1/rate"');
+    expect(html).toContain('action="/clients/1/terms"');
+    expect(html).toContain("Projects");
+  });
+
+  test("manage page renders the settings dialog shell once", () => {
+    const html = pageHtml();
+    expect(html).toContain('id="client-settings-scrim"');
+    expect(html).toContain('id="client-settings-body"');
+    expect(html).toContain('id="client-settings-title"');
+    expect(html).toContain('role="dialog"');
+  });
+
+  test("settings form carries name + contact fields posting to /clients/:id/settings", () => {
     const { db, client } = testDb();
     db.query("UPDATE clients SET email = ?, phone = ?, website = ?, address = ? WHERE id = ?")
-      .run("ap@bytebot.io", "555-0100", "bytebot.io", "2643 Morningside Dr, Clearwater, FL 33759", client.id);
+      .run("ap@bytebot.io", "555-0100", "bytebot.io", "2643 Morningside Dr\nClearwater, FL 33759", client.id);
     const c = db.query("SELECT * FROM clients WHERE id = ?").get(client.id) as any;
     const views = createManageViews({ db, layout: (_t: string, b: string) => b });
-    const html = views.clientDetailBody({ kind: "client", client: c });
-    expect(html).toContain('class="contact-form detail-form"');
-    expect(html).toContain('action="/clients/1/contact"'.replace("1", String(client.id)));
-    expect(html).toContain('hx-post="/clients/1/contact"'.replace("1", String(client.id)));
+    const html = views.clientSettingsForm(c);
+    expect(html).toContain('id="client-settings-form"');
+    expect(html).toContain(`action="/clients/${client.id}/settings"`);
+    expect(html).toContain(`hx-post="/clients/${client.id}/settings"`);
+    expect(html).toContain('name="name" value="Acme"');
     expect(html).toContain('name="email" value="ap@bytebot.io"');
     expect(html).toContain('name="phone" value="555-0100"');
     expect(html).toContain('name="website" value="bytebot.io"');
-    expect(html).toContain(">2643 Morningside Dr, Clearwater, FL 33759</textarea>");
+    expect(html).toContain(">2643 Morningside Dr\nClearwater, FL 33759</textarea>");
   });
 
-  test("contact fields render empty when the record has none", () => {
-    const html = detailHtml();
-    expect(html).toContain('class="contact-form detail-form"');
+  test("settings form renders empty fields when the record has none", () => {
+    const { db, client } = testDb();
+    const views = createManageViews({ db, layout: (_t: string, b: string) => b });
+    const html = views.clientSettingsForm(client);
+    expect(html).toContain('name="name" value="Acme"');
     expect(html).toContain('name="email" value=""');
     expect(html).toContain("></textarea>");
   });
