@@ -127,7 +127,8 @@ export function createTimerViews(deps: TimerViewDeps) {
           function fmtDurRow(d){var t=Math.floor(d/1000),
             h=Math.floor(t/3600),m=Math.floor(t%3600/60),sec=t%60;
             if(h>0)return h+'h '+String(m).padStart(2,'0')+'m';
-            if(m>0)return m+'m '+String(sec).padStart(2,'0')+'s';
+            /* #596: mirror of fmtDur — whole minutes drop the 00s. */
+            if(m>0)return m+'m'+(sec>0?' '+String(sec).padStart(2,'0')+'s':'');
             return sec+'s';}
           function tick(){var d=Math.max(0,Date.now()-s);
             var h=Math.floor(d/36e5),m=Math.floor(d%36e5/6e4),sec=Math.floor(d%6e4/1e3);

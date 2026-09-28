@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { shortDateRange, shortDateRangeYear, shortYmd } from "./format.ts";
+import { fmtDur, shortDateRange, shortDateRangeYear, shortYmd } from "./format.ts";
 
 /* #582: the invoice detail billing period is year-aware so it matches the
    PDF and is never ambiguous across year boundaries. */
@@ -33,5 +33,23 @@ describe("shortYmd", () => {
   test("formats and passes through garbage", () => {
     expect(shortYmd("2026-09-01")).toBe("Sep 1");
     expect(shortYmd("nope")).toBe("nope");
+  });
+});
+
+/* #596: whole-minute durations drop the pointless 00s; nonzero seconds and
+   the hour branch are unchanged. */
+describe("fmtDur", () => {
+  test("hours branch pads minutes", () => {
+    expect(fmtDur(54000)).toBe("15h 00m");
+    expect(fmtDur(23400)).toBe("6h 30m");
+  });
+  test("whole minutes drop the 00s", () => {
+    expect(fmtDur(1800)).toBe("30m");
+    expect(fmtDur(3600)).toBe("1h 00m");
+    expect(fmtDur(60)).toBe("1m");
+  });
+  test("nonzero seconds stay", () => {
+    expect(fmtDur(204)).toBe("3m 24s");
+    expect(fmtDur(45)).toBe("45s");
   });
 });
