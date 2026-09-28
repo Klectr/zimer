@@ -41,7 +41,9 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
   }
 
   /* #300: first-run empty state — a fresh install gets a one-click path to
-     fictional sample data; everyone else gets straight to a new invoice. */
+     fictional sample data; everyone else gets straight to a new invoice.
+     #586: the header already has the gold New invoice button, so the empty
+     state doesn't repeat it — no duplicate CTAs on one page. */
   function emptyInvoices(): string {
     const demoCta = workspaceEmpty(db) ? `
       <form method="post" action="/demo/load" class="inline">
@@ -51,7 +53,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       ${icon("receipt")}
       <h3 class="md-title-large">No invoices yet</h3>
       <p class="muted">Turn tracked time into an invoice — or explore first with fictional sample data.</p>
-      <div class="row">${demoCta}<a class="md-tonal-button" href="/invoices/new">${icon("add")}<span>New invoice</span></a></div>
+      <div class="row">${demoCta}</div>
     </div>`;
   }
 
