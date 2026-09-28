@@ -124,8 +124,16 @@ describe("paid-on date", () => {
     const supporting = html.match(/<div class="md-list-item-supporting">([\s\S]*?)<\/div>/)?.[1] || "";
     /* The middot is a leading separator inside each nowrap span, so a wrap
        breaks before a middot, never after one — no " · " in raw text. */
-    expect(supporting).toContain('Acme <span class="inv-date">· issued Sep 1</span> <span class="inv-date">· due Sep 30</span> <span class="inv-date">· paid Sep 21</span>');
+    expect(supporting).toContain('Acme <span class="inv-dates"><span class="inv-date">· issued Sep 1</span> <span class="inv-date">· due Sep 30</span> <span class="inv-date">· paid Sep 21</span></span>');
     expect(supporting).not.toMatch(/ · </);
+  });
+
+  test("#588: date segments share one nowrap group, not the client line", () => {
+    const html = views([{ ...baseRow, status: "sent", paid_at: null }]).invoiceListOob(0);
+    const supporting = html.match(/<div class="md-list-item-supporting">([\s\S]*?)<\/div>/)?.[1] || "";
+    /* The dates wrap as one unit: the break lands between the client name
+       and the .inv-dates group, never between two date segments. */
+    expect(supporting).toContain('<span class="inv-dates"><span class="inv-date">· issued Sep 1</span> <span class="inv-date">· due Sep 30</span></span>');
   });
 
   test("#448: stripe-paid chip uses the icon system, not an emoji", () => {
