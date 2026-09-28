@@ -713,12 +713,14 @@ export function createWebRouter(deps: WebDeps) {
         m = path.match(/^\/invoices\/(\d+)\/public-token\/regenerate$/);
         if (m && method === "POST") {
           mintPublicToken(Number(m[1]));
+          freezeInvoiceSnapshots(Number(m[1]), shareOrigin(req)); /* #606: new token -> re-freeze */
           if (isHtmx(req)) { const full = getInvoice(Number(m[1])); if (full) return html(invoiceDetailBody(full, shareOrigin(req))); } // #71
           return new Response(null, { status: 302, headers: { Location: `/invoices?invoice=${m[1]}` } });
         }
         m = path.match(/^\/invoices\/(\d+)\/public-token\/revoke$/);
         if (m && method === "POST") {
           db.query("UPDATE invoices SET public_token = NULL WHERE id = ?").run(Number(m[1]));
+          freezeInvoiceSnapshots(Number(m[1]), shareOrigin(req)); /* #606: revoked link must leave the PDF */
           if (isHtmx(req)) { const full = getInvoice(Number(m[1])); if (full) return html(invoiceDetailBody(full, shareOrigin(req))); } // #71
           return new Response(null, { status: 302, headers: { Location: `/invoices?invoice=${m[1]}` } });
         }
