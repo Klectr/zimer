@@ -141,6 +141,13 @@ export function createManageViews(deps: ManageViewDeps) {
         </div>
       </div>
       ${isClient ? `
+      <form method="post" action="/clients/${c.id}/name" class="name-form detail-form" hx-post="/clients/${c.id}/name" ${hxDetail}>
+        <div class="md-text-field compact" style="flex:1;min-width:120px">
+          <input type="text" name="name" value="${esc(c.name)}" placeholder=" " required aria-label="Client name">
+          <label>Client name</label>
+        </div>
+        <button class="md-icon-button" type="submit" data-tip="Save" aria-label="Save client name">${icon("save")}</button>
+      </form>
       <form method="post" action="/clients/${c.id}/rate" class="rate-form detail-form" hx-post="/clients/${c.id}/rate" ${hxDetail}>
         <div class="md-text-field has-prefix has-suffix compact" style="width:104px">
           <span class="affix prefix" aria-hidden="true">$</span>
