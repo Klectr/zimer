@@ -35,3 +35,21 @@ describe("#627: PDF Bill-to block shows client address and email", () => {
     expect(text).not.toContain("ap@bytebot.io");
   });
 });
+
+/** #637: From block mirrors the Bill-to order — name, address lines,
+ * then email last. */
+describe("#637: PDF From block prints email below the address", () => {
+  test("email lands after the address lines in the PDF bytes", () => {
+    const text = pdfText({
+      ...base,
+      fromName: "Triston Armstrong",
+      fromEmail: "triston@hey.com",
+      fromAddress: "2498 kelly rd.\nHolladay Tn, 38341",
+    });
+    expect(text).toContain("Triston Armstrong");
+    expect(text).toContain("2498 kelly rd.");
+    expect(text).toContain("Holladay Tn, 38341");
+    expect(text).toContain("triston@hey.com");
+    expect(text.indexOf("Holladay Tn, 38341")).toBeLessThan(text.indexOf("triston@hey.com"));
+  });
+});

@@ -295,14 +295,16 @@ function drawModern(inv: PdfInvoice, doc: PdfDoc) {
   if (hasFrom) {
     let fy = colsY;
     doc.rtext(RIGHT, fy, 8.5, "F R O M", true, true); fy -= 17;
+    /* #637: From block mirrors the Bill-to order — name, address lines,
+       then email last. */
     if (inv.fromName) { doc.rtext(RIGHT, fy, 12, inv.fromName, true); fy -= 16; }
-    if (inv.fromEmail) { doc.rtext(RIGHT, fy, 10, inv.fromEmail, false, true); fy -= 15; }
     if (inv.fromAddress) {
       for (const line of inv.fromAddress.split("\n").slice(0, 3)) {
         if (!line.trim()) continue;
         doc.rtext(RIGHT, fy, 10, line.trim(), false, true); fy -= 15;
       }
     }
+    if (inv.fromEmail) { doc.rtext(RIGHT, fy, 10, inv.fromEmail, false, true); fy -= 15; }
     colsBottom = Math.min(colsBottom, fy - 20);
   }
   doc.y = colsBottom;
