@@ -9,7 +9,7 @@ import type { Database, Statement } from "bun:sqlite";
 import { createInvoiceViews } from "./invoices.ts";
 
 const stubQuery = () => ({
-  get: (..._a: unknown[]) => null,
+  get: (..._a: unknown[]) => ({ n: 0 }),
   all: (..._a: unknown[]) => [],
   run: (..._a: unknown[]) => {},
 });
@@ -277,5 +277,18 @@ describe("#560: header date phrases stay together", () => {
     const html = views([]).invoiceSheet({ ...detailInv("sent", null), client_payment_terms: "pay_when_paid", items: [] } as any);
     expect(html).not.toContain("<strong>Due ");
     expect(html).not.toContain("Billing period:");
+  });
+});
+
+/** #594: Export CSV on an empty invoice list downloads a header-only file,
+ *  so the button stays hidden until there is at least one invoice to export. */
+describe("#594: Export CSV visibility", () => {
+  test("Export CSV is hidden when there are no invoices", () => {
+    const html = views([]).invoicesPage(null, "http://x");
+    expect(html).not.toContain("/export/invoices.csv");
+  });
+  test("Export CSV is present when invoices exist", () => {
+    const html = views([{ ...baseRow, status: "sent", paid_at: null }]).invoicesPage(null, "http://x");
+    expect(html).toContain("/export/invoices.csv");
   });
 });
