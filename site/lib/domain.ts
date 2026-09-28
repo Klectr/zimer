@@ -105,7 +105,8 @@ export function createDomain(deps: DomainDeps) {
 
   /* Milestone 20: revenue domain logic lives in lib/revenue.ts. */
 
-  /** Unbilled, finished entries for a client's projects inside [from, to). */
+  /** Unbilled, finished entries for a client's projects inside [from, to] (#598:
+      the end date is inclusive — entries starting on the to-date count). */
   function unbilledEntries(clientId: number, from: string, to: string) {
     return db.query(
       `SELECT e.id, e.project_id, e.description, e.start_time, e.end_time,
@@ -113,7 +114,7 @@ export function createDomain(deps: DomainDeps) {
        FROM time_entries e
        JOIN projects p ON p.id = e.project_id
        WHERE e.invoice_id IS NULL AND e.end_time IS NOT NULL
-         AND p.client_id = ? AND e.start_time >= ? AND e.start_time < ?
+         AND p.client_id = ? AND e.start_time >= ? AND e.start_time < date(?, '+1 day')
        ORDER BY e.start_time`).all(clientId, from, to) as any[];
   }
 
