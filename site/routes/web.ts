@@ -450,6 +450,18 @@ export function createWebRouter(deps: WebDeps) {
              client selected, on every width. */
           return new Response(null, { status: 302, headers: { Location: `/manage?client=${r.id}` } });
         }
+        m = path.match(/^\/clients\/(\d+)\/name$/);
+        if (m && method === "POST") {
+          /* #618: rename a client. Empty names are rejected; the detail pane
+             and the client list refresh (same pattern as the rate route). */
+          const form = await req.formData();
+          const name = String(form.get("name") || "").trim();
+          if (!name) return new Response("Client name is required.", { status: 400 });
+          db.query("UPDATE clients SET name = ? WHERE id = ?").run(name, Number(m[1]));
+          const sel = clientSelection(m[1]); /* re-render the detail pane + OOB list */
+          if (isHtmx(req)) return html(sel ? clientDetailBody(sel) + clientListOob(sel) : clientListOob(null));
+          return new Response(null, { status: 302, headers: { Location: `/manage?client=${m[1]}` } });
+        }
         m = path.match(/^\/clients\/(\d+)\/rate$/);
         if (m && method === "POST") {
           const form = await req.formData();
