@@ -75,6 +75,7 @@ function getSettings(handleWeb: any, id: number | string, htmx = true) {
 describe("client settings (#630)", () => {
   const full = {
     name: "  Byte Bot LLC  ",
+    rate: "45", payment_terms: "net_15",
     email: " ap@bytebot.io ", phone: " 555-0100 ", website: "bytebot.io",
     address: " 2643 Morningside Dr\r\nClearwater, FL 33759 ",
   };
@@ -94,12 +95,14 @@ describe("client settings (#630)", () => {
     expect(res!.status).toBe(404);
   });
 
-  test("POST saves the trimmed name and contact details, returning the form", async () => {
+  test("POST saves all seven fields trimmed, returning the form", async () => {
     const { db, client, handleWeb } = setup();
     const res = await postSettings(handleWeb, client.id, full);
     expect(res!.status).toBe(200);
-    const row = db.query("SELECT name, email, phone, website, address FROM clients WHERE id = ?").get(client.id) as any;
+    const row = db.query("SELECT name, rate, payment_terms, email, phone, website, address FROM clients WHERE id = ?").get(client.id) as any;
     expect(row.name).toBe("Byte Bot LLC");
+    expect(row.rate).toBe(45);
+    expect(row.payment_terms).toBe("net_15");
     expect(row.email).toBe("ap@bytebot.io");
     expect(row.phone).toBe("555-0100");
     expect(row.website).toBe("bytebot.io");
@@ -107,6 +110,7 @@ describe("client settings (#630)", () => {
     const body = await res!.text();
     expect(body).toContain('id="client-settings-form"');
     expect(body).toContain('name="name" value="Byte Bot LLC"');
+    expect(body).toContain('name="rate" value="45"');
     expect(body).toContain("ap@bytebot.io");
   });
 
@@ -116,6 +120,33 @@ describe("client settings (#630)", () => {
     expect(res!.status).toBe(400);
     const row = db.query("SELECT name FROM clients WHERE id = ?").get(client.id) as any;
     expect(row.name).toBe("Bytebot");
+  });
+
+  test("unknown payment terms are rejected with 400 and leave the row untouched", async () => {
+    const { db, client, handleWeb } = setup();
+    const res = await postSettings(handleWeb, client.id, { ...full, payment_terms: "net_99" });
+    expect(res!.status).toBe(400);
+    const row = db.query("SELECT payment_terms FROM clients WHERE id = ?").get(client.id) as any;
+    expect(row.payment_terms).toBeNull();
+  });
+
+  test("negative or non-numeric rate is rejected with 400 and leaves the row untouched", async () => {
+    const { db, client, handleWeb } = setup();
+    for (const rate of ["-5", "abc"]) {
+      const res = await postSettings(handleWeb, client.id, { ...full, rate });
+      expect(res!.status).toBe(400);
+    }
+    const row = db.query("SELECT rate FROM clients WHERE id = ?").get(client.id) as any;
+    expect(row.rate).toBe(40);
+  });
+
+  test("blank rate stores 0 and blank payment terms store NULL", async () => {
+    const { db, client, handleWeb } = setup();
+    const res = await postSettings(handleWeb, client.id, { ...full, rate: "", payment_terms: "" });
+    expect(res!.status).toBe(200);
+    const row = db.query("SELECT rate, payment_terms FROM clients WHERE id = ?").get(client.id) as any;
+    expect(row.rate).toBe(0);
+    expect(row.payment_terms).toBeNull();
   });
 
   test("blank contact fields store NULL", async () => {

@@ -451,10 +451,13 @@ export function createWebRouter(deps: WebDeps) {
              client selected, on every width. */
           return new Response(null, { status: 302, headers: { Location: `/manage?client=${r.id}` } });
         }
-        /* #630: client settings modal — name + contact details. Replaces the
-           old inline /name and /contact routes. Name is required; contact
-           fields are trimmed with blanks stored as NULL; textarea newlines
-           arrive as CRLF (multipart normalization) — store plain LF. */
+        /* #630: client settings modal — all seven editable client fields.
+           Replaces the old inline /name, /contact, /rate, and /terms routes.
+           Name is required; rate must be a number at or above 0 (blank → 0,
+           the column is NOT NULL); payment terms are blank (NULL → global
+           fallback) or a known key; contact fields are trimmed with blanks
+           stored as NULL; textarea newlines arrive as CRLF (multipart
+           normalization) — store plain LF. */
         m = path.match(/^\/clients\/(\d+)\/settings$/);
         if (m && method === "GET") {
           const sel = clientSelection(m[1]);
@@ -465,38 +468,21 @@ export function createWebRouter(deps: WebDeps) {
           const form = await req.formData();
           const name = String(form.get("name") || "").trim();
           if (!name) return new Response("Client name is required.", { status: 400 });
+          const rateRaw = String(form.get("rate") || "").trim();
+          const rate = rateRaw === "" ? 0 : Number(rateRaw);
+          if (!Number.isFinite(rate) || rate < 0)
+            return new Response("Hourly rate must be a number at or above 0.", { status: 400 });
+          const terms = String(form.get("payment_terms") || "").trim();
+          if (terms !== "" && !isPaymentTermsKey(terms)) return new Response("Unknown payment terms.", { status: 400 });
           const clean = (v: unknown) => { const s = String(v || "").trim(); return s || null; };
           const addr = clean(form.get("address"));
-          db.query("UPDATE clients SET name = ?, email = ?, phone = ?, website = ?, address = ? WHERE id = ?")
-            .run(name, clean(form.get("email")), clean(form.get("phone")),
+          db.query("UPDATE clients SET name = ?, rate = ?, payment_terms = ?, email = ?, phone = ?, website = ?, address = ? WHERE id = ?")
+            .run(name, rate, terms || null, clean(form.get("email")), clean(form.get("phone")),
                  clean(form.get("website")), addr && addr.replace(/\r\n/g, "\n"), Number(m[1]));
           if (isHtmx(req)) {
             const sel = clientSelection(m[1]);
             return html(sel && sel.kind === "client" ? clientSettingsForm(sel.client) : "");
           }
-          return new Response(null, { status: 302, headers: { Location: `/manage?client=${m[1]}` } });
-        }
-        m = path.match(/^\/clients\/(\d+)\/rate$/);
-        if (m && method === "POST") {
-          const form = await req.formData();
-          db.query("UPDATE clients SET rate = ? WHERE id = ?")
-            .run(Number(form.get("rate") || 0), Number(m[1]));
-          const sel = clientSelection(m[1]); /* #367: re-render the detail pane + OOB list */
-          if (isHtmx(req)) return html(sel ? clientDetailBody(sel) + clientListOob(sel) : clientListOob(null));
-          return new Response(null, { status: 302, headers: { Location: `/manage?client=${m[1]}` } });
-        }
-        /* #289: per-client payment terms. Blank stores NULL so invoice
-           render falls back to the global business_payment_terms.
-           #293: fixed option list — blank or a known key, nothing else. */
-        m = path.match(/^\/clients\/(\d+)\/terms$/);
-        if (m && method === "POST") {
-          const form = await req.formData();
-          const terms = String(form.get("payment_terms") || "").trim();
-          if (terms !== "" && !isPaymentTermsKey(terms)) return new Response("Unknown payment terms.", { status: 400 });
-          db.query("UPDATE clients SET payment_terms = ? WHERE id = ?")
-            .run(terms || null, Number(m[1]));
-          const sel = clientSelection(m[1]); /* #367: re-render the detail pane + OOB list */
-          if (isHtmx(req)) return html(sel ? clientDetailBody(sel) + clientListOob(sel) : clientListOob(null));
           return new Response(null, { status: 302, headers: { Location: `/manage?client=${m[1]}` } });
         }
         m = path.match(/^\/clients\/(\d+)\/delete$/);
