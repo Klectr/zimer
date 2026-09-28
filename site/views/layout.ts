@@ -20,6 +20,10 @@ export function createLayoutViews(qRunning: Statement, bannerHtml?: () => string
     { href: "/manage", label: "Clients", key: "manage", ic: "group" as const },
   ];
   function layout(title: string, body: string, active?: "timer" | "calendar" | "manage" | "invoices", fixed?: boolean): string {
+    /* #444: the site-wide tab ticker (shortcut.js) needs the start instant
+       of the running timer — the start form can't know it on a cold load. */
+    const running = qRunning.get() as { start_time?: string } | null;
+    const startAttr = running?.start_time ? ` data-timer-start="${esc(running.start_time)}"` : "";
     const dest = (d: (typeof dests)[number], cls: string) =>
       `<a href="${d.href}" class="${cls}${active === d.key ? " active" : ""}"${active === d.key ? ` aria-current="page"` : ""}>` +
       `<span class="nav-pill">${icon(d.ic as keyof typeof ICONS)}</span><span class="nav-label">${d.label}</span></a>`;
@@ -37,8 +41,11 @@ export function createLayoutViews(qRunning: Statement, bannerHtml?: () => string
   <script src="/static/motion.js" defer></script>
   <script src="/static/shortcut.js" defer></script>
   <script src="/static/terms.js" defer></script>
+  <script src="/static/dialog.js" defer></script>
   </head>
-  <body class="app${fixed ? " app-fixed" : ""}" data-timer-running="${qRunning.get() ? 1 : 0}">
+  <body class="app${fixed ? " app-fixed" : ""}" data-timer-running="${running ? 1 : 0}"${startAttr}>
+  <!-- #511: skip link — keyboard users jump past the app bar and nav straight to content. -->
+  <a class="skip-link" href="#main">Skip to content</a>
   <!-- #387: the app bar and nav rail sit chromeless on the page background;
        the rounded surface sheet wraps only the content column. -->
   <header class="md-top-app-bar" data-enter="1">
@@ -54,7 +61,7 @@ export function createLayoutViews(qRunning: Statement, bannerHtml?: () => string
       ${/* #304: license honesty-box banner (launch mode only, unlicensed only).
            Rendered here so it appears on every app page; publicShell() pages
            (client invoice links) never see it. */ bannerHtml ? bannerHtml() : ""}
-      <main${active ? ` class="page-${active}"` : ""}>${body}</main>
+      <main id="main" tabindex="-1"${active ? ` class="page-${active}"` : ""}>${body}</main>
     </div>
   </div>
   <nav class="md-bottom-nav" aria-label="Primary">
@@ -102,6 +109,7 @@ export function createLayoutViews(qRunning: Statement, bannerHtml?: () => string
           <a class="md-filled-button" href="/">Timer</a>
           <a class="md-text-button" href="/calendar">Calendar</a>
           <a class="md-text-button" href="/invoices">Invoices</a>
+          <a class="md-text-button" href="/manage">Clients</a>
         </div>` : ""}
       </div>`;
     if (authed) return layout("Page not found", body);
@@ -253,7 +261,11 @@ function settingsDialog(): string {
       scrim.addEventListener('transitionend',onEnd); setTimeout(finish,300);
       if(refocus&&avatarBtn) avatarBtn.focus();
     }
-    function onKey(e){ if(e.key==='Escape'){ e.preventDefault(); close(true); } }
+    /* #456: trap Tab inside the modal while it's open. onKey only runs
+       while open (attached on open, detached on close), so no extra open
+       guard is needed. The scrim's only child is the dialog itself. */
+    function onKey(e){ if(e.key==='Escape'){ e.preventDefault(); close(true); }
+      else if(e.key==='Tab'&&window.tkTrapTab){ window.tkTrapTab(scrim,e); } }
     body.addEventListener('htmx:afterSwap',function(){
       if(!focusOnSwap) return; focusOnSwap=false;
       var f=body.querySelector('input'); if(f) f.focus();

@@ -28,7 +28,25 @@ export function createTimerViews(deps: TimerViewDeps) {
   const { db, qRunning, qRange, layout, demoBanner, projectOptions,
     revenueTotals, revenueMonthly, revenueByClient, revenueOverdue, m3ProgressBar, dayTargetSecs } = deps;
 
-  function entryRow(e: Entry, i = 0): string {
+  /* #546: description suggestions for the start form — the 15 most recently
+     used non-blank descriptions, deduped. Rendered as a browser-native
+     datalist: zero visual surface until the field is focused or typed in. */
+  const qDescSuggest = db.query(`
+    SELECT description FROM time_entries
+    WHERE description IS NOT NULL AND TRIM(description) != ''
+    GROUP BY description ORDER BY MAX(start_time) DESC LIMIT 15`);
+
+  function descDatalist(): string {
+    const rows = qDescSuggest.all() as { description: string }[];
+    if (!rows.length) return "";
+    return `<datalist id="tk-desc-suggest">${rows.map(r => `<option value="${esc(r.description)}">`).join("")}</datalist>`;
+  }
+
+  /* #473: canRepeat — one-tap restart of a finished entry. Hidden on the
+     running row (no end_time) and while another timer is running (POST
+     /timer/start 409s there); posts to the existing route, whose HX-Trigger
+     already refreshes the Today list. */
+  function entryRow(e: Entry, i = 0, canRepeat = false): string {
     const dur = fmtDur(durationSeconds(e.start_time, e.end_time));
     /* #255: times are a client concept (the server may be in another
        timezone — VPS is UTC). Emit the ISO instant and let the client format
@@ -41,19 +59,38 @@ export function createTimerViews(deps: TimerViewDeps) {
     const desc = e.description ? esc(e.description) : "<em>No description</em>";
     /* #330: mark time that's already on an invoice (sent/paid) or in a draft. */
     const mark = entryInvoiceMark(e);
-    const invMark = mark ? `<span class="inv-mark ${mark.cls}" title="${esc(mark.title)}">${mark.label}</span>` : "";
+    /* #498: house M3 plain tooltip (data-tip) instead of the native title —
+       matches the site's tooltip language and gives touch users the 450ms
+       long-press (#496). */
+    const invMark = mark ? `<span class="inv-mark ${mark.cls}" data-tip="${esc(mark.title)}">${mark.label}</span>` : "";
+    /* #469: the running row's duration ticks live from the card's 1s interval
+       (found by data-live-start); finished rows stay static. */
+    const durSpan = !e.end_time
+      ? `<span class="dur" data-live-start="${esc(e.start_time)}">${dur}</span>`
+      : `<span class="dur">${dur}</span>`;
     return `<li class="md-list-item" id="entry-${e.id}" style="animation-delay:${Math.min(i * 30, 300)}ms">
       <div class="md-list-item-content">
         <div class="md-list-item-headline">${desc}</div>
         <div class="md-list-item-supporting">${chip}${invMark}<span>${startTs} – ${endTs}${e.client_name && !e.project_name ? ` · ${esc(e.client_name)}` : ""}</span></div>
       </div>
       <div class="md-list-item-trailing">
-        <span class="dur">${dur}</span>
+        ${durSpan}
         ${entryIsLocked(e) ? "" : `
-        <a class="md-icon-button" href="/entries/${e.id}/edit" aria-label="Edit entry" title="Edit">${icon("edit")}</a>
+        <a class="md-icon-button" href="/entries/${e.id}/edit" aria-label="Edit entry" data-tip="Edit">${icon("edit")}</a>
+        ${/* #462: the timer card owns the running entry — deleting it from the
+             list orphaned the card (ghost TRACKING + tab-title count). Stop
+             there first; delete lands on the finished row. */ !e.end_time ? "" : `
+        ${/* #473: repeat posts the row's description + project to the existing
+             /timer/start route (mini-form: hidden inputs survive quotes and
+             apostrophes where hx-vals JSON would not). */ canRepeat ? `
+        <form class="repeat-form" hx-post="/timer/start" hx-target="#timer-card" hx-swap="outerHTML swap:200ms">
+          <input type="hidden" name="description" value="${esc(e.description ?? "")}">
+          <input type="hidden" name="project_id" value="${e.project_id ?? ""}">
+          <button class="md-icon-button" type="submit" aria-label="Repeat entry" data-tip="Repeat">${icon("repeat")}</button>
+        </form>` : ""}
         <button class="md-icon-button danger" hx-delete="/entries/${e.id}"
-          hx-target="#entry-${e.id}" hx-swap="outerHTML swap:220ms" hx-confirm="Delete this entry?"
-          aria-label="Delete entry" title="Delete">${icon("delete")}</button>`}
+          hx-target="#entry-${e.id}" hx-swap="outerHTML swap:220ms" data-confirm="Delete this entry?"
+          aria-label="Delete entry" data-tip="Delete">${icon("delete")}</button>`}`}
       </div>
     </li>`;
   }
@@ -64,21 +101,41 @@ export function createTimerViews(deps: TimerViewDeps) {
     const running = qRunning.get() as Entry | null;
     if (running) {
       const proj = running.project_name ? ` · ${esc(running.project_name)}` : "";
+      /* #475: the stop class is what .timer-top-row .stop positions — the
+         button once dropped it and sat below the TRACKING label in normal
+         flow. This note lives outside the template literal: a JS-style comment
+         inside the HTML renders as visible text in the card. */
       return `<div class="md-card tracking" id="timer-card">
         <div class="timer-top-row">
           <div class="timer-state-label"><span class="live-dot" aria-hidden="true"></span>TRACKING${proj}</div>
-          <button class="md-filled-button" hx-post="/timer/stop" hx-target="#timer-card" hx-swap="outerHTML swap:200ms">
+        <button class="md-filled-button stop" hx-post="/timer/stop" hx-target="#timer-card" hx-swap="outerHTML swap:200ms"
+          data-tip="Stop (t)" aria-keyshortcuts="t">
             ${icon("stop")}Stop
           </button>
         </div>
         <div class="md-title-medium">${running.description ? esc(running.description) : "No description"}</div>
         <div class="timer-elapsed" id="elapsed" data-start="${esc(running.start_time)}">…</div>
         <script>(function(){var el=document.getElementById('elapsed');if(!el)return;
+          /* #444: the tab-title ticker moved to shortcut.js (site-wide) — the
+             card keeps its own display interval, and still clears the previous
+             one so re-renders don't orphan intervals on detached nodes. */
+          if(window.__tkTick){clearInterval(window.__tkTick);window.__tkTick=null;}
           var s=new Date(el.dataset.start).getTime();
+          /* #469: mirror fmtDur (site/lib/format.ts) for the running entry's
+             duration in the Today list — it was frozen at render time while
+             the card ticked. Same 1s interval, no extra timers. */
+          function fmtDurRow(d){var t=Math.floor(d/1000),
+            h=Math.floor(t/3600),m=Math.floor(t%3600/60),sec=t%60;
+            if(h>0)return h+'h '+String(m).padStart(2,'0')+'m';
+            /* #596: mirror of fmtDur — whole minutes drop the 00s. */
+            if(m>0)return m+'m'+(sec>0?' '+String(sec).padStart(2,'0')+'s':'');
+            return sec+'s';}
           function tick(){var d=Math.max(0,Date.now()-s);
             var h=Math.floor(d/36e5),m=Math.floor(d%36e5/6e4),sec=Math.floor(d%6e4/1e3);
-            el.textContent=(h?h+':':'')+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0');}
-          tick();setInterval(tick,1000);})();</script>
+            el.textContent=(h?h+':':'')+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0');
+            var row=document.querySelector('#today-list [data-live-start]');
+            if(row)row.textContent=fmtDurRow(d);}
+          tick();window.__tkTick=setInterval(tick,1000);})();</script>
       </div>`;
     }
     return `<div class="md-card" id="timer-card">
@@ -86,17 +143,23 @@ export function createTimerViews(deps: TimerViewDeps) {
       <div class="md-title-medium muted">Nothing tracking</div>
       <form hx-post="/timer/start" hx-target="#timer-card" hx-swap="outerHTML swap:200ms" class="start-form">
         <div class="md-text-field grow">
-          <input type="text" name="description" placeholder=" " autocomplete="off" aria-label="What are you working on?">
+          <input type="text" name="description" placeholder=" " autocomplete="off" aria-label="What are you working on?" list="tk-desc-suggest">
           <label>What are you working on?</label>
         </div>
+        ${descDatalist()}
         <div class="md-text-field shrink filled">
           <select name="project_id" aria-label="Project"><option value="">No project</option>${projectOptions()}</select>
           <label>Project</label>
         </div>
-        <button class="md-filled-button" type="submit">
+        <button class="md-filled-button" type="submit" data-tip="Start (t)" aria-keyshortcuts="t">
           ${icon("play")}Start
         </button>
       </form>
+      <script>(function(){
+        /* #444: the card's display interval still needs retiring on stop —
+           the tab title itself is restored by shortcut.js's site-wide ticker. */
+        if(window.__tkTick){clearInterval(window.__tkTick);window.__tkTick=null;}
+      })();</script>
     </div>`;
   }
 
@@ -110,8 +173,11 @@ export function createTimerViews(deps: TimerViewDeps) {
     const total = entries.reduce((a, e) => a + durationSeconds(e.start_time, e.end_time), 0);
     const bar = todayTargetBar(total);
     if (!entries.length) return `${bar}<p class="muted">Nothing tracked today yet.</p>`;
+    /* #473: repeat is only offered when nothing is running — /timer/start
+       409s while a timer runs, so showing it then would be a silent no-op. */
+    const canRepeat = !qRunning.get();
     return `${bar}
-      <ul class="md-list">${entries.map(entryRow).join("")}</ul>`;
+      <ul class="md-list">${entries.map((e, i) => entryRow(e, i, canRepeat)).join("")}</ul>`;
   }
 
   function dashboardPage(): string {

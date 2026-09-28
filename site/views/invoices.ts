@@ -3,7 +3,7 @@
  *  invoiceSheet is also returned so the public-views factory can reuse it. */
 
 import type { Database, Statement } from "bun:sqlite";
-import { addDays, daysBetween, esc, fmtDur, money, round2, shortDateRange, shortYmd, termsDescription, termsKey, todayStr } from "../lib/format.ts";
+import { addDays, daysBetween, esc, fmtDur, money, round2, shortDateRange, shortDateRangeYear, shortYmd, termsDescription, termsKey, todayStr } from "../lib/format.ts";
 import { icon } from "../lib/icons.ts";
 import { getMeta } from "../db.ts";
 import { workspaceEmpty } from "../lib/demo.ts"; /* #300: empty-state CTA */
@@ -31,8 +31,19 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     unbilledByClient,
   } = deps;
 
+  /* #526: both line-item tables (the new-invoice preview and the rendered
+     sheet) share one header row — scope="col" lets screen readers announce
+     the column ("Hours", "Rate", "Amount") for each numeric cell. */
+  function itemHead(): string {
+    return `<tr><th scope="col">Date</th><th scope="col">Description</th>` +
+      `<th scope="col" class="num">Hours</th><th scope="col" class="num">Rate</th>` +
+      `<th scope="col" class="num">Amount</th></tr>`;
+  }
+
   /* #300: first-run empty state — a fresh install gets a one-click path to
-     fictional sample data; everyone else gets straight to a new invoice. */
+     fictional sample data; everyone else gets straight to a new invoice.
+     #586: the header already has the gold New invoice button, so the empty
+     state doesn't repeat it — no duplicate CTAs on one page. */
   function emptyInvoices(): string {
     const demoCta = workspaceEmpty(db) ? `
       <form method="post" action="/demo/load" class="inline">
@@ -42,7 +53,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       ${icon("receipt")}
       <h3 class="md-title-large">No invoices yet</h3>
       <p class="muted">Turn tracked time into an invoice — or explore first with fictional sample data.</p>
-      <div class="row">${demoCta}<a class="md-tonal-button" href="/invoices/new">${icon("add")}<span>New invoice</span></a></div>
+      <div class="row">${demoCta}</div>
     </div>`;
   }
 
@@ -50,11 +61,22 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
      pane (two-pane, ≥840px) or the detail screen (single-pane). */
   function invoiceRow(r: any, selected: boolean): string {
     const od = isOverdue(r) ? daysBetween(r.due_date as string, todayStr()) : 0;
+    /* #442: keep each date phrase on one line so the narrow list pane wraps
+       at the middots instead of splitting "2026-" from "10-09". #481: the
+       middot is a leading separator INSIDE the nowrap span — it used to sit
+       in the raw text between spans, dangling at the end of the broken line
+       ("issued 2026-09-24 ·" / "due 2026-10-09"). Wraps now happen before
+       a middot, never after one. #588: long client names broke between the
+       segments instead ("Northwind Traders · issued Sep 28" / "· due Oct 13").
+       The segments now sit inside one nowrap .inv-dates group, so the wrap
+       lands between the client name and the dates, never before a middot. */
+    const seg = (label: string, val: string) => `<span class="inv-date">· ${label} ${esc(val)}</span>`;
+    const dates = `${seg("issued", shortYmd(r.issue_date))}${r.due_date ? ` ${seg("due", shortYmd(r.due_date))}` : ""}${r.status === "paid" && r.paid_at ? ` ${seg("paid", shortYmd(r.paid_at))}` : ""}`;
     return `<li class="md-list-item inv-row${selected ? " selected" : ""}">
       <a class="inv-row-hit" href="/invoices?invoice=${r.id}" aria-label="View invoice ${esc(r.number)}">
         <div class="md-list-item-content">
           <div class="md-list-item-headline">${esc(r.number)} ${statusPill(r.status)}${od ? ` <span class="attn-chip">${od}d overdue</span>` : ""}</div>
-          <div class="md-list-item-supporting">${r.client_name ? esc(r.client_name) : "<em>No client</em>"} · issued ${esc(r.issue_date)}${r.due_date ? ` · due ${esc(r.due_date)}` : ""}${r.status === "paid" && r.paid_at ? ` · paid ${esc(shortYmd(r.paid_at))}` : ""}</div>
+          <div class="md-list-item-supporting">${r.client_name ? esc(r.client_name) : "<em>No client</em>"} <span class="inv-dates">${dates}</span></div>
         </div>
         <div class="md-list-item-trailing"><span class="dur">${money(round2(r.subtotal * (1 + (r.tax_rate || 0) / 100)))}</span></div>
       </a>
@@ -94,7 +116,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       <div class="page-head" data-enter="2">
         <h2 class="md-headline-small">Invoices</h2>
         <div class="page-head-actions">
-          <a class="md-text-button" href="/export/invoices.csv" download>${icon("download")}Export CSV</a>
+          ${rows.length ? `<a class="md-text-button" href="/export/invoices.csv" download>${icon("download")}Export CSV</a>` : ""}
           <a class="md-filled-button" href="/invoices/new">${icon("add")}New invoice</a>
         </div>
       </div>`;
@@ -180,11 +202,11 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
           </div>
           <div class="two-field" id="inv-range">
             <div class="md-text-field filled"><input type="date" id="inv-from" name="from" value="${esc(p.from)}" required placeholder=" "><label>From</label></div>
-            <div class="md-text-field filled"><input type="date" id="inv-to" name="to" value="${esc(p.to)}" required placeholder=" "><label>To (exclusive)</label></div>
+            <div class="md-text-field filled"><input type="date" id="inv-to" name="to" value="${esc(p.to)}" required placeholder=" "><label>To</label></div>
           </div>
           <div class="two-field">
-            <div class="md-text-field filled"><input type="number" name="rate" id="inv-rate" value="${esc(p.rate || (selClient ? String(selClient.rate || "") : ""))}" min="0" step="0.01" placeholder=" "><label>Hourly rate ($)</label></div>
-            <div class="md-text-field filled"><input type="number" name="tax_rate" value="${esc(p.tax_rate)}" min="0" step="0.01" placeholder=" "><label>Tax %</label></div>
+            <div class="md-text-field filled has-prefix"><span class="affix prefix" aria-hidden="true">$</span><input type="number" name="rate" id="inv-rate" value="${esc(p.rate || (selClient ? String(selClient.rate || "") : ""))}" min="0" step="0.01" placeholder=" " aria-label="Hourly rate"><label>Hourly rate</label></div>
+            <div class="md-text-field filled has-suffix"><input type="number" name="tax_rate" value="${esc(p.tax_rate)}" min="0" step="0.01" placeholder=" " aria-label="Tax"><label>Tax</label><span class="affix suffix" aria-hidden="true">%</span></div>
           </div>
           <div class="two-field">
             <div class="md-text-field"><input type="text" name="number" value="${esc(p.number)}" required placeholder=" "><label>Invoice number</label></div>
@@ -249,10 +271,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
           <td><input type="text" name="g${i}_desc" value="${esc(it.description)}" class="cell-input" aria-label="Item description"></td>
           <td><input type="number" name="g${i}_hours" value="${it.hours}" min="0" step="0.01" class="cell-input num" aria-label="Hours"></td>
           <td><input type="number" name="g${i}_rate" value="${it.rate}" min="0" step="0.01" class="cell-input num" aria-label="Rate"></td>
-          <td class="num">${money(it.amount)}</td>
-          <input type="hidden" name="g${i}_ids" value="${it.entry_ids.join(",")}">
-          <input type="hidden" name="g${i}_date_from" value="${esc(it.date_from || "")}">
-          <input type="hidden" name="g${i}_date_to" value="${esc(it.date_to || "")}">
+          <td class="num">${money(it.amount)}<input type="hidden" name="g${i}_ids" value="${it.entry_ids.join(",")}"><input type="hidden" name="g${i}_date_from" value="${esc(it.date_from || "")}"><input type="hidden" name="g${i}_date_to" value="${esc(it.date_to || "")}"></td>
         </tr>`).join("");
     const t = invoiceTotals(preview.items, Number(p.tax_rate) || 0);
     return `
@@ -269,7 +288,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
           <input type="hidden" name="internal_notes" value="${esc(p.internal_notes)}">
           <input type="hidden" name="groups" value="${preview.items.length}">
           <div class="table-wrap"><table class="md-table">
-            <thead><tr><th>Date</th><th>Description</th><th class="num">Hours</th><th class="num">Rate</th><th class="num">Amount</th></tr></thead>
+            <thead>${itemHead()}</thead>
             <tbody>${rows}</tbody>
             <tfoot>
               <tr><td colspan="4">Subtotal</td><td class="num">${money(t.subtotal)}</td></tr>
@@ -288,19 +307,25 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     const t = invoiceTotals(inv.items, inv.tax_rate);
     const items = inv.items.map(it => `
       <tr>
-        <td>${esc(shortDateRange(it.date_from, it.date_to))}</td>
-        <td>${esc(it.description)}</td>
-        <td class="num">${it.hours}</td>
-        <td class="num">${money(it.rate)}</td>
-        <td class="num">${money(it.amount)}</td>
+        <td class="inv-date">${esc(shortDateRange(it.date_from, it.date_to))}</td>
+        <td class="desc">${esc(it.description)}</td>
+        <td class="num inv-hours">${it.hours}</td>
+        <td class="num inv-rate">${money(it.rate)}</td>
+        <td class="num inv-amount">${money(it.amount)}</td>
       </tr>`).join("");
     const client = inv.client_name ? esc(inv.client_name) : "<em>No client</em>";
+    /* #448: bolt comes from the icon system, not an emoji — the chip is
+       otherwise untouched (same spot, same styling, same label).
+       #494: no native title — "Paid via Stripe" already says what the
+       title="Marked paid automatically by a Stripe payment" restated. */
     const paidChip = inv.paid_via_stripe
-      ? ` <span class="stripe-paid-chip" title="Marked paid automatically by a Stripe payment">⚡ Paid via Stripe</span>` : "";
-    /* #243: billing period derives from the line-item dates. */
+      ? ` <span class="stripe-paid-chip">${icon("bolt")}<span>Paid via Stripe</span></span>` : "";
+    /* #243: billing period derives from the line-item dates.
+       #582: year-aware ("Sep 1 – Sep 28, 2026"), matching the PDF, so the
+       period is never ambiguous across year boundaries. */
     const froms = inv.items.map(it => it.date_from).filter(Boolean).sort() as string[];
     const tos = inv.items.map(it => it.date_to || it.date_from).filter(Boolean).sort() as string[];
-    const period = froms.length ? shortDateRange(froms[0], tos[tos.length - 1]) : "";
+    const period = froms.length ? shortDateRangeYear(froms[0], tos[tos.length - 1]) : "";
     /* #233/#239: single invoice design — dark band, badge, from/bill-to.
        Business profile comes from meta; empty profile hides the From block. */
     const bizName = getMeta(db, "business_name");
@@ -315,8 +340,14 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
           <div class="inv-modern-title">Invoice</div>
           <div class="inv-modern-right">
             <div class="inv-modern-number">${esc(inv.number)}</div>
-            <div class="inv-modern-dates">Issued ${esc(inv.issue_date)}${inv.due_date && termsKey_ !== "pay_when_paid" ? ` · <strong>Due ${esc(inv.due_date)}</strong>` : ""}</div>
-            ${period ? `<div class="inv-modern-dates">Billing period: ${esc(period)}</div>` : ""}
+            ${/* #560: header date phrases wrap mid-phrase on narrow screens
+               ("Issued … ·" trailing the middot, "Sep 21 –" splitting the
+               dash). Same treatment the list rows got in #442/#481: each
+               phrase sits in the existing .inv-date nowrap span, the middot
+               is a leading separator, and wraps happen before a separator,
+               never after one. */ ""}
+            <div class="inv-modern-dates"><span class="inv-date">Issued ${esc(shortYmd(inv.issue_date))}</span>${inv.due_date && termsKey_ !== "pay_when_paid" ? ` <span class="inv-date">· <strong>Due ${esc(shortYmd(inv.due_date))}</strong></span>` : ""}</div>
+            ${period ? `<div class="inv-modern-dates">Billing period: <span class="inv-date">${esc(period)}</span></div>` : ""}
             <span class="inv-modern-badge${inv.status === "paid" ? " paid" : ""}">${inv.status === "paid" ? "Paid" : "Unpaid"}</span>${paidChip}
           </div>
         </div>
@@ -329,7 +360,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     return `<div class="md-card invoice-sheet template-modern" id="invoice-sheet">
         ${head}
         <div class="table-wrap"><table class="md-table">
-          <thead><tr><th>Date</th><th>Description</th><th class="num">Hours</th><th class="num">Rate</th><th class="num">Amount</th></tr></thead>
+          <thead>${itemHead()}</thead>
           <tbody>${items || `<tr><td colspan="5" class="muted">No line items.</td></tr>`}</tbody>
           <tfoot>
             <tr><td colspan="4">Subtotal</td><td class="num">${money(t.subtotal)}</td></tr>
@@ -425,19 +456,19 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       document.querySelectorAll(".share-lines").forEach(wire);
     })();</script>`;
     const copyBtn = (url: string) => `
-      <button class="md-icon-button" type="button" data-copy data-url="${esc(url)}" title="Copy link" aria-label="Copy link">${icon("copy")}</button>`;
-    const actBtn = (action: string, ic: string, label: string, cls = "", confirm = "") => `
+      <button class="md-icon-button" type="button" data-copy data-url="${esc(url)}" data-tip="Copy link" aria-label="Copy link">${icon("copy")}</button>`;
+    const actBtn = (action: string, ic: string, label: string, cls = "", confirm = "", confirmLabel = "Delete", tip = label) => `
       <form method="post" action="${action}" hx-post="${action}" ${hxDetail}>
-        <button class="md-icon-button ${cls}" type="submit" title="${label}" aria-label="${label}"${confirm ? ` hx-confirm="${confirm}"` : ""}>${icon(ic)}</button>
+        <button class="md-icon-button ${cls}" type="submit" data-tip="${tip}" aria-label="${label}"${confirm ? ` data-confirm="${confirm}" data-confirm-label="${confirmLabel}"` : ""}>${icon(ic)}</button>
       </form>`;
     const clientLine = clientLink ? `
       <div class="share-line">
         <span class="share-label">Client link</span>
-        <span class="share-url" title="${esc(clientLink)}">${esc(clientLink)}</span>
+        <span class="share-url-wrap" data-tip="${esc(clientLink)}"><span class="share-url">${esc(clientLink)}</span></span>
         <span class="share-icons">
           ${copyBtn(clientLink)}
-          ${actBtn(`/invoices/${inv.id}/public-token/regenerate`, "refresh", "Regenerate link (invalidates the old one)")}
-          ${actBtn(`/invoices/${inv.id}/public-token/revoke`, "delete", "Revoke link", "danger", "Revoke the client link? The current URL will stop working.")}
+          ${actBtn(`/invoices/${inv.id}/public-token/regenerate`, "refresh", "Regenerate link (invalidates the old one)", "", "", "Delete", "Regenerate link")}
+          ${actBtn(`/invoices/${inv.id}/public-token/revoke`, "delete", "Revoke link", "danger", "Revoke the client link? The current URL will stop working.", "Revoke")}
         </span>
       </div>` : `
       <div class="share-line">
@@ -490,32 +521,14 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
             <button class="md-icon-button tip-right" type="submit" data-tip="${nextLabel}" aria-label="${nextLabel}">${icon("check")}</button>
           </form>` : ""}
           ${inv.status === "draft" ? `<form method="post" action="/invoices/${inv.id}/delete" class="inline">
-            <button class="md-icon-button danger tip-right" type="submit" data-tip="Delete draft" aria-label="Delete draft" onclick="return confirm('Delete this draft invoice? Its entries become unbilled again.')">${icon("delete")}</button>
+            <button class="md-icon-button danger tip-right" type="submit" data-tip="Delete draft" aria-label="Delete draft" data-confirm="Delete this draft invoice? Its entries become unbilled again.">${icon("delete")}</button>
           </form>` : ""}
         </div>
       </div>
       ${invoiceDoc(inv)}
       ${internalBlock}
       ${shareLines}
-      <script>(function(){
-        /* #432: M3 plain tooltips need a 450ms long-press on touch, where
-           hover doesn't exist (same pattern as the calendar day heads, #69).
-           Guarded: the fragment re-renders on every hx swap. */
-        if(window.__invIconTip) return; window.__invIconTip=true;
-        var tipTimer=null,tipEl=null;
-        document.addEventListener('pointerdown',function(e){
-          var b=e.target.closest('.md-icon-button[data-tip]');
-          if(!b) return;
-          tipEl=b;
-          tipTimer=setTimeout(function(){ b.classList.add('tip-show'); },450);
-        });
-        ['pointerup','pointercancel'].forEach(function(t){
-          document.addEventListener(t,function(){
-            if(tipTimer){ clearTimeout(tipTimer); tipTimer=null; }
-            if(tipEl){ tipEl.classList.remove('tip-show'); tipEl=null; }
-          },{passive:true});
-        });
-      })();</script></div>`;
+      </div>`;
   }
 
   /* #364: list-detail replaced the standalone detail page — the detail body

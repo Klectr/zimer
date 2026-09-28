@@ -239,7 +239,12 @@ export function createApiRouter(deps: ApiDeps) {
                   const ok = (inv.status === "draft" && want === "sent") ||
                              (inv.status === "sent" && want === "paid");
                   if (!ok) return json({ error: "invalid status transition (draft → sent → paid)" }, 400);
-                  db.query("UPDATE invoices SET status = ? WHERE id = ?").run(want, id);
+                  /* Marking paid stamps the paid date, like the web route and the
+                     Stripe webhook do (#552) — the list/detail/CSV all read it. */
+                  if (want === "paid")
+                    db.query("UPDATE invoices SET status = 'paid', paid_at = date('now') WHERE id = ?").run(id);
+                  else
+                    db.query("UPDATE invoices SET status = ? WHERE id = ?").run(want, id);
                   /* #301: freeze at send, re-freeze at paid for the status badge. */
                   freezeInvoiceSnapshots(id, shareOrigin(req));
                 }

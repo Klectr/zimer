@@ -5,7 +5,7 @@
 
 import { join, normalize, sep } from "node:path";
 import type { Database, Statement } from "bun:sqlite";
-import { addDays, entryIsLocked, esc, isPaymentTermsKey, round2, termsDescription, termsDays, termsKey, todayStr } from "../lib/format.ts";
+import { addDays, csvCell, entryIsLocked, esc, isPaymentTermsKey, round2, termsDescription, termsDays, termsKey, todayStr } from "../lib/format.ts";
 import type { Entry, Invoice, InvoiceItem } from "../lib/types.ts";
 import type { ClientSel } from "../views/manage.ts"; /* #367 */
 import type { PdfInvoice } from "../pdf.ts";
@@ -45,7 +45,8 @@ export interface WebDeps {
   dashboardPage: () => string;
   timerPartial: () => string;
   todayPartial: () => string;
-  weekInner: (weekStr?: string) => string;
+  weekInner: (weekStr?: string, tz?: string) => string;
+  weekStrip: (weekStr?: string, tz?: string) => string;
   calendarPage: (week?: string) => string;
   editPage: (id: number) => string | null;
   managePage: (selected: ClientSel | null) => string; /* #367 */
@@ -86,7 +87,7 @@ export function createWebRouter(deps: WebDeps) {
     db, qRunning, qOne, qRange, qInvoice, qInvoices,
     DATA_DIR, STATIC_DIR, TOKEN, authedPage, tokensEqual, html, json, csvResponse, isHtmx,
     shareOrigin, PORT, loginPage, publicInvoicePage, changelogPage, termsPage, notFoundPage, noSuchInvoicePage, rateLimitPage, errorPage, /* #341: +termsPage */
-    dashboardPage, timerPartial, todayPartial, weekInner,
+    dashboardPage, timerPartial, todayPartial, weekInner, weekStrip,
     calendarPage, editPage, managePage, clientSelection, clientDetailBody, clientListOob, bizProfileSection, invoicesPage, invoiceNewPage,
     defaultNewInvParams, invoiceStep2, invoiceDetailBody, invoiceListOob, invoiceDoc,
     getInvoice, invoiceTotals,
@@ -201,10 +202,13 @@ export function createWebRouter(deps: WebDeps) {
 
           if (path === "/" && method === "GET") return html(dashboardPage());
           if (path === "/partial/timer" && method === "GET") return html(timerPartial());
+          /* #572: ?strip=1 fills one recycled carousel strip with a single
+             week's inner HTML; without it the full three-week window renders. */
           if (path === "/partial/week" && method === "GET") {
             const w = new URL(req.url).searchParams.get("week") || undefined;
             const tz = new URL(req.url).searchParams.get("tz") || undefined;
-            return html(weekInner(w || undefined, tz || undefined));
+            const strip = new URL(req.url).searchParams.get("strip");
+            return html(strip ? weekStrip(w || undefined, tz || undefined) : weekInner(w || undefined, tz || undefined));
           }
           /* #255: the client passes its own day bounds as UTC instants
              (?from=&to=, from client-local midnight); validate strictly,
@@ -226,9 +230,9 @@ export function createWebRouter(deps: WebDeps) {
               const restFrom = clientRestFrom(Number(cid));
               if (restFrom) from = restFrom;
             }
-            const to = addDays(todayStr(), 1);
+            const to = todayStr();
             return html(`<div class="md-text-field filled"><input type="date" id="inv-from" name="from" value="${esc(from)}" required placeholder=" "><label>From</label></div>
-            <div class="md-text-field filled"><input type="date" id="inv-to" name="to" value="${esc(to)}" required placeholder=" "><label>To (exclusive)</label></div>`);
+            <div class="md-text-field filled"><input type="date" id="inv-to" name="to" value="${esc(to)}" required placeholder=" "><label>To</label></div>`);
           }
           if (path === "/timer/start" && method === "POST") {
             if (qRunning.get()) return html(timerPartial(), 409);
@@ -243,7 +247,17 @@ export function createWebRouter(deps: WebDeps) {
             if (running) db.query("UPDATE time_entries SET end_time = ? WHERE id = ?").run(new Date().toISOString(), running.id);
             return html(timerPartial(), 200, { "HX-Trigger": "timer-updated" });
           }
-          if (path === "/calendar" && method === "GET") return html(calendarPage(url.searchParams.get("week") || undefined));
+          if (path === "/calendar" && method === "GET") {
+            /* #572: day mode is gone; old ?day= links redirect to the
+               containing week. Invalid values fall back to this week. */
+            const dp = url.searchParams.get("day");
+            if (dp && /^\d{4}-\d{2}-\d{2}$/.test(dp)) {
+              const [y, m, d] = dp.split("-").map(Number);
+              const sun = addDays(dp, -new Date(Date.UTC(y, m - 1, d, 12)).getUTCDay());
+              return new Response(null, { status: 302, headers: { Location: `/calendar?week=${sun}` } });
+            }
+            return html(calendarPage(url.searchParams.get("week") || undefined));
+          }
 
           if (path === "/entries" && method === "POST") {
             const form = await req.formData();
@@ -516,7 +530,7 @@ export function createWebRouter(deps: WebDeps) {
             JOIN projects pr ON pr.id = e.project_id
             JOIN clients c ON c.id = pr.client_id
             WHERE e.invoice_id IS NULL AND e.end_time IS NOT NULL
-              AND e.start_time >= ? AND e.start_time < ?`).all(f, t) as any[];
+              AND e.start_time >= ? AND e.start_time < date(?, '+1 day')`).all(f, t) as any[];
             if (billable.length !== 1) return { p };
             const c = billable[0];
             p.client_id = String(c.id);
@@ -537,7 +551,7 @@ export function createWebRouter(deps: WebDeps) {
               p.client_id = String(c.id);
               const restFrom = clientRestFrom(Number(c.id));
               if (restFrom) p.from = restFrom;
-              p.to = addDays(todayStr(), 1);
+              p.to = todayStr();
               if (c.rate !== null && c.rate !== "") p.rate = String(c.rate);
               const days = termsDays(termsKey(c.payment_terms, getMeta(db, "business_payment_terms")));
               if (days !== null) p.due_date = addDays(p.issue_date, days);

@@ -1,16 +1,24 @@
 /** #340: app version. Read once from the VERSION file at the repo root
  *  (baked into release tarballs). Working copies without one report
  *  0.0.0-dev, which never matches the release feed. node:fs (sync) because
- *  license validation needs the major version synchronously. */
+ *  license validation needs the major version synchronously.
+ *  #519: in a compiled binary the file ships in the exe-relative
+ *  resources dir instead. */
 
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { resourcePath } from "./paths.ts";
 
 let cached: string | null = null;
 
 export function appVersion(): string {
   if (cached !== null) return cached;
   try {
-    cached = readFileSync(new URL("../../VERSION", import.meta.url), "utf8").trim() || "0.0.0-dev";
+    cached =
+      readFileSync(
+        resourcePath("VERSION", fileURLToPath(new URL("../../VERSION", import.meta.url))),
+        "utf8",
+      ).trim() || "0.0.0-dev";
   } catch {
     cached = "0.0.0-dev";
   }

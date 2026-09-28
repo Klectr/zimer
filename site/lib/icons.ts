@@ -6,20 +6,17 @@ export const ICONS: Record<string, string> = {
   calendar: `<rect x="3.5" y="5" width="17" height="16" rx="3"/><path d="M3.5 10h17"/><path d="M8 3v4M16 3v4"/>`,
   group: `<circle cx="9" cy="8" r="3.5"/><path d="M3.5 19c.6-3 2.8-4.5 5.5-4.5s4.9 1.5 5.5 4.5"/><circle cx="16.8" cy="9" r="2.7"/><path d="M15.9 14.7c2.5.2 4.2 1.6 4.7 4.3"/>`,
   receipt: `<path d="M6 3.5h12V21l-2-1.4-2 1.4-2-1.4-2 1.4-2-1.4L6 21z"/><path d="M9 8.5h6M9 12.5h6"/>`,
-  doc: `<path d="M7 3.5h7l4 4v13H7z"/><path d="M14 3.5v4h4"/><path d="M9.5 12h5M9.5 15.5h5"/>`,
   download: `<path d="M12 4v11"/><path d="M7.5 11l4.5 4.5L16.5 11"/><path d="M5 20h14"/>`,
   check: `<path d="M5 12.5l4.5 4.5L19 7.5"/>`,
   card: `<rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10.5h18"/><path d="M6.5 14.5h4"/>`,
   add: `<path d="M12 5v14M5 12h14"/>`,
   chevron_left: `<path d="M14.5 6l-6 6 6 6"/>`,
   chevron_right: `<path d="M9.5 6l6 6-6 6"/>`,
-  /* #271: expand/collapse chevron for the segmented client list (M3
-     folder-like hierarchy). */
-  chevron_down: `<path d="M6 9.5l6 6 6-6"/>`,
   arrow_left: `<path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/>`,
   copy: `<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/>`,
-  link: `<path d="M10 14a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07L11.4 5.5"/><path d="M14 10a5 5 0 0 0-7.07 0L4.1 12.83a5 5 0 0 0 7.07 7.07l1.42-1.42"/>`,
   refresh: `<path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 3.5V8h-4.5"/>`,
+  /* #473: repeat — restart a finished entry with one tap. */
+  repeat: `<path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>`,
   delete: `<path d="M4 7h16"/><path d="M10 7V4.5h4V7"/><path d="M6.5 7l.9 13a1 1 0 0 0 1 .9h7.2a1 1 0 0 0 1-.9l.9-13"/><path d="M10 11v6M14 11v6"/>`,
   edit: `<path d="M4 20h4l11-11a1.8 1.8 0 0 0-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/>`,
   save: `<path d="M5.5 3.5h10L20 8v11.5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z"/><path d="M8 3.5V9h7V3.5"/><rect x="8" y="13" width="8" height="4.5" rx="0.5"/>`,
@@ -36,6 +33,15 @@ export const ICONS: Record<string, string> = {
   menu: `<path d="M4 6h16M4 12h16M4 18h16"/>`,
   /* #404: warning triangle for error statuses (M3 error-outline style). */
   alert: `<path d="M12 4.5L21 19.5H3z"/><path d="M12 10v4"/><circle cx="12" cy="16.8" r="1.1" fill="currentColor" stroke="none"/>`,
+  /* #448: bolt for the "Paid via Stripe" chip — the last emoji in the UI
+     leaves the icon system here. M3 outlined 24px, matches the set. */
+  bolt: `<path d="M13 2L4.5 13.5H11L9.5 22L18.5 10.5H12Z"/>`,
+  /* #542: trend trio for the calendar week-over-week delta — the last text
+     glyphs (↑/↓/→) in the UI give way to the icon system. Feather-style,
+     M3 outlined 24px, matches the set. */
+  trend_up: `<path d="M22 7l-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/>`,
+  trend_down: `<path d="M22 17l-8.5-8.5-5 5L2 7"/><path d="M16 17h6v-6"/>`,
+  trend_flat: `<path d="M4 12h16"/><path d="M14 6l6 6-6 6"/>`,
 };
 
 export function icon(name: keyof typeof ICONS): string {

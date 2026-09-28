@@ -129,7 +129,10 @@
   border-width: 2px;
 }
 
-/* ---------------- sys tokens: type ---------------- */
+/* ---------------- sys tokens: type ----------------
+ * Type sizes are rem so text follows the user's root font size (accessibility).
+ * Layout chrome stays px on purpose — it maps 1:1 to M3 dp and browser zoom
+ * covers enlargement. */
 *, *::before, *::after { box-sizing: border-box; }
 body {
   font-family: "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -139,17 +142,16 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
-.md-headline-small { font-size: 24px; line-height: 32px; font-weight: 400; letter-spacing: 0; }
-.md-title-large { font-size: 22px; line-height: 28px; font-weight: 400; }
-.md-title-medium { font-size: 16px; line-height: 24px; font-weight: 500; letter-spacing: 0.15px; }
-.md-title-small { font-size: 14px; line-height: 20px; font-weight: 500; letter-spacing: 0.1px; }
-.md-body-large { font-size: 16px; line-height: 24px; letter-spacing: 0.5px; }
-.md-body-medium { font-size: 14px; line-height: 20px; letter-spacing: 0.25px; }
-.md-label-large { font-size: 14px; line-height: 20px; font-weight: 500; letter-spacing: 0.1px; }
-.md-label-medium { font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: 0.5px; }
+.md-headline-small { font-size: 1.5rem; line-height: 32px; font-weight: 400; letter-spacing: 0; }
+.md-title-large { font-size: 1.375rem; line-height: 28px; font-weight: 400; }
+.md-title-medium { font-size: 1rem; line-height: 24px; font-weight: 500; letter-spacing: 0.15px; }
+.md-title-small { font-size: 0.875rem; line-height: 20px; font-weight: 500; letter-spacing: 0.1px; }
+.md-body-medium { font-size: 0.875rem; line-height: 20px; letter-spacing: 0.25px; }
+.md-label-large { font-size: 0.875rem; line-height: 20px; font-weight: 500; letter-spacing: 0.1px; }
+.md-label-medium { font-size: 0.75rem; line-height: 16px; font-weight: 500; letter-spacing: 0.5px; }
 
 .muted { color: var(--md-sys-color-on-surface-variant); }
-.tiny { font-size: 12px; }
+.tiny { font-size: 0.75rem; }
 .error { color: var(--md-sys-color-error); }
 /* the UA [hidden] rule loses to component display styles; enforce it */
 [hidden] { display: none !important; }
@@ -187,7 +189,7 @@ body {
  * chromeless on it; only the content column is the rounded surface sheet.
  * In-content supporting/detail panes stay flat surface. */
 .md-top-app-bar-title {
-  font-size: 22px;
+  font-size: 1.375rem;
   line-height: 28px;
   color: var(--md-sys-color-on-surface);
   white-space: nowrap;
@@ -208,6 +210,28 @@ main.login { max-width: 420px; margin-top: 8vh; }
 /* #361: no horizontal inset — headings align with the M3 body-margin ruler. */
 h2.md-headline-small { margin: 24px 0 12px; }
 
+/* ---------------- skip link: keyboard users jump past nav chrome (#511) ----------------
+ * Visually hidden until keyboard focus; styled as an M3 tonal pill so the one
+ * visible element matches the house vocabulary. main:focus has no outline:
+ * the skip action already announces the new location. */
+.skip-link {
+  position: fixed;
+  left: 16px;
+  top: -72px;
+  z-index: 200;
+  padding: 10px 20px;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: top var(--motion-duration-short4) var(--motion-easing-standard);
+}
+.skip-link:focus-visible { top: 12px; }
+main:focus { outline: none; }
+@media (prefers-reduced-motion: reduce) { .skip-link { transition: none; } }
+
 /* ---------------- cards (filled: surface-container-high, 12dp) ---------------- */
 .md-card {
   background: var(--md-sys-color-surface-container-high);
@@ -221,8 +245,8 @@ h2.md-headline-small { margin: 24px 0 12px; }
 }
 .md-card.tracking .muted { color: var(--md-sys-color-on-primary-container); opacity: 0.75; }
 
-/* ---------------- buttons (5 types, pill, 40dp, 48dp target) ---------------- */
-.md-filled-button, .md-tonal-button, .md-outlined-button, .md-text-button {
+/* ---------------- buttons (4 types, pill, 40dp, 48dp target) ---------------- */
+.md-filled-button, .md-tonal-button, .md-text-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -231,7 +255,7 @@ h2.md-headline-small { margin: 24px 0 12px; }
   min-width: 48px;
   padding: 0 24px;
   border-radius: var(--md-sys-shape-corner-full);
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 500;
   letter-spacing: 0.1px;
   cursor: pointer;
@@ -243,7 +267,7 @@ h2.md-headline-small { margin: 24px 0 12px; }
 }
 /* hover state layer 8% */
 .md-filled-button:hover::after, .md-tonal-button:hover::after,
-.md-outlined-button:hover::after, .md-text-button:hover::after,
+.md-text-button:hover::after,
 .md-icon-button:hover::after {
   content: "";
   position: absolute;
@@ -254,7 +278,7 @@ h2.md-headline-small { margin: 24px 0 12px; }
   pointer-events: none;
 }
 .md-filled-button:active::after, .md-tonal-button:active::after,
-.md-outlined-button:active::after, .md-text-button:active::after {
+.md-text-button:active::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -266,16 +290,11 @@ h2.md-headline-small { margin: 24px 0 12px; }
 
 .md-filled-button { background: var(--md-sys-color-primary); color: var(--md-sys-color-on-primary); }
 .md-tonal-button { background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container); }
-.md-outlined-button {
-  background: transparent;
-  color: var(--md-sys-color-primary);
-  border: 1px solid var(--md-sys-color-outline);
-}
 .md-text-button { background: transparent; color: var(--md-sys-color-primary); padding: 0 16px; }
 .md-text-button.danger { color: var(--md-sys-color-error); }
 
 /* ---------------- icons (inline SVG, M3 outlined 24px) ---------------- */
-.md-filled-button svg, .md-tonal-button svg, .md-outlined-button svg, .md-text-button svg {
+.md-filled-button svg, .md-tonal-button svg, .md-text-button svg {
   width: 18px; height: 18px; flex: none; }
 
 /* ---------------- update-check progress state (#406) ---------------- */
@@ -297,7 +316,7 @@ h2.md-headline-small { margin: 24px 0 12px; }
 }
 /* disabled buttons (used by hx-disabled-elt on #check-updates-btn) */
 .md-filled-button:disabled, .md-tonal-button:disabled,
-.md-outlined-button:disabled, .md-text-button:disabled {
+.md-text-button:disabled {
   opacity: 0.45;
   cursor: default;
 }
@@ -327,6 +346,13 @@ h2.md-headline-small { margin: 24px 0 12px; }
    labels). ::before so it doesn't clobber the ::after hover state layer;
    overflow:visible so the tooltip escapes the button's clip. */
 .md-icon-button[data-tip] { overflow: visible; }
+/* #556: hidden tooltips collapse to zero size. The pseudo-element renders
+   even while invisible (opacity: 0), and its content-sized box (up to 200px
+   centered on a 36px button) widened the scrollable overflow area of
+   overflow-y:auto panes — overflow-x computes to auto there, so a phantom
+   horizontal scrollbar appeared. max-width: 0 + overflow: hidden keeps the
+   hidden box inside its anchor; the shown states restore the real width.
+   Visible rendering and the fade are unchanged. */
 .md-icon-button[data-tip]::before {
   content: attr(data-tip);
   position: absolute; left: 50%; top: calc(100% + 4px); /* M3: 4dp anchor gap */
@@ -335,8 +361,8 @@ h2.md-headline-small { margin: 24px 0 12px; }
   color: var(--md-sys-color-inverse-on-surface);
   border-radius: var(--md-sys-shape-corner-extra-small); /* M3 plain tooltip shape */
   padding: 4px 8px; /* M3 plain tooltip padding */
-  white-space: nowrap; max-width: 200px;
-  font-size: 12px; line-height: 16px; font-weight: 400;
+  white-space: nowrap; max-width: 0; overflow: hidden;
+  font-size: 0.75rem; line-height: 16px; font-weight: 400;
   opacity: 0; pointer-events: none; z-index: 30;
   transition: opacity var(--motion-duration-short2) var(--motion-easing-standard),
     transform var(--motion-duration-short2) var(--motion-easing-standard);
@@ -345,6 +371,7 @@ h2.md-headline-small { margin: 24px 0 12px; }
 .md-icon-button[data-tip]:focus-visible::before,
 .md-icon-button[data-tip].tip-show::before {
   opacity: 1; transform: translateX(-50%) translateY(0);
+  max-width: 200px; overflow: visible;
 }
 /* #434: tooltips on right-edge buttons anchor to the button's right edge
    instead of centering, so they extend leftward and can't run off the
@@ -353,6 +380,31 @@ h2.md-headline-small { margin: 24px 0 12px; }
 .md-icon-button[data-tip].tip-right:hover::before,
 .md-icon-button[data-tip].tip-right:focus-visible::before,
 .md-icon-button[data-tip].tip-right.tip-show::before { transform: translateY(0); }
+/* #532: M3 plain tooltip for filled buttons — the timer Start/Stop buttons
+   advertise the t shortcut. Mirrors the #432 icon-button tooltip: ::before
+   so it doesn't clobber the ::after hover state layer; overflow:visible so
+   the tooltip escapes the button's clip. */
+.md-filled-button[data-tip] { overflow: visible; }
+.md-filled-button[data-tip]::before {
+  content: attr(data-tip);
+  position: absolute; left: 50%; top: calc(100% + 4px); /* M3: 4dp anchor gap */
+  transform: translateX(-50%) translateY(-2px);
+  background: var(--md-sys-color-inverse-surface);
+  color: var(--md-sys-color-inverse-on-surface);
+  border-radius: var(--md-sys-shape-corner-extra-small); /* M3 plain tooltip shape */
+  padding: 4px 8px; /* M3 plain tooltip padding */
+  white-space: nowrap; max-width: 0; overflow: hidden; /* #556: collapse while hidden */
+  font-size: 0.75rem; line-height: 16px; font-weight: 400;
+  opacity: 0; pointer-events: none; z-index: 30;
+  transition: opacity var(--motion-duration-short2) var(--motion-easing-standard),
+    transform var(--motion-duration-short2) var(--motion-easing-standard);
+}
+.md-filled-button[data-tip]:hover::before,
+.md-filled-button[data-tip]:focus-visible::before,
+.md-filled-button[data-tip].tip-show::before {
+  opacity: 1; transform: translateX(-50%) translateY(0);
+  max-width: 200px; overflow: visible; /* #556 */
+}
 
 /* ---------------- text fields (borderless tonal, 56dp) ----------------
  * No indicator lines: separation comes from the tonal container + whitespace.
@@ -377,7 +429,7 @@ input[type="number"] {
   border: none;
   border-radius: var(--md-sys-shape-corner-medium);
   color: var(--md-sys-color-on-surface);
-  font-size: 16px;
+  font-size: 1rem;
   letter-spacing: 0.5px;
   outline: none;
 }
@@ -395,7 +447,7 @@ input[type="number"] {
   position: absolute;
   left: 16px;
   top: 18px;
-  font-size: 16px;
+  font-size: 1rem;
   letter-spacing: 0.5px;
   color: var(--md-sys-color-on-surface-variant);
   pointer-events: none;
@@ -411,7 +463,7 @@ input[type="number"] {
 .md-text-field:has(select) label,
 .md-text-field.filled label {
   top: 8px;
-  font-size: 12px;
+  font-size: 0.75rem;
   letter-spacing: 0.4px;
 }
 .md-text-field input:focus, .md-text-field select:focus {
@@ -436,7 +488,7 @@ input[type="number"] {
   top: 50%;
   transform: translateY(-50%);
   color: var(--md-sys-color-on-surface-variant);
-  font-size: 16px;
+  font-size: 1rem;
   letter-spacing: 0.5px;
   pointer-events: none;
   z-index: 1;
@@ -447,20 +499,16 @@ input[type="number"] {
 .md-text-field.has-suffix input { padding-right: 46px; }
 .md-text-field.has-prefix label { left: 32px; }
 /* compact (40dp) field for dense rows */
-.md-text-field.compact input { height: 40px; padding-top: 8px; padding-bottom: 8px; font-size: 14px; }
-.md-text-field.compact .affix { font-size: 14px; }
+.md-text-field.compact input { height: 40px; padding-top: 8px; padding-bottom: 8px; font-size: 0.875rem; }
+.md-text-field.compact .affix { font-size: 0.875rem; }
 /* compact field WITH a floating label (nested add-project rows): compact was
    built for label-less affix fields, so labeled ones need their own label
    geometry plus room up top for the floated state. */
 .md-text-field.compact:has(label) input { padding-top: 18px; padding-bottom: 4px; }
-.md-text-field.compact:has(label) label { top: 12px; font-size: 14px; }
+.md-text-field.compact:has(label) label { top: 12px; font-size: 0.875rem; }
 .md-text-field.compact:has(label) input:focus + label,
 .md-text-field.compact:has(label) input:not(:placeholder-shown) + label,
-.md-text-field.compact:has(label):has(select) label { top: 5px; font-size: 11px; }
-/* auto-width: size the field to its content (e.g. a select sized to its
-   longest option) instead of a fragile fixed pixel width. */
-.md-text-field.auto-width { display: inline-block; width: auto; }
-.md-text-field.auto-width select { width: auto; }
+.md-text-field.compact:has(label):has(select) label { top: 5px; font-size: 0.6875rem; }
 
 /* color control: tonal container with palette icon, label, and swatch */
 .md-color-control {
@@ -473,7 +521,7 @@ input[type="number"] {
   border: none;
   border-radius: var(--md-sys-shape-corner-medium);
   color: var(--md-sys-color-on-surface-variant);
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 500;
   letter-spacing: 0.1px;
   cursor: pointer;
@@ -534,7 +582,7 @@ input[type="number"] {
   padding-bottom: 0;
 }
 .md-list-item-headline {
-  font-size: 16px;
+  font-size: 1rem;
   line-height: 24px;
   letter-spacing: 0.5px;
   overflow: hidden;
@@ -546,7 +594,7 @@ input[type="number"] {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-  font-size: 14px;
+  font-size: 0.875rem;
   line-height: 20px;
   letter-spacing: 0.25px;
   color: var(--md-sys-color-on-surface-variant);
@@ -559,12 +607,15 @@ input[type="number"] {
   flex: none;
 }
 .md-list-item-trailing .dur {
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
   margin-right: 4px;
   white-space: nowrap;
 }
+/* #473: repeat is a mini-form in the row's trailing area — keep it inline
+   with the icon buttons and strip the UA form margin. */
+.repeat-form { display: inline-flex; margin: 0; }
 
 /* ---------------- chips (32dp, 8dp radius, outline-variant) ---------------- */
 .md-chip {
@@ -575,7 +626,7 @@ input[type="number"] {
   padding: 0 12px;
   border: 1px solid var(--md-sys-color-outline-variant);
   border-radius: var(--md-sys-shape-corner-small);
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 500;
   letter-spacing: 0.5px;
   color: var(--md-sys-color-on-surface-variant);
@@ -595,7 +646,7 @@ input[type="number"] {
 #timer-card.htmx-swapping { opacity: 0; transform: translateY(6px) scale(0.99); }
 #timer-card.htmx-settling { opacity: 0; transform: translateY(-8px); }
 .timer-state-label {
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 500;
   letter-spacing: 0.5px;
   color: var(--md-sys-color-on-surface-variant);
@@ -625,7 +676,7 @@ input[type="number"] {
 .timer-top-row .stop { position: absolute; top: 20px; right: 20px; }
 .timer-top-row .timer-state-label { padding-right: 140px; }
 .timer-elapsed {
-  font-size: 45px;
+  font-size: 2.8125rem;
   line-height: 52px;
   font-variant-numeric: tabular-nums;
   margin: 8px 0 16px;
@@ -715,7 +766,7 @@ body.app-fixed .md-nav-rail { position: static; height: auto; }
 .md-rail-item, .md-bar-item {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 4px; text-decoration: none; color: var(--md-sys-color-on-surface-variant);
-  font-size: 12px; font-weight: 500; letter-spacing: 0.5px; line-height: 16px;
+  font-size: 0.75rem; font-weight: 500; letter-spacing: 0.5px; line-height: 16px;
   position: relative;
 }
 .md-rail-item { padding: 12px 0 10px; }
@@ -783,6 +834,12 @@ main.page-invoices { max-width: 760px; }
 /* whole-row tap target for invoice rows */
 .inv-row-hit { display: flex; align-items: center; gap: 8px; width: 100%;
   color: inherit; text-decoration: none; }
+/* #442: date phrases in list rows never split mid-date; the supporting line
+   wraps at the middot separators instead. */
+.inv-date { white-space: nowrap; }
+/* #588: the list-row date phrases share one nowrap group, so a narrow pane
+   wraps between the client name and the dates — never between segments. */
+.inv-row .inv-dates { white-space: nowrap; }
 /* empty detail pane */
 .detail-placeholder { display: flex; flex-direction: column; align-items: center;
   justify-content: center; gap: 12px; padding: 64px 24px; text-align: center; min-height: 320px; }
@@ -828,7 +885,10 @@ main.page-invoices { max-width: 760px; }
 .cal-supporting { grid-area: summary; display: flex; flex-direction: column; gap: 14px; margin: 10px 0 12px; min-width: 0; }
 .cal-supporting .week-nav { margin: 0; }
 .cal-supporting .m3-progress, .cal-supporting .week-clients, .cal-supporting .cal-hint { margin: 0; }
-.cal-pane-layout .cal-scroll { grid-area: grid; }
+/* #542: the week-over-week delta's trend icon rides the muted label baseline
+   at label size — the same 14px treatment the Stripe paid chip's icon gets. */
+.cal-summary .cal-delta svg { width: 14px; height: 14px; vertical-align: -2px; margin-right: 2px; }
+.cal-pane-layout .cal-carousel { grid-area: grid; }
 @media (min-width: 840px) {
   .cal-pane-layout { grid-template-columns: minmax(0, 1fr) var(--layout-supporting-pane);
     grid-template-areas: "grid summary"; grid-template-rows: minmax(0, 1fr); column-gap: var(--layout-pane-gap); }
@@ -844,10 +904,10 @@ body.app-fixed .cal-gutter-spacer {
 }
 /* ---------------- calendar: tonal day lanes, no hard dividers ----------------
  * Separation comes from spacing (8px gutters) + tone (lane surfaces). */
-.cal-scroll { overflow-x: auto; border-radius: var(--md-sys-shape-corner-large); }
+.cal-scroll { overflow-x: clip; border-radius: var(--md-sys-shape-corner-large); }
 .cal-grid {
   display: grid;
-  grid-template-columns: 54px repeat(7, minmax(0, 1fr));
+  grid-template-columns: 44px repeat(7, minmax(0, 1fr));
   gap: 8px;
 }
 .cal-gutter-spacer { height: 64px; } /* matches the two-line day header */
@@ -855,14 +915,14 @@ body.app-fixed .cal-gutter-spacer {
 .cal-hours { height: calc(var(--cal-hour) * 24); }
 .cal-hour-label {
   position: absolute; right: 8px; transform: translateY(-50%);
-  font-size: 11px; color: var(--md-sys-color-on-surface-variant); white-space: nowrap;
+  font-size: 0.6875rem; color: var(--md-sys-color-on-surface-variant); white-space: nowrap;
 }
 /* Night hours (7 PM – 6 AM) read lavender in the gutter. */
 .cal-hour-label.night { color: #b9a8e8; }
 .cal-day { display: flex; flex-direction: column; min-width: 0; }
 /* Grid entrance (#49): columns stagger in left→right inside the #48 region
-   entrance; per-column delay rendered inline by weekGrid. */
-#cal-body .cal-day {
+   entrance; per-column delay rendered inline by the server. */
+.cal-grid .cal-day {
   animation: cal-day-enter var(--motion-duration-medium2) var(--motion-easing-emphasized-decelerate) backwards;
 }
 @keyframes cal-day-enter { from { opacity: 0; transform: translateY(12px); } }
@@ -877,8 +937,8 @@ body.app-fixed .cal-gutter-spacer {
   color: var(--md-sys-color-inverse-on-surface);
   border-radius: var(--md-sys-shape-corner-extra-small); /* M3 plain tooltip shape */
   padding: 4px 8px; /* M3 plain tooltip padding */
-  white-space: nowrap; max-width: 200px; /* M3 plain tooltip max width */
-  font-size: 12px; line-height: 16px;
+  white-space: nowrap; max-width: 0; overflow: hidden; /* #556: collapse while hidden */
+  font-size: 0.75rem; line-height: 16px;
   opacity: 0; pointer-events: none; z-index: 30;
   transition: opacity var(--motion-duration-short2) var(--motion-easing-standard),
     transform var(--motion-duration-short2) var(--motion-easing-standard);
@@ -887,6 +947,7 @@ body.app-fixed .cal-gutter-spacer {
 .cal-day-head[data-tip]:focus-visible::after,
 .cal-day-head[data-tip].tip-show::after {
   opacity: 1; transform: translateX(-50%) translateY(0);
+  max-width: 200px; overflow: visible; /* #556 */
 }
 /* keep edge-column tooltips inside the scroll region instead of clipping */
 .cal-day:first-child .cal-day-head[data-tip]::after { left: 0; transform: translateY(-2px); }
@@ -897,7 +958,7 @@ body.app-fixed .cal-gutter-spacer {
 .cal-day:last-child .cal-day-head[data-tip]:hover::after,
 .cal-day:last-child .cal-day-head[data-tip]:focus-visible::after,
 .cal-day:last-child .cal-day-head[data-tip].tip-show::after { transform: translateY(0); }
-.cal-day-num { font-size: 22px; line-height: 28px; }
+.cal-day-num { font-size: 1.375rem; line-height: 28px; }
 .cal-day-num.today {
   /* #69: today is marked with the primary color, not a filled badge */
   color: var(--md-sys-color-primary); font-weight: 700;
@@ -938,11 +999,11 @@ body.app-fixed .cal-gutter-spacer {
 .cal-night-pm { top: calc(var(--cal-hour) * 19); height: calc(var(--cal-hour) * 5);
   border-radius: 0 0 var(--md-sys-shape-corner-medium) var(--md-sys-shape-corner-medium); }
 .cal-star {
-  position: absolute; color: #d9cdf7; font-size: 10px; line-height: 1;
+  position: absolute; color: #d9cdf7; font-size: 0.625rem; line-height: 1;
   opacity: .55; animation: cal-twinkle 3.2s ease-in-out infinite;
 }
-.cal-star:nth-child(3n) { font-size: 8px; opacity: .4; }
-.cal-star:nth-child(4n) { font-size: 12px; opacity: .65; }
+.cal-star:nth-child(3n) { font-size: 0.5rem; opacity: .4; }
+.cal-star:nth-child(4n) { font-size: 0.75rem; opacity: .65; }
 @keyframes cal-twinkle { 50% { opacity: .22; } }
 @media (prefers-reduced-motion: reduce) {
   .cal-star { animation: none; }
@@ -951,7 +1012,7 @@ body.app-fixed .cal-gutter-spacer {
   position: absolute; left: 4px; right: 4px; border-radius: var(--md-sys-shape-corner-small);
   background: var(--c, var(--md-sys-color-primary)); color: #16161c;
   padding: 4px 8px; overflow: hidden; cursor: pointer;
-  font-size: 12px; line-height: 1.35;
+  font-size: 0.75rem; line-height: 1.35;
   min-width: 0;
 }
 /* #275: sub-30-minute entries render at the 22px floor — tighter padding,
@@ -964,7 +1025,7 @@ body.app-fixed .cal-gutter-spacer {
    box of a 15-min slot at 80px/hr exactly. */
 .cal-entry.cal-compact {
   display: flex; align-items: center;
-  padding: 2px 10px; font-size: 10px; line-height: 1.2;
+  padding: 2px 10px; font-size: 0.625rem; line-height: 1.2;
   border-radius: 999px;
 }
 .cal-entry.cal-compact .cal-entry-desc { flex: 1; min-width: 0; }
@@ -1031,6 +1092,9 @@ body.app-fixed .cal-gutter-spacer {
 .cal-scrim.open .cal-dialog { transform: scale(1); opacity: 1; }
 .cal-dialog h2 { margin: 0; }
 .cal-dialog p { margin: 0; }
+/* #464: shared confirm dialog — same scrim/motion as the app dialogs,
+   narrower than the form dialogs. */
+.tk-confirm { width: min(400px, 100%); }
 .cal-time-row { display: flex; gap: 12px; align-items: flex-end; }
 .cal-time-row .md-text-field { flex: 1; min-width: 0; }
 #cal-dur { white-space: nowrap; flex-shrink: 0; align-self: center; }
@@ -1121,7 +1185,7 @@ body.app-fixed .cal-gutter-spacer {
   display: flex; align-items: center; gap: 12px;
   min-height: 48px; padding: 6px 12px;
   color: inherit; text-decoration: none; white-space: nowrap;
-  font-size: 14px; font-weight: 500; line-height: 20px;
+  font-size: 0.875rem; font-weight: 500; line-height: 20px;
   /* #393: item paints its own hover/focus state layer, so it carries the 12dp
      corners itself (16dp container − 4dp inset = 12dp inner radius). */
   border-radius: var(--md-sys-shape-corner-medium);
@@ -1149,10 +1213,6 @@ button.m3-menu-item {
 .manage-form-row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
 .manage-form-row .grow { flex: 1; min-width: 140px; }
 .manage-form-spacer { flex: 1; }
-.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-.two-col > * { min-width: 0; } /* grid items default to min-width:auto — long
-  nowrap headlines would blow the column out and cause horizontal scroll */
-
 /* ---------------- clients list-detail (M3 canonical, #367) ----------------
  * Client → projects/rate/terms is a parent-child pairing, so M3 expects the
  * list-detail layout: two panes at expanded+, a single pane below. Mirrors
@@ -1199,7 +1259,7 @@ button.m3-menu-item {
 .terms-form { display: flex; align-items: center; gap: 8px; flex: 1 1 100%; }
 .terms-form .md-text-field { flex: 1; min-width: 120px; }
 /* #293: canned payment-terms description under the dropdown (M3 supporting text). */
-.terms-desc { flex: 1 1 100%; margin: 0; font-size: 12px; line-height: 1.4; }
+.terms-desc { flex: 1 1 100%; margin: 0; font-size: 0.75rem; line-height: 1.4; }
 #client-detail .terms-desc { padding: 0 8px 4px 0; }
 #biz-profile .terms-desc { margin-top: 8px; }
 
@@ -1226,7 +1286,7 @@ button.m3-menu-item {
 .tk-snackbar {
   position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(16px);
   background: var(--md-sys-color-inverse-surface); color: var(--md-sys-color-inverse-on-surface);
-  padding: 14px 20px; border-radius: 8px; font-size: 14px;
+  padding: 14px 20px; border-radius: 8px; font-size: 0.875rem;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
   opacity: 0; pointer-events: none; z-index: 200;
   transition: opacity 200ms cubic-bezier(0.05, 0.7, 0.1, 1), transform 200ms cubic-bezier(0.05, 0.7, 0.1, 1);
@@ -1242,7 +1302,7 @@ button.m3-menu-item {
   background: var(--md-tertiary-container, #3a2f10); color: var(--md-on-tertiary-container, #f2e3b3);
 }
 .demo-banner svg { flex: none; width: 24px; height: 24px; }
-.demo-banner span { flex: 1; }
+.demo-banner > span { flex: 1 1 16rem; } /* #562: basis floor so CTAs wrap below instead of squeezing the text */
 .demo-banner .md-text-button { color: inherit; }
 @media (prefers-reduced-motion: no-preference) {
   .demo-banner { animation: banner-in .45s cubic-bezier(0.05, 0.7, 0.1, 1); }
@@ -1279,14 +1339,14 @@ button.m3-menu-item {
 .status-row-error > svg { color: var(--md-sys-color-error, #ffb4ab); }
 .status-row-error .status-row-headline { color: var(--md-sys-color-error, #ffb4ab); }
 .status-row-text { flex: 1; min-width: 0; }
-.status-row-headline { margin: 0; font-size: 16px; line-height: 24px;
+.status-row-headline { margin: 0; font-size: 1rem; line-height: 24px;
   letter-spacing: 0.5px; color: var(--md-sys-color-on-surface); }
-.status-row-supporting { margin: 2px 0 0; font-size: 14px; line-height: 20px;
+.status-row-supporting { margin: 2px 0 0; font-size: 0.875rem; line-height: 20px;
   letter-spacing: 0.25px; color: var(--md-sys-color-on-surface-variant); }
-.status-row-supporting code { font-size: 13px; }
+.status-row-supporting code { font-size: 0.8125rem; }
 .license-error { color: var(--md-sys-color-error, #ffb4ab); margin: 4px 0 0; }
 /* #340: update command shown by the update check — tonal, monospace, wraps. */
-.update-cmd { display: block; font-family: ui-monospace, monospace; font-size: 13px;
+.update-cmd { display: block; font-family: ui-monospace, monospace; font-size: 0.8125rem;
   background: var(--md-sys-color-surface-container-highest, #2b2b2b);
   color: var(--md-sys-color-on-surface, #e3e3e3);
   border-radius: 8px; padding: 10px 12px; overflow-wrap: anywhere; }
@@ -1301,11 +1361,10 @@ button.m3-menu-item {
   background: var(--md-sys-color-surface-container); }
 .cal-first-run p { margin: 8px 0; }
 
-/* #353: content-driven thresholds, not M3 window size classes. .two-col
-   collapses when invoice forms get cramped; main's extra bottom padding keeps
-   the fixed snackbar from covering trailing content on narrower viewports. */
+/* #353: content-driven thresholds, not M3 window size classes. Main's extra
+   bottom padding keeps the fixed snackbar from covering trailing content on
+   narrower viewports. */
 @media (max-width: 900px) {
-  .two-col { grid-template-columns: 1fr; }
   main { padding-bottom: 120px; }
 }
 
@@ -1314,21 +1373,15 @@ button.m3-menu-item {
 .page-head h2 { margin: 0; }
 .page-head .row { display: flex; gap: 8px; align-items: center; }
 .invoice-detail-head { display: flex; align-items: center; gap: 12px; }
-.inv-link { color: var(--md-sys-color-primary); text-decoration: none; font-weight: 500; }
-.inv-link:hover { text-decoration: underline; }
 /* #328: "Unbilled time" section head on the invoices page. */
 .unbilled-head { margin: 16px 4px 4px; }
 
 .pill { display: inline-block; padding: 2px 12px; border-radius: var(--md-sys-shape-corner-full);
-  font-size: 12px; font-weight: 500; letter-spacing: 0.4px; vertical-align: middle; }
-.pill-draft { background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container); }
-.pill-sent { background: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container); }
-.pill-paid { background: #1f3d2b; color: #b8e6c5; }
-.pill-unpaid { background: var(--md-sys-color-error-container); color: var(--md-sys-color-on-error-container); }
+  font-size: 0.75rem; font-weight: 500; letter-spacing: 0.4px; vertical-align: middle; }
 
 /* #330: "Invoiced"/"Draft" mark on timer entry rows — tonal pill, no border. */
 .inv-mark { display: inline-flex; align-items: center; height: 18px; padding: 0 8px;
-  border-radius: var(--md-sys-shape-corner-full); font-size: 10px; font-weight: 600;
+  border-radius: var(--md-sys-shape-corner-full); font-size: 0.625rem; font-weight: 600;
   letter-spacing: 0.4px; white-space: nowrap; flex: none; }
 /* #332: calendar slots carry no chip — the grid is too dense for a pill on
    every card. Invoiced cards dim instead (bright = still needs billing); the
@@ -1338,24 +1391,131 @@ button.m3-menu-item {
 .md-list-item-supporting .inv-mark { background: var(--md-sys-color-secondary-container);
   color: var(--md-sys-color-on-secondary-container); margin-right: 6px; }
 .md-list-item-supporting .inv-mark.draft { opacity: 0.7; }
+/* #500: house M3 plain tooltip for the calendar entry card's invoiced mark
+   (hover + :focus-visible + 450ms touch long-press via the site-wide
+   [data-tip] handler). Mirrors the inv-mark tooltip (#498); the card uses no
+   other pseudo-element. overflow:visible scoped to [data-tip] so the tooltip
+   paints outside the card — the desc keeps its own overflow:hidden ellipsis. */
+.cal-entry[data-tip] { overflow: visible; }
+.cal-entry[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute; left: 50%; top: calc(100% + 4px); /* M3: 4dp anchor gap */
+  transform: translateX(-50%) translateY(-2px);
+  background: var(--md-sys-color-inverse-surface);
+  color: var(--md-sys-color-inverse-on-surface);
+  border-radius: var(--md-sys-shape-corner-extra-small); /* M3 plain tooltip shape */
+  padding: 4px 8px; /* M3 plain tooltip padding */
+  white-space: nowrap; max-width: 0; overflow: hidden; /* #556: collapse while hidden */
+  font-size: 0.75rem; line-height: 16px; font-weight: 400;
+  opacity: 0; pointer-events: none; z-index: 30;
+  transition: opacity var(--motion-duration-short2) var(--motion-easing-standard),
+    transform var(--motion-duration-short2) var(--motion-easing-standard);
+}
+.cal-entry[data-tip]:hover::after,
+.cal-entry[data-tip]:focus-visible::after,
+.cal-entry[data-tip].tip-show::after {
+  opacity: 1; transform: translateX(-50%) translateY(0);
+  max-width: 200px; overflow: visible; /* #556 */
+}
+/* #498: M3 plain tooltip for the inv-mark chip (hover + 450ms touch long-press
+   via the site-wide [data-tip] handler). ::after; the chip uses no other
+   pseudo-element, and the supporting line clips nothing. */
+.inv-mark[data-tip] { position: relative; overflow: visible; }
+.inv-mark[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute; left: 50%; top: calc(100% + 4px); /* M3: 4dp anchor gap */
+  transform: translateX(-50%) translateY(-2px);
+  background: var(--md-sys-color-inverse-surface);
+  color: var(--md-sys-color-inverse-on-surface);
+  border-radius: var(--md-sys-shape-corner-extra-small);
+  padding: 4px 8px; /* M3 plain tooltip padding */
+  white-space: nowrap; max-width: 0; overflow: hidden; /* #556: collapse while hidden */
+  font-size: 0.75rem; line-height: 16px; font-weight: 400;
+  opacity: 0; pointer-events: none; z-index: 30;
+  transition: opacity var(--motion-duration-short2) var(--motion-easing-standard),
+    transform var(--motion-duration-short2) var(--motion-easing-standard);
+}
+.inv-mark[data-tip]:hover::after,
+.inv-mark[data-tip].tip-show::after {
+  opacity: 1; transform: translateX(-50%) translateY(0);
+  max-width: 200px; overflow: visible; /* #556 */
+}
 
 .two-field { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 /* #353: content-driven — form field stacking, not an M3 window size class. */
 @media (max-width: 560px) { .two-field { grid-template-columns: 1fr; } }
 
 .table-wrap { overflow-x: auto; margin: 0 -4px; padding: 0 4px; }
-.md-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.md-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
 .md-table th, .md-table td { text-align: left; padding: 10px 8px; }
 .md-table th.num, .md-table td.num { text-align: right; white-space: nowrap; }
-.md-table thead th { color: var(--md-sys-color-on-surface-variant); font-weight: 500; font-size: 12px;
+.md-table thead th { color: var(--md-sys-color-on-surface-variant); font-weight: 500; font-size: 0.75rem;
   letter-spacing: 0.4px; text-transform: uppercase; }
 .md-table tbody tr { background: var(--md-sys-color-surface-container-low); }
 .md-table tbody tr + tr { border-top: 8px solid transparent; background-clip: padding-box; }
 .md-table tbody td:first-child { border-radius: 12px 0 0 12px; }
 .md-table tbody td:last-child { border-radius: 0 12px 12px 0; }
 .md-table tfoot td { padding: 6px 8px; color: var(--md-sys-color-on-surface-variant); }
-.md-table tfoot tr.grand td { color: var(--md-sys-color-on-surface); font-weight: 700; font-size: 16px;
+.md-table tfoot tr.grand td { color: var(--md-sys-color-on-surface); font-weight: 700; font-size: 1rem;
   padding-top: 10px; }
+/* #366: the 5-column invoice table must fit a 390px phone with the Amount
+   column visible — no hiding it behind a scroll. Compact the table chrome
+   below 480px; the .table-wrap inner scroll stays as the fallback for
+   unusually wide data. Print is untouched. */
+@media (max-width: 480px) {
+  .md-table { font-size: 0.8125rem; }
+  .md-table th, .md-table td { padding: 8px 6px; }
+  .md-table thead th { font-size: 0.6875rem; letter-spacing: 0; }
+  .md-table tfoot td { padding: 6px; }
+  .md-table td.desc { overflow-wrap: anywhere; }
+  /* the DESCRIPTION header is one long word — let it break too, otherwise
+     its min-content alone keeps the column (and the table) too wide. */
+  .md-table th:nth-child(2) { overflow-wrap: anywhere; }
+}
+/* #366, continued: on phones the invoice document's line items stack instead
+   of squeezing into five columns — description on its own line, then a muted
+   meta line (date · hours × rate) with the amount right-aligned. The thead is
+   visually hidden (kept for assistive tech); tfoot becomes label/amount rows.
+   Print and desktop keep the full table. */
+@media (max-width: 480px) {
+  .invoice-sheet .md-table thead {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%);
+  }
+  .invoice-sheet .md-table,
+  .invoice-sheet .md-table tbody,
+  .invoice-sheet .md-table tfoot { display: block; }
+  .invoice-sheet .md-table tbody tr,
+  .invoice-sheet.template-modern .md-table tbody tr {
+    display: flex; flex-wrap: wrap; align-items: baseline;
+    background: var(--md-sys-color-surface-container-low);
+    border-radius: 12px; padding: 12px; margin: 0 0 8px;
+  }
+  .invoice-sheet .md-table tbody tr + tr { border-top: 0; }
+  .invoice-sheet .md-table tbody td { padding: 0; }
+  .invoice-sheet .md-table tbody td:first-child,
+  .invoice-sheet .md-table tbody td:last-child { border-radius: 0; }
+  .invoice-sheet .md-table td.desc { flex: 1 1 100%; order: -1; font-size: 0.875rem; margin-bottom: 6px; }
+  .invoice-sheet .md-table td.inv-date:empty { display: none; }
+  .invoice-sheet .md-table td.inv-date,
+  .invoice-sheet .md-table td.inv-hours,
+  .invoice-sheet .md-table td.inv-rate {
+    display: inline; font-size: 0.75rem; color: var(--md-sys-color-on-surface-variant);
+  }
+  .invoice-sheet .md-table td.inv-date::after { content: "\00a0·\00a0"; }
+  .invoice-sheet .md-table td.inv-hours::after { content: " hrs\00a0×\00a0"; }
+  .invoice-sheet .md-table td.inv-amount {
+    margin-left: auto; font-size: 0.875rem; font-weight: 700; white-space: nowrap;
+  }
+  .invoice-sheet .md-table tfoot tr { display: flex; justify-content: space-between; }
+  .invoice-sheet .md-table tfoot td { padding: 4px 0; }
+  .invoice-sheet .md-table tfoot tr.grand td { padding-top: 8px; }
+  /* the cream total bar: paint it on the row, not the cells, so the flex
+     space-between doesn't split it into two chips. */
+  .invoice-sheet.template-modern .md-table tfoot tr.grand {
+    background: #fdf3dd; border-radius: 8px; padding: 6px 12px; margin-top: 4px;
+  }
+  .invoice-sheet.template-modern .md-table tfoot tr.grand td { background: none; border-radius: 0; }
+}
 .cell-input { width: 100%; background: var(--md-sys-color-surface-container-highest); color: inherit;
   border: none; border-radius: 8px; padding: 8px 10px; font: inherit; }
 .cell-input.num { text-align: right; max-width: 110px; }
@@ -1373,7 +1533,7 @@ button.m3-menu-item {
   background: var(--md-sys-color-surface-container-highest);
   color: var(--md-sys-color-on-surface-variant);
   border-radius: 12px; padding: 12px 16px; margin: 0 0 16px;
-  font-size: 13px; line-height: 1.5; }
+  font-size: 0.8125rem; line-height: 1.5; }
 .form-info svg { flex: none; width: 20px; height: 20px; margin-top: 1px; color: var(--md-sys-color-primary); }
 .form-info p { margin: 0; }
 .form-info a { color: var(--md-sys-color-primary); }
@@ -1392,7 +1552,7 @@ button.m3-menu-item {
 .changelog-release ul { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
 .public-foot { text-align: center; margin-top: 28px; }
 .public-pay { text-align: center; margin: 28px 0 8px; }
-.public-pay-btn { font-size: 17px; padding: 14px 32px; border-radius: 999px; }
+.public-pay-btn { font-size: 1.0625rem; padding: 14px 32px; border-radius: 999px; }
 
 /* Reusable M3 Expressive determinate progress bar, ported from
    homeschool-planner's dashboard (#85). The gold fill is wave-masked and
@@ -1472,28 +1632,28 @@ button.m3-menu-item {
 /* #302: internal-only notes — app surface only, never printed or shared. */
 .internal-notes { margin: 20px 0 0; padding: 14px 16px; border-radius: 12px;
   background: var(--md-sys-color-surface-container); }
-.internal-notes-label { font-size: 12px; letter-spacing: .4px; text-transform: uppercase;
+.internal-notes-label { font-size: 0.75rem; letter-spacing: .4px; text-transform: uppercase;
   color: var(--md-sys-color-on-surface-variant); margin-bottom: 6px; }
 .internal-notes p { margin: 0; white-space: pre-wrap; }
-.inv-modern-dates strong { color: #fff; }
+.inv-modern-dates strong { color: #fff; white-space: nowrap; }
 
 /* ---------------- Modern invoice template (#233) ---------------- */
 .template-modern { overflow: hidden; }
 .inv-modern-band { background: #1c1c1f; color: #fff; margin: -20px -20px 20px; padding: 28px 24px 22px;
   display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
-.inv-modern-title { font-size: 30px; line-height: 34px; font-weight: 700; letter-spacing: -0.5px; }
+.inv-modern-title { font-size: 1.875rem; line-height: 34px; font-weight: 700; letter-spacing: -0.5px; }
 .inv-modern-title::after { content: ""; display: block; width: 56px; height: 4px; border-radius: 2px;
   background: #f2c14e; margin-top: 10px; }
 .inv-modern-right { text-align: right; }
-.inv-modern-number { font-size: 17px; font-weight: 700; }
-.inv-modern-dates { color: rgba(255,255,255,.65); font-size: 13px; margin: 6px 0 12px; }
-.inv-modern-badge { display: inline-block; background: #f2c14e; color: #1c1c1f; font-size: 11px; font-weight: 700;
+.inv-modern-number { font-size: 1.0625rem; font-weight: 700; }
+.inv-modern-dates { color: rgba(255,255,255,.65); font-size: 0.8125rem; margin: 6px 0 12px; }
+.inv-modern-badge { display: inline-block; background: #f2c14e; color: #1c1c1f; font-size: 0.6875rem; font-weight: 700;
   letter-spacing: 1px; text-transform: uppercase; padding: 6px 14px; border-radius: 4px; }
 .inv-modern-badge.paid { background: #2e9e4f; color: #fff; }
 .inv-modern-parties { display: flex; gap: 40px; margin: 0 0 20px; }
-.inv-modern-label { font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+.inv-modern-label { font-size: 0.6875rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
   color: var(--md-sys-color-on-surface-variant); margin-bottom: 6px; }
-.template-modern .md-table thead th { background: #1c1c1f; color: #fff; font-weight: 700; font-size: 11px;
+.template-modern .md-table thead th { background: #1c1c1f; color: #fff; font-weight: 700; font-size: 0.6875rem;
   letter-spacing: 1.5px; text-transform: uppercase; }
 .template-modern .md-table thead th:first-child { border-radius: 8px 0 0 8px; }
 .template-modern .md-table thead th:last-child { border-radius: 0 8px 8px 0; }
@@ -1502,7 +1662,7 @@ button.m3-menu-item {
 .template-modern .md-table tbody tr + tr { border-top: none; }
 .template-modern .md-table tbody td:first-child { border-radius: 0; }
 .template-modern .md-table tbody td:last-child { border-radius: 0; }
-.template-modern .md-table tfoot tr.grand td { background: #fdf3dd; color: #1c1c1f; font-size: 18px; }
+.template-modern .md-table tfoot tr.grand td { background: #fdf3dd; color: #1c1c1f; font-size: 1.125rem; }
 .template-modern .md-table tfoot tr.grand td:first-child { border-radius: 8px 0 0 8px; }
 .template-modern .md-table tfoot tr.grand td:last-child { border-radius: 0 8px 8px 0; }
 
@@ -1512,14 +1672,44 @@ button.m3-menu-item {
 .share-label { font-weight: 500; white-space: nowrap; }
 .share-label.warn { color: var(--md-sys-color-error); }
 .share-url { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  color: var(--md-sys-color-on-surface-variant); font-size: 13px; }
+  color: var(--md-sys-color-on-surface-variant); font-size: 0.8125rem; }
+/* #502: the client link truncates with ellipsis — its full URL lives in the
+   house M3 plain tooltip (hover / focus / 450ms touch long-press via the
+   site-wide [data-tip] handler) instead of a native title. The wrapper anchors
+   the tooltip because the ellipsis span's overflow:hidden would clip it; the
+   tooltip wraps the long URL across lines instead of clipping it. */
+.share-url-wrap { flex: 1; min-width: 0; position: relative; }
+.share-url-wrap > .share-url { display: block; flex: none; }
+.share-url-wrap[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute; left: 0; top: calc(100% + 4px); /* M3: 4dp anchor gap */
+  background: var(--md-sys-color-inverse-surface);
+  color: var(--md-sys-color-inverse-on-surface);
+  border-radius: var(--md-sys-shape-corner-extra-small); /* M3 plain tooltip shape */
+  padding: 4px 8px; /* M3 plain tooltip padding */
+  font-size: 0.75rem; line-height: 16px;
+  max-width: 0; overflow: hidden; /* #556: collapse while hidden */
+  white-space: normal; overflow-wrap: anywhere;
+  opacity: 0; pointer-events: none; z-index: 30;
+  transition: opacity var(--motion-duration-short2) var(--motion-easing-standard),
+    transform var(--motion-duration-short2) var(--motion-easing-standard);
+  transform: translateY(-2px);
+}
+.share-url-wrap[data-tip]:hover::after,
+.share-url-wrap[data-tip]:focus-visible::after,
+.share-url-wrap[data-tip].tip-show::after {
+  opacity: 1; transform: translateY(0);
+  max-width: 320px; overflow: visible; /* #556 */
+}
 .share-icons { display: flex; align-items: center; gap: 2px; margin-left: auto; flex-shrink: 0; }
 .share-icons form { display: inline; margin: 0; }
 .share-icons .md-icon-button { width: 36px; height: 36px; }
 .share-icons .md-icon-button.copied { color: var(--md-sys-color-primary); }
 .share-icons .md-icon-button.danger { color: var(--md-sys-color-error); }
 .stripe-paid-chip { display: inline-block; margin-left: 8px; background: rgba(99,91,255,.18); color: #b3aeff;
-  padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 500; vertical-align: middle; }
+  padding: 4px 12px; border-radius: 999px; font-size: 0.75rem; font-weight: 500; vertical-align: middle; }
+/* #448: the bolt is an inline SVG from the icon system — size it to the chip's text. */
+.stripe-paid-chip svg { width: 14px; height: 14px; vertical-align: -2px; margin-right: 4px; }
 
 .rate-form { display: inline-flex; align-items: center; gap: 4px; margin-right: 4px; }
 
@@ -1566,9 +1756,9 @@ button.m3-menu-item {
   animation: bar-grow var(--motion-duration-medium2) var(--motion-easing-emphasized-decelerate) backwards;
 }
 @keyframes bar-grow { from { transform: scaleY(0); } }
-.rev-chart text { fill: var(--md-sys-color-on-surface-variant); font-size: 10px; }
+.rev-chart text { fill: var(--md-sys-color-on-surface-variant); font-size: 0.625rem; }
 .rev-legend { display: flex; align-items: center; gap: 8px; margin-top: 8px;
-  color: var(--md-sys-color-on-surface-variant); font-size: 12px; }
+  color: var(--md-sys-color-on-surface-variant); font-size: 0.75rem; }
 .rev-swatch { width: 12px; height: 12px; border-radius: 4px; display: inline-block; }
 .rev-swatch.paid { background: var(--md-sys-color-primary); }
 .rev-swatch.out { background: var(--md-sys-color-surface-container-highest); margin-left: 12px; }
@@ -1619,9 +1809,6 @@ button.m3-menu-item {
 }
 @keyframes skel-shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
 .skel-stack { display: flex; flex-direction: column; gap: 12px; }
-.skel-line { height: 14px; border-radius: 7px; }
-.skel-display { height: 60px; border-radius: 12px; }
-.skel-btn { height: 56px; width: 148px; border-radius: 999px; }
 .skel-row { height: 64px; border-radius: var(--md-sys-shape-corner-medium); }
 
 /* -------- calendar skeleton (#322): mirrors .cal-pane-layout so the htmx
@@ -1632,15 +1819,9 @@ button.m3-menu-item {
   grid-template-columns: minmax(0, 1fr);
   grid-template-areas: "summary" "grid";
   grid-template-rows: auto minmax(0, 1fr); row-gap: 12px; }
-.cal-skel-nav { display: flex; align-items: center; justify-content: space-between; }
-.cal-skel-title { width: 140px; height: 28px; border-radius: 8px; }
-.cal-skel-actions { display: flex; gap: 4px; }
-.cal-skel-dot { width: 40px; height: 40px; border-radius: 50%; }
-.cal-skel-aside { grid-area: summary; display: flex; flex-direction: column; gap: 12px; margin: 10px 0 12px; min-width: 0; }
-.cal-skel-big { width: 120px; height: 36px; border-radius: 10px; }
-.cal-skel-bar { height: 8px; border-radius: 4px; }
+/* (dead pre-carousel skeleton rules removed, #576) */
 .cal-skel-grid { grid-area: grid; display: grid; min-width: 0; min-height: 0;
-  grid-template-columns: 54px repeat(7, minmax(0, 1fr)); gap: 8px; }
+  grid-template-columns: 44px repeat(7, minmax(0, 1fr)); gap: 8px; }
 .cal-skel-day { display: flex; flex-direction: column; gap: 8px; min-width: 0; min-height: 0; }
 .cal-skel-head { height: 64px; flex: none; border-radius: var(--md-sys-shape-corner-medium); }
 .cal-skel-lane { flex: 1; min-height: 120px; border-radius: var(--md-sys-shape-corner-medium);
@@ -1649,10 +1830,53 @@ button.m3-menu-item {
     transparent 0, transparent 79px,
     color-mix(in srgb, var(--md-sys-color-outline-variant) 30%, transparent) 79px,
     color-mix(in srgb, var(--md-sys-color-outline-variant) 30%, transparent) 80px); }
+/* #572: week carousel — three pre-rendered week strips in an overflow-hidden
+   viewport; chevron pans translate the track one viewport (±100%) on a pure
+   transform. Each strip is a container: wide strips show the 24h grid, narrow
+   ones the week agenda. */
+.cal-carousel { grid-area: grid; overflow: hidden; min-width: 0; min-height: 0;
+  border-radius: var(--md-sys-shape-corner-large); }
+.cal-track { display: flex; height: 100%; width: 100%; transform: translateX(-100%);
+  transition: transform 260ms cubic-bezier(.2,0,0,1); }
+.cal-track.no-anim { transition: none; }
+.cal-strip { flex: 0 0 100%; min-width: 0; min-height: 0;
+  display: flex; flex-direction: column; container-type: inline-size; }
+.cal-strip > .cal-scroll { flex: 1; min-height: 0; min-width: 0; }
+/* Recycled strips repopulate in the background — no entrance replay. */
+.cal-strip.no-enter [data-enter], .cal-strip.no-enter .cal-grid .cal-day { animation: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  .cal-track { transition: none; }
+}
+/* Narrow strips: the 24h grid gives way to the week agenda. #580: the
+   breakpoint is on the strip, which the rail + margins + summary pane
+   narrow well below the viewport — 799px of container was ~1300px of
+   viewport, so ordinary laptops got the fallback. 639px keeps the grid
+   (lanes >= ~85px) on laptop widths; phones still get the agenda. */
+.cal-agenda { display: none; }
+@container (max-width: 639px) {
+  .cal-strip > .cal-scroll { display: none; }
+  .cal-agenda { display: flex; flex-direction: column; gap: 8px; flex: 1; min-height: 0;
+    overflow-y: auto; padding: 2px 2px 16px; }
+}
+/* -------- week agenda (narrow calendar strips, #572) -------- */
+.cal-ag-day { background: var(--md-sys-color-surface-container-low);
+  border-radius: var(--md-sys-shape-corner-medium); padding: 10px 12px; }
+.cal-ag-day.today { background: color-mix(in srgb, var(--md-sys-color-primary) 10%, var(--md-sys-color-surface-container-low)); }
+.cal-ag-head { display: flex; align-items: center; gap: 10px; }
+.cal-ag-num { font-size: 1.375rem; line-height: 28px; }
+.cal-ag-num.today { color: var(--md-sys-color-primary); font-weight: 700; }
+.cal-ag-row { display: flex; align-items: baseline; gap: 10px; padding: 8px 10px;
+  margin-top: 6px; border-radius: var(--md-sys-shape-corner-small);
+  background: color-mix(in srgb, var(--c, var(--md-sys-color-primary)) 24%, transparent);
+  cursor: pointer; }
+.cal-ag-row.invoiced { opacity: .55; } /* match the grid's frozen-record dim */
+.cal-ag-time { white-space: nowrap; flex: none; }
+.cal-ag-desc { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cal-ag-dur { flex: none; }
+.cal-ag-empty { margin: 6px 0 2px; }
 @media (min-width: 840px) {
   .cal-skel { grid-template-columns: minmax(0, 1fr) var(--layout-supporting-pane);
     grid-template-areas: "grid summary"; column-gap: var(--layout-pane-gap); }
-  .cal-skel-aside { margin: 8px 0 0; }
 }
 
 /* M3 press ripple (JS-driven, see motion.js). Buttons already clip with
@@ -1688,5 +1912,5 @@ button.m3-menu-item {
   background: var(--md-sys-color-error-container);
   color: var(--md-sys-color-on-error-container);
   padding: 4px 12px; border-radius: 999px;
-  font-size: 12px; font-weight: 500;
+  font-size: 0.75rem; font-weight: 500;
 }
