@@ -119,10 +119,11 @@ export function createManageViews(deps: ManageViewDeps) {
             </form>
           </li>`;
 
-  /* #367: detail body as a fragment — rate/terms/project actions swap
-     #client-detail in place instead of reloading the page. */
+  /* #367: detail body as a fragment — project actions swap
+     #client-detail in place instead of reloading the page.
+     #630: rate and payment terms moved into the client settings modal;
+     the detail pane keeps the header, projects, and deletion. */
   function clientDetailBody(sel: ClientSel): string {
-    const hxDetail = `hx-target="#client-detail" hx-swap="outerHTML"`;
     const { byClient, unassigned } = manageData();
     const isClient = sel.kind === "client";
     const c = isClient ? sel.client : null;
@@ -132,36 +133,16 @@ export function createManageViews(deps: ManageViewDeps) {
         <a class="md-text-button detail-back" href="/manage">${icon("arrow_left")}Clients</a>
       </div>
       <div class="client-detail-head">
-        ${isClient ? dot(c.color || "#f2c14e", true) : `<span class="client-dot large none" aria-hidden="true">${icon("group")}</span>`}
+        ${/* #630: cog replaces the color dot, in the same spot. */
+          isClient ? `<button class="md-icon-button client-settings-open" type="button" data-client-id="${c.id}" data-tip="Client settings" aria-label="Client settings for ${esc(c.name)}" aria-haspopup="dialog">${icon("settings")}</button>`
+          : `<span class="client-dot large none" aria-hidden="true">${icon("group")}</span>`}
         <div>
           <h2 class="md-headline-small">${isClient ? esc(c.name) : "No client"}</h2>
           <p class="muted" style="margin:4px 0 0">${isClient
             ? `${projects.length} project${projects.length === 1 ? "" : "s"}${c.rate ? ` · $${c.rate}/hr` : ""}`
             : "Projects not assigned to a client"}</p>
         </div>
-        ${/* #630: name + contact details moved into the settings modal. */
-          isClient ? `<button class="md-icon-button client-settings-open" type="button" data-client-id="${c.id}" data-tip="Client settings" aria-label="Client settings for ${esc(c.name)}" aria-haspopup="dialog">${icon("settings")}</button>` : ""}
       </div>
-      ${isClient ? `
-      <form method="post" action="/clients/${c.id}/rate" class="rate-form detail-form" hx-post="/clients/${c.id}/rate" ${hxDetail}>
-        <div class="md-text-field has-prefix has-suffix compact" style="width:104px">
-          <span class="affix prefix" aria-hidden="true">$</span>
-          <input type="number" name="rate" value="${c.rate || ""}" min="0" step="0.01" placeholder="0" aria-label="Hourly rate for ${esc(c.name)}">
-          <span class="affix suffix" aria-hidden="true">/hr</span>
-        </div>
-        <button class="md-icon-button" type="submit" data-tip="Save" aria-label="Save hourly rate for ${esc(c.name)}">${icon("save")}</button>
-      </form>
-      <form method="post" action="/clients/${c.id}/terms" class="terms-form detail-form" hx-post="/clients/${c.id}/terms" ${hxDetail}>
-        <div class="md-text-field compact" style="flex:1;min-width:120px">
-          <select name="payment_terms" class="terms-select" aria-label="Payment terms for ${esc(c.name)}">
-            <option value="" data-desc="Falls back to the global payment terms."${c.payment_terms ? "" : " selected"}>Use global terms</option>
-            ${termsOptions(c.payment_terms)}
-          </select>
-          <label>Payment terms</label>
-        </div>
-        <button class="md-icon-button" type="submit" data-tip="Save" aria-label="Save payment terms for ${esc(c.name)}">${icon("save")}</button>
-      </form>
-      <p class="terms-desc muted">${esc(termsDescription(termsKey(c.payment_terms, globalTerms())))}</p>` : ""}
       <h3 class="md-title-medium manage-subhead">Projects</h3>
       <ul class="md-list">
         ${projects.map(projectRow).join("")}
@@ -175,12 +156,12 @@ export function createManageViews(deps: ManageViewDeps) {
   }
 
   function detailPlaceholder(): string {
-    return `<div class="detail-placeholder">${icon("group")}<p class="muted">Select a client to manage its projects, rate, and payment terms.</p></div>`;
+    return `<div class="detail-placeholder">${icon("group")}<p class="muted">Select a client to manage its projects and settings.</p></div>`;
   }
 
-  /* #630: client settings form — name + contact details, lazy-loaded into
-     the settings modal. Same trimming/NULL/CRLF rules as the old inline
-     #627 contact form; the route enforces them. */
+  /* #630: client settings form — all seven editable client fields,
+     lazy-loaded into the settings modal. Same trimming/NULL/CRLF rules as
+     the old inline forms; the route enforces them. */
   function clientSettingsForm(c: any): string {
     const field = (type: string, name: string, label: string, val: string, extra = "") => `
           <div class="md-text-field">
@@ -189,6 +170,20 @@ export function createManageViews(deps: ManageViewDeps) {
           </div>`;
     return `<form method="post" action="/clients/${c.id}/settings" id="client-settings-form" class="manage-form" hx-post="/clients/${c.id}/settings" hx-swap="outerHTML">
         ${field("text", "name", "Client name", c.name || "", " required")}
+        <div class="md-text-field has-prefix has-suffix">
+          <span class="affix prefix" aria-hidden="true">$</span>
+          <input type="number" name="rate" value="${c.rate || ""}" min="0" step="0.01" placeholder=" " aria-label="Hourly rate">
+          <label>Hourly rate</label>
+          <span class="affix suffix" aria-hidden="true">/hr</span>
+        </div>
+        <div class="md-text-field">
+          <select name="payment_terms" class="terms-select" aria-label="Payment terms">
+            <option value="" data-desc="Falls back to the global payment terms."${c.payment_terms ? "" : " selected"}>Use global terms</option>
+            ${termsOptions(c.payment_terms)}
+          </select>
+          <label>Payment terms</label>
+        </div>
+        <p class="terms-desc muted">${esc(termsDescription(termsKey(c.payment_terms, globalTerms())))}</p>
         ${field("email", "email", "Email", c.email || "")}
         ${field("tel", "phone", "Phone", c.phone || "")}
         ${field("text", "website", "Website", c.website || "", ' autocapitalize="none" spellcheck="false"')}
@@ -326,12 +321,16 @@ export function createManageViews(deps: ManageViewDeps) {
           if(cog) openClientSettings(cog.getAttribute("data-client-id"));
         });
         document.body.addEventListener("htmx:afterRequest", function(e){
-          var elt=e.detail.elt;
-          if(elt && elt.id==="client-settings-form" && e.detail.successful){
+          /* #630: match the settings SAVE (POST) only — htmx 2.x reports the
+             swap container (not the form) as detail.elt for this request, and
+             the form's own GET load must not trigger the save flow. */
+          var cfg=e.detail.requestConfig||{};
+          var pi=e.detail.pathInfo||{};
+          var m=(pi.requestPath||"").match(/\\/clients\\/(\\d+)\\/settings$/);
+          if(m && e.detail.successful && (cfg.verb||"").toLowerCase()==="post"){
             if(window.tkSnackbar) window.tkSnackbar("Client settings saved");
             closeClientSettings(false);
-            var m=elt.getAttribute("action").match(/\\/clients\\/(\\d+)\\/settings/);
-            if(m) window.htmx.ajax("GET", "/manage?client=" + m[1] + "&fragment=detail",
+            window.htmx.ajax("GET", "/manage?client=" + m[1] + "&fragment=detail",
               { target: "#client-detail-pane", swap: "innerHTML" });
           }
         });

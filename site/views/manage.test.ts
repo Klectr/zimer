@@ -31,31 +31,23 @@ function pageHtml(): string {
 }
 
 describe("manage tooltips (#486)", () => {
-  test("project delete/add and rate/terms save use data-tip, not native title", () => {
+  test("project delete/add use data-tip, not native title", () => {
     const html = detailHtml();
     expect(html).toContain('data-tip="Delete"');
     expect(html).toContain('data-tip="Add project"');
-    expect(html).toContain('data-tip="Save"');
     expect(html).not.toContain('title="Delete"');
     expect(html).not.toContain('title="Add project"');
-    expect(html).not.toContain('title="Save"');
   });
 
   test("accessible names are unchanged", () => {
     const html = detailHtml();
     expect(html).toContain('aria-label="Delete project Website"');
-    expect(html).toContain('aria-label="Save hourly rate for Acme"');
-    expect(html).toContain('aria-label="Save payment terms for Acme"');
+    expect(html).toContain('aria-label="Client settings for Acme"');
   });
 
-  /* #488: the rate form's title="Hourly rate" fired the OS-native tooltip on
-     top of the Save button's data-tip bubble (two tooltips at once); the
-     color label's title="Client color" duplicated its visible "Color" text.
-     Both fields keep their accessible names. */
-  test("rate form and color label carry no redundant native title", () => {
-    const detail = detailHtml();
-    expect(detail).not.toContain('title="Hourly rate"');
-    expect(detail).toContain('aria-label="Save hourly rate for Acme"');
+  /* #488: the color label's title="Client color" duplicated its visible
+     "Color" text. The field keeps its accessible name. */
+  test("color label carries no redundant native title", () => {
     const page = pageHtml();
     expect(page).not.toContain('title="Client color"');
     expect(page).toContain('aria-label="Client color"');
@@ -71,16 +63,21 @@ describe("client settings modal (#630)", () => {
     expect(html).toContain('data-client-id="1"');
     expect(html).toContain('aria-haspopup="dialog"');
     expect(html).toContain('aria-label="Client settings for Acme"');
+    /* #630: the cog sits where the color dot was — no dot left in the header. */
+    expect(html).not.toContain("client-dot");
   });
 
-  test("detail pane drops the inline contact form", () => {
+  test("detail pane keeps only projects — no inline editable client forms", () => {
     const html = detailHtml();
     expect(html).not.toContain("Contact details");
     expect(html).not.toContain('action="/clients/1/contact"');
     expect(html).not.toContain('class="contact-form detail-form"');
-    /* rate, terms, and projects stay inline */
-    expect(html).toContain('action="/clients/1/rate"');
-    expect(html).toContain('action="/clients/1/terms"');
+    /* #630: rate and payment terms moved into the settings modal too */
+    expect(html).not.toContain('action="/clients/1/rate"');
+    expect(html).not.toContain('action="/clients/1/terms"');
+    expect(html).not.toContain('class="rate-form detail-form"');
+    expect(html).not.toContain('class="terms-form detail-form"');
+    expect(html).not.toContain('name="payment_terms"');
     expect(html).toContain("Projects");
   });
 
@@ -92,10 +89,10 @@ describe("client settings modal (#630)", () => {
     expect(html).toContain('role="dialog"');
   });
 
-  test("settings form carries name + contact fields posting to /clients/:id/settings", () => {
+  test("settings form carries all seven client fields posting to /clients/:id/settings", () => {
     const { db, client } = testDb();
-    db.query("UPDATE clients SET email = ?, phone = ?, website = ?, address = ? WHERE id = ?")
-      .run("ap@bytebot.io", "555-0100", "bytebot.io", "2643 Morningside Dr\nClearwater, FL 33759", client.id);
+    db.query("UPDATE clients SET rate = ?, payment_terms = ?, email = ?, phone = ?, website = ?, address = ? WHERE id = ?")
+      .run(45, "net_15", "ap@bytebot.io", "555-0100", "bytebot.io", "2643 Morningside Dr\nClearwater, FL 33759", client.id);
     const c = db.query("SELECT * FROM clients WHERE id = ?").get(client.id) as any;
     const views = createManageViews({ db, layout: (_t: string, b: string) => b });
     const html = views.clientSettingsForm(c);
@@ -103,6 +100,11 @@ describe("client settings modal (#630)", () => {
     expect(html).toContain(`action="/clients/${client.id}/settings"`);
     expect(html).toContain(`hx-post="/clients/${client.id}/settings"`);
     expect(html).toContain('name="name" value="Acme"');
+    expect(html).toContain('name="rate" value="45"');
+    expect(html).toContain('name="payment_terms"');
+    expect(html).toContain('<option value="" data-desc="Falls back to the global payment terms.">Use global terms</option>');
+    expect(html).toContain('<option value="net_15" data-desc="Payment is due within 15 days of the invoice date." selected>');
+    expect(html).toContain('<option value="pay_when_paid"');
     expect(html).toContain('name="email" value="ap@bytebot.io"');
     expect(html).toContain('name="phone" value="555-0100"');
     expect(html).toContain('name="website" value="bytebot.io"');
@@ -114,6 +116,8 @@ describe("client settings modal (#630)", () => {
     const views = createManageViews({ db, layout: (_t: string, b: string) => b });
     const html = views.clientSettingsForm(client);
     expect(html).toContain('name="name" value="Acme"');
+    expect(html).toContain('name="rate" value=""');
+    expect(html).toContain('<option value="" data-desc="Falls back to the global payment terms." selected>Use global terms</option>');
     expect(html).toContain('name="email" value=""');
     expect(html).toContain("></textarea>");
   });
