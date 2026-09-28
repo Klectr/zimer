@@ -483,6 +483,33 @@ input[type="number"] {
 }
 .md-text-field input:focus + label { color: var(--md-sys-color-primary); }
 .md-text-field input[type="color"] { padding: 8px 16px; height: 56px; }
+/* #627: textarea variant (client address) — same tonal treatment, auto height. */
+.md-text-field textarea {
+  width: 100%;
+  min-height: 76px;
+  padding: 22px 16px 8px;
+  background: var(--md-sys-color-surface-container-highest);
+  border: none;
+  border-radius: var(--md-sys-shape-corner-medium);
+  color: var(--md-sys-color-on-surface);
+  font-size: 1rem;
+  letter-spacing: 0.5px;
+  outline: none;
+  resize: vertical;
+  font-family: inherit;
+}
+.md-text-field textarea:focus + label,
+.md-text-field textarea:not(:placeholder-shown) + label {
+  top: 8px;
+  font-size: 0.75rem;
+  letter-spacing: 0.4px;
+}
+.md-text-field textarea:focus { background-color: var(--md-sys-color-surface-container-high); }
+.md-text-field textarea:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--md-sys-color-surface), 0 0 0 4px var(--md-sys-color-primary);
+}
+.md-text-field textarea:focus + label { color: var(--md-sys-color-primary); }
 
 /* prefix/suffix affixes (M3 text-field anatomy: prefix/suffix in on-surface-variant) */
 .md-text-field .affix {
@@ -510,7 +537,11 @@ input[type="number"] {
 .md-text-field.compact:has(label) label { top: 12px; font-size: 0.875rem; }
 .md-text-field.compact:has(label) input:focus + label,
 .md-text-field.compact:has(label) input:not(:placeholder-shown) + label,
+/* #627: the client-address textarea floats its label too. */
+.md-text-field.compact:has(label) textarea:focus + label,
+.md-text-field.compact:has(label) textarea:not(:placeholder-shown) + label,
 .md-text-field.compact:has(label):has(select) label { top: 5px; font-size: 0.6875rem; }
+.md-text-field.compact:has(label) textarea { padding-top: 18px; padding-bottom: 4px; min-height: 64px; }
 
 /* color control: tonal container with palette icon, label, and swatch */
 .md-color-control {
@@ -1258,6 +1289,10 @@ button.m3-menu-item {
 .name-form.detail-form { display: flex; align-items: center; gap: 8px; }
 .name-form.detail-form .md-text-field { flex: 1; min-width: 120px; }
 .manage-subhead { margin: 20px 4px 8px; color: var(--md-sys-color-on-surface-variant); }
+/* #627: contact-details grid in the client detail pane. */
+.contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.contact-address { grid-column: 1 / -1; }
+.contact-form .md-filled-button { margin-bottom: 4px; }
 .add-project-form { display: flex; align-items: center; gap: 8px; flex: 1 1 100%; }
 .add-project-form .md-text-field { flex: 1; min-width: 120px; }
 /* #289: per-client payment terms row — same inline form pattern. */

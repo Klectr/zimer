@@ -166,7 +166,29 @@ export function createManageViews(deps: ManageViewDeps) {
         </div>
         <button class="md-icon-button" type="submit" data-tip="Save" aria-label="Save payment terms for ${esc(c.name)}">${icon("save")}</button>
       </form>
-      <p class="terms-desc muted">${esc(termsDescription(termsKey(c.payment_terms, globalTerms())))}</p>` : ""}
+      <p class="terms-desc muted">${esc(termsDescription(termsKey(c.payment_terms, globalTerms())))}</p>
+      <h3 class="md-title-medium manage-subhead">Contact details</h3>
+      <form method="post" action="/clients/${c.id}/contact" class="contact-form detail-form" hx-post="/clients/${c.id}/contact" ${hxDetail}>
+        <div class="contact-grid">
+          <div class="md-text-field compact">
+            <input type="email" name="email" value="${esc(c.email || "")}" placeholder=" " aria-label="Client email">
+            <label>Email</label>
+          </div>
+          <div class="md-text-field compact">
+            <input type="tel" name="phone" value="${esc(c.phone || "")}" placeholder=" " aria-label="Client phone">
+            <label>Phone</label>
+          </div>
+          <div class="md-text-field compact">
+            <input type="text" name="website" value="${esc(c.website || "")}" placeholder=" " aria-label="Client website" autocapitalize="none" spellcheck="false">
+            <label>Website</label>
+          </div>
+          <div class="md-text-field compact contact-address">
+            <textarea name="address" placeholder=" " rows="2" aria-label="Client address">${esc(c.address || "")}</textarea>
+            <label>Address</label>
+          </div>
+        </div>
+        <button class="md-filled-button" type="submit">Save contact details</button>
+      </form>` : ""}
       <h3 class="md-title-medium manage-subhead">Projects</h3>
       <ul class="md-list">
         ${projects.map(projectRow).join("")}
