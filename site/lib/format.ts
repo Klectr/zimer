@@ -79,6 +79,19 @@ export function shortDateRange(from: string | null | undefined, to: string | nul
   if (!to || to === from) return shortYmd(from);
   return `${shortYmd(from)} – ${shortYmd(to)}`;
 }
+/* #582: year-aware variant of shortDateRange for the invoice detail billing
+   period — the PDF prints the year ("Aug 31 - Sep 11, 2026") and the detail
+   header should match, so a period is never ambiguous across year
+   boundaries. "Sep 1 – Sep 28, 2026"; "Dec 20, 2026 – Jan 5, 2027". */
+export function shortDateRangeYear(from: string | null | undefined, to: string | null | undefined): string {
+  if (!from) return "";
+  const y1 = from.slice(0, 4);
+  if (!to || to === from) return `${shortYmd(from)}, ${y1}`;
+  const y2 = to.slice(0, 4);
+  return y1 === y2
+    ? `${shortYmd(from)} – ${shortYmd(to)}, ${y1}`
+    : `${shortYmd(from)}, ${y1} – ${shortYmd(to)}, ${y2}`;
+}
 
 export function todayStr(): string {
   const n = new Date();

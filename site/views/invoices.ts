@@ -3,7 +3,7 @@
  *  invoiceSheet is also returned so the public-views factory can reuse it. */
 
 import type { Database, Statement } from "bun:sqlite";
-import { addDays, daysBetween, esc, fmtDur, money, round2, shortDateRange, shortYmd, termsDescription, termsKey, todayStr } from "../lib/format.ts";
+import { addDays, daysBetween, esc, fmtDur, money, round2, shortDateRange, shortDateRangeYear, shortYmd, termsDescription, termsKey, todayStr } from "../lib/format.ts";
 import { icon } from "../lib/icons.ts";
 import { getMeta } from "../db.ts";
 import { workspaceEmpty } from "../lib/demo.ts"; /* #300: empty-state CTA */
@@ -314,10 +314,12 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
        title="Marked paid automatically by a Stripe payment" restated. */
     const paidChip = inv.paid_via_stripe
       ? ` <span class="stripe-paid-chip">${icon("bolt")}<span>Paid via Stripe</span></span>` : "";
-    /* #243: billing period derives from the line-item dates. */
+    /* #243: billing period derives from the line-item dates.
+       #582: year-aware ("Sep 1 – Sep 28, 2026"), matching the PDF, so the
+       period is never ambiguous across year boundaries. */
     const froms = inv.items.map(it => it.date_from).filter(Boolean).sort() as string[];
     const tos = inv.items.map(it => it.date_to || it.date_from).filter(Boolean).sort() as string[];
-    const period = froms.length ? shortDateRange(froms[0], tos[tos.length - 1]) : "";
+    const period = froms.length ? shortDateRangeYear(froms[0], tos[tos.length - 1]) : "";
     /* #233/#239: single invoice design — dark band, badge, from/bill-to.
        Business profile comes from meta; empty profile hides the From block. */
     const bizName = getMeta(db, "business_name");
