@@ -251,13 +251,15 @@ describe("#536: line-item hidden inputs live inside a td", () => {
   });
 });
 
-/** #560: the invoice-sheet header date phrases must wrap as units on narrow
- *  screens. Before: "Issued 2026-09-27 ·" could trail the middot with "Due
- *  …" on the next line, and "Sep 21 –" split the billing-period dash. The
- *  header now mirrors the #442/#481 list-row fix: each date phrase sits in
- *  the existing .inv-date nowrap span and the middot is a leading separator,
- *  so wraps happen before a separator, never after one. */
-describe("#560: header date phrases stay together", () => {
+/** #560: the invoice-sheet date phrases must wrap as units on narrow screens.
+ *  Before: "Issued 2026-09-27 ·" could trail the middot with "Due …" on the
+ *  next line, and "Sep 21 –" split the billing-period dash. The dates line
+ *  mirrors the #442/#481 list-row fix: each date phrase sits in the existing
+ *  .inv-date nowrap span and the middot is a leading separator, so wraps
+ *  happen before a separator, never after one.
+ *  #612: the dates moved out of the header band into .inv-dates-line below
+ *  it — the nowrap treatment is unchanged, only the location moved. */
+describe("#560: date phrases stay together", () => {
   const items = [{
     description: "d", hours: 1, rate: 40, amount: 40, entry_ids: [1],
     date_from: "2026-09-21", date_to: "2026-09-26",
@@ -266,12 +268,49 @@ describe("#560: header date phrases stay together", () => {
   test("Issued and Due are nowrap spans with the middot leading", () => {
     const html = sheet();
     expect(html).toContain(`<span class="inv-date">Issued Sep 1</span>`);
-    expect(html).toContain(`<span class="inv-date">· <strong>Due Sep 30</strong></span>`);
-    // the old inline " · <strong>Due" separator is gone from the header
-    expect(html).not.toContain(" · <strong>");
+    expect(html).toContain(`<span class="inv-date"> · <strong>Due Sep 30</strong></span>`);
+    // the old format with the middot outside the span is gone
+    expect(html).not.toContain(`</span> · <strong>`);
   });
   test("billing period is one nowrap phrase", () => {
-    expect(sheet()).toContain(`Billing period: <span class="inv-date">Sep 21 – Sep 26, 2026</span>`);
+    expect(sheet()).toContain(`<span class="inv-date"> · Billing period: Sep 21 – Sep 26, 2026</span>`);
+  });
+  test("dates line sits below the band, not in the header", () => {
+    const html = sheet();
+    const bandEnd = html.indexOf(`<div class="inv-modern-parties">`);
+    expect(html.indexOf(`class="inv-dates-line`)).toBeGreaterThan(html.indexOf(`inv-modern-band`));
+    expect(html.indexOf(`class="inv-dates-line`)).toBeLessThan(bandEnd);
+    expect(html).not.toContain(`inv-modern-dates`);
+  });
+  test("#612: Bill to renders before From", () => {
+    const meta = { business_name: "Triston Armstrong", business_email: "triston@hey.com" };
+    const metaDb = {
+      query: (_sql: string) => ({
+        get: (key: string) => ({ value: meta[key as keyof typeof meta] ?? "" }),
+        all: () => [],
+        run: (..._a: unknown[]) => {},
+      }),
+    } as unknown as Database;
+    const html = createInvoiceViews({
+      db: metaDb,
+      qInvoices: { all: () => [] } as unknown as Statement,
+      layout: (_t: string, b: string) => b,
+      clientOptions: () => "",
+      getPublicToken: () => null,
+      stripeConfigured: () => false,
+      nextInvoiceNumber: () => "INV-0001",
+      invoiceTotals: (items: any[], taxRate: number) => {
+        const subtotal = items.reduce((a: number, it: any) => a + Number(it.amount || 0), 0);
+        const tax = subtotal * taxRate / 100;
+        return { subtotal, tax, total: subtotal + tax };
+      },
+      statusPill: (s: string) => `<span class="pill">${s}</span>`,
+      isOverdue: () => false,
+      unbilledByClient: () => [],
+    }).invoiceSheet({ ...detailInv("sent", null), items } as any);
+    expect(html).toContain("Bill to");
+    expect(html).toContain("From");
+    expect(html.indexOf("Bill to")).toBeLessThan(html.indexOf(">From<"));
   });
   test("no due phrase when pay-when-paid, and no period without items", () => {
     const html = views([]).invoiceSheet({ ...detailInv("sent", null), client_payment_terms: "pay_when_paid", items: [] } as any);
