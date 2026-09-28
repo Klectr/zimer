@@ -335,9 +335,10 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
        #295: pay-when-paid has no fixed due date, so the due line is suppressed. */
     const termsKey_ = termsKey(inv.client_payment_terms, getMeta(db, "business_payment_terms"));
     const terms = termsDescription(termsKey_);
-    /* #612: the issued/billing dates move out of the header band to a line
-       below it, above the table. The #560 nowrap treatment (each phrase in
-       its own .inv-date span, middot as a leading separator) carries over. */
+    /* #612: the issued/billing dates move out of the header band.
+       #615: they sit directly above the table headers, i.e. below the
+       parties row. The #560 nowrap treatment (each phrase in its own
+       .inv-date span, middot as a leading separator) carries over. */
     const datesLine = `<div class="inv-dates-line muted"><span class="inv-date">Issued ${esc(shortYmd(inv.issue_date))}</span>${inv.due_date && termsKey_ !== "pay_when_paid" ? `<span class="inv-date"> · <strong>Due ${esc(shortYmd(inv.due_date))}</strong></span>` : ""}${period ? `<span class="inv-date"> · Billing period: ${esc(period)}</span>` : ""}</div>`;
     const head = `
         <div class="inv-modern-band">
@@ -347,13 +348,13 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
             <span class="inv-modern-badge${inv.status === "paid" ? " paid" : ""}">${inv.status === "paid" ? "Paid" : "Unpaid"}</span>${paidChip}
           </div>
         </div>
-        ${datesLine}
         <div class="inv-modern-parties">
           <div><div class="inv-modern-label">Bill to</div><div><strong>${client}</strong></div></div>
           ${bizName || bizEmail ? `<div class="inv-from"><div class="inv-modern-label">From</div>
             ${bizName ? `<div><strong>${esc(bizName)}</strong></div>` : ""}
             ${bizEmail ? `<div class="muted">${esc(bizEmail)}</div>` : ""}</div>` : ""}
-        </div>`;
+        </div>
+        ${datesLine}`;
     return `<div class="md-card invoice-sheet template-modern" id="invoice-sheet">
         ${head}
         <div class="table-wrap"><table class="md-table">

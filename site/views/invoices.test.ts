@@ -275,11 +275,14 @@ describe("#560: date phrases stay together", () => {
   test("billing period is one nowrap phrase", () => {
     expect(sheet()).toContain(`<span class="inv-date"> · Billing period: Sep 21 – Sep 26, 2026</span>`);
   });
-  test("dates line sits below the band, not in the header", () => {
+  test("#615: dates line sits directly above the table, below the parties row", () => {
     const html = sheet();
-    const bandEnd = html.indexOf(`<div class="inv-modern-parties">`);
-    expect(html.indexOf(`class="inv-dates-line`)).toBeGreaterThan(html.indexOf(`inv-modern-band`));
-    expect(html.indexOf(`class="inv-dates-line`)).toBeLessThan(bandEnd);
+    const datesIdx = html.indexOf(`class="inv-dates-line`);
+    const partiesIdx = html.indexOf(`<div class="inv-modern-parties">`);
+    const tableIdx = html.indexOf(`<div class="table-wrap">`);
+    expect(datesIdx).toBeGreaterThan(-1);
+    expect(datesIdx).toBeGreaterThan(partiesIdx);
+    expect(datesIdx).toBeLessThan(tableIdx);
     expect(html).not.toContain(`inv-modern-dates`);
   });
   test("#612: Bill to renders before From", () => {

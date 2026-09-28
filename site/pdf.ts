@@ -286,16 +286,6 @@ function drawModern(inv: PdfInvoice, doc: PdfDoc) {
   statusBadge(doc, RIGHT, PAGE_H - 74, inv.status === "paid");
   doc.y = PAGE_H - bandH - 36;
 
-  /* #612: issued/billing dates sit below the band, above the table — not in
-     the header. */
-  let datesStr = `Issued ${fmtDate(inv.issueDate)}`;
-  if (inv.dueDate && !inv.hideDue) datesStr += `   |   Due ${fmtDate(inv.dueDate)}`;
-  const period = billingPeriod(inv.items);
-  doc.text(M, doc.y, 10, datesStr, false, SOFT);
-  doc.y -= 16;
-  if (period) { doc.text(M, doc.y, 10, `Billing period: ${period}`, false, SOFT); doc.y -= 16; }
-  doc.y -= 12;
-
   /* ---- bill-to (left) / from (right) ---- */
   const colsY = doc.y;
   doc.text(M, colsY, 8.5, "B I L L   T O", true, true);
@@ -316,6 +306,16 @@ function drawModern(inv: PdfInvoice, doc: PdfDoc) {
     colsBottom = Math.min(colsBottom, fy - 20);
   }
   doc.y = colsBottom;
+
+  /* #615: issued/billing dates sit directly above the table headers —
+     below the parties row, not above it. */
+  let datesStr = `Issued ${fmtDate(inv.issueDate)}`;
+  if (inv.dueDate && !inv.hideDue) datesStr += `   |   Due ${fmtDate(inv.dueDate)}`;
+  const period = billingPeriod(inv.items);
+  doc.text(M, doc.y, 10, datesStr, false, SOFT);
+  doc.y -= 16;
+  if (period) { doc.text(M, doc.y, 10, `Billing period: ${period}`, false, SOFT); doc.y -= 16; }
+  doc.y -= 12;
 
   /* ---- line-item table ---- */
   const C_DATE = M, C_DESC = 150, C_HOURS = 400, C_RATE = 480, C_AMT = RIGHT;
