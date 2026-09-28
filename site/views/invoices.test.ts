@@ -110,12 +110,12 @@ describe("paid-on date", () => {
 
   test("#442: list row keeps date phrases on one line", () => {
     const html = views([{ ...baseRow, status: "paid", paid_at: "2026-09-21" }]).invoiceListOob(7);
-    expect(html).toContain('<span class="inv-date">· issued 2026-09-01</span>');
-    expect(html).toContain('<span class="inv-date">· due 2026-09-30</span>');
+    expect(html).toContain('<span class="inv-date">· issued Sep 1</span>');
+    expect(html).toContain('<span class="inv-date">· due Sep 30</span>');
     expect(html).toContain('<span class="inv-date">· paid Sep 21</span>');
     const html2 = views([{ ...baseRow, status: "sent", paid_at: null }]).invoiceListOob(0);
-    expect(html2).toContain('<span class="inv-date">· issued 2026-09-01</span>');
-    expect(html2).toContain('<span class="inv-date">· due 2026-09-30</span>');
+    expect(html2).toContain('<span class="inv-date">· issued Sep 1</span>');
+    expect(html2).toContain('<span class="inv-date">· due Sep 30</span>');
     expect(html2).not.toContain('inv-date">· paid');
   });
 
@@ -124,7 +124,7 @@ describe("paid-on date", () => {
     const supporting = html.match(/<div class="md-list-item-supporting">([\s\S]*?)<\/div>/)?.[1] || "";
     /* The middot is a leading separator inside each nowrap span, so a wrap
        breaks before a middot, never after one — no " · " in raw text. */
-    expect(supporting).toContain('Acme <span class="inv-date">· issued 2026-09-01</span> <span class="inv-date">· due 2026-09-30</span> <span class="inv-date">· paid Sep 21</span>');
+    expect(supporting).toContain('Acme <span class="inv-date">· issued Sep 1</span> <span class="inv-date">· due Sep 30</span> <span class="inv-date">· paid Sep 21</span>');
     expect(supporting).not.toMatch(/ · </);
   });
 
@@ -257,8 +257,8 @@ describe("#560: header date phrases stay together", () => {
   const sheet = () => views([]).invoiceSheet({ ...detailInv("sent", null), items } as any);
   test("Issued and Due are nowrap spans with the middot leading", () => {
     const html = sheet();
-    expect(html).toContain(`<span class="inv-date">Issued 2026-09-01</span>`);
-    expect(html).toContain(`<span class="inv-date">· <strong>Due 2026-09-30</strong></span>`);
+    expect(html).toContain(`<span class="inv-date">Issued Sep 1</span>`);
+    expect(html).toContain(`<span class="inv-date">· <strong>Due Sep 30</strong></span>`);
     // the old inline " · <strong>Due" separator is gone from the header
     expect(html).not.toContain(" · <strong>");
   });

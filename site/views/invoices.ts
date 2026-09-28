@@ -70,7 +70,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       <a class="inv-row-hit" href="/invoices?invoice=${r.id}" aria-label="View invoice ${esc(r.number)}">
         <div class="md-list-item-content">
           <div class="md-list-item-headline">${esc(r.number)} ${statusPill(r.status)}${od ? ` <span class="attn-chip">${od}d overdue</span>` : ""}</div>
-          <div class="md-list-item-supporting">${r.client_name ? esc(r.client_name) : "<em>No client</em>"} ${seg("issued", r.issue_date)}${r.due_date ? ` ${seg("due", r.due_date)}` : ""}${r.status === "paid" && r.paid_at ? ` ${seg("paid", shortYmd(r.paid_at))}` : ""}</div>
+          <div class="md-list-item-supporting">${r.client_name ? esc(r.client_name) : "<em>No client</em>"} ${seg("issued", shortYmd(r.issue_date))}${r.due_date ? ` ${seg("due", shortYmd(r.due_date))}` : ""}${r.status === "paid" && r.paid_at ? ` ${seg("paid", shortYmd(r.paid_at))}` : ""}</div>
         </div>
         <div class="md-list-item-trailing"><span class="dur">${money(round2(r.subtotal * (1 + (r.tax_rate || 0) / 100)))}</span></div>
       </a>
@@ -340,7 +340,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
                phrase sits in the existing .inv-date nowrap span, the middot
                is a leading separator, and wraps happen before a separator,
                never after one. */ ""}
-            <div class="inv-modern-dates"><span class="inv-date">Issued ${esc(inv.issue_date)}</span>${inv.due_date && termsKey_ !== "pay_when_paid" ? ` <span class="inv-date">· <strong>Due ${esc(inv.due_date)}</strong></span>` : ""}</div>
+            <div class="inv-modern-dates"><span class="inv-date">Issued ${esc(shortYmd(inv.issue_date))}</span>${inv.due_date && termsKey_ !== "pay_when_paid" ? ` <span class="inv-date">· <strong>Due ${esc(shortYmd(inv.due_date))}</strong></span>` : ""}</div>
             ${period ? `<div class="inv-modern-dates">Billing period: <span class="inv-date">${esc(period)}</span></div>` : ""}
             <span class="inv-modern-badge${inv.status === "paid" ? " paid" : ""}">${inv.status === "paid" ? "Paid" : "Unpaid"}</span>${paidChip}
           </div>
