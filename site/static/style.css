@@ -18,6 +18,8 @@
   --md-sys-color-on-error: #690005;
   --md-sys-color-error-container: #93000a;
   --md-sys-color-on-error-container: #ffdad6;
+  --md-sys-color-success-container: #1e4d2c;
+  --md-sys-color-on-success-container: #b9efc5;
   --md-sys-color-surface: #131318;
   --md-sys-color-on-surface: #e5e1e9;
   --md-sys-color-on-surface-variant: #cac4cf;
@@ -1380,6 +1382,7 @@ button.m3-menu-item {
   font-size: 0.75rem; font-weight: 500; letter-spacing: 0.4px; vertical-align: middle; }
 .pill-draft { background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container); }
 .pill-sent { background: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container); }
+.pill-paid { background: var(--md-sys-color-success-container); color: var(--md-sys-color-on-success-container); }
 
 /* #330: "Invoiced"/"Draft" mark on timer entry rows — tonal pill, no border. */
 .inv-mark { display: inline-flex; align-items: center; height: 18px; padding: 0 8px;
