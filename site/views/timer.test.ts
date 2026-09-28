@@ -161,9 +161,9 @@ describe("running entry row live duration (#469)", () => {
   test("card tick script updates the live row with a fmtDur mirror", () => {
     const html = partial(true);
     expect(html).toContain("querySelector('#today-list [data-live-start]')");
-    // mirror of site/lib/format.ts fmtDur: "1h 02m" / "3m 24s" / "45s"
+    // mirror of site/lib/format.ts fmtDur: "1h 02m" / "3m 24s" / "3m" / "45s"
     expect(html).toContain("return h+'h '+String(m).padStart(2,'0')+'m'");
-    expect(html).toContain("return m+'m '+String(sec).padStart(2,'0')+'s'");
+    expect(html).toContain("return m+'m'+(sec>0?' '+String(sec).padStart(2,'0')+'s':'')");
     expect(html).toContain("return sec+'s'");
   });
   test("stopped card renders no live ticker", () => {
