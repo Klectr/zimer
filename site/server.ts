@@ -10,6 +10,7 @@
 
 import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
+import { invoicePdf } from "./pdf.ts";
 import { stripeConfigured, verifyWebhookSignature } from "./stripe.ts";
 import { entryToJson, csvResponse, statusPill } from "./lib/format.ts";
 import { json, html, isHtmx, publicOrigin } from "./lib/http.ts";
@@ -77,7 +78,7 @@ const { managePage, clientSelection, clientDetailBody, clientListOob, clientOpti
 const {
   invoicesPage, defaultNewInvParams, invoiceNewPage, invoiceStep2, invoiceSheet,
   invoiceDoc, invoiceDetailBody, invoiceListOob,
-  invoiceDocumentHtml, /* #301 */
+  invoiceDocumentHtml, invoicePdfInput, /* #301 */
 } = createInvoiceViews({
   db, qInvoices, layout, clientOptions,
   getPublicToken, stripeConfigured, nextInvoiceNumber, invoiceTotals, statusPill, isOverdue,
@@ -113,8 +114,8 @@ const { handleWeb } = createWebRouter({
   getInvoice, invoiceTotals,
   nextInvoiceNumber, stripeLinkFor, unbilledEntries,
   groupToLineItems, clientRestFrom, ensurePublicToken, getPublicToken, mintPublicToken,
-  stripeConfigured,
-  freezeInvoiceSnapshots, /* #301 */
+  invoicePdf, stripeConfigured,
+  invoicePdfInput, freezeInvoiceSnapshots, /* #301 */
   workspaceEmpty, demoIds, seedDemoData, removeDemoData, entryToJson,
 });
 
