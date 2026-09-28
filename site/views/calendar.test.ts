@@ -363,12 +363,26 @@ describe("calendar week-only carousel (#572)", () => {
     expect(html).toContain('aria-label="Log time Monday"');
   });
 
+  /* #592: the live aside shows the viewed week's chip; the pre-rendered strip
+     templates carry their own weeks' chips, so scope assertions to the aside. */
+  const asideOf = (html: string) =>
+    html.slice(html.indexOf('<aside class="cal-supporting"'), html.indexOf("</aside>"));
+
   test("the supporting pane stays week-scoped", () => {
     const html = viewsFor([monEntry, tueEntry]).weekInner("2026-09-20", "America/Chicago");
     // 2h monday + 1h tuesday = 3h week total, all billable
     expect(html).toContain("3h 00m");
     expect(html).toContain("Acme");
-    expect(html).toContain("Invoice this week");
+    // #592: 2026-09-20 is a past week, so the chip invoices "this period"
+    const aside = asideOf(html);
+    expect(aside).toContain("Invoice this period");
+    expect(aside).not.toContain("Invoice this week");
+  });
+
+  test("nudge chip says \"Invoice this week\" on the current week (#592)", () => {
+    const aside = asideOf(viewsFor([monEntry, tueEntry]).weekInner(undefined, "America/Chicago"));
+    expect(aside).toContain("Invoice this week");
+    expect(aside).not.toContain("Invoice this period");
   });
 
   test("weekGrid loads the week skeleton with no day param", () => {
