@@ -837,6 +837,9 @@ main.page-invoices { max-width: 760px; }
 /* #442: date phrases in list rows never split mid-date; the supporting line
    wraps at the middot separators instead. */
 .inv-date { white-space: nowrap; }
+/* #588: the list-row date phrases share one nowrap group, so a narrow pane
+   wraps between the client name and the dates — never between segments. */
+.inv-row .inv-dates { white-space: nowrap; }
 /* empty detail pane */
 .detail-placeholder { display: flex; flex-direction: column; align-items: center;
   justify-content: center; gap: 12px; padding: 64px 24px; text-align: center; min-height: 320px; }
