@@ -314,6 +314,12 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
         <td class="num inv-amount">${money(it.amount)}</td>
       </tr>`).join("");
     const client = inv.client_name ? esc(inv.client_name) : "<em>No client</em>";
+    /* #627: Bill-to block picks up the client address (multi-line) and
+       email under the name; blank when the record has none. */
+    const billToLines = [
+      ...(inv.client_address ? inv.client_address.split("\n").map(l => l.trim()).filter(Boolean) : []),
+      ...(inv.client_email ? [inv.client_email.trim()] : []),
+    ].map(l => `<div class="muted">${esc(l)}</div>`).join("");
     /* #448: bolt comes from the icon system, not an emoji — the chip is
        otherwise untouched (same spot, same styling, same label).
        #494: no native title — "Paid via Stripe" already says what the
@@ -349,7 +355,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
           </div>
         </div>
         <div class="inv-modern-parties">
-          <div><div class="inv-modern-label">Bill to</div><div><strong>${client}</strong></div></div>
+          <div><div class="inv-modern-label">Bill to</div><div><strong>${client}</strong></div>${billToLines}</div>
           ${bizName || bizEmail ? `<div class="inv-from"><div class="inv-modern-label">From</div>
             ${bizName ? `<div><strong>${esc(bizName)}</strong></div>` : ""}
             ${bizEmail ? `<div class="muted">${esc(bizEmail)}</div>` : ""}</div>` : ""}
@@ -400,6 +406,8 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       number: inv.number,
       status: inv.status,
       clientName: inv.client_name || "",
+      clientAddress: inv.client_address || undefined, /* #627 */
+      clientEmail: inv.client_email || undefined, /* #627 */
       issueDate: inv.issue_date,
       dueDate: inv.due_date,
       items: inv.items.map(it => ({

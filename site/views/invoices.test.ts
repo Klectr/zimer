@@ -354,3 +354,35 @@ describe("#621: copy-link fallback for non-secure contexts", () => {
     expect(html).toContain("navigator.clipboard.writeText(text).then(done,");
   });
 });
+
+/* #627: client contact details on the invoice Bill-to block — the address
+ * (multi-line) and email render under the client name on the HTML sheet;
+ * nothing extra renders when the record has none. */
+describe("#627: Bill-to block shows client address and email", () => {
+  const addr = ["2643 Morningside Dr", "Clearwater, FL 33759"].join("\n");
+  const sheet = (extra: object) =>
+    views([]).invoiceSheet({ ...detailInv("sent", null), items: [], ...extra } as any);
+
+  test("address lines and email appear under the client name", () => {
+    const html = sheet({ client_address: addr, client_email: "ap@bytebot.io" });
+    expect(html).toContain("<strong>Acme</strong>");
+    expect(html).toContain("2643 Morningside Dr");
+    expect(html).toContain("Clearwater, FL 33759");
+    expect(html).toContain("ap@bytebot.io");
+    // address lines come before the email
+    expect(html.indexOf("Clearwater, FL 33759")).toBeLessThan(html.indexOf("ap@bytebot.io"));
+  });
+
+  test("blank lines are skipped and values are escaped", () => {
+    const html = sheet({ client_address: ["  ", "Clearwater, FL 33759"].join("\n"), client_email: "<x@y.z>" });
+    expect(html).not.toContain("<div class=\"muted\"> </div>");
+    expect(html).toContain("Clearwater, FL 33759");
+    expect(html).toContain("&lt;x@y.z&gt;");
+  });
+
+  test("no extra lines when the client has no contact details", () => {
+    const html = sheet({ client_address: null, client_email: null });
+    expect(html).toContain("<strong>Acme</strong>");
+    expect(html).not.toContain("2643 Morningside Dr");
+  });
+});

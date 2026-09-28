@@ -99,3 +99,48 @@ describe("POST /clients/:id/name (#618)", () => {
     expect(res!.headers.get("Location")).toBe(`/manage?client=${client.id}`);
   });
 });
+
+function postContact(handleWeb: any, id: number, fields: Record<string, string>, htmx = true) {
+  const form = new FormData();
+  for (const [k, v] of Object.entries(fields)) form.append(k, v);
+  const headers: Record<string, string> = {};
+  if (htmx) headers["HX-Request"] = "true";
+  const req = new Request(`http://x/clients/${id}/contact`, { method: "POST", body: form, headers });
+  return handleWeb(req, new URL(req.url), `/clients/${id}/contact`, "POST");
+}
+
+describe("POST /clients/:id/contact (#627)", () => {
+  const full = {
+    email: " ap@bytebot.io ", phone: " 555-0100 ", website: "bytebot.io",
+    address: " 2643 Morningside Dr\nClearwater, FL 33759 ",
+  };
+  test("saves trimmed contact details and re-renders the detail pane", async () => {
+    const { db, client, handleWeb } = setup();
+    const res = await postContact(handleWeb, client.id, full);
+    expect(res!.status).toBe(200);
+    const row = db.query("SELECT email, phone, website, address FROM clients WHERE id = ?").get(client.id) as any;
+    expect(row.email).toBe("ap@bytebot.io");
+    expect(row.phone).toBe("555-0100");
+    expect(row.website).toBe("bytebot.io");
+    expect(row.address).toBe("2643 Morningside Dr\nClearwater, FL 33759");
+    const body = await res!.text();
+    expect(body).toContain('action="/clients/1/contact"'.replace("1", String(client.id)));
+    expect(body).toContain("ap@bytebot.io");
+    expect(body).toContain("2643 Morningside Dr");
+  });
+
+  test("blank fields store NULL", async () => {
+    const { db, client, handleWeb } = setup();
+    await postContact(handleWeb, client.id, { ...full, email: "   ", phone: "" });
+    const row = db.query("SELECT email, phone FROM clients WHERE id = ?").get(client.id) as any;
+    expect(row.email).toBeNull();
+    expect(row.phone).toBeNull();
+  });
+
+  test("plain POST redirects to the manage page", async () => {
+    const { client, handleWeb } = setup();
+    const res = await postContact(handleWeb, client.id, full, false);
+    expect(res!.status).toBe(302);
+    expect(res!.headers.get("Location")).toBe(`/manage?client=${client.id}`);
+  });
+});

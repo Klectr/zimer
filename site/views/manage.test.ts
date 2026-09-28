@@ -73,3 +73,28 @@ describe("client name edit (#618)", () => {
     expect(html).toContain('data-tip="Save"');
   });
 });
+
+describe("client contact details form (#627)", () => {
+  test("detail pane carries a prefilled contact form posting to /clients/:id/contact", () => {
+    const { db, client } = testDb();
+    db.query("UPDATE clients SET email = ?, phone = ?, website = ?, address = ? WHERE id = ?")
+      .run("ap@bytebot.io", "555-0100", "bytebot.io", "2643 Morningside Dr, Clearwater, FL 33759", client.id);
+    const c = db.query("SELECT * FROM clients WHERE id = ?").get(client.id) as any;
+    const views = createManageViews({ db, layout: (_t: string, b: string) => b });
+    const html = views.clientDetailBody({ kind: "client", client: c });
+    expect(html).toContain('class="contact-form detail-form"');
+    expect(html).toContain('action="/clients/1/contact"'.replace("1", String(client.id)));
+    expect(html).toContain('hx-post="/clients/1/contact"'.replace("1", String(client.id)));
+    expect(html).toContain('name="email" value="ap@bytebot.io"');
+    expect(html).toContain('name="phone" value="555-0100"');
+    expect(html).toContain('name="website" value="bytebot.io"');
+    expect(html).toContain(">2643 Morningside Dr, Clearwater, FL 33759</textarea>");
+  });
+
+  test("contact fields render empty when the record has none", () => {
+    const html = detailHtml();
+    expect(html).toContain('class="contact-form detail-form"');
+    expect(html).toContain('name="email" value=""');
+    expect(html).toContain("></textarea>");
+  });
+});

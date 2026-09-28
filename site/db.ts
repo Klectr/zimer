@@ -87,6 +87,12 @@ db.exec(`DROP TABLE IF EXISTS recurring_schedules;`);
     /* Issue #289: per-client payment terms (nullable — blank falls back to
        the global business_payment_terms meta). */
     ["clients", "payment_terms", "TEXT"],
+    /* Issue #627: client contact details — email, phone, website, address
+       (multi-line). Nullable; blank fields store NULL. */
+    ["clients", "email", "TEXT"],
+    ["clients", "phone", "TEXT"],
+    ["clients", "website", "TEXT"],
+    ["clients", "address", "TEXT"],
     ["time_entries", "invoice_id", "INTEGER REFERENCES invoices(id) ON DELETE SET NULL"],
     ["invoices", "template", "TEXT NOT NULL DEFAULT 'classic'"],
     ["invoices", "stripe_payment_link", "TEXT"],
@@ -147,7 +153,9 @@ db.exec(`DROP TABLE IF EXISTS recurring_schedules;`);
 
   const qInvoice = db.query(
     `SELECT i.*, c.name AS client_name, c.color AS client_color,
-            c.payment_terms AS client_payment_terms
+            c.payment_terms AS client_payment_terms,
+            c.email AS client_email, c.phone AS client_phone,
+            c.website AS client_website, c.address AS client_address
    FROM invoices i LEFT JOIN clients c ON c.id = i.client_id WHERE i.id = ?`);
   const qInvoiceItems = db.query("SELECT * FROM invoice_items WHERE invoice_id = ? ORDER BY id");
   const qInvoices = db.query(
