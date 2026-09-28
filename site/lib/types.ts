@@ -24,7 +24,7 @@ export type Invoice = {
   client_name: string | null; client_color: string | null;
   client_payment_terms: string | null; /* #289: per-client terms, else global */
   internal_notes: string; /* #302: internal-only, never on client surfaces */
-  pdf_snapshot: Uint8Array | null; /* #301: frozen at send, served verbatim */
+  pdf_snapshot: Uint8Array | null; /* #609: legacy, no longer written; downloads render fresh */
   html_snapshot: string | null; /* #301: frozen at send, served verbatim */
 };
 

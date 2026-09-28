@@ -84,13 +84,14 @@ const {
   getPublicToken, stripeConfigured, nextInvoiceNumber, invoiceTotals, statusPill, isOverdue,
   unbilledByClient,
 });
-/* #301: freeze the rendered document at send time (re-frozen at the paid
-   milestone for the status badge). Served verbatim afterwards. */
+/* #301: freeze the rendered HTML document at send time (re-frozen at the paid
+   milestone for the status badge). Served verbatim afterwards.
+   #609: the PDF is no longer frozen — downloads render fresh every time. */
 const freezeInvoiceSnapshots = (id: number, origin: string) => {
   const inv = getInvoice(id);
   if (!inv || inv.status === "draft") return;
-  db.query("UPDATE invoices SET pdf_snapshot = ?, html_snapshot = ? WHERE id = ?")
-    .run(invoicePdf(invoicePdfInput(inv, origin)), invoiceSheet(inv), id);
+  db.query("UPDATE invoices SET html_snapshot = ? WHERE id = ?")
+    .run(invoiceSheet(inv), id);
 };
 const { loginPage, publicInvoicePage, changelogPage, termsPage } = createPublicViews({ /* #303: +changelogPage; #341: +termsPage */
   getInvoice, invoiceTotals, invoiceDocumentHtml, ensurePublicToken,
