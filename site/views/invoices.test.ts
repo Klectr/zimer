@@ -334,3 +334,23 @@ describe("#594: Export CSV visibility", () => {
     expect(html).toContain("/export/invoices.csv");
   });
 });
+
+/** #621: the copy-client-link button must work on non-secure contexts. The
+ *  app is served over plain HTTP on the Tailscale IP, where
+ *  navigator.clipboard is undefined — the old #312 "clipboard API or
+ *  nothing" handler silently no-op'd there. The share script now falls back
+ *  to a temporary-textarea execCommand copy. */
+describe("#621: copy-link fallback for non-secure contexts", () => {
+  const html = views([], { publicToken: "tok_test" }).invoiceDetailBody(detailInv("sent", null) as any, "http://x");
+  test("share script carries an execCommand fallback", () => {
+    expect(html).toContain('document.execCommand("copy")');
+    expect(html).toContain('document.createElement("textarea")');
+    expect(html).not.toContain("clipboard API or nothing");
+  });
+  test("success feedback only fires when the copy actually worked", () => {
+    // done() (which flashes the .copied state) runs on writeText resolve
+    // or execCommand true — never unconditionally, so no fake success.
+    expect(html).toContain('if (document.execCommand("copy")) done()');
+    expect(html).toContain("navigator.clipboard.writeText(text).then(done,");
+  });
+});
