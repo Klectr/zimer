@@ -283,41 +283,39 @@ function drawModern(inv: PdfInvoice, doc: PdfDoc) {
   doc.text(titleX, PAGE_H - 62, 30, "INVOICE", true, false, WHITE);
   doc.fill(titleX, PAGE_H - 74, 72, 3.5, GOLD);
   doc.rtext(RIGHT, PAGE_H - 52, 15, inv.number, true, WHITE);
-  /* #243: the due date is bold — it must be scannable in seconds. */
-  const issuedStr = `Issued ${fmtDate(inv.issueDate)}`;
-  if (inv.dueDate && !inv.hideDue) {
-    const dueStr = `Due ${fmtDate(inv.dueDate)}`;
-    doc.rtext(RIGHT, PAGE_H - 74, 10, dueStr, true, WHITE);
-    const sep = "  |  ";
-    doc.rtext(RIGHT - numWidth(dueStr, 10) - numWidth(sep, 10) - 2, PAGE_H - 74, 10, issuedStr + sep, false, SOFT);
-  } else {
-    doc.rtext(RIGHT, PAGE_H - 74, 10, issuedStr, false, SOFT);
-  }
-  /* #243: billing period derives from the line-item dates. */
-  const period = billingPeriod(inv.items);
-  if (period) doc.rtext(RIGHT, PAGE_H - 90, 10, `Billing period: ${period}`, false, SOFT);
-  statusBadge(doc, RIGHT, PAGE_H - 108, inv.status === "paid");
+  statusBadge(doc, RIGHT, PAGE_H - 74, inv.status === "paid");
   doc.y = PAGE_H - bandH - 36;
 
-  /* ---- from / bill-to ---- */
+  /* #612: issued/billing dates sit below the band, above the table — not in
+     the header. */
+  let datesStr = `Issued ${fmtDate(inv.issueDate)}`;
+  if (inv.dueDate && !inv.hideDue) datesStr += `   |   Due ${fmtDate(inv.dueDate)}`;
+  const period = billingPeriod(inv.items);
+  doc.text(M, doc.y, 10, datesStr, false, SOFT);
+  doc.y -= 16;
+  if (period) { doc.text(M, doc.y, 10, `Billing period: ${period}`, false, SOFT); doc.y -= 16; }
+  doc.y -= 12;
+
+  /* ---- bill-to (left) / from (right) ---- */
+  const colsY = doc.y;
+  doc.text(M, colsY, 8.5, "B I L L   T O", true, true);
+  doc.text(M, colsY - 17, 13, inv.clientName || "-", true);
+  let colsBottom = colsY - 17 - 32;
   const hasFrom = inv.fromName || inv.fromEmail || inv.fromAddress;
   if (hasFrom) {
-    doc.text(M, doc.y, 8.5, "F R O M", true, true);
-    doc.y -= 17;
-    if (inv.fromName) { doc.text(M, doc.y, 12, inv.fromName, true); doc.y -= 16; }
-    if (inv.fromEmail) { doc.text(M, doc.y, 10, inv.fromEmail, false, true); doc.y -= 15; }
+    let fy = colsY;
+    doc.rtext(RIGHT, fy, 8.5, "F R O M", true, true); fy -= 17;
+    if (inv.fromName) { doc.rtext(RIGHT, fy, 12, inv.fromName, true); fy -= 16; }
+    if (inv.fromEmail) { doc.rtext(RIGHT, fy, 10, inv.fromEmail, false, true); fy -= 15; }
     if (inv.fromAddress) {
       for (const line of inv.fromAddress.split("\n").slice(0, 3)) {
         if (!line.trim()) continue;
-        doc.text(M, doc.y, 10, line.trim(), false, true); doc.y -= 15;
+        doc.rtext(RIGHT, fy, 10, line.trim(), false, true); fy -= 15;
       }
     }
-    doc.y -= 20;
+    colsBottom = Math.min(colsBottom, fy - 20);
   }
-  doc.text(M, doc.y, 8.5, "B I L L   T O", true, true);
-  doc.y -= 17;
-  doc.text(M, doc.y, 13, inv.clientName || "-", true);
-  doc.y -= 32;
+  doc.y = colsBottom;
 
   /* ---- line-item table ---- */
   const C_DATE = M, C_DESC = 150, C_HOURS = 400, C_RATE = 480, C_AMT = RIGHT;
