@@ -27,6 +27,8 @@ export type PdfInvoice = {
   number: string;
   status: string;
   clientName: string;
+  clientAddress?: string; // #627: multi-line, rendered under the name
+  clientEmail?: string; // #627: rendered under the address
   issueDate: string; // YYYY-MM-DD
   dueDate: string | null; // YYYY-MM-DD
   hideDue?: boolean; // #295: pay-when-paid has no fixed due date — suppress the due line
@@ -281,7 +283,14 @@ function drawModern(inv: PdfInvoice, doc: PdfDoc) {
   const colsY = doc.y;
   doc.text(M, colsY, 8.5, "B I L L   T O", true, true);
   doc.text(M, colsY - 17, 13, inv.clientName || "-", true);
-  let colsBottom = colsY - 17 - 32;
+  /* #627: client address (multi-line) + email under the name. */
+  let billY = colsY - 17 - 16;
+  const billLines = [
+    ...(inv.clientAddress ? inv.clientAddress.split("\n").map(l => l.trim()).filter(Boolean) : []),
+    ...(inv.clientEmail ? [inv.clientEmail.trim()] : []),
+  ].slice(0, 4);
+  for (const line of billLines) { doc.text(M, billY, 10, line, false, true); billY -= 15; }
+  let colsBottom = billY - 17;
   const hasFrom = inv.fromName || inv.fromEmail || inv.fromAddress;
   if (hasFrom) {
     let fy = colsY;

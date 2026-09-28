@@ -485,6 +485,21 @@ export function createWebRouter(deps: WebDeps) {
           if (isHtmx(req)) return html(sel ? clientDetailBody(sel) + clientListOob(sel) : clientListOob(null));
           return new Response(null, { status: 302, headers: { Location: `/manage?client=${m[1]}` } });
         }
+        /* #627: client contact details — email, phone, website, address.
+           Trimmed; blanks store NULL. Textarea newlines arrive as CRLF
+           (multipart normalization) — store plain LF. */
+        m = path.match(/^\/clients\/(\d+)\/contact$/);
+        if (m && method === "POST") {
+          const form = await req.formData();
+          const clean = (v: unknown) => { const s = String(v || "").trim(); return s || null; };
+          const addr = clean(form.get("address"));
+          db.query("UPDATE clients SET email = ?, phone = ?, website = ?, address = ? WHERE id = ?")
+            .run(clean(form.get("email")), clean(form.get("phone")),
+                 clean(form.get("website")), addr && addr.replace(/\r\n/g, "\n"), Number(m[1]));
+          const sel = clientSelection(m[1]); /* #367: re-render the detail pane + OOB list */
+          if (isHtmx(req)) return html(sel ? clientDetailBody(sel) + clientListOob(sel) : clientListOob(null));
+          return new Response(null, { status: 302, headers: { Location: `/manage?client=${m[1]}` } });
+        }
         m = path.match(/^\/clients\/(\d+)\/delete$/);
         if (m && method === "POST") {
           /* FK actions in the schema are not enforced (no PRAGMA foreign_keys):
