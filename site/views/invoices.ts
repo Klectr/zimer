@@ -434,24 +434,40 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
        actions at the end, rendered after the invoice. The copy handler is
        delegated and id-free so htmx swaps stay safe. */
     const copyScript = `<script>(function(){
-      /* #312: clipboard API or nothing. No execCommand fallback — if the
-         platform can't copy (e.g. non-secure context), the button stays
-         silent instead of faking success. */
+      /* #621: the Clipboard API only exists in secure contexts, but the app
+         is served over plain HTTP on the Tailscale IP — so fall back to the
+         legacy execCommand path there instead of silently doing nothing. */
+      function copyText(text, done){
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(done, function(){ legacyCopy(text, done); });
+        } else {
+          legacyCopy(text, done);
+        }
+      }
+      function legacyCopy(text, done){
+        var ta = document.createElement(\"textarea\");
+        ta.value = text;
+        ta.setAttribute(\"readonly\", \"\");
+        ta.style.position = \"fixed\";
+        ta.style.opacity = \"0\";
+        document.body.appendChild(ta);
+        ta.select();
+        try { if (document.execCommand(\"copy\")) done(); } catch (e) { /* keep it honest: no fake success */ }
+        document.body.removeChild(ta);
+      }
       function wire(sec){
         if (sec.dataset.copyWired) return;
-        sec.dataset.copyWired = "1";
-        sec.addEventListener("click", function(ev){
-          var btn = ev.target.closest("[data-copy]");
+        sec.dataset.copyWired = \"1\";
+        sec.addEventListener(\"click\", function(ev){
+          var btn = ev.target.closest(\"[data-copy]\");
           if (!btn || !btn.dataset.url) return;
-          if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(btn.dataset.url).then(function(){
-              btn.classList.add("copied");
-              setTimeout(function(){ btn.classList.remove("copied"); }, 1200);
-            }, function(){ /* copy failed: do nothing */ });
-          }
+          copyText(btn.dataset.url, function(){
+            btn.classList.add(\"copied\");
+            setTimeout(function(){ btn.classList.remove(\"copied\"); }, 1200);
+          });
         });
       }
-      document.querySelectorAll(".share-lines").forEach(wire);
+      document.querySelectorAll(\".share-lines\").forEach(wire);
     })();</script>`;
     const copyBtn = (url: string) => `
       <button class="md-icon-button" type="button" data-copy data-url="${esc(url)}" data-tip="Copy link" aria-label="Copy link">${icon("copy")}</button>`;
