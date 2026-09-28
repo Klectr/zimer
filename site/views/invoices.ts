@@ -116,7 +116,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       <div class="page-head" data-enter="2">
         <h2 class="md-headline-small">Invoices</h2>
         <div class="page-head-actions">
-          <a class="md-text-button" href="/export/invoices.csv" download>${icon("download")}Export CSV</a>
+          ${rows.length ? `<a class="md-text-button" href="/export/invoices.csv" download>${icon("download")}Export CSV</a>` : ""}
           <a class="md-filled-button" href="/invoices/new">${icon("add")}New invoice</a>
         </div>
       </div>`;
