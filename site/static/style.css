@@ -1640,18 +1640,23 @@ button.m3-menu-item {
 .internal-notes-label { font-size: 0.75rem; letter-spacing: .4px; text-transform: uppercase;
   color: var(--md-sys-color-on-surface-variant); margin-bottom: 6px; }
 .internal-notes p { margin: 0; white-space: pre-wrap; }
-.inv-modern-dates strong { color: #fff; white-space: nowrap; }
 
 /* ---------------- Modern invoice template (#233) ---------------- */
 .template-modern { overflow: hidden; }
-.inv-modern-band { background: #1c1c1f; color: #fff; margin: -20px -20px 20px; padding: 28px 24px 22px;
+.inv-modern-band { background: #1c1c1f; color: #fff; margin: -20px -20px 20px; padding: 28px 20px 22px;
   display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+/* #612: 20px side padding matches the sheet padding, so the title left-aligns
+   with the body content below. */
 .inv-modern-title { font-size: 1.875rem; line-height: 34px; font-weight: 700; letter-spacing: -0.5px; }
 .inv-modern-title::after { content: ""; display: block; width: 56px; height: 4px; border-radius: 2px;
   background: #f2c14e; margin-top: 10px; }
 .inv-modern-right { text-align: right; }
 .inv-modern-number { font-size: 1.0625rem; font-weight: 700; }
-.inv-modern-dates { color: rgba(255,255,255,.65); font-size: 0.8125rem; margin: 6px 0 12px; }
+.inv-modern-right .inv-modern-badge { margin-top: 12px; }
+/* #612: issued/billing dates sit below the band, above the table. */
+.inv-dates-line { font-size: 0.8125rem; margin: 0 0 16px; }
+/* #612: Bill to left, From right. */
+.inv-from { margin-left: auto; text-align: right; }
 .inv-modern-badge { display: inline-block; background: #f2c14e; color: #1c1c1f; font-size: 0.6875rem; font-weight: 700;
   letter-spacing: 1px; text-transform: uppercase; padding: 6px 14px; border-radius: 4px; }
 .inv-modern-badge.paid { background: #2e9e4f; color: #fff; }
