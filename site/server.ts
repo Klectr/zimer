@@ -10,7 +10,6 @@
 
 import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
-import { invoicePdf } from "./pdf.ts";
 import { stripeConfigured, verifyWebhookSignature } from "./stripe.ts";
 import { entryToJson, csvResponse, statusPill } from "./lib/format.ts";
 import { json, html, isHtmx, publicOrigin } from "./lib/http.ts";
@@ -78,19 +77,20 @@ const { managePage, clientSelection, clientDetailBody, clientListOob, clientOpti
 const {
   invoicesPage, defaultNewInvParams, invoiceNewPage, invoiceStep2, invoiceSheet,
   invoiceDoc, invoiceDetailBody, invoiceListOob,
-  invoiceDocumentHtml, invoicePdfInput, /* #301 */
+  invoiceDocumentHtml, /* #301 */
 } = createInvoiceViews({
   db, qInvoices, layout, clientOptions,
   getPublicToken, stripeConfigured, nextInvoiceNumber, invoiceTotals, statusPill, isOverdue,
   unbilledByClient,
 });
-/* #301: freeze the rendered document at send time (re-frozen at the paid
-   milestone for the status badge). Served verbatim afterwards. */
+/* #301: freeze the rendered HTML document at send time (re-frozen at the paid
+   milestone for the status badge). Served verbatim afterwards.
+   #609: the PDF is no longer frozen — downloads render fresh every time. */
 const freezeInvoiceSnapshots = (id: number, origin: string) => {
   const inv = getInvoice(id);
   if (!inv || inv.status === "draft") return;
-  db.query("UPDATE invoices SET pdf_snapshot = ?, html_snapshot = ? WHERE id = ?")
-    .run(invoicePdf(invoicePdfInput(inv, origin)), invoiceSheet(inv), id);
+  db.query("UPDATE invoices SET html_snapshot = ? WHERE id = ?")
+    .run(invoiceSheet(inv), id);
 };
 const { loginPage, publicInvoicePage, changelogPage, termsPage } = createPublicViews({ /* #303: +changelogPage; #341: +termsPage */
   getInvoice, invoiceTotals, invoiceDocumentHtml, ensurePublicToken,
@@ -113,8 +113,8 @@ const { handleWeb } = createWebRouter({
   getInvoice, invoiceTotals,
   nextInvoiceNumber, stripeLinkFor, unbilledEntries,
   groupToLineItems, clientRestFrom, ensurePublicToken, getPublicToken, mintPublicToken,
-  invoicePdf, stripeConfigured,
-  invoicePdfInput, freezeInvoiceSnapshots, /* #301 */
+  stripeConfigured,
+  freezeInvoiceSnapshots, /* #301 */
   workspaceEmpty, demoIds, seedDemoData, removeDemoData, entryToJson,
 });
 
