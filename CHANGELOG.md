@@ -2,6 +2,13 @@
 
 What's new in Timekeep, newest first.
 
+## 2026-09-28
+
+- **Invoice sheet cleanup.** Header layout reworked — title alignment, parties order, dates placement; the dates line now sits directly above the table, and the redundant "Billing period:" line is gone from the PDF (the per-row Date column already states it).
+- **Client contact details.** Clients can carry email, phone, website, and a multi-line address — address and email show in the invoice Bill-to block, on screen and on the PDF.
+- **Client settings in one dialog.** Renaming a client and editing all its details moved into a cog-opened settings dialog on the Manage page; the cog sits at the right end of the detail header.
+- **Copy link works everywhere.** The copy-client-link button now falls back cleanly on non-secure origins (like the Tailscale URL) instead of doing nothing.
+
 ## 2026-09-25
 
 - **Repeat an entry.** Restart any finished entry from the Today list with one tap — description and project come along.
