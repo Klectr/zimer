@@ -132,16 +132,18 @@ export function createManageViews(deps: ManageViewDeps) {
       <div class="page-head no-print">
         <a class="md-text-button detail-back" href="/manage">${icon("arrow_left")}Clients</a>
       </div>
-      <div class="client-detail-head">
-        ${/* #630: cog replaces the color dot, in the same spot. */
-          isClient ? `<button class="md-icon-button client-settings-open" type="button" data-client-id="${c.id}" data-tip="Client settings" aria-label="Client settings for ${esc(c.name)}" aria-haspopup="dialog">${icon("settings")}</button>`
-          : `<span class="client-dot large none" aria-hidden="true">${icon("group")}</span>`}
-        <div>
-          <h2 class="md-headline-small">${isClient ? esc(c.name) : "No client"}</h2>
-          <p class="muted" style="margin:4px 0 0">${isClient
-            ? `${projects.length} project${projects.length === 1 ? "" : "s"}${c.rate ? ` · $${c.rate}/hr` : ""}`
-            : "Projects not assigned to a client"}</p>
+      <div class="client-detail-head${isClient ? " has-settings" : ""}">
+        ${isClient
+          ? `<div>
+          <h2 class="md-headline-small">${esc(c.name)}</h2>
+          <p class="muted" style="margin:4px 0 0">${projects.length} project${projects.length === 1 ? "" : "s"}${c.rate ? ` · $${c.rate}/hr` : ""}</p>
         </div>
+        <button class="md-icon-button client-settings-open" type="button" data-client-id="${c.id}" data-tip="Client settings" aria-label="Client settings for ${esc(c.name)}" aria-haspopup="dialog">${icon("settings")}</button>`
+          : `<span class="client-dot large none" aria-hidden="true">${icon("group")}</span>
+        <div>
+          <h2 class="md-headline-small">No client</h2>
+          <p class="muted" style="margin:4px 0 0">Projects not assigned to a client</p>
+        </div>`}
       </div>
       <h3 class="md-title-medium manage-subhead">Projects</h3>
       <ul class="md-list">
