@@ -663,16 +663,10 @@ export function createWebRouter(deps: WebDeps) {
         if (m && method === "GET") {
           const inv = getInvoice(Number(m[1]));
           if (!inv) return html(notFoundPage(authedPage(req, TOKEN)), 404);
-          /* #301: sent/paid invoices serve the frozen snapshot; drafts render
-             live. Pre-snapshot invoices lazy-freeze on first download. */
-          let pdf = inv.pdf_snapshot;
-          if (!pdf) {
-            pdf = invoicePdf(invoicePdfInput(inv, shareOrigin(req)));
-            if (inv.status !== "draft") {
-              db.query("UPDATE invoices SET pdf_snapshot = ? WHERE id = ? AND pdf_snapshot IS NULL")
-                .run(pdf, inv.id);
-            }
-          }
+          /* #609: the download button always generates a fresh PDF from the
+             current invoice data. Any stored snapshot is deleted, not served. */
+          const pdf = invoicePdf(invoicePdfInput(inv, shareOrigin(req)));
+          db.query("UPDATE invoices SET pdf_snapshot = NULL WHERE id = ?").run(inv.id);
           const filename = inv.number.replace(/[^A-Za-z0-9._-]+/g, "_") + ".pdf";
           return new Response(pdf, {
             headers: {
