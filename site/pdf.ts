@@ -93,15 +93,6 @@ function fmtDateShort(ymd: string): string {
   if (!y || !m || !d) return ymd;
   return `${MONTHS[m - 1]} ${d}`;
 }
-/** #243: billing period derived from the line-item dates, e.g.
-    "Aug 31 - Sep 11, 2026"; "" when no line carries dates. */
-function billingPeriod(items: PdfLineItem[]): string {
-  const froms = items.map(i => i.dateFrom).filter(Boolean).sort() as string[];
-  if (!froms.length) return "";
-  const tos = items.map(i => i.dateTo || i.dateFrom).filter(Boolean).sort() as string[];
-  const from = froms[0], to = tos[tos.length - 1];
-  return from === to ? fmtDate(from) : `${fmtDateShort(from)} - ${fmtDate(to)}`;
-}
 /** #243: per-line date cell — "Sep 11" or "Aug 31-Sep 11". */
 function lineDate(it: PdfLineItem): string {
   if (!it.dateFrom) return "";
@@ -308,14 +299,13 @@ function drawModern(inv: PdfInvoice, doc: PdfDoc) {
   doc.y = colsBottom;
 
   /* #615: issued/billing dates sit directly above the table headers —
-     below the parties row, not above it. */
+     below the parties row, not above it.
+     #624: no Billing period summary line — the table's per-line Date
+     column already states it. */
   let datesStr = `Issued ${fmtDate(inv.issueDate)}`;
   if (inv.dueDate && !inv.hideDue) datesStr += `   |   Due ${fmtDate(inv.dueDate)}`;
-  const period = billingPeriod(inv.items);
   doc.text(M, doc.y, 10, datesStr, false, SOFT);
-  doc.y -= 16;
-  if (period) { doc.text(M, doc.y, 10, `Billing period: ${period}`, false, SOFT); doc.y -= 16; }
-  doc.y -= 12;
+  doc.y -= 28;
 
   /* ---- line-item table ---- */
   const C_DATE = M, C_DESC = 150, C_HOURS = 400, C_RATE = 480, C_AMT = RIGHT;
