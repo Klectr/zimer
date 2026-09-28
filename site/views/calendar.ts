@@ -309,7 +309,10 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       const trend = pct > 0 ? "trend_up" : pct < 0 ? "trend_down" : "trend_flat";
       const dirWord = pct > 0 ? "up" : pct < 0 ? "down" : "unchanged";
       const abs = Math.abs(pct);
-      return ` · <span class="muted cal-delta" aria-label="${abs}% ${dirWord} vs prev week">${icon(trend)} ${abs}% vs prev week</span>`;
+      /* #590: the direction word belongs in the VISIBLE text, not just the
+         icon and the aria-label — "100% vs prev week" reads ambiguous at a
+         glance (100% of what, which direction?). */
+      return ` · <span class="muted cal-delta" aria-label="${abs}% ${dirWord} vs prev week">${icon(trend)} ${abs}% ${dirWord} vs prev week</span>`;
     })();
     return `
       <div class="week-nav">

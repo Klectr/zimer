@@ -458,6 +458,18 @@ describe("week summary delta (#524)", () => {
     expect(s).toContain('aria-label="0% unchanged vs prev week"');
     expect(s).toContain("M4 12h16"); /* trend_flat path */
   });
+
+  /** #590: the direction word must appear in the VISIBLE delta text (after
+   *  the closing svg), not only in the aria-label — "100% vs prev week"
+   *  alone reads ambiguous at a glance. */
+  test("direction word is visible text, not label-only", () => {
+    const up = summaryHtml([{ ...entry, start_time: "2026-09-14T15:00:00.000Z", end_time: "2026-09-14T15:30:00.000Z" }]);
+    expect(up).toMatch(/<\/svg>\s*100% up vs prev week</);
+    /* current week is the fixed 1h entry above; a 2h previous week gives
+       a -50% delta, i.e. the down case. */
+    const down = summaryHtml([{ ...entry, start_time: "2026-09-14T15:00:00.000Z", end_time: "2026-09-14T17:00:00.000Z" }]);
+    expect(down).toMatch(/<\/svg>\s*50% down vs prev week</);
+  });
 });
 
 /** #530: entry cards are tabindex="0" role="button" — Enter/Space must
