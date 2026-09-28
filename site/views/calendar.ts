@@ -287,7 +287,10 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     const nudgeChip = uninvoiced > 0 ? `
       <a class="nudge-chip" href="/invoices/new?from=${sun}&to=${addDays(sun, 7)}">
         <span class="md-label-large">${fmtDur(uninvoiced)} not yet invoiced</span>
-        <span class="md-label-large nudge-go">${icon("receipt")} Invoice this week</span>
+        ${/* #592: the link invoices the VIEWED week, so "this week" lies on
+           past/future weeks. Keep it on the current week, "this period"
+           everywhere else. */ ""}
+        <span class="md-label-large nudge-go">${icon("receipt")} ${isThisWeek ? "Invoice this week" : "Invoice this period"}</span>
       </a>` : "";
     const clientStrip = clientRows.length === 0 ? "" : `
       <div class="week-clients">
