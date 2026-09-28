@@ -61,3 +61,15 @@ describe("manage tooltips (#486)", () => {
     expect(page).toContain('aria-label="Client color"');
   });
 });
+
+describe("client name edit (#618)", () => {
+  test("detail pane carries a prefilled name form posting to /clients/:id/name", () => {
+    const html = detailHtml();
+    expect(html).toContain('class="name-form detail-form"');
+    expect(html).toContain('action="/clients/1/name"');
+    expect(html).toContain('hx-post="/clients/1/name"');
+    expect(html).toContain('name="name" value="Acme"');
+    expect(html).toContain('aria-label="Save client name"');
+    expect(html).toContain('data-tip="Save"');
+  });
+});

@@ -1254,6 +1254,9 @@ button.m3-menu-item {
 /* #367: rate field + save sit inline in the detail pane (they used to ride
    the old list row's flex container). The timer page's .rate-form is separate. */
 .rate-form.detail-form { display: flex; align-items: center; gap: 8px; }
+/* #618: client name row — same inline form pattern. */
+.name-form.detail-form { display: flex; align-items: center; gap: 8px; }
+.name-form.detail-form .md-text-field { flex: 1; min-width: 120px; }
 .manage-subhead { margin: 20px 4px 8px; color: var(--md-sys-color-on-surface-variant); }
 .add-project-form { display: flex; align-items: center; gap: 8px; flex: 1 1 100%; }
 .add-project-form .md-text-field { flex: 1; min-width: 120px; }
