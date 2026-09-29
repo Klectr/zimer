@@ -386,3 +386,21 @@ describe("#627: Bill-to block shows client address and email", () => {
     expect(html).not.toContain("2643 Morningside Dr");
   });
 });
+
+/** #639: paid invoice PDFs drop the PAY ONLINE link — nothing left to pay,
+ *  and a stale payment instruction risks confusion or a double payment. */
+describe("#639: PDF input omits payUrl once paid", () => {
+  const input = (status: string) => views([]).invoicePdfInput({
+    ...detailInv(status, status === "paid" ? "2026-09-25" : null),
+    client_address: null, client_email: null,
+    public_token: "tok123",
+  } as any, "https://example.com");
+
+  test("sent invoice keeps the public URL", () => {
+    expect(input("sent").payUrl).toBe("https://example.com/i/tok123");
+  });
+
+  test("paid invoice drops the public URL", () => {
+    expect(input("paid").payUrl).toBeUndefined();
+  });
+});
