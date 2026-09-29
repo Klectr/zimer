@@ -14,6 +14,8 @@ What's new in Timekeep, newest first.
 - **Top bar actions, out in the open.** Settings, Export CSV, Download backup, and Log out moved from the hidden account menu to icon buttons on the right side of the top app bar.
 - **Public invoices fit phones.** On small screens the dates stack vertically and each line item gets breathing room — the date on its own row, hours × rate next to the amount.
 - **Tooltips stay in the column.** Calendar entry tooltips now anchor to the day-column edge instead of clipping off the first and last day columns.
+- **Calendar clicks work again.** Clicking an empty calendar slot now opens the create-entry dialog — a regression had left clicks doing nothing.
+- **Invoice date separators restored.** The middots between Issued, Due, and Billing period lost their spacing on desktop (and stacked as stray rows on phones); they're back.
 
 ## 2026-09-28
 
