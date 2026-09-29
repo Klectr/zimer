@@ -2,6 +2,16 @@
 
 What's new in Timekeep, newest first.
 
+## 2026-09-29
+
+- **Client links moved to invoice.klectr.dev.** The public invoice hostname changed — new client links use the new address, and old tristonarmstrong.com links keep working.
+- **Online payments now reliably mark invoices paid.** The Stripe webhook verifies signatures and matches payments by payment-link ID instead of fragile metadata, so paying through the client's Pay button flips the invoice to paid.
+- **Invoice detail starts at the top.** Switching invoices resets the detail pane's scroll position instead of leaving you wherever the last invoice was scrolled.
+- **No more phantom scroll space.** Invoices with a client link had ~900px of invisible dead scroll area below the content, caused by the link's hover tooltip; the scroll area now ends where the content ends.
+- **Paid PDFs drop the PAY ONLINE line.** Once an invoice is paid, the PDF no longer includes the pay-online prompt.
+- **From email placement.** On the invoice PDF, the sender email now sits below the business address instead of above it.
+- **Autotracker dedupes rules.** Saving an autotracker rule under an existing name updates it instead of creating a duplicate.
+
 ## 2026-09-28
 
 - **Invoice sheet cleanup.** Header layout reworked — title alignment, parties order, dates placement; the dates line now sits directly above the table, and the redundant "Billing period:" line is gone from the PDF (the per-row Date column already states it).
