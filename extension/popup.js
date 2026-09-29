@@ -1,4 +1,6 @@
 /* Timekeep extension popup — vanilla JS, no build step. */
+import { matchRule, upsertRule } from "./rules.js";
+
 const $ = (id) => document.getElementById(id);
 
 let siteUrl = "";
@@ -78,13 +80,9 @@ async function loadProjects() {
   } catch { /* leave the empty default */ }
 }
 
-/* Milestone 15: autotracker — rule-based project suggestions. Rules live in
-   chrome.storage.sync as [{id, pattern, projectId, projectName}]. Matching is a
-   pure function so it can be unit-tested outside the browser. */
-function matchRule(rules, title, url) {
-  const hay = `${title || ""} ${url || ""}`.toLowerCase();
-  return (rules || []).find((r) => r.pattern && hay.includes(String(r.pattern).toLowerCase())) || null;
-}
+/* Milestone 15: autotracker — rules live in chrome.storage.sync as
+   [{id, pattern, projectId, projectName}]. Matching is the pure matchRule()
+   in rules.js, unit-tested outside the browser. */
 async function getRules() {
   const s = await chrome.storage.sync.get(["rules"]);
   return Array.isArray(s.rules) ? s.rules : [];
@@ -211,10 +209,12 @@ $("btn-add-rule").addEventListener("click", async () => {
   const projects = await api("/api/projects").catch(() => []);
   const p = projects.find((x) => String(x.id) === String(projectId));
   const rules = await getRules();
-  rules.push({ id: "r" + Date.now().toString(36), pattern, projectId: Number(projectId),
-               projectName: p ? p.name : "" });
+  /* #641: a pattern that already has a rule updates that rule's project
+     instead of stacking a dead duplicate the matcher would never reach. */
+  const { updated } = upsertRule(rules, pattern, projectId, p ? p.name : "");
   await saveRules(rules);
   $("rule-pattern").value = "";
+  if (updated) $("rules-error").textContent = "That pattern already has a rule — updated it instead of adding a duplicate.";
   await renderRules();
 });
 
