@@ -535,8 +535,9 @@ export function createCalendarViews(deps: CalendarViewDeps) {
           </div>
         </div>
       </div>
-      ${calDialog()}
-      <script>${calScript()}</script>
+    </div>
+    ${calDialog()}
+    <script>${calScript()}</script>
   `;
   }
 
