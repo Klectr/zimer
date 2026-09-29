@@ -404,3 +404,14 @@ describe("#639: PDF input omits payUrl once paid", () => {
     expect(input("paid").payUrl).toBeUndefined();
   });
 });
+
+/** #643: switching invoices while scrolled down left the new detail rendered
+ *  mid-sheet — the innerHTML fragment swap preserves the pane's scrollTop.
+ *  The row-click swap spec must reset the detail pane to the top so every
+ *  invoice opens on its header band. */
+describe("#643: detail pane scrolls to top on invoice switch", () => {
+  test("fragment swap spec includes scroll:top", () => {
+    const html = views([{ ...baseRow, status: "sent", paid_at: null }]).invoicesPage(null, "http://x");
+    expect(html).toContain('swap: "innerHTML scroll:top"');
+  });
+});
