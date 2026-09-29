@@ -11,6 +11,9 @@ What's new in Timekeep, newest first.
 - **Paid PDFs drop the PAY ONLINE line.** Once an invoice is paid, the PDF no longer includes the pay-online prompt.
 - **From email placement.** On the invoice PDF, the sender email now sits below the business address instead of above it.
 - **Autotracker dedupes rules.** Saving an autotracker rule under an existing name updates it instead of creating a duplicate.
+- **Top bar actions, out in the open.** Settings, Export CSV, Download backup, and Log out moved from the hidden account menu to icon buttons on the right side of the top app bar.
+- **Public invoices fit phones.** On small screens the dates stack vertically and each line item gets breathing room — the date on its own row, hours × rate next to the amount.
+- **Tooltips stay in the column.** Calendar entry tooltips now anchor to the day-column edge instead of clipping off the first and last day columns.
 
 ## 2026-09-28
 
