@@ -1478,11 +1478,14 @@ body.app-fixed .cal-gutter-spacer {
   .invoice-sheet .md-table tbody,
   .invoice-sheet .md-table tfoot { display: block; }
   /* #656: the Issued/Due/Billing-period line clips off the right edge on
-     phones — stack it instead. */
+     phones — stack it instead. Separators are hidden in the stack; frozen
+     pre-#656 snapshots (literal middots, no sep spans) degrade to the same
+     stack with the middots reading as list markers. */
   .invoice-sheet .inv-dates-line {
     display: flex; flex-direction: column; gap: 3px; margin-bottom: 20px;
   }
   .invoice-sheet .inv-dates-line .inv-date { white-space: normal; }
+  .invoice-sheet .inv-dates-line .inv-date-sep { display: none; }
   .invoice-sheet .md-table tbody tr,
   .invoice-sheet.template-modern .md-table tbody tr {
     display: flex; flex-wrap: wrap; align-items: baseline;
@@ -1654,6 +1657,10 @@ body.app-fixed .cal-gutter-spacer {
 .inv-modern-right .inv-modern-badge { margin-top: 12px; }
 /* #612: issued/billing dates sit below the band, above the table. */
 .inv-dates-line { font-size: 0.8125rem; margin: 0 0 16px; }
+/* #656: the middot between date phrases is its own span — the margin
+   replaces the surrounding space it used to have, so desktop rendering
+   is unchanged. */
+.inv-dates-line .inv-date-sep { margin: 0 0.25em; }
 /* #612: Bill to left, From right. */
 .inv-from { margin-left: auto; text-align: right; }
 .inv-modern-badge { display: inline-block; background: #f2c14e; color: #1c1c1f; font-size: 0.6875rem; font-weight: 700;
