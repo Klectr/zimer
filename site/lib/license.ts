@@ -120,7 +120,7 @@ export function licenseBannerHtml(licensed: boolean): string {
   <script>(function(){
     var b=document.getElementById('license-banner'); if(!b) return;
     document.getElementById('license-banner-settings').addEventListener('click',function(){
-      var item=document.getElementById('settings-menu-item'); if(item) item.click();
+      var item=document.getElementById('appbar-settings-btn'); if(item) item.click();
     });
   })();</script>`;
 }

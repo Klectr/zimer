@@ -29,8 +29,6 @@ export const ICONS: Record<string, string> = {
      icon. Outlined to match the M3 icon system. */
   settings: `<path d="M 18.90 10.34 L 20.91 10.75 L 20.91 13.25 L 18.90 13.66 A 7.1 7.1 0 0 1 18.05 15.71 L 19.19 17.42 L 17.42 19.19 L 15.71 18.05 A 7.1 7.1 0 0 1 13.66 18.90 L 13.25 20.91 L 10.75 20.91 L 10.34 18.90 A 7.1 7.1 0 0 1 8.29 18.05 L 6.58 19.19 L 4.81 17.42 L 5.95 15.71 A 7.1 7.1 0 0 1 5.10 13.66 L 3.09 13.25 L 3.09 10.75 L 5.10 10.34 A 7.1 7.1 0 0 1 5.95 8.29 L 4.81 6.58 L 6.58 4.81 L 8.29 5.95 A 7.1 7.1 0 0 1 10.34 5.10 L 10.75 3.09 L 13.25 3.09 L 13.66 5.10 A 7.1 7.1 0 0 1 15.71 5.95 L 17.42 4.81 L 19.19 6.58 L 18.05 8.29 A 7.1 7.1 0 0 1 18.90 10.34 Z"/><circle cx="12" cy="12" r="3.1"/>`,
   close: `<path d="M6 6l12 12M18 6L6 18"/>`,
-  /* #253: hamburger for the account-menu button (Lucide-style, three strokes). */
-  menu: `<path d="M4 6h16M4 12h16M4 18h16"/>`,
   /* #404: warning triangle for error statuses (M3 error-outline style). */
   alert: `<path d="M12 4.5L21 19.5H3z"/><path d="M12 10v4"/><circle cx="12" cy="16.8" r="1.1" fill="currentColor" stroke="none"/>`,
   /* #448: bolt for the "Paid via Stripe" chip — the last emoji in the UI
@@ -42,6 +40,12 @@ export const ICONS: Record<string, string> = {
   trend_up: `<path d="M22 7l-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/>`,
   trend_down: `<path d="M22 17l-8.5-8.5-5 5L2 7"/><path d="M16 17h6v-6"/>`,
   trend_flat: `<path d="M4 12h16"/><path d="M14 6l6 6-6 6"/>`,
+  /* #654: distinct icons for the app-bar actions — a spreadsheet grid for
+     Export entries CSV and a database for Download backup, so the two
+     no longer share the generic download glyph. Lucide-style, M3
+     outlined 24px, matching the set. */
+  table: `<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9.3h18M3 14.6h18M9 9.3V20"/>`,
+  database: `<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>`,
 };
 
 export function icon(name: keyof typeof ICONS): string {

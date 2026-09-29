@@ -114,40 +114,13 @@ per-page:
   dialogs go full-screen: full bleed, no corner radius, full viewport height,
   with a title/close app-bar row pinned at the top. Dismissal (Escape, scrim
   tap, close), focus, and motion are unchanged.
-- **Account menu — locked spec (#391, #392, #393; locked #395).** `.m3-menu`
-  + `.m3-menu-item` + `.m3-menu-divider` — the M3 menu pattern for global
-  low-priority actions (spec: "don't clutter your UI with too many buttons —
-  present low-priority actions in overflow menus"). Opened from a circular
-  `.avatar-button` (40dp, DiceBear-generated avatar in
-  `site/static/avatar.svg`) in the top app bar, on every page. Menu holds
-  Export entries CSV, Download backup, a divider, then Log out.
-  - **Anatomy:** `.m3-menu` container; `.m3-menu-item` rows (24dp leading
-    icon, label-large 14/20 at weight 500); `.m3-menu-divider` between the
-    entries group and Log out. The divider rides the container padding — no
-    side margins of its own.
-  - **Tokens:** container `border-radius:
-    var(--md-sys-shape-corner-large)` (16dp — M3 Expressive vertical menu;
-    baseline M3's 4dp was superseded, #391); container `background:
-    var(--md-sys-color-surface-container-high)`; `padding: 4px` internal
-    container padding; item state layers `border-radius:
-    var(--md-sys-shape-corner-medium)` (12dp — items paint their own
-    hover/focus backgrounds, so the corners live on the item itself, #393);
-    48dp item height.
-  - **Measurements:** 16dp container − 4dp inset = 12dp inner radius. Item
-    state layers sit 4dp in from the container edge, so 12dp corners hug the
-    container exactly — square item backgrounds must never touch the
-    container's rounded corners (the #393 defect).
-  - **States:** hover and focus state layers are painted by the item itself
-    and carry the 12dp corners with them. This is an action menu — no
-    selected state. Open/close is scale/fade from the anchor; Esc,
-    outside-tap, and arrow-key handling with focus restoration.
-  - **Provenance and lock:** spec decided from the official M3 Expressive
-    vertical-menu measurements diagram. `site/lib/design-system.test.ts`
-    asserts the locked CSS values and goes red on undeclared changes.
-    Deviations from this spec require a GitHub issue.
-
-## Patterns
-
+- **App-bar actions — locked spec (#654).** Triston's call: the hamburger
+  account menu (#155, locked #395) hid Settings, Export entries CSV, Download
+  backup, and Log out two taps deep, so the four are now icon buttons on the
+  right side of the top app bar (every page), in an `.app-bar-actions` row
+  (inline-flex, 4px gap). Text labels became `data-tip` tooltips; the buttons
+  are the shared 48dp `.md-icon-button`. Export and Backup got distinct icons
+  (spreadsheet grid, database) instead of sharing the download glyph.
 - **Page layout (M3).** Content pages (dashboard, calendar, invoices list) are
   full-bleed and start-aligned. Focused task pages (forms like New invoice) use
   a centered narrow body column — `.page-narrow`, 720px max — with content
