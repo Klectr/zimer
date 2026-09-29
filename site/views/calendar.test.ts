@@ -544,3 +544,51 @@ describe("calendar dialog description suggestions (#578)", () => {
     expect(s).not.toContain("<datalist");
   });
 });
+
+/** #669: the entry dialog must live OUTSIDE #week. The carousel restructure
+ *  nested it inside, so the initial /partial/week htmx swap (and every
+ *  refreshWeek) destroyed the scrim while calScript's closures kept pointing
+ *  at the detached node — slot clicks then silently did nothing. */
+describe("calendar dialog placement (#669)", () => {
+  function viewsFor() {
+    const db = {
+      query: (_sql: string) => ({ get: () => ({ n: 1 }), all: () => [] }),
+    } as unknown as Database;
+    return createCalendarViews({
+      db,
+      qOne: { get: (..._a: unknown[]) => ({ n: 1 }) },
+      qRange: { get: (..._a: unknown[]) => ({ n: 1 }), all: (..._a: unknown[]) => [] },
+      entrySelect: "SELECT",
+      layout: (_t: string, b: string) => b,
+      projectOptions: () => "",
+      weekTargetBar: () => "",
+      calHourPx: 64,
+    } as any);
+  }
+
+  /* Index of the </div> that closes #week (scanning only up to the inline
+     <script>, whose JS string literals would confuse the tag walk). */
+  function weekCloseIndex(html: string): number {
+    const head = html.slice(0, html.indexOf("<script"));
+    const re = /<\/?div\b[^>]*>/g;
+    let depth = 0, weekDepth = -1, closed = -1, m: RegExpExecArray | null;
+    while ((m = re.exec(head))) {
+      if (m[0].startsWith("</")) {
+        depth--;
+        if (weekDepth >= 0 && depth === weekDepth && closed < 0) closed = m.index;
+      } else {
+        if (m[0].includes('id="week"')) weekDepth = depth;
+        depth++;
+      }
+    }
+    return closed;
+  }
+
+  test("cal-scrim and the calendar script sit after #week closes, not inside it", () => {
+    const html = viewsFor().weekGrid("2026-09-27");
+    const closed = weekCloseIndex(html);
+    expect(closed).toBeGreaterThan(-1);
+    expect(html.indexOf('id="cal-scrim"')).toBeGreaterThan(closed);
+    expect(html.indexOf("<script>")).toBeGreaterThan(closed);
+  });
+});
