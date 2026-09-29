@@ -286,7 +286,7 @@ describe("#560: date phrases stay together", () => {
     expect(html).not.toContain(`inv-modern-dates`);
   });
   test("#612: Bill to renders before From", () => {
-    const meta = { business_name: "Triston Armstrong", business_email: "triston@hey.com" };
+    const meta = { business_name: "Triston Armstrong", business_email: "triston@klectr.dev" };
     const metaDb = {
       query: (_sql: string) => ({
         get: (key: string) => ({ value: meta[key as keyof typeof meta] ?? "" }),

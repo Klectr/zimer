@@ -43,13 +43,13 @@ describe("#637: PDF From block prints email below the address", () => {
     const text = pdfText({
       ...base,
       fromName: "Triston Armstrong",
-      fromEmail: "triston@hey.com",
+      fromEmail: "triston@klectr.dev",
       fromAddress: "2498 kelly rd.\nHolladay Tn, 38341",
     });
     expect(text).toContain("Triston Armstrong");
     expect(text).toContain("2498 kelly rd.");
     expect(text).toContain("Holladay Tn, 38341");
-    expect(text).toContain("triston@hey.com");
-    expect(text.indexOf("Holladay Tn, 38341")).toBeLessThan(text.indexOf("triston@hey.com"));
+    expect(text).toContain("triston@klectr.dev");
+    expect(text.indexOf("Holladay Tn, 38341")).toBeLessThan(text.indexOf("triston@klectr.dev"));
   });
 });
