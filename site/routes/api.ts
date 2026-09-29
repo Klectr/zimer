@@ -62,13 +62,28 @@ export function createApiRouter(deps: ApiDeps) {
             }
             if (event.type === "checkout.session.completed") {
               const session = event.data?.object || {};
-              const invoiceId = Number(session.metadata?.invoice_id || 0);
-              if (invoiceId && session.payment_status === "paid") {
-                const inv = qInvoice.get(invoiceId) as Invoice | null;
-                if (inv && inv.status === "sent") {
-                  db.query("UPDATE invoices SET status = 'paid', paid_via_stripe = 1, paid_at = date('now') WHERE id = ?").run(invoiceId);
-                  /* #301: re-freeze so the Paid badge is part of the record. */
-                  freezeInvoiceSnapshots(invoiceId, shareOrigin(req));
+              if (session.payment_status === "paid") {
+                /* #645: metadata set on a Payment Link does NOT propagate to
+                   the Checkout Session, so session.metadata.invoice_id is
+                   empty on real payments. Match the link ID first (stored at
+                   link creation); the metadata path stays as a fallback. */
+                let invoiceId = 0;
+                const pl = session.payment_link;
+                const linkId = typeof pl === "string" ? pl : pl?.id;
+                if (linkId) {
+                  const row = db.query(
+                    "SELECT id FROM invoices WHERE stripe_payment_link_id = ?"
+                  ).get(linkId) as any;
+                  invoiceId = Number(row?.id || 0);
+                }
+                if (!invoiceId) invoiceId = Number(session.metadata?.invoice_id || 0);
+                if (invoiceId) {
+                  const inv = qInvoice.get(invoiceId) as Invoice | null;
+                  if (inv && inv.status === "sent") {
+                    db.query("UPDATE invoices SET status = 'paid', paid_via_stripe = 1, paid_at = date('now') WHERE id = ?").run(invoiceId);
+                    /* #301: re-freeze so the Paid badge is part of the record. */
+                    freezeInvoiceSnapshots(invoiceId, shareOrigin(req));
+                  }
                 }
               }
             }

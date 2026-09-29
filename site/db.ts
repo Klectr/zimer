@@ -96,6 +96,10 @@ db.exec(`DROP TABLE IF EXISTS recurring_schedules;`);
     ["time_entries", "invoice_id", "INTEGER REFERENCES invoices(id) ON DELETE SET NULL"],
     ["invoices", "template", "TEXT NOT NULL DEFAULT 'classic'"],
     ["invoices", "stripe_payment_link", "TEXT"],
+    /* Issue #645: payment-link ID (plink_...) for webhook matching — Stripe
+       does not propagate payment-link metadata to checkout sessions, so the
+       webhook matches session.payment_link against this instead. */
+    ["invoices", "stripe_payment_link_id", "TEXT"],
     ["invoices", "paid_via_stripe", "INTEGER NOT NULL DEFAULT 0"],
     ["invoices", "public_token", "TEXT"],
     ["invoices", "paid_at", "TEXT"],

@@ -96,7 +96,7 @@ export function createDomain(deps: DomainDeps) {
         clientName: inv.client_name || "",
         totalCents: Math.round(t.total * 100),
       });
-      db.query("UPDATE invoices SET stripe_payment_link = ? WHERE id = ?").run(link.url, id);
+      db.query("UPDATE invoices SET stripe_payment_link = ?, stripe_payment_link_id = ? WHERE id = ?").run(link.url, link.id, id);
       return { url: link.url };
     } catch (e: any) {
       return { error: e?.message || "Stripe request failed", status: 502 };
