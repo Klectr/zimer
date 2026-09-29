@@ -1,15 +1,9 @@
-/** #395: locked account-menu UI spec — regression guard.
- *
- *  Decision under test: the expressive account-menu spec in
- *  docs/design-system.md is canonical, and the shipped CSS is its reference
- *  implementation. This test parses site/static/style.css (rule-block
- *  regex + declaration checks — reformatting never false-fails) and asserts
- *  the locked values:
- *    .m3-menu      — 4px internal padding, 16px container radius
- *                      (via --md-sys-shape-corner-large)
- *    .m3-menu-item — 48dp height, 12px state-layer radius
- *                      (via --md-sys-shape-corner-medium)
- *    :root         — corner-large resolves to 16px, corner-medium to 12px
+/** #654: the account menu is gone — Triston wanted its four actions (Settings,
+ *  Export entries CSV, Download backup, Log out) visible as icons in the top
+ *  app bar instead of two taps deep. The old #395 locked spec (menu geometry)
+ *  is retired; the replacement lock is the .app-bar-actions row that carries
+ *  the four .md-icon-buttons: inline-flex, 4px gap, never wrapping. The four
+ *  buttons reuse the shared .md-icon-button (48dp, tooltips via data-tip).
  *
  *  Red here means the change needs a GitHub issue and a spec update —
  *  never a silent restyle.
@@ -55,33 +49,16 @@ function paddingSides(value: string): string[] {
   throw new Error(`locked-spec: unexpected padding: ${value}`);
 }
 
-describe("account-menu locked spec (#395)", () => {
-  test("16px/12px/4px values hold and the 16−4=12 geometry checks out", () => {
-    const root = declarations(ruleBlock(":root"));
-    expect(root.get("--md-sys-shape-corner-large")).toBe("16px");
-    expect(root.get("--md-sys-shape-corner-medium")).toBe("12px");
+describe("app-bar actions locked spec (#654)", () => {
+  test("actions row is an inline-flex strip with a 4px gap; buttons are the shared 48dp icon buttons", () => {
+    const row = declarations(ruleBlock(".app-bar-actions"));
+    expect(row.get("display")).toBe("inline-flex");
+    expect(row.get("gap")).toBe("4px");
 
-    const menu = declarations(ruleBlock(".m3-menu"));
-    const padding = menu.get("padding");
-    expect(padding).toBeDefined();
-    expect(paddingSides(padding!)).toEqual(["4px", "4px", "4px", "4px"]);
-    expect(menu.get("border-radius")).toBe("var(--md-sys-shape-corner-large)");
-    expect(menu.get("background")).toBe(
-      "var(--md-sys-color-surface-container-high)",
-    );
-
-    const item = declarations(ruleBlock(".m3-menu-item"));
-    expect(item.get("min-height")).toBe("48px");
-    expect(item.get("border-radius")).toBe(
-      "var(--md-sys-shape-corner-medium)",
-    );
-
-    // the geometry that makes the spec: the item state-layer radius must
-    // equal the container radius minus the container inset
-    const container = parseFloat(root.get("--md-sys-shape-corner-large")!);
-    const inset = parseFloat(paddingSides(padding!)[0]);
-    const inner = parseFloat(root.get("--md-sys-shape-corner-medium")!);
-    expect(inner).toBe(container - inset);
+    const btn = declarations(ruleBlock(".md-icon-button"));
+    expect(btn.get("width")).toBe("48px");
+    expect(btn.get("height")).toBe("48px");
+    expect(btn.get("border-radius")).toBe("var(--md-sys-shape-corner-full)");
   });
 });
 

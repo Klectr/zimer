@@ -51,7 +51,7 @@ export function createLayoutViews(qRunning: Statement, bannerHtml?: () => string
   <header class="md-top-app-bar" data-enter="1">
     <span class="md-top-app-bar-title">${logo(34)}</span>
     <span class="md-top-app-bar-spacer"></span>
-    ${accountMenu()}
+    ${appBarActions()}
   </header>
   <div class="app-chrome">
     <nav class="md-nav-rail" aria-label="Primary">
@@ -160,62 +160,22 @@ export function createLayoutViews(qRunning: Statement, bannerHtml?: () => string
   return { layout, publicShell, notFoundPage, noSuchInvoicePage, rateLimitPage, errorPage };
 }
 
-/** Issue #155: global account menu — hamburger button in the top app bar (every
-    page), opening an M3 menu with data actions + log out. Replaces the
-    manage-only overflow from #151 and the "Log out" text button.
-    #251: the DiceBear "T" avatar was replaced with the brand mark; #253
-    replaced that with a plain hamburger icon per Triston — no avatar image.
-    #245: the menu gained a Settings item opening the settings modal
-    (settingsDialog below); the business profile lives there now. */
-function accountMenu(): string {
-  return `<div class="m3-menu-wrap">
-    <button class="account-menu-button" id="account-menu-btn" aria-label="Account"
-      aria-haspopup="menu" aria-expanded="false" aria-controls="account-menu">${icon("menu")}</button>
-    <div class="m3-menu" id="account-menu" role="menu" aria-label="Account" hidden>
-      <button class="m3-menu-item" id="settings-menu-item" type="button" role="menuitem">${icon("settings")}<span>Settings</span></button>
-      <a class="m3-menu-item" role="menuitem" href="/export/entries.csv" download>${icon("download")}<span>Export entries CSV</span></a>
-      <a class="m3-menu-item" role="menuitem" href="/backup" download>${icon("download")}<span>Download backup</span></a>
-      <div class="m3-menu-divider" role="separator"></div>
-      <a class="m3-menu-item" role="menuitem" href="/logout">${icon("logout")}<span>Log out</span></a>
-    </div>
-  </div>
-  <script>(function(){
-    var btn=document.getElementById('account-menu-btn'), menu=document.getElementById('account-menu');
-    if(!btn||!menu) return;
-    var items=Array.prototype.slice.call(menu.querySelectorAll('.m3-menu-item'));
-    var open_=false;
-    function open(){
-      open_=true; menu.hidden=false; void menu.offsetWidth;
-      menu.classList.add('open'); btn.setAttribute('aria-expanded','true');
-      if(items[0]) items[0].focus();
-      document.addEventListener('keydown',onKey,true);
-      document.addEventListener('pointerdown',onDoc,true);
-    }
-    function close(refocus){
-      if(!open_) return; open_=false;
-      menu.classList.remove('open'); btn.setAttribute('aria-expanded','false');
-      document.removeEventListener('keydown',onKey,true);
-      document.removeEventListener('pointerdown',onDoc,true);
-      var done=false, finish=function(){ if(done) return; done=true; menu.hidden=true; };
-      var onEnd=function(e){ if(e.target===menu&&(e.propertyName==='transform'||e.propertyName==='opacity')){ menu.removeEventListener('transitionend',onEnd); finish(); } };
-      menu.addEventListener('transitionend',onEnd); setTimeout(finish,300);
-      if(refocus) btn.focus();
-    }
-    /* #245: the settings dialog exposes its own opener; the menu just
-       gets out of the way first. */
-    window.__closeAccountMenu=function(){ close(false); };
-    function onKey(e){
-      var i=items.indexOf(document.activeElement);
-      if(e.key==='Escape'){ e.preventDefault(); close(true); }
-      else if(e.key==='ArrowDown'){ e.preventDefault(); items[(i+1+items.length)%items.length].focus(); }
-      else if(e.key==='ArrowUp'){ e.preventDefault(); items[(i-1+items.length)%items.length].focus(); }
-      else if(e.key==='Home'){ e.preventDefault(); items[0].focus(); }
-      else if(e.key==='End'){ e.preventDefault(); items[items.length-1].focus(); }
-      else if(e.key==='Tab'){ close(false); }
-    }
-    function onDoc(e){ if(!e.target.closest('.m3-menu-wrap')) close(false); }
-    btn.addEventListener('click',function(){ open_?close(true):open(); });
-  })();</script>`;
+/** Issue #654: the hamburger account menu (#155) is gone — Triston wanted the
+    four global actions visible instead of two taps deep. Settings, Export
+    entries CSV, Download backup, and Log out are now icon buttons on the
+    right side of the top app bar on every page. Tooltips (data-tip) replace
+    the menu's text labels; the settings dialog still opens from the cog. */
+function appBarActions(): string {
+  return `<div class="app-bar-actions">
+    <button class="md-icon-button tip-right" id="appbar-settings-btn" type="button"
+      data-tip="Settings" aria-label="Settings">${icon("settings")}</button>
+    <a class="md-icon-button tip-right" href="/export/entries.csv" download
+      data-tip="Export entries CSV" aria-label="Export entries CSV">${icon("table")}</a>
+    <a class="md-icon-button tip-right" href="/backup" download
+      data-tip="Download backup" aria-label="Download backup">${icon("database")}</a>
+    <a class="md-icon-button tip-right" href="/logout"
+      data-tip="Log out" aria-label="Log out">${icon("logout")}</a>
+  </div>`;
 }
 
 /** Issue #245: settings modal reached through the account menu button. The shell
@@ -238,8 +198,8 @@ function settingsDialog(): string {
     var scrim=document.getElementById('settings-scrim');
     var body=document.getElementById('settings-body');
     var closeBtn=document.getElementById('settings-close');
-    var menuItem=document.getElementById('settings-menu-item');
-    var avatarBtn=document.getElementById('account-menu-btn');
+    var menuItem=document.getElementById('appbar-settings-btn');
+    var avatarBtn=document.getElementById('appbar-settings-btn');
     if(!scrim||!body||!closeBtn||!menuItem) return;
     var open_=false, focusOnSwap=false;
     function open(){
@@ -273,7 +233,6 @@ function settingsDialog(): string {
     scrim.addEventListener('pointerdown',function(e){ if(e.target===scrim) close(false); });
     closeBtn.addEventListener('click',function(){ close(true); });
     menuItem.addEventListener('click',function(){
-      if(window.__closeAccountMenu) window.__closeAccountMenu();
       open();
     });
     /* #247: visible save confirmation — the form re-renders silently, so
