@@ -255,25 +255,27 @@ describe("#536: line-item hidden inputs live inside a td", () => {
  *  Before: "Issued 2026-09-27 ·" could trail the middot with "Due …" on the
  *  next line, and "Sep 21 –" split the billing-period dash. The dates line
  *  mirrors the #442/#481 list-row fix: each date phrase sits in the existing
- *  .inv-date nowrap span and the middot is a leading separator, so wraps
- *  happen before a separator, never after one.
+ *  .inv-date nowrap span and the middot is a separator between the spans,
+ *  so wraps happen before a separator, never after one.
  *  #612: the dates moved out of the header band into .inv-dates-line below
- *  it — the nowrap treatment is unchanged, only the location moved. */
+ *  it — the nowrap treatment is unchanged, only the location moved.
+ *  #656: the separators are their own .inv-date-sep spans (aria-hidden) so
+ *  the dates can stack cleanly on phones; desktop rendering is unchanged. */
 describe("#560: date phrases stay together", () => {
   const items = [{
     description: "d", hours: 1, rate: 40, amount: 40, entry_ids: [1],
     date_from: "2026-09-21", date_to: "2026-09-26",
   }];
   const sheet = () => views([]).invoiceSheet({ ...detailInv("sent", null), items } as any);
-  test("Issued and Due are nowrap spans with the middot leading", () => {
+  test("Issued and Due are nowrap spans with a separator span between", () => {
     const html = sheet();
     expect(html).toContain(`<span class="inv-date">Issued Sep 1</span>`);
-    expect(html).toContain(`<span class="inv-date"> · <strong>Due Sep 30</strong></span>`);
-    // the old format with the middot outside the span is gone
-    expect(html).not.toContain(`</span> · <strong>`);
+    expect(html).toContain(`<span class="inv-date-sep" aria-hidden="true">·</span><span class="inv-date"><strong>Due Sep 30</strong></span>`);
+    // the old format with the middot inside the phrase span is gone
+    expect(html).not.toContain(`<span class="inv-date"> · <strong>Due`);
   });
   test("billing period is one nowrap phrase", () => {
-    expect(sheet()).toContain(`<span class="inv-date"> · Billing period: Sep 21 – Sep 26, 2026</span>`);
+    expect(sheet()).toContain(`<span class="inv-date">Billing period: Sep 21 – Sep 26, 2026</span>`);
   });
   test("#615: dates line sits directly above the table, below the parties row", () => {
     const html = sheet();

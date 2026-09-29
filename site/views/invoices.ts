@@ -345,7 +345,11 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
        #615: they sit directly above the table headers, i.e. below the
        parties row. The #560 nowrap treatment (each phrase in its own
        .inv-date span, middot as a leading separator) carries over. */
-    const datesLine = `<div class="inv-dates-line muted"><span class="inv-date">Issued ${esc(shortYmd(inv.issue_date))}</span>${inv.due_date && termsKey_ !== "pay_when_paid" ? `<span class="inv-date"> · <strong>Due ${esc(shortYmd(inv.due_date))}</strong></span>` : ""}${period ? `<span class="inv-date"> · Billing period: ${esc(period)}</span>` : ""}</div>`;
+    /* #656: the middot separators are their own spans so the dates can
+       stack cleanly on phones (separators hidden there); desktop keeps the
+       same inline rendering via .inv-date-sep margins. */
+    const sep = `<span class="inv-date-sep" aria-hidden="true">·</span>`;
+    const datesLine = `<div class="inv-dates-line muted"><span class="inv-date">Issued ${esc(shortYmd(inv.issue_date))}</span>${inv.due_date && termsKey_ !== "pay_when_paid" ? `${sep}<span class="inv-date"><strong>Due ${esc(shortYmd(inv.due_date))}</strong></span>` : ""}${period ? `${sep}<span class="inv-date">Billing period: ${esc(period)}</span>` : ""}</div>`;
     const head = `
         <div class="inv-modern-band">
           <div class="inv-modern-title">Invoice</div>
