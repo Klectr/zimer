@@ -1398,6 +1398,18 @@ body.app-fixed .cal-gutter-spacer {
   opacity: 1; transform: translateX(-50%) translateY(0);
   max-width: 200px; overflow: visible; /* #556 */
 }
+/* #659: the entry-card tooltip centers on the card, so in the first/last day
+   columns it runs past the scroll container edge and clips under
+   overflow-x: clip. Anchor it to the column edge instead — mirrors the
+   day-header tooltip rules above. */
+.cal-day:first-child .cal-entry[data-tip]::after { left: 0; transform: translateY(-2px); }
+.cal-day:last-child .cal-entry[data-tip]::after { left: auto; right: 0; transform: translateY(-2px); }
+.cal-day:first-child .cal-entry[data-tip]:hover::after,
+.cal-day:first-child .cal-entry[data-tip]:focus-visible::after,
+.cal-day:first-child .cal-entry[data-tip].tip-show::after,
+.cal-day:last-child .cal-entry[data-tip]:hover::after,
+.cal-day:last-child .cal-entry[data-tip]:focus-visible::after,
+.cal-day:last-child .cal-entry[data-tip].tip-show::after { transform: translateY(0); }
 /* #498: M3 plain tooltip for the inv-mark chip (hover + 450ms touch long-press
    via the site-wide [data-tip] handler). ::after; the chip uses no other
    pseudo-element, and the supporting line clips nothing. */
