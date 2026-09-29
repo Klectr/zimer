@@ -1465,27 +1465,41 @@ body.app-fixed .cal-gutter-spacer {
   .invoice-sheet .md-table,
   .invoice-sheet .md-table tbody,
   .invoice-sheet .md-table tfoot { display: block; }
+  /* #656: the Issued/Due/Billing-period line clips off the right edge on
+     phones — stack it instead. Separators are hidden in the stack; frozen
+     pre-#656 snapshots (literal middots, no sep spans) degrade to the same
+     stack with the middots reading as list markers. */
+  .invoice-sheet .inv-dates-line {
+    display: flex; flex-direction: column; gap: 3px; margin-bottom: 20px;
+  }
+  .invoice-sheet .inv-dates-line .inv-date { white-space: normal; }
+  .invoice-sheet .inv-dates-line .inv-date-sep { display: none; }
   .invoice-sheet .md-table tbody tr,
   .invoice-sheet.template-modern .md-table tbody tr {
     display: flex; flex-wrap: wrap; align-items: baseline;
     background: var(--md-sys-color-surface-container-low);
-    border-radius: 12px; padding: 12px; margin: 0 0 8px;
+    border-radius: 12px; padding: 16px; margin: 0 0 12px;
   }
   .invoice-sheet .md-table tbody tr + tr { border-top: 0; }
   .invoice-sheet .md-table tbody td { padding: 0; }
   .invoice-sheet .md-table tbody td:first-child,
   .invoice-sheet .md-table tbody td:last-child { border-radius: 0; }
-  .invoice-sheet .md-table td.desc { flex: 1 1 100%; order: -1; font-size: 0.875rem; margin-bottom: 6px; }
+  .invoice-sheet .md-table td.desc { flex: 1 1 100%; order: -1; font-size: 0.9375rem; font-weight: 600; margin-bottom: 8px; }
   .invoice-sheet .md-table td.inv-date:empty { display: none; }
-  .invoice-sheet .md-table td.inv-date,
+  /* #656: the date range gets its own row instead of crowding into the
+     hours × rate meta line. */
+  .invoice-sheet .md-table td.inv-date {
+    flex: 1 1 100%; display: block; font-size: 0.8125rem;
+    color: var(--md-sys-color-on-surface-variant); margin-bottom: 6px;
+  }
+  .invoice-sheet .md-table td.inv-date::after { content: none; }
   .invoice-sheet .md-table td.inv-hours,
   .invoice-sheet .md-table td.inv-rate {
-    display: inline; font-size: 0.75rem; color: var(--md-sys-color-on-surface-variant);
+    display: inline; font-size: 0.8125rem; color: var(--md-sys-color-on-surface-variant);
   }
-  .invoice-sheet .md-table td.inv-date::after { content: "\00a0·\00a0"; }
   .invoice-sheet .md-table td.inv-hours::after { content: " hrs\00a0×\00a0"; }
   .invoice-sheet .md-table td.inv-amount {
-    margin-left: auto; font-size: 0.875rem; font-weight: 700; white-space: nowrap;
+    margin-left: auto; font-size: 0.9375rem; font-weight: 700; white-space: nowrap;
   }
   .invoice-sheet .md-table tfoot tr { display: flex; justify-content: space-between; }
   .invoice-sheet .md-table tfoot td { padding: 4px 0; }
@@ -1631,6 +1645,9 @@ body.app-fixed .cal-gutter-spacer {
 .inv-modern-right .inv-modern-badge { margin-top: 12px; }
 /* #612: issued/billing dates sit below the band, above the table. */
 .inv-dates-line { font-size: 0.8125rem; margin: 0 0 16px; }
+/* #656: the middot between date phrases is its own span — the surrounding
+   space it replaces, so desktop rendering is unchanged. */
+.inv-dates-line .inv-date-sep { margin: 0 0.25em; }
 /* #612: Bill to left, From right. */
 .inv-from { margin-left: auto; text-align: right; }
 .inv-modern-badge { display: inline-block; background: #f2c14e; color: #1c1c1f; font-size: 0.6875rem; font-weight: 700;
