@@ -1727,6 +1727,9 @@ button.m3-menu-item {
   padding: 4px 8px; /* M3 plain tooltip padding */
   font-size: 0.75rem; line-height: 16px;
   max-width: 0; overflow: hidden; /* #556: collapse while hidden */
+  max-height: 0; /* #650: the URL wraps at zero width into dozens of lines —
+     without this the hidden box is ~960px tall and stretches the detail
+     pane's scrollable overflow far past the content */
   white-space: normal; overflow-wrap: anywhere;
   opacity: 0; pointer-events: none; z-index: 30;
   transition: opacity var(--motion-duration-short2) var(--motion-easing-standard),
@@ -1737,7 +1740,7 @@ button.m3-menu-item {
 .share-url-wrap[data-tip]:focus-visible::after,
 .share-url-wrap[data-tip].tip-show::after {
   opacity: 1; transform: translateY(0);
-  max-width: 320px; overflow: visible; /* #556 */
+  max-width: 320px; max-height: none; overflow: visible; /* #556, #650 */
 }
 .share-icons { display: flex; align-items: center; gap: 2px; margin-left: auto; flex-shrink: 0; }
 .share-icons form { display: inline; margin: 0; }
