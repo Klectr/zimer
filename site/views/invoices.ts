@@ -422,10 +422,11 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       /* #243: payment terms, and the pay-online link.
          #289: the invoice client's own terms win; global is fallback.
          #293: fixed list — print the canned description.
-         #295: pay-when-paid has no fixed due date — suppress the PDF due line. */
+         #295: pay-when-paid has no fixed due date — suppress the PDF due line.
+         #639: paid invoices have nothing left to pay — drop the link. */
       terms: termsDescription(termsKey_),
       hideDue: termsKey_ === "pay_when_paid",
-      payUrl: inv.public_token ? `${origin}/i/${inv.public_token}` : undefined,
+      payUrl: inv.public_token && inv.status !== "paid" ? `${origin}/i/${inv.public_token}` : undefined,
     };
   }
 
