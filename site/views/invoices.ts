@@ -148,7 +148,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
           if (!link || !mq.matches) return;
           ev.preventDefault();
           window.htmx.ajax("GET", link.getAttribute("href") + "&fragment=detail",
-            { target: "#invoice-detail-pane", swap: "innerHTML" });
+            { target: "#invoice-detail-pane", swap: "innerHTML scroll:top" });
         });
       })();</script>`, "invoices", true);
   }
