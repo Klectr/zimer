@@ -55,6 +55,7 @@ export interface WebDeps {
   clientListOob: (sel: ClientSel | null) => string; /* #367 */
   bizProfileSection: () => string;
   clientSettingsForm: (c: any) => string; /* #630 */
+  settingsPage: (body: string) => string; /* #693 */
   invoicesPage: (selected: (Invoice & { items: InvoiceItem[] }) | null, origin: string) => string;
   invoiceNewPage: (p: any, preview?: any) => string;
   defaultNewInvParams: () => any;
@@ -89,7 +90,7 @@ export function createWebRouter(deps: WebDeps) {
     DATA_DIR, STATIC_DIR, TOKEN, authedPage, tokensEqual, html, json, csvResponse, isHtmx,
     shareOrigin, PORT, loginPage, publicInvoicePage, changelogPage, termsPage, notFoundPage, noSuchInvoicePage, rateLimitPage, errorPage, /* #341: +termsPage */
     dashboardPage, timerPartial, todayPartial, weekInner, weekStrip,
-    calendarPage, editPage, managePage, clientSelection, clientDetailBody, clientListOob, bizProfileSection, clientSettingsForm, invoicesPage, invoiceNewPage,
+    calendarPage, editPage, managePage, clientSelection, clientDetailBody, clientListOob, bizProfileSection, clientSettingsForm, settingsPage, invoicesPage, invoiceNewPage,
     defaultNewInvParams, invoiceStep2, invoiceDetailBody, invoiceListOob, invoiceDoc,
     getInvoice, invoiceTotals,
     nextInvoiceNumber, stripeLinkFor, unbilledEntries,
@@ -421,7 +422,11 @@ export function createWebRouter(deps: WebDeps) {
           const licensed = isLicensed(db);
           const launch = isLaunchMode();
           const updates = (!launch || licensed) ? updateSectionHtml() : "";
-          return html(bizProfileSection() + (launch ? licenseSectionHtml(db, licensed) : "") + updates);
+          const body = bizProfileSection() + (launch ? licenseSectionHtml(db, licensed) : "") + updates;
+          if (isHtmx(req)) return html(body);
+          /* #693: direct visits get the full app layout — the bare fragment
+             renders unstyled. */
+          return html(settingsPage(body));
         }
         /* #340: manual update check — fetches the release feed server-side
            and swaps the result into the Updates section. Authed like the

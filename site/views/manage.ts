@@ -385,5 +385,17 @@ export function createManageViews(deps: ManageViewDeps) {
         </section>`;
   }
 
-  return { managePage, clientSelection, clientDetailBody, clientListOob, clientOptions, bizProfileSection, clientSettingsForm };
+  /* #693: full-page fallback for direct (non-htmx) visits to /settings.
+     The modal fragment alone renders unstyled without the app layout. */
+  function settingsPage(settingsBody: string): string {
+    return layout("Settings", `
+      <div class="page-narrow" data-enter="2">
+      <div class="page-head">
+        <h2 class="md-headline-small">Settings</h2>
+      </div>
+      <div class="settings-sections">${settingsBody}</div>
+      </div>`);
+  }
+
+  return { managePage, clientSelection, clientDetailBody, clientListOob, clientOptions, bizProfileSection, clientSettingsForm, settingsPage };
 }
