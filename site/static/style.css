@@ -1835,11 +1835,7 @@ body.app-fixed .cal-gutter-spacer {
    week swap has no layout flash. Same grid areas and 840px breakpoint as the
    real grid; lanes echo the 80px hour rhythm of .cal-day-col. The aside width
    tracks the real pane through --layout-supporting-pane. */
-.cal-skel { display: grid; flex: 1; min-height: 0; min-width: 0;
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-areas: "summary" "grid";
-  grid-template-rows: auto minmax(0, 1fr); row-gap: 12px; }
-/* (dead pre-carousel skeleton rules removed, #576) */
+/* (dead pre-carousel skeleton rules removed, #576; bare .cal-skel grid removed, #685) */
 .cal-skel-grid { grid-area: grid; display: grid; min-width: 0; min-height: 0;
   grid-template-columns: 44px repeat(7, minmax(0, 1fr)); gap: 8px; }
 .cal-skel-day { display: flex; flex-direction: column; gap: 8px; min-width: 0; min-height: 0; }
@@ -1894,10 +1890,6 @@ body.app-fixed .cal-gutter-spacer {
 .cal-ag-desc { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cal-ag-dur { flex: none; }
 .cal-ag-empty { margin: 6px 0 2px; }
-@media (min-width: 840px) {
-  .cal-skel { grid-template-columns: minmax(0, 1fr) var(--layout-supporting-pane);
-    grid-template-areas: "grid summary"; column-gap: var(--layout-pane-gap); }
-}
 
 /* M3 press ripple (JS-driven, see motion.js). Buttons already clip with
    overflow: hidden; the span paints above the ::after state layer. */
