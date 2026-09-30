@@ -31,18 +31,23 @@ function fakePlainEl() {
   return { closest: (_sel: string) => null };
 }
 
-/* Fake timers: capture setTimeout callbacks so the 450ms delay is driven manually. */
+/* Fake timers: capture setTimeout callbacks so the 450ms delay is driven manually.
+   Installed per-test and restored after — a module-level install leaked onto the
+   shared globalThis and starved other files' real timers (#683: all 26 dialog
+   tests timed out in a full-suite run). */
 let nextTimerId = 1;
 const timers = new Map<number, { cb: Function; ms: number; cleared: boolean }>();
-g.setTimeout = (cb: Function, ms: number) => {
+const realSetTimeout = g.setTimeout;
+const realClearTimeout = g.clearTimeout;
+function fakeSetTimeout(cb: Function, ms: number) {
   const id = nextTimerId++;
   timers.set(id, { cb, ms, cleared: false });
   return id;
-};
-g.clearTimeout = (id: number) => {
+}
+function fakeClearTimeout(id: number) {
   const t = timers.get(id);
   if (t) t.cleared = true;
-};
+}
 function fireTimers() {
   const due = [...timers.values()];
   timers.clear();
@@ -88,6 +93,13 @@ const cancel = on("pointercancel");
 
 beforeEach(() => {
   timers.clear();
+  g.setTimeout = fakeSetTimeout;
+  g.clearTimeout = fakeClearTimeout;
+});
+
+afterEach(() => {
+  g.setTimeout = realSetTimeout;
+  g.clearTimeout = realClearTimeout;
 });
 
 describe("long-press tooltips", () => {
