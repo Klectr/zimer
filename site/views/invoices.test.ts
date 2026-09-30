@@ -417,3 +417,40 @@ describe("#643: detail pane scrolls to top on invoice switch", () => {
     expect(html).toContain('swap: "innerHTML scroll:top"');
   });
 });
+
+/** #668: manual line items — step 2 offers an "Add line item" button, and
+ *  the no-unbilled-entries case renders the manual-item form instead of a
+ *  dead end, so one-time work can be invoiced without tracked time. */
+describe("#668: manual line items on step 2", () => {
+  const p = {
+    client_id: "1", from: "2026-09-01", to: "2026-09-30", rate: "40",
+    number: "INV-0001", issue_date: "2026-09-01", due_date: "2026-09-16",
+    tax_rate: "0", notes: "", internal_notes: "",
+  };
+
+  test("empty preview renders the manual-item form, not a dead end", () => {
+    const html = views([]).invoiceStep2(p as any, {
+      items: [], emptyMsg: "No unbilled, finished entries on this client's projects in that range.",
+    });
+    expect(html).toContain("No unbilled, finished entries");
+    expect(html).toContain('action="/invoices"');
+    expect(html).toContain('name="groups" value="0"');
+    expect(html).toContain("data-add-item");
+    expect(html).toContain("Add line item");
+    expect(html).toContain("Create invoice");
+  });
+
+  test("preview with items also gets the add button", () => {
+    const html = views([]).invoiceStep2(p as any, {
+      items: [{ description: "Website", hours: 2.5, rate: 40, amount: 100, entry_ids: [1], date_from: "2026-09-20", date_to: "2026-09-20" }],
+      rounding: 5,
+    });
+    expect(html).toContain("Website");
+    expect(html).toContain('name="groups" value="1"');
+    expect(html).toContain("data-add-item");
+  });
+
+  test("no preview renders nothing", () => {
+    expect(views([]).invoiceStep2(p as any)).toBe("");
+  });
+});

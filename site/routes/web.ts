@@ -629,9 +629,12 @@ export function createWebRouter(deps: WebDeps) {
             const hours = round2(Number(form.get(`g${i}_hours`) || 0));
             const rate = round2(Number(form.get(`g${i}_rate`) || 0));
             const ids = String(form.get(`g${i}_ids`) || "").split(",").map(Number).filter(n => n > 0);
-            if (hours <= 0 || !ids.length) continue;
+            if (hours <= 0) continue;
             items.push({
-              description: String(form.get(`g${i}_desc`) || "Time"),
+              /* #668: manual rows carry no entry ids (one-time work with no
+                 tracked time) — their description defaults to "Item" while
+                 auto rows keep the "Time" default. */
+              description: String(form.get(`g${i}_desc`) || (ids.length ? "Time" : "Item")),
               hours, rate, amount: round2(hours * rate), entry_ids: ids,
               /* #243: per-line billing dates from the grouped entries */
               date_from: String(form.get(`g${i}_date_from`) || "") || null,
