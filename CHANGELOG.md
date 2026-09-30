@@ -4,6 +4,7 @@ What's new in Timekeep, newest first.
 
 ## 2026-09-29
 
+- **Manual line items on new invoices.** Step 2 of the new-invoice wizard can now include hand-entered line items, so flat fees and anything billed outside tracked time sit alongside the hours pulled from time entries.
 - **Client links moved to invoice.klectr.dev.** The public invoice hostname changed — new client links use the new address, and old tristonarmstrong.com links keep working.
 - **Online payments now reliably mark invoices paid.** The Stripe webhook verifies signatures and matches payments by payment-link ID instead of fragile metadata, so paying through the client's Pay button flips the invoice to paid.
 - **Invoice detail starts at the top.** Switching invoices resets the detail pane's scroll position instead of leaving you wherever the last invoice was scrolled.
