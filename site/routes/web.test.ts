@@ -164,3 +164,84 @@ describe("client settings (#630)", () => {
     expect(res!.headers.get("Location")).toBe(`/manage?client=${client.id}`);
   });
 });
+
+/** #668: manual line items — POST /invoices accepts rows with no entry
+ *  ids, so one-time work can be invoiced without tracked time. */
+function postInvoice(handleWeb: any, fields: Record<string, string>) {
+  const form = new FormData();
+  for (const [k, v] of Object.entries(fields)) form.append(k, v);
+  const req = new Request("http://x/invoices", { method: "POST", body: form });
+  return handleWeb(req, new URL(req.url), "/invoices", "POST");
+}
+
+const baseInvoiceFields = { client_id: "1", number: "INV-0001", issue_date: "2026-09-20", due_date: "", tax_rate: "0", notes: "", internal_notes: "" };
+
+describe("manual line items (#668)", () => {
+  test("a manual row creates the invoice with no linked entries", async () => {
+    const { db, handleWeb } = setup();
+    const res = await postInvoice(handleWeb, {
+      ...baseInvoiceFields, groups: "1",
+      g0_desc: "Logo design", g0_hours: "1", g0_rate: "250",
+      g0_ids: "", g0_date_from: "", g0_date_to: "",
+    });
+    expect(res!.status).toBe(302);
+    const inv = db.query("SELECT * FROM invoices").get() as any;
+    expect(inv.number).toBe("INV-0001");
+    const items = db.query("SELECT * FROM invoice_items WHERE invoice_id = ?").all(inv.id) as any[];
+    expect(items.length).toBe(1);
+    expect(items[0].description).toBe("Logo design");
+    expect(items[0].hours).toBe(1);
+    expect(items[0].rate).toBe(250);
+    expect(items[0].amount).toBe(250);
+    expect(items[0].date_from).toBeNull();
+    expect(items[0].date_to).toBeNull();
+    expect(db.query("SELECT COUNT(*) AS n FROM time_entries WHERE invoice_id IS NOT NULL").get()).toEqual({ n: 0 });
+    expect(res!.headers.get("Location")).toBe(`/invoices?invoice=${inv.id}`);
+  });
+
+  test("a blank manual description defaults to Item", async () => {
+    const { db, handleWeb } = setup();
+    await postInvoice(handleWeb, {
+      ...baseInvoiceFields, groups: "1",
+      g0_desc: "", g0_hours: "2", g0_rate: "50",
+      g0_ids: "", g0_date_from: "", g0_date_to: "",
+    });
+    const item = db.query("SELECT description FROM invoice_items").get() as any;
+    expect(item.description).toBe("Item");
+  });
+
+  test("mixed auto and manual rows: entries link only on the auto row", async () => {
+    const { db, client, handleWeb } = setup();
+    db.query("INSERT INTO projects (name, client_id) VALUES ('Site', ?)").run(client.id);
+    const project = db.query("SELECT id FROM projects").get() as any;
+    db.query("INSERT INTO time_entries (project_id, description, start_time, end_time) VALUES (?, 'Build', '2026-09-20T14:00:00.000Z', '2026-09-20T16:00:00.000Z')").run(project.id);
+    const entry = db.query("SELECT id FROM time_entries").get() as any;
+    const res = await postInvoice(handleWeb, {
+      ...baseInvoiceFields, groups: "2",
+      g0_desc: "Website", g0_hours: "2", g0_rate: "40", g0_ids: String(entry.id),
+      g0_date_from: "2026-09-20", g0_date_to: "2026-09-20",
+      g1_desc: "Rush fee", g1_hours: "1", g1_rate: "100",
+      g1_ids: "", g1_date_from: "", g1_date_to: "",
+    });
+    expect(res!.status).toBe(302);
+    const inv = db.query("SELECT * FROM invoices").get() as any;
+    const items = db.query("SELECT description, amount FROM invoice_items WHERE invoice_id = ? ORDER BY id").all(inv.id) as any[];
+    expect(items).toEqual([
+      { description: "Website", amount: 80 },
+      { description: "Rush fee", amount: 100 },
+    ]);
+    const linked = db.query("SELECT invoice_id FROM time_entries WHERE id = ?").get(entry.id) as any;
+    expect(linked.invoice_id).toBe(inv.id);
+  });
+
+  test("zero-hour manual rows are skipped and an empty invoice is rejected", async () => {
+    const { db, handleWeb } = setup();
+    const res = await postInvoice(handleWeb, {
+      ...baseInvoiceFields, groups: "1",
+      g0_desc: "Nothing", g0_hours: "0", g0_rate: "50",
+      g0_ids: "", g0_date_from: "", g0_date_to: "",
+    });
+    expect(res!.status).toBe(400);
+    expect(db.query("SELECT COUNT(*) AS n FROM invoices").get()).toEqual({ n: 0 });
+  });
+});

@@ -243,6 +243,34 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
             window.htmx.ajax('GET','/partial/invoice-rest?client_id='+encodeURIComponent(sel.value),{target:'#inv-range',swap:'innerHTML'});
         });
         if(issue) issue.addEventListener('change',deriveDue);
+        /* #668: manual line items — the Add button appends an editable row
+           to the step-2 table and bumps the groups count the POST handler
+           reads. Delegated on document so it survives the HTMX step-2 swap;
+           inputs are looked up within the button's own form (never by id —
+           #215), and hidden inputs stay inside the td (#536). */
+        document.addEventListener('click',function(ev){
+          var btn=ev.target.closest('[data-add-item]');
+          if(!btn) return;
+          var form=btn.closest('form');
+          if(!form) return;
+          var groups=form.querySelector('input[name="groups"]');
+          var body=form.querySelector('tbody');
+          if(!groups||!body) return;
+          var i=parseInt(groups.value,10)||0;
+          var tr=document.createElement('tr');
+          tr.innerHTML=
+            '<td></td>'+
+            '<td><input type="text" name="g'+i+'_desc" class="cell-input" aria-label="Item description"></td>'+
+            '<td><input type="number" name="g'+i+'_hours" min="0" step="0.01" class="cell-input num" aria-label="Hours"></td>'+
+            '<td><input type="number" name="g'+i+'_rate" min="0" step="0.01" class="cell-input num" aria-label="Rate"></td>'+
+            '<td class="num"><input type="hidden" name="g'+i+'_ids" value="">'+
+            '<input type="hidden" name="g'+i+'_date_from" value="">'+
+            '<input type="hidden" name="g'+i+'_date_to" value=""></td>';
+          body.appendChild(tr);
+          groups.value=String(i+1);
+          var desc=tr.querySelector('input[name="g'+i+'_desc"]');
+          if(desc) desc.focus();
+        });
       })();</script>`;
 
 
@@ -259,11 +287,14 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
   /* #71: step-2 card as a fragment — the preview action swaps #invoice-step2 in place. */
   function invoiceStep2(p: NewInvParams, preview?: { items: any[]; emptyMsg?: string; rounding?: number | null }): string {
     if (!preview) return "";
-    if (preview.emptyMsg) {
-      return `<div class="md-card form-card"><h3 class="md-title-medium">2 · Line items</h3><p class="muted">${esc(preview.emptyMsg)}</p></div>`;
-    }
     const roundingNote = preview.rounding
       ? `<div class="form-info">${icon("info")}<p>Entry durations are rounded up to ${preview.rounding}-minute increments.</p></div>`
+      : "";
+    /* #668: no unbilled entries used to be a dead end — the wizard now
+       offers manual line items instead, so one-time (untracked) work can
+       be invoiced without inventing time entries. */
+    const emptyNote = preview.emptyMsg
+      ? `<div class="form-info">${icon("info")}<p>${esc(preview.emptyMsg)}</p></div>`
       : "";
     const rows = preview.items.map((it, i) => `
         <tr>
@@ -277,6 +308,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     return `
       <div class="md-card form-card">
         <h3 class="md-title-medium">2 · Review line items</h3>
+        ${emptyNote}
         ${roundingNote}
         <form method="post" action="/invoices" class="form">
           <input type="hidden" name="client_id" value="${esc(p.client_id)}">
@@ -296,6 +328,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
               <tr class="grand"><td colspan="4">Total</td><td class="num">${money(t.total)}</td></tr>
             </tfoot>
           </table></div>
+          <div class="row"><button type="button" class="md-text-button" data-add-item>${icon("add")}<span>Add line item</span></button></div>
           <p class="muted tiny">Amounts recalculate on save. Entries are marked billed when the invoice is created.</p>
           <div class="row end"><button class="md-filled-button" type="submit">Create invoice</button></div>
         </form>
