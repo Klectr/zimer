@@ -418,6 +418,25 @@ describe("#643: detail pane scrolls to top on invoice switch", () => {
   });
 });
 
+/* #679: the phone-stacked layout appends its "×" suffix from CSS, so the
+   sheet marks a 1-hour cell with inv-hours-1 and the stylesheet swaps the
+   suffix to the singular " hr". */
+describe("#679: singular hour marker", () => {
+  const mkItems = (hours: number) => [{
+    description: "d", hours, rate: 40, amount: 40 * hours, entry_ids: [1],
+    date_from: "2026-09-21", date_to: "2026-09-26",
+  }];
+  const sheet = (hours: number) =>
+    views([]).invoiceSheet({ ...detailInv("sent", null), items: mkItems(hours) } as any);
+  test("1-hour line item gets the inv-hours-1 marker", () => {
+    expect(sheet(1)).toContain(`<td class="num inv-hours inv-hours-1">1</td>`);
+  });
+  test("other hours keep the plain inv-hours cell", () => {
+    expect(sheet(2.5)).toContain(`<td class="num inv-hours">2.5</td>`);
+    expect(sheet(2.5)).not.toContain(`inv-hours-1`);
+  });
+});
+
 /** #668: manual line items — step 2 offers an "Add line item" button, and
  *  the no-unbilled-entries case renders the manual-item form instead of a
  *  dead end, so one-time work can be invoiced without tracked time. */
