@@ -366,7 +366,7 @@ function drawModern(inv: PdfInvoice, doc: PdfDoc) {
   totalRow("Subtotal", money(inv.subtotal));
   if (inv.taxRate) totalRow(`Tax (${inv.taxRate}%)`, money(inv.tax));
   doc.y -= 4;
-  totalRow("TOTAL DUE", money(inv.total), true, 14, true);
+  totalRow(inv.status === "paid" ? "TOTAL" : "TOTAL DUE", money(inv.total), true, 14, true);
 
   /* ---- payment (#243): online payment link + plain-language terms ---- */
   if (inv.payUrl) {

@@ -53,3 +53,18 @@ describe("#637: PDF From block prints email below the address", () => {
     expect(text.indexOf("Holladay Tn, 38341")).toBeLessThan(text.indexOf("triston@klectr.dev"));
   });
 });
+
+/** #687: paid invoices have nothing left due — the grand-total row reads
+ * TOTAL instead of TOTAL DUE. */
+describe("#687: PDF grand-total label drops DUE for paid invoices", () => {
+  test("paid invoice prints TOTAL, not TOTAL DUE", () => {
+    const text = pdfText({ ...base, status: "paid", total: 2880 });
+    expect(text).toContain("TOTAL");
+    expect(text).not.toContain("TOTAL DUE");
+  });
+
+  test("sent invoice still prints TOTAL DUE", () => {
+    const text = pdfText({ ...base, status: "sent", total: 1757.5 });
+    expect(text).toContain("TOTAL DUE");
+  });
+});
