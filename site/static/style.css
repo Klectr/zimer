@@ -1510,6 +1510,8 @@ body.app-fixed .cal-gutter-spacer {
     display: inline; font-size: 0.8125rem; color: var(--md-sys-color-on-surface-variant);
   }
   .invoice-sheet .md-table td.inv-hours::after { content: " hrs\00a0×\00a0"; }
+  /* #679: the singular hour reads "1 hr × …", not "1 hrs × …". */
+  .invoice-sheet .md-table td.inv-hours.inv-hours-1::after { content: " hr\00a0×\00a0"; }
   .invoice-sheet .md-table td.inv-amount {
     margin-left: auto; font-size: 0.9375rem; font-weight: 700; white-space: nowrap;
   }

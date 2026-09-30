@@ -338,11 +338,13 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
   /** /invoices/:id — printable detail with status actions. */
   function invoiceSheet(inv: Invoice & { items: InvoiceItem[] }): string {
     const t = invoiceTotals(inv.items, inv.tax_rate);
+    /* #679: the phone-stacked layout appends its "×" suffix via CSS — mark
+       the singular hour so it reads "1 hr", not "1 hrs". */
     const items = inv.items.map(it => `
       <tr>
         <td class="inv-date">${esc(shortDateRange(it.date_from, it.date_to))}</td>
         <td class="desc">${esc(it.description)}</td>
-        <td class="num inv-hours">${it.hours}</td>
+        <td class="num inv-hours${it.hours === 1 ? " inv-hours-1" : ""}">${it.hours}</td>
         <td class="num inv-rate">${money(it.rate)}</td>
         <td class="num inv-amount">${money(it.amount)}</td>
       </tr>`).join("");
