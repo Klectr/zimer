@@ -5,6 +5,7 @@ What's new in Timekeep, newest first.
 ## 2026-09-30
 
 - **One-hour line items read "hr".** On phone-stacked public invoices, a 1-hour line now reads "1 hr × rate" instead of "1 hrs × rate".
+- **Paid invoices say "Total", not "Total due".** Nothing is due once an invoice is paid, so the grand total row on the sheet and the PDF now reads "Total" on paid invoices.
 
 ## 2026-09-29
 
