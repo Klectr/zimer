@@ -2,6 +2,10 @@
 
 What's new in Timekeep, newest first.
 
+## 2026-09-30
+
+- **One-hour line items read "hr".** On phone-stacked public invoices, a 1-hour line now reads "1 hr × rate" instead of "1 hrs × rate".
+
 ## 2026-09-29
 
 - **Manual line items on new invoices.** Step 2 of the new-invoice wizard can now include hand-entered line items, so flat fees and anything billed outside tracked time sit alongside the hours pulled from time entries.
