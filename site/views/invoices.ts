@@ -191,7 +191,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
         <h3 class="md-title-medium">1 · Pick unbilled time</h3>
         <div class="form-info">
           ${icon("info")}
-          <p>Only finished, unbilled entries on this client's projects are included. Client hourly rates can be set on the <a href="/manage">Clients &amp; projects page</a>.</p>
+          <p>Only finished, unbilled entries on this client's projects are included. Client hourly rates can be set on the <a href="/manage">Clients page</a>.</p>
         </div>
         <form method="post" action="/invoices/preview" class="form" hx-post="/invoices/preview" hx-target="#invoice-step2" hx-swap="innerHTML">
           <div class="md-text-field filled">
