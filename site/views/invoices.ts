@@ -408,7 +408,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
           <tfoot>
             <tr><td colspan="4">Subtotal</td><td class="num">${money(t.subtotal)}</td></tr>
             ${inv.tax_rate ? `<tr><td colspan="4">Tax (${inv.tax_rate}%)</td><td class="num">${money(t.tax)}</td></tr>` : ""}
-            <tr class="grand"><td colspan="4">Total due</td><td class="num">${money(t.total)}</td></tr>
+            <tr class="grand"><td colspan="4">${inv.status === "paid" ? "Total" : "Total due"}</td><td class="num">${money(t.total)}</td></tr>
           </tfoot>
         </table></div>
         <p class="inv-terms">${esc(terms)}</p>
