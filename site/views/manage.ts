@@ -251,7 +251,7 @@ export function createManageViews(deps: ManageViewDeps) {
     return layout("Clients & Projects", `
       <div class="client-list-detail${sel ? " has-selection" : ""}" data-enter="2">
         <section class="client-list-pane" aria-label="Client list">
-          <h2 class="md-headline-small">Clients</h2>
+          <h1 class="md-headline-small">Clients</h1>
           ${addClientForm()}
           ${clientListHtml(sel)}
         </section>
@@ -391,7 +391,7 @@ export function createManageViews(deps: ManageViewDeps) {
     return layout("Settings", `
       <div class="page-narrow" data-enter="2">
       <div class="page-head">
-        <h2 class="md-headline-small">Settings</h2>
+        <h1 class="md-headline-small">Settings</h1>
       </div>
       <div class="settings-sections">${settingsBody}</div>
       </div>`);

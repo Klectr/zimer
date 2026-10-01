@@ -188,7 +188,7 @@ export function createTimerViews(deps: TimerViewDeps) {
           ${timerPartial()}
           <div class="scroll-region">
             <div class="page-head">
-              <h2 class="md-headline-small">Today</h2>
+              <h1 class="md-headline-small">Today</h1>
               <a class="md-text-button" id="invoice-week" href="/invoices/new">${icon("receipt")} Invoice this week</a>
             </div>
             <div id="today-list" hx-get="/partial/today" hx-trigger="load, timer-updated from:body">

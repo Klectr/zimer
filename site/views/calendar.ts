@@ -319,7 +319,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     })();
     return `
       <div class="week-nav">
-        <h2 class="md-headline-small">${esc(navTitle)}</h2>
+        <h1 class="md-headline-small">${esc(navTitle)}</h1>
         <div class="week-nav-actions">
           ${navActions}
         </div>

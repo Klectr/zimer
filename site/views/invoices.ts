@@ -114,7 +114,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     const rows = qInvoices.all() as any[];
     const head = `
       <div class="page-head" data-enter="2">
-        <h2 class="md-headline-small">Invoices</h2>
+        <h1 class="md-headline-small">Invoices</h1>
         <div class="page-head-actions">
           ${rows.length ? `<a class="md-text-button" href="/export/invoices.csv" download>${icon("download")}Export CSV</a>` : ""}
           <a class="md-filled-button" href="/invoices/new">${icon("add")}New invoice</a>
@@ -277,7 +277,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     return layout("New invoice", `
       <div class="page-narrow" data-enter="2">
       <div class="page-head">
-        <h2 class="md-headline-small">New invoice</h2>
+        <h1 class="md-headline-small">New invoice</h1>
         <a class="md-text-button" href="/invoices">Cancel</a>
       </div>
       ${step1}<div id="invoice-step2">${invoiceStep2(p, preview)}</div>
