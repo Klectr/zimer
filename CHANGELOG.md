@@ -2,6 +2,12 @@
 
 What's new in Timekeep, newest first.
 
+## 2026-10-01
+
+- **Running entries grow out of their pill.** On the calendar, a timer started minutes ago kept its squashed pill shape and stretched into an oval as the minutes piled up — the running entry now reshapes into a normal card once it's tall enough.
+- **Page titles are real headlines.** App page titles are now the page's h1, so screen readers announce the page correctly.
+- **Wizard notes are labeled for screen readers.** The new-invoice wizard's Notes and Internal notes text areas now carry accessible names.
+
 ## 2026-09-30
 
 - **Extension suggestion card has a real headline.** The autotracker's "Start X?" line rendered as plain body text next to the styled eyebrow and description — it now reads as the card's title.
