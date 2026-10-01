@@ -7,6 +7,7 @@ What's new in Timekeep, newest first.
 - **Running entries grow out of their pill.** On the calendar, a timer started minutes ago kept its squashed pill shape and stretched into an oval as the minutes piled up — the running entry now reshapes into a normal card once it's tall enough.
 - **Page titles are real headlines.** App page titles are now the page's h1, so screen readers announce the page correctly.
 - **Wizard notes are labeled for screen readers.** The new-invoice wizard's Notes and Internal notes text areas now carry accessible names.
+- **Labels click through to their fields.** The edit-entry page and the invoice wizard's date/number fields had floating labels that weren't wired to their inputs — screen readers skipped them and clicking a label didn't focus the field. They're wired now, like the calendar dialog's.
 
 ## 2026-09-30
 
