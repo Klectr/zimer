@@ -215,8 +215,8 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
             <div class="md-text-field filled"><input type="date" name="issue_date" id="inv-issue" value="${esc(p.issue_date)}" required placeholder=" "><label>Issue date</label></div>
             <div class="md-text-field filled"><input type="date" name="due_date" id="inv-due" value="${esc(p.due_date)}" placeholder=" "><label>Due date</label></div>
           </div>
-          <div class="md-text-field"><input type="text" name="notes" value="${esc(p.notes)}" placeholder=" "><label>Notes (optional)</label></div>
-          <div class="md-text-field"><input type="text" name="internal_notes" value="${esc(p.internal_notes)}" placeholder=" "><label>Internal notes (only you see this)</label></div>
+          <div class="md-text-field"><input type="text" name="notes" value="${esc(p.notes)}" placeholder=" " aria-label="Notes (optional)"><label>Notes (optional)</label></div>
+          <div class="md-text-field"><input type="text" name="internal_notes" value="${esc(p.internal_notes)}" placeholder=" " aria-label="Internal notes (only you see this)"><label>Internal notes (only you see this)</label></div>
           <div class="row end"><button class="md-filled-button" type="submit">Preview line items</button></div>
         </form>
       </div>
