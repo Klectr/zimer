@@ -4,6 +4,7 @@ What's new in Timekeep, newest first.
 
 ## 2026-09-30
 
+- **Extension suggestion card has a real headline.** The autotracker's "Start X?" line rendered as plain body text next to the styled eyebrow and description — it now reads as the card's title.
 - **One-hour line items read "hr".** On phone-stacked public invoices, a 1-hour line now reads "1 hr × rate" instead of "1 hrs × rate".
 - **Paid invoices say "Total", not "Total due".** Nothing is due once an invoice is paid, so the grand total row on the sheet and the PDF now reads "Total" on paid invoices.
 - **Settings has a real page now.** Visiting `/settings` directly used to render an unstyled fragment — it now loads as a proper Settings page inside the app layout; the settings dialog itself is unchanged.
