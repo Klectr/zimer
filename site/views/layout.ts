@@ -199,7 +199,6 @@ function settingsDialog(): string {
     var body=document.getElementById('settings-body');
     var closeBtn=document.getElementById('settings-close');
     var menuItem=document.getElementById('appbar-settings-btn');
-    var avatarBtn=document.getElementById('appbar-settings-btn');
     if(!scrim||!body||!closeBtn||!menuItem) return;
     var open_=false, focusOnSwap=false;
     function open(){
@@ -219,7 +218,7 @@ function settingsDialog(): string {
       var done=false, finish=function(){ if(done) return; done=true; scrim.hidden=true; };
       var onEnd=function(e){ if(e.target===scrim&&e.propertyName==='opacity'){ scrim.removeEventListener('transitionend',onEnd); finish(); } };
       scrim.addEventListener('transitionend',onEnd); setTimeout(finish,300);
-      if(refocus&&avatarBtn) avatarBtn.focus();
+      if(refocus&&menuItem) menuItem.focus();
     }
     /* #456: trap Tab inside the modal while it's open. onKey only runs
        while open (attached on open, detached on close), so no extra open
