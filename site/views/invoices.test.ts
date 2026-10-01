@@ -163,6 +163,12 @@ describe("paid-on date", () => {
     expect(html).toContain('aria-label="Tax"><label>Tax</label>');
     expect(html).not.toContain("Tax %");
   });
+
+  test("#703: new-invoice Notes/Internal notes inputs have accessible names", () => {
+    const html = views([]).invoiceNewPage(views([]).defaultNewInvParams());
+    expect(html).toContain('aria-label="Notes (optional)"><label>Notes (optional)</label>');
+    expect(html).toContain('aria-label="Internal notes (only you see this)"><label>Internal notes (only you see this)</label>');
+  });
 });
 
 /** #486: finish the data-tip sweep — the invoice share-section buttons
