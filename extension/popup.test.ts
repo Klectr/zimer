@@ -44,6 +44,22 @@ describe("extension popup label wiring (#515)", () => {
   });
 });
 
+/** #695: the suggestion-card headline must carry a title treatment in the
+ *  popup stylesheet — it renders the "Start **X**?" question as a div with
+ *  no class, so without a #suggest-text rule it degrades to plain body text
+ *  next to the styled eyebrow and desc line. */
+describe("extension popup suggestion headline (#695)", () => {
+  test("#suggest-text has a title-style rule in the popup stylesheet", () => {
+    const rule = html.match(/#suggest-text\s*\{([^}]*)\}/);
+    expect(rule, "no #suggest-text rule in popup.html <style>").not.toBeNull();
+    const body = rule![1];
+    const size = body.match(/font-size:\s*(\d+)px/);
+    expect(size, "#suggest-text missing font-size").not.toBeNull();
+    expect(Number(size![1])).toBeGreaterThanOrEqual(15);
+    expect(body).toMatch(/font-weight:\s*600/);
+  });
+});
+
 /** #641: autotracker rules upsert — adding a pattern that already has a rule
  *  updates that rule's project instead of stacking a dead duplicate that
  *  matchRule would never reach. */
