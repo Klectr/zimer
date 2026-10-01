@@ -592,3 +592,26 @@ describe("calendar dialog placement (#669)", () => {
     expect(html.indexOf("<script>")).toBeGreaterThan(closed);
   });
 });
+
+/** #704: the 30s placeNow tick grows the running card's height as the timer
+ *  runs. It never synced the cal-compact class, so a timer started short
+ *  kept its 999px pill radius and stretched into an oval until the next
+ *  reload. The tick must toggle the class on the true (unfloored) height,
+ *  with the same <26px threshold the server render uses. */
+describe("running entry pill sync (#704)", () => {
+  async function placeNowSrc() {
+    const src = await Bun.file("site/views/calendar.ts").text();
+    return src.slice(src.indexOf("function placeNow(){"), src.indexOf("/* Scroll one strip"));
+  }
+
+  test("placeNow toggles cal-compact on the running entry", async () => {
+    const s = await placeNowSrc();
+    expect(s).toContain("classList.toggle('cal-compact',trueH<26)");
+  });
+
+  test("the toggle keys off the unfloored height, not the 26px floor", async () => {
+    const s = await placeNowSrc();
+    expect(s).toMatch(/var trueH=\(\(nowMin-sm\)\/60\)\*HOUR;/);
+    expect(s).toMatch(/style\.height=Math\.max\(trueH,26\)/);
+  });
+});

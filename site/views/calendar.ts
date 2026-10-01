@@ -948,7 +948,13 @@ export function createCalendarViews(deps: CalendarViewDeps) {
           for(var i=0;i<run.length;i++){
             var st=run[i].getAttribute('data-start'); if(!st) continue;
             var pp=st.split(':'),sm=(+pp[0])*60+(+pp[1]);
-            run[i].style.height=Math.max(((nowMin-sm)/60)*HOUR,26).toFixed(1)+'px';
+            /* #704: the 30s tick grows the running card but never synced the
+               compact pill class, so a timer started short kept its 999px
+               radius and stretched into an oval. Toggle it on the true
+               height, like the server render and the resize path do. */
+            var trueH=((nowMin-sm)/60)*HOUR;
+            run[i].style.height=Math.max(trueH,26).toFixed(1)+'px';
+            run[i].classList.toggle('cal-compact',trueH<26);
           }
         })(strips[s]);
       }
