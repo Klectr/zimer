@@ -615,3 +615,38 @@ describe("running entry pill sync (#704)", () => {
     expect(s).toMatch(/style\.height=Math\.max\(trueH,26\)/);
   });
 });
+
+/** #709: the edit-entry page's Description/Project/Start/End fields had
+ *  visible floating labels with no for/id wiring and no other accessible
+ *  name — screen readers announced nothing and clicking the label did not
+ *  focus the field. The calendar dialog already wires for/id; the edit page
+ *  must match. */
+describe("edit-entry floating labels (#709)", () => {
+  function editPageHtml() {
+    const entry = {
+      id: 7, description: "wired labels", project_id: null,
+      start_time: "2026-09-21T15:00:00.000Z", end_time: "2026-09-21T16:00:00.000Z",
+      invoice_id: null, invoice_number: null, invoice_status: null,
+    };
+    const db = { query: (_sql: string) => ({ get: () => null, all: () => [] }) } as unknown as Database;
+    const views = createCalendarViews({
+      db,
+      qOne: { get: () => entry },
+      qRange: { get: () => ({ n: 1 }), all: () => [] },
+      entrySelect: "SELECT",
+      layout: (_t: string, b: string) => b,
+      projectOptions: () => "",
+      weekTargetBar: () => "",
+      calHourPx: 64,
+    } as any);
+    return views.editPage(7) as string;
+  }
+
+  test("each field's label is wired to its input via matching id/for", () => {
+    const html = editPageHtml();
+    for (const id of ["ee-desc", "ee-project", "ee-start", "ee-end"]) {
+      expect(html).toContain(`id="${id}"`);
+      expect(html).toContain(`<label for="${id}">`);
+    }
+  });
+});
