@@ -1031,20 +1031,20 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       ${locked ? `<p class="muted md-body-medium">Invoiced on ${esc(e.invoice_number || "")} — this time can\u2019t be edited.</p>` : ""}
       <form method="post" action="/entries/${e.id}" class="form" id="edit-entry-form">
         <div class="md-text-field">
-          <input type="text" name="description" value="${esc(e.description)}" placeholder=" "${dis}>
-          <label>Description</label>
+          <input type="text" id="ee-desc" name="description" value="${esc(e.description)}" placeholder=" "${dis}>
+          <label for="ee-desc">Description</label>
         </div>
         <div class="md-text-field filled">
-          <select name="project_id"${dis}><option value="">No project</option>${projectOptions(e.project_id)}</select>
-          <label>Project</label>
+          <select id="ee-project" name="project_id"${dis}><option value="">No project</option>${projectOptions(e.project_id)}</select>
+          <label for="ee-project">Project</label>
         </div>
         <div class="md-text-field filled">
-          <input type="datetime-local" name="start_time" data-iso="${esc(e.start_time)}" required placeholder=" "${dis}>
-          <label>Start</label>
+          <input type="datetime-local" id="ee-start" name="start_time" data-iso="${esc(e.start_time)}" required placeholder=" "${dis}>
+          <label for="ee-start">Start</label>
         </div>
         <div class="md-text-field filled">
-          <input type="datetime-local" name="end_time" data-iso="${esc(e.end_time || "")}" placeholder=" "${dis}>
-          <label>End (blank = still running)</label>
+          <input type="datetime-local" id="ee-end" name="end_time" data-iso="${esc(e.end_time || "")}" placeholder=" "${dis}>
+          <label for="ee-end">End (blank = still running)</label>
         </div>
         <div class="row">
           ${locked ? "" : `<button class="md-filled-button" type="submit">Save</button>`}

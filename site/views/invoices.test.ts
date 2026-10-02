@@ -169,6 +169,14 @@ describe("paid-on date", () => {
     expect(html).toContain('aria-label="Notes (optional)"><label>Notes (optional)</label>');
     expect(html).toContain('aria-label="Internal notes (only you see this)"><label>Internal notes (only you see this)</label>');
   });
+
+  test("#709: new-invoice date/number labels are wired via matching id/for", () => {
+    const html = views([]).invoiceNewPage(views([]).defaultNewInvParams());
+    for (const id of ["inv-from", "inv-to", "inv-number", "inv-issue", "inv-due"]) {
+      expect(html).toContain(`id="${id}"`);
+      expect(html).toContain(`<label for="${id}">`);
+    }
+  });
 });
 
 /** #486: finish the data-tip sweep — the invoice share-section buttons
