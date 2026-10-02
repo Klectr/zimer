@@ -100,7 +100,12 @@ export function createTimerViews(deps: TimerViewDeps) {
   function timerPartial(): string {
     const running = qRunning.get() as Entry | null;
     if (running) {
-      const proj = running.project_name ? ` · ${esc(running.project_name)}` : "";
+      /* #718: the "· name" rides in one no-wrap span so the TRACKING label
+         can't split the project name mid-phrase on narrow screens — the span
+         ellipsizes instead. The separator lives INSIDE the span: as a bare
+         text run next to the shrinking span, Chrome drops the "·" to the
+         baseline (verified in QA). */
+      const proj = running.project_name ? `<span class="timer-state-proj">· ${esc(running.project_name)}</span>` : "";
       /* #475: the stop class is what .timer-top-row .stop positions — the
          button once dropped it and sat below the TRACKING label in normal
          flow. This note lives outside the template literal: a JS-style comment

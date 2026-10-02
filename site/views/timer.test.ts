@@ -246,6 +246,27 @@ describe("timer card stop button (#475)", () => {
   });
 });
 
+describe("tracking label project name (#718)", () => {
+  function partialWithProject(name: string | null) {
+    const entry = { ...runningEntry, project_name: name };
+    const deps = {
+      ...baseDeps,
+      qRunning: { get: () => entry } as unknown as Statement,
+    };
+    return createTimerViews(deps as any).timerPartial();
+  }
+  test("project name rides in a no-wrap span, never bare text", () => {
+    // the span keeps the label from splitting the name mid-phrase on narrow
+    // screens — style.css ellipsizes it instead. The "·" separator rides
+    // inside the span so it can't detach from the name.
+    expect(partialWithProject("Brand refresh")).toContain(
+      '<span class="timer-state-proj">· Brand refresh</span>');
+  });
+  test("no project renders no span", () => {
+    expect(partialWithProject(null)).not.toContain("timer-state-proj");
+  });
+});
+
 describe("timer card annotation hygiene (#477)", () => {
   // A /* ... */ note once sat inside the template literal and rendered as
   // visible text between the TRACKING label and the Stop button. Inline
