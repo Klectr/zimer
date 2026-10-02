@@ -47,7 +47,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
   function emptyInvoices(): string {
     const demoCta = workspaceEmpty(db) ? `
       <form method="post" action="/demo/load" class="inline">
-        <button class="md-filled-button" type="submit">${icon("info")}<span>Load demo data</span></button>
+        <button class="md-text-button" type="submit">${icon("info")}<span>Load demo data</span></button>
       </form>` : "";
     return `<div class="empty-state" data-enter="3">
       ${icon("receipt")}
