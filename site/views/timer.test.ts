@@ -257,9 +257,10 @@ describe("tracking label project name (#718)", () => {
   }
   test("project name rides in a no-wrap span, never bare text", () => {
     // the span keeps the label from splitting the name mid-phrase on narrow
-    // screens — style.css ellipsizes it instead.
+    // screens — style.css ellipsizes it instead. The "·" separator rides
+    // inside the span so it can't detach from the name.
     expect(partialWithProject("Brand refresh")).toContain(
-      '<span class="timer-state-proj">Brand refresh</span>');
+      '<span class="timer-state-proj">· Brand refresh</span>');
   });
   test("no project renders no span", () => {
     expect(partialWithProject(null)).not.toContain("timer-state-proj");
