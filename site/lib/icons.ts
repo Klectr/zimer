@@ -58,11 +58,16 @@ export function icon(name: keyof typeof ICONS): string {
 const LOGO_CLOCK = `<path d="M 34 9.5 C 41 9.5 45.5 15 45.5 22 C 45.5 29 41 34.5 34 34.5 C 27 34.5 20.5 29 20.5 22.2 C 20.5 15.2 26 10 33 9.6"/>`;
 const LOGO_HANDS = `<path d="M 33 22 C 32.9 19.5 32.9 17.5 33 15"/><path d="M 33 22 C 34.8 22.8 36.5 23.6 38.2 24.4"/><circle cx="33" cy="22" r="2.4" fill="currentColor" stroke="none"/>`;
 const LOGO_CUP = `<path d="M 11 35 C 15 49 25 56 35 56 C 45 56 53 48 55 37"/><path d="M 11 35 C 9 31 10 27 13 25"/><path d="M 55 37 C 57 33 56 29 53 27"/>`;
+/* October seasonal variant: a doodle witch hat perched on the clock, same
+   stroke style. The viewBox shifts up 18 units to make headroom; proportions
+   stay 64x64. Revert after October. */
+const LOGO_HAT = `<path d="M 20 14 C 28 8, 42 8, 52 13"/><path d="M 27 11 C 30 3, 33 -5, 39 -7"/><path d="M 46 11 C 47 3, 48 -3, 52 -1"/><path d="M 39 -7 C 43 -9, 49 -7, 52 -1"/><path d="M 28 4 C 34 2, 42 2, 46 4"/>`;
 
 export function logo(size = 24, spinHands = false): string {
   /* #406: spinHands wraps the clock hands in a group so CSS can rotate them
-     (update-check progress state). Default output is byte-identical to before. */
+     (update-check progress state). October: the seasonal LOGO_HAT rides along
+     outside the spinning group. */
   const hands = spinHands ? `<g class="tk-logo-hands">${LOGO_HANDS}</g>` : LOGO_HANDS;
   const cls = spinHands ? ` class="tk-logo-spinning"` : "";
-  return `<svg${cls} width="${size}" height="${size}" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${LOGO_CLOCK}${hands}${LOGO_CUP}</svg>`;
+  return `<svg${cls} width="${size}" height="${size}" viewBox="0 -18 64 64" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${LOGO_CLOCK}${hands}${LOGO_CUP}${LOGO_HAT}</svg>`;
 }
