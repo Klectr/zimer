@@ -127,6 +127,7 @@ export function createPublicViews(deps: PublicViewDeps) {
   </div>
   <button class="md-filled-button" type="submit">Log in</button>
   <p class="muted tiny">Printed in the server log on first run, or set via TIMEKEEP_TOKEN.</p>
+  <div class="login-pumpkin" aria-hidden="true">${icon("pumpkin")}</div>
   </form></div></main></body></html>`;
   }
 

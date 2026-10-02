@@ -46,10 +46,14 @@ export const ICONS: Record<string, string> = {
      outlined 24px, matching the set. */
   table: `<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9.3h18M3 14.6h18M9 9.3V20"/>`,
   database: `<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>`,
+  /* #711 October: jack-o-lantern in a doodle witch hat. Same M3 outlined
+     24px hand as the set; the face is filled triangles, the hat reuses the
+     logo's floppy-tip language. Temporary: revert after October. */
+  pumpkin: `<path d="M12 8.5 C 7.5 8.5, 4.5 11.5, 4.5 15 C 4.5 18.5, 7.5 21, 12 21 C 16.5 21, 19.5 18.5, 19.5 15 C 19.5 11.5, 16.5 8.5, 12 8.5 Z"/><path d="M8.5 9.6 C 7.6 12, 7.6 17, 8.5 19.9"/><path d="M15.5 9.6 C 16.4 12, 16.4 17, 15.5 19.9"/><path d="M8.3 13.2 L9.8 15.2 L6.8 15.2 Z" fill="currentColor" stroke="none"/><path d="M15.7 13.2 L17.2 15.2 L14.2 15.2 Z" fill="currentColor" stroke="none"/><path d="M8 17.3 L9.3 18.8 L10.8 17.3 L12.3 18.8 L13.8 17.3 L15.3 18.8 L16 17.3"/><path d="M8 7.6 C 10 6.6, 14 6.6, 16 7.6"/><path d="M10 7 C 10.4 4.8, 11.4 3, 13.4 2.4"/><path d="M14 7 C 14.4 5, 15.2 3.6, 16.8 3.2"/><path d="M13.4 2.4 C 14.4 2, 15.8 2.4, 16.8 3.2"/>`,
 };
 
-export function icon(name: keyof typeof ICONS): string {
-  return `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]}</svg>`;
+export function icon(name: keyof typeof ICONS, cls?: string): string {
+  return `<svg${cls ? ` class="${cls}"` : ""} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]}</svg>`;
 }
 
 /** Brand mark: a hand-drawn hand keeping a wobbly clock. Drawn on a 64-grid

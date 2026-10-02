@@ -265,7 +265,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     return `<div class="cal-day${isToday ? " today" : ""}${pastShort ? " paced-short" : ""}" style="animation-delay:${animDelay}ms">
       <div class="cal-day-head"${headAttrs}>
         <div class="md-label-large muted">${esc(wd)}</div>
-        <div class="cal-day-num${isToday ? " today" : ""}">${d}</div>
+        <div class="cal-day-num${isToday ? " today" : ""}">${d}${isToday ? icon("pumpkin", "oct-today") : ""}</div>
       </div>
       <div class="cal-day-col" data-date="${day}"><div class="cal-night cal-night-am" aria-hidden="true">${WAVE_AM}${nightStars(NIGHT_STARS_AM)}</div><div class="cal-night cal-night-pm" aria-hidden="true">${WAVE_PM}${nightStars(NIGHT_STARS_PM)}</div>${entryHtml}${nowLine}</div>
     </div>`;

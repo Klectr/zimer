@@ -50,7 +50,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
         <button class="md-filled-button" type="submit">${icon("info")}<span>Load demo data</span></button>
       </form>` : "";
     return `<div class="empty-state" data-enter="3">
-      ${icon("receipt")}
+      ${icon("pumpkin")}
       <h3 class="md-title-large">No invoices yet</h3>
       <p class="muted">Turn tracked time into an invoice — or explore first with fictional sample data.</p>
       <div class="row">${demoCta}</div>
