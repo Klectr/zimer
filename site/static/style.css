@@ -708,6 +708,10 @@ input[type="number"] {
 .md-card.tracking { position: relative; }
 .timer-top-row .stop { position: absolute; top: 20px; right: 20px; }
 .timer-top-row .timer-state-label { padding-right: 140px; }
+/* #718: the project name never breaks mid-phrase on narrow screens — the
+   label row is padded for the absolute Stop button, so a long name wraps
+   awkwardly there. One line with an ellipsis instead. */
+.timer-state-proj { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .timer-elapsed {
   font-size: 2.8125rem;
   line-height: 52px;

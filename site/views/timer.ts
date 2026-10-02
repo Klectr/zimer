@@ -100,7 +100,9 @@ export function createTimerViews(deps: TimerViewDeps) {
   function timerPartial(): string {
     const running = qRunning.get() as Entry | null;
     if (running) {
-      const proj = running.project_name ? ` · ${esc(running.project_name)}` : "";
+      /* #718: the project name rides in a no-wrap span so the TRACKING label
+         can't split it mid-phrase on narrow screens — it ellipsizes instead. */
+      const proj = running.project_name ? ` · <span class="timer-state-proj">${esc(running.project_name)}</span>` : "";
       /* #475: the stop class is what .timer-top-row .stop positions — the
          button once dropped it and sat below the TRACKING label in normal
          flow. This note lives outside the template literal: a JS-style comment
