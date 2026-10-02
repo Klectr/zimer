@@ -1628,9 +1628,15 @@ body.app-fixed .cal-gutter-spacer {
   background: var(--md-sys-color-surface-container-high);
   color: var(--md-sys-color-on-surface);
   border-radius: 999px; padding: 8px 16px; margin: 0 0 14px;
-  text-decoration: none; }
+  text-decoration: none;
+  /* #715: on narrow screens the chip may wrap — let the wrap land between the
+     two segments, never inside "Invoice this week". */
+  flex-wrap: wrap; }
 .nudge-chip:hover { background: var(--md-sys-color-surface-container-highest); }
-.nudge-chip .nudge-go { color: var(--md-sys-color-primary); }
+/* #715: keep the receipt icon glued to its label — the icon and "Invoice this
+   week" never split across lines. */
+.nudge-chip .nudge-go { display: inline-flex; align-items: center; gap: 4px;
+  white-space: nowrap; color: var(--md-sys-color-primary); }
 /* Nudge-chip entrance (#52): scale/fade from the chip's top-left anchor
    corner, landing just after the week-nav entrance above it. */
 .nudge-chip {

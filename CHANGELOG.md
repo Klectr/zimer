@@ -2,6 +2,10 @@
 
 What's new in Timekeep, newest first.
 
+## 2026-10-02
+
+- **Nudge chip holds together on phones.** The calendar's "not yet invoiced" pill broke "Invoice this week" across two lines on narrow screens — the link now stays on one line and the chip wraps between its two parts instead.
+
 ## 2026-10-01
 
 - **Running entries grow out of their pill.** On the calendar, a timer started minutes ago kept its squashed pill shape and stretched into an oval as the minutes piled up — the running entry now reshapes into a normal card once it's tall enough.
