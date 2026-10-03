@@ -130,6 +130,54 @@ export function createPublicViews(deps: PublicViewDeps) {
   </form></div></main></body></html>`;
   }
 
-  return { loginPage, publicInvoicePage, changelogPage, termsPage };
+  /* #732: hosted signup + login pages. Same M3 card as the token login. */
+  function authShell(title: string, form: string, error?: string): string {
+    return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${title} · Timekeep</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
+  <script src="/static/motion.js" defer></script></head>
+  <body><main class="login">
+  <div class="md-card" style="border-radius:28px;padding:28px">
+  <h1 class="md-headline-small" style="margin-top:0;display:flex;align-items:center;gap:12px">${logo(32)}<span>Timekeep</span></h1>
+  ${form}${error ? `<p class="error" role="alert">${esc(error)}</p>` : ""}
+  </div></main></body></html>`;
+  }
+
+  function signupPage(error?: string): string {
+    return authShell("Sign up", `
+  <form method="post" action="/signup" class="form">
+  <div class="md-text-field">
+    <input type="email" name="email" autocomplete="email" required placeholder=" " aria-label="Email">
+    <label>Email</label>
+  </div>
+  <div class="md-text-field">
+    <input type="password" name="password" autocomplete="new-password" required minlength="8" placeholder=" " aria-label="Password">
+    <label>Password</label>
+  </div>
+  <button class="md-filled-button" type="submit">Create account</button>
+  <p class="muted tiny">14-day free trial, then $12/month. <a href="/login">Log in</a> instead.</p>
+  </form>`, error);
+  }
+
+  function hostedLoginPage(error?: string): string {
+    return authShell("Log in", `
+  <form method="post" action="/login" class="form">
+  <div class="md-text-field">
+    <input type="email" name="email" autocomplete="email" required placeholder=" " aria-label="Email">
+    <label>Email</label>
+  </div>
+  <div class="md-text-field">
+    <input type="password" name="password" autocomplete="current-password" required placeholder=" " aria-label="Password">
+    <label>Password</label>
+  </div>
+  <button class="md-filled-button" type="submit">Log in</button>
+  <p class="muted tiny">No account yet? <a href="/signup">Sign up</a>.</p>
+  </form>`, error);
+  }
+
+  return { loginPage, signupPage, hostedLoginPage, publicInvoicePage, changelogPage, termsPage };
 }
 
