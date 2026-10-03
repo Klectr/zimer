@@ -352,7 +352,7 @@ export function createApiRouter(deps: ApiDeps) {
               return json({ totals: revenueTotals(), by_month: revenueMonthly(), by_client: revenueByClient(), overdue: revenueOverdue() });
             return json({ error: "not found" }, 404);
           } catch (err) {
-            console.error(`[timekeep] API ${method} ${path} threw:`, err);
+            console.error(`[zimer] API ${method} ${path} threw:`, err);
             return json({ error: "internal" }, 500);
           }
 

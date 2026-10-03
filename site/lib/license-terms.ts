@@ -18,7 +18,7 @@ export function licenseTerms(): TermsSection[] {
   return [
     {
       heading: "Subscription",
-      body: "Timekeep costs $12/month, one tier. The first 14 days are a free trial. Cancel anytime — you keep access until the end of the paid period.",
+      body: "Zimer costs $12/month, one tier. The first 14 days are a free trial. Cancel anytime — you keep access until the end of the paid period.",
     },
     {
       heading: "Your account",

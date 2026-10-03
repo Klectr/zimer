@@ -16,7 +16,7 @@ export function createLayoutViews(qRunning: Statement, bannerHtml?: () => string
   const dests = [
     { href: "/", label: "Timer", key: "timer", ic: "timer" as const },
     { href: "/calendar", label: "Calendar", key: "calendar", ic: "calendar" as const },
-    { href: "/invoices", label: "Invoices", key: "invoices", ic: "receipt" as const },
+    { href: "/invoices", label: "Zinvoices", key: "invoices", ic: "receipt" as const },
     { href: "/manage", label: "Clients", key: "manage", ic: "group" as const },
   ];
   function layout(title: string, body: string, active?: "timer" | "calendar" | "manage" | "invoices", fixed?: boolean): string {
@@ -32,7 +32,7 @@ export function createLayoutViews(qRunning: Statement, bannerHtml?: () => string
   <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>${esc(title)} · Timekeep</title>
+  <title>${esc(title)} · Zimer</title>
   <script src="https://unpkg.com/htmx.org@2.0.4"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
@@ -82,7 +82,7 @@ export function createLayoutViews(qRunning: Statement, bannerHtml?: () => string
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
-  <title>${esc(title)} &middot; Timekeep</title>
+  <title>${esc(title)} &middot; Zimer</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
   <link rel="stylesheet" href="/static/style.css">
@@ -108,7 +108,7 @@ export function createLayoutViews(qRunning: Statement, bannerHtml?: () => string
         <div class="error-actions">
           <a class="md-filled-button" href="/">Timer</a>
           <a class="md-text-button" href="/calendar">Calendar</a>
-          <a class="md-text-button" href="/invoices">Invoices</a>
+          <a class="md-text-button" href="/invoices">Zinvoices</a>
           <a class="md-text-button" href="/manage">Clients</a>
         </div>` : ""}
       </div>`;

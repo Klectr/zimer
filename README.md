@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="docs/assets/readme-banner.webp" alt="timekeep — timer → invoice" />
+<img src="docs/assets/readme-banner.webp" alt="zimer — timer → invoice" />
 
-# Timekeep
+# Zimer
 
 Self-hostable time tracker — timer → invoice. One Bun server, one SQLite file, your data never leaves the machine.
 
@@ -48,15 +48,15 @@ Self-hostable time tracker — timer → invoice. One Bun server, one SQLite fil
 
 **Timer** — start/stop card, today's entries, live revenue pane.
 
-![timekeep timer page](docs/assets/screenshot-timer.png)
+![zimer timer page](docs/assets/screenshot-timer.png)
 
 **Calendar** — week grid with entries, per-day totals, this-week summary.
 
-![timekeep calendar page](docs/assets/screenshot-calendar.png)
+![zimer calendar page](docs/assets/screenshot-calendar.png)
 
 **Invoices** — unbilled time per client, draft → sent → paid pipeline.
 
-![timekeep invoices page](docs/assets/screenshot-invoices.png)
+![zimer invoices page](docs/assets/screenshot-invoices.png)
 
 ## Install
 
@@ -84,7 +84,7 @@ First run prints your API token — save it; the login page and the extension bo
 Chrome / Edge / Brave:
 
 1. `chrome://extensions` → enable Developer mode → "Load unpacked" → the `extension/` folder.
-2. Click the Timekeep icon → enter your site URL (e.g. `http://localhost:3000`) and the API token → Save.
+2. Click the Zimer icon → enter your site URL (e.g. `http://localhost:3000`) and the API token → Save.
 3. Start/stop timers from the popup. They show up on the site's calendar.
 
 ## Config

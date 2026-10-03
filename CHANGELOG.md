@@ -1,6 +1,6 @@
-# Timekeep changelog
+# Zimer changelog
 
-What's new in Timekeep, newest first.
+What's new in Zimer, newest first.
 
 ## 2026-10-02
 

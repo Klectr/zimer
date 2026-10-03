@@ -1,4 +1,4 @@
-# Design system — timekeep
+# Design system — Zimer
 
 Material 3, dark theme. Everything below is grounded in
 `site/static/style.css` — extend the tokens there, don't invent new ones.

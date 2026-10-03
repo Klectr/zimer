@@ -600,7 +600,7 @@ export function createWebRouter(deps: WebDeps) {
           const form = await req.formData();
           const key = String(form.get("license_key") || "");
           if (!storeLicenseKey(db, key))
-            return html(licenseSectionHtml(db, isLicensed(db), "That key isn't valid — not a valid Timekeep key."), 422);
+            return html(licenseSectionHtml(db, isLicensed(db), "That key isn't valid — not a valid Zimer key."), 422);
           return html(licenseSectionHtml(db, true));
         }
         if (path === "/clients" && method === "POST") {
@@ -909,7 +909,7 @@ export function createWebRouter(deps: WebDeps) {
 
           return html(notFoundPage(authedPage(req, TOKEN)), 404);
         } catch (err) {
-          console.error(`[timekeep] page ${method} ${path} threw:`, err);
+          console.error(`[zimer] page ${method} ${path} threw:`, err);
           /* #733: tenant error page when there is one, else public chrome. */
           return html((tenant?.errorPage ?? publicError)(authedPage(req, TOKEN)), 500);
         }

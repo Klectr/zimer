@@ -20,7 +20,7 @@ export function createPricingViews({ hosted }: { hosted: boolean }) {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
-  <title>Pricing · Timekeep</title>
+  <title>Pricing · Zimer</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
   <link rel="stylesheet" href="/static/style.css">
@@ -29,7 +29,7 @@ export function createPricingViews({ hosted }: { hosted: boolean }) {
   </head>
   <body>
   <main class="page-public page-pricing">
-  <h1 class="md-headline-small changelog-title">${logo(28)}<span>Timekeep pricing</span></h1>
+  <h1 class="md-headline-small changelog-title">${logo(28)}<span>Zimer pricing</span></h1>
   <section class="md-card pricing-card">
     <h2 class="md-title-large pricing-plan">Hosted</h2>
     <p class="pricing-price"><span class="pricing-amount">$12</span><span class="muted">/month</span></p>
@@ -39,7 +39,7 @@ export function createPricingViews({ hosted }: { hosted: boolean }) {
   <section class="md-card pricing-card">
     <h2 class="md-title-large pricing-plan">Self-host</h2>
     <p class="pricing-price"><span class="pricing-amount">$0</span><span class="muted"> forever</span></p>
-    <p>Run Timekeep on your own server. All features, no account, no trial.</p>
+    <p>Run Zimer on your own server. All features, no account, no trial.</p>
   </section>
   <section>
     <h2 class="md-title-large">FAQ</h2>

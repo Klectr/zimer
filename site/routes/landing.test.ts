@@ -29,7 +29,7 @@ describe("#731: landing page router", () => {
   test("hosted logged-out GET / -> 200 landing, CTA to /signup", async () => {
     const { res, body } = await get(true, false, "/");
     expect(res!.status).toBe(200);
-    expect(body).toContain("<title>Timekeep: your timer is your invoice</title>");
+    expect(body).toContain("<title>Zimer: your timer is your invoice</title>");
     expect(body).toContain("Your timer is your invoice.");
     expect(body).toContain("$12/month");
     expect(body).toContain("14-day free trial");

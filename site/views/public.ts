@@ -32,7 +32,7 @@ export function createPublicViews(deps: PublicViewDeps) {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
-  <title>Invoice ${esc(inv.number)} · Timekeep</title>
+  <title>Invoice ${esc(inv.number)} · Zimer</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
   <link rel="stylesheet" href="/static/style.css">
@@ -43,7 +43,7 @@ export function createPublicViews(deps: PublicViewDeps) {
   <main class="page-public-invoice">
   ${invoiceDocumentHtml(inv)}
   ${pay}
-  <p class="muted tiny no-print public-foot">Shared securely via Timekeep · <a href="/changelog">Changelog</a></p>
+  <p class="muted tiny no-print public-foot">Shared securely via Zimer · <a href="/changelog">Changelog</a></p>
   </main>
   </html>`;
   }
@@ -81,7 +81,7 @@ export function createPublicViews(deps: PublicViewDeps) {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
-  <title>Privacy policy · Timekeep</title>
+  <title>Privacy policy · Zimer</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
   <link rel="stylesheet" href="/static/style.css">
@@ -90,9 +90,9 @@ export function createPublicViews(deps: PublicViewDeps) {
   </head>
   <body>
   <main class="page-public page-changelog">
-  <h1 class="md-headline-small changelog-title">${logo(28)}<span>Timekeep privacy policy</span></h1>
+  <h1 class="md-headline-small changelog-title">${logo(28)}<span>Zimer privacy policy</span></h1>
   ${body}
-  <p class="muted tiny no-print public-foot">Shared securely via Timekeep · <a href="/changelog">Changelog</a> · <a href="/terms">Terms</a></p>
+  <p class="muted tiny no-print public-foot">Shared securely via Zimer · <a href="/changelog">Changelog</a> · <a href="/terms">Terms</a></p>
   </main>
   </html>`;
   }
@@ -112,7 +112,7 @@ export function createPublicViews(deps: PublicViewDeps) {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
-  <title>Changelog · Timekeep</title>
+  <title>Changelog · Zimer</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
   <link rel="stylesheet" href="/static/style.css">
@@ -121,9 +121,9 @@ export function createPublicViews(deps: PublicViewDeps) {
   </head>
   <body>
   <main class="page-public page-changelog">
-  <h1 class="md-headline-small changelog-title">${logo(28)}<span>Timekeep changelog</span></h1>
+  <h1 class="md-headline-small changelog-title">${logo(28)}<span>Zimer changelog</span></h1>
   ${body}
-  <p class="muted tiny no-print public-foot">Shared securely via Timekeep</p>
+  <p class="muted tiny no-print public-foot">Shared securely via Zimer</p>
   </main>
   </html>`;
   }
@@ -142,7 +142,7 @@ export function createPublicViews(deps: PublicViewDeps) {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
-  <title>Terms of service · Timekeep</title>
+  <title>Terms of service · Zimer</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
   <link rel="stylesheet" href="/static/style.css">
@@ -151,16 +151,16 @@ export function createPublicViews(deps: PublicViewDeps) {
   </head>
   <body>
   <main class="page-public page-changelog">
-  <h1 class="md-headline-small changelog-title">${logo(28)}<span>Timekeep terms of service</span></h1>
+  <h1 class="md-headline-small changelog-title">${logo(28)}<span>Zimer terms of service</span></h1>
   ${body}
-  <p class="muted tiny no-print public-foot">Shared securely via Timekeep · <a href="/changelog">Changelog</a> · <a href="/privacy">Privacy</a></p>
+  <p class="muted tiny no-print public-foot">Shared securely via Zimer · <a href="/changelog">Changelog</a> · <a href="/privacy">Privacy</a></p>
   </main>
   </html>`;
   }
 
   function loginPage(): string {
     return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Log in · Timekeep</title>
+  <title>Log in · Zimer</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
   <link rel="stylesheet" href="/static/style.css">
@@ -168,7 +168,7 @@ export function createPublicViews(deps: PublicViewDeps) {
   <script src="/static/motion.js" defer></script></head>
   <body><main class="login">
   <div class="md-card" style="border-radius:28px;padding:28px">
-  <h1 class="md-headline-small" style="margin-top:0;display:flex;align-items:center;gap:12px">${logo(32)}<span>Timekeep</span></h1>
+  <h1 class="md-headline-small" style="margin-top:0;display:flex;align-items:center;gap:12px">${logo(32)}<span>Zimer</span></h1>
   <form method="post" action="/login" class="form">
   <div class="md-text-field">
     <input type="password" name="token" autocomplete="off" required placeholder=" " aria-label="API token">
@@ -182,7 +182,7 @@ export function createPublicViews(deps: PublicViewDeps) {
   /* #732: hosted signup + login pages. Same M3 card as the token login. */
   function authShell(title: string, form: string, error?: string): string {
     return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>${title} · Timekeep</title>
+  <title>${title} · Zimer</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
   <link rel="stylesheet" href="/static/style.css">
@@ -190,7 +190,7 @@ export function createPublicViews(deps: PublicViewDeps) {
   <script src="/static/motion.js" defer></script></head>
   <body><main class="login">
   <div class="md-card" style="border-radius:28px;padding:28px">
-  <h1 class="md-headline-small" style="margin-top:0;display:flex;align-items:center;gap:12px">${logo(32)}<span>Timekeep</span></h1>
+  <h1 class="md-headline-small" style="margin-top:0;display:flex;align-items:center;gap:12px">${logo(32)}<span>Zimer</span></h1>
   ${form}${error ? `<p class="error" role="alert">${esc(error)}</p>` : ""}
   </div></main></body></html>`;
   }

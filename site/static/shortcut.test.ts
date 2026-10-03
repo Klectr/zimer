@@ -65,7 +65,7 @@ function fakeDiv() {
 }
 
 g.document = {
-  title: "Timekeep",
+  title: "Zimer",
   body: { dataset: {}, appendChild: (_el: any) => {} },
   createElement: (_tag: string) => fakeDiv(),
   _listeners: {} as Record<string, Function[]>,

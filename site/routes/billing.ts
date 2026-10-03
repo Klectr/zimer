@@ -66,10 +66,10 @@ function billingWallPage(status: string | null): string {
   const failed = status === "past_due";
   const headline = failed ? "Payment failed" : "Your trial ended";
   const copy = failed
-    ? "Your last payment didn't go through, so Timekeep is paused until billing is current."
-    : "Your 14-day trial has ended, so Timekeep is paused until you subscribe.";
+    ? "Your last payment didn't go through, so Zimer is paused until billing is current."
+    : "Your 14-day trial has ended, so Zimer is paused until you subscribe.";
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>${headline} · Timekeep</title>
+  <title>${headline} · Zimer</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
   <link rel="stylesheet" href="/static/style.css">
@@ -77,7 +77,7 @@ function billingWallPage(status: string | null): string {
   <script src="/static/motion.js" defer></script></head>
   <body><main class="login">
   <div class="md-card" style="border-radius:28px;padding:28px;max-width:420px">
-  <h1 class="md-headline-small" style="margin-top:0;display:flex;align-items:center;gap:12px">${logo(32)}<span>Timekeep</span></h1>
+  <h1 class="md-headline-small" style="margin-top:0;display:flex;align-items:center;gap:12px">${logo(32)}<span>Zimer</span></h1>
   <h2 class="md-title-large" style="margin:0 0 8px">${headline}</h2>
   <p>${copy}</p>
   <p class="muted">Nothing is deleted — your time entries, clients, and invoices are saved and waiting.</p>
