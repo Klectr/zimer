@@ -24,12 +24,14 @@ import { workspaceEmpty, demoIds, seedDemoData, removeDemoData, demoBanner } fro
 import { createDomain, CAL_HOUR_PX, DAY_TARGET_SECS } from "./lib/domain.ts";
 import { createLayoutViews } from "./views/layout.ts";
 import { createPublicViews } from "./views/public.ts";
+import { createPricingViews } from "./views/pricing.ts"; /* #729 */
 import { createTimerViews } from "./views/timer.ts";
 import { createCalendarViews } from "./views/calendar.ts";
 import { createManageViews } from "./views/manage.ts";
 import { createInvoiceViews } from "./views/invoices.ts";
 import { createApiRouter } from "./routes/api.ts";
 import { createBillingRouter } from "./routes/billing.ts"; /* #728 */
+import { createPricingRouter } from "./routes/pricing.ts"; /* #729 */
 import { createWebRouter } from "./routes/web.ts";
 
 const PORT = Number(process.env.PORT || 3000);
@@ -114,10 +116,12 @@ const { handleApi } = createApiRouter({
   revenueTotals, revenueMonthly, revenueByClient, revenueOverdue,
   freezeInvoiceSnapshots, shareOrigin: (req: Request) => PUBLIC_BASE_URL || publicOrigin(req, PORT), /* #301 */
 });
+const { pricingPage } = createPricingViews({ hosted: HOSTED }); /* #729 */
 const { handleBilling } = createBillingRouter({ /* #728: before handleWeb */
   HOSTED, accounts, json, verifyWebhookSignature,
   shareOrigin: (req: Request) => PUBLIC_BASE_URL || publicOrigin(req, PORT),
 });
+const { handlePricing } = createPricingRouter({ hosted: HOSTED, pricingPage, html }); /* #729 */
 const { handleWeb } = createWebRouter({
   db, qRunning, qOne, qRange, qInvoice, qInvoices,
   DATA_DIR, STATIC_DIR, TOKEN, authedPage, tokensEqual, html, json, csvResponse, isHtmx,
@@ -144,6 +148,7 @@ Bun.serve({
     const method = req.method;
     return await handleApi(req, url, path, method)
       ?? await handleBilling(req, url, path, method) /* #728 */
+      ?? await handlePricing(req, url, path, method) /* #729 */
       ?? await handleWeb(req, url, path, method)
       ?? html(notFoundPage(authedPage(req, TOKEN)), 404);
   },
