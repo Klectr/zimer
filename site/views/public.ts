@@ -207,7 +207,7 @@ export function createPublicViews(deps: PublicViewDeps) {
     <label>Password</label>
   </div>
   <button class="md-filled-button" type="submit">Create account</button>
-  <p class="muted tiny">14-day free trial, then $12/month. <a href="/login">Log in</a> instead.</p>
+  <p class="muted tiny">14-day free trial, then $12/month. <a href="/pricing">Pricing</a> · <a href="/login">Log in</a> instead.</p>
   </form>`, error);
   }
 
@@ -223,7 +223,7 @@ export function createPublicViews(deps: PublicViewDeps) {
     <label>Password</label>
   </div>
   <button class="md-filled-button" type="submit">Log in</button>
-  <p class="muted tiny">No account yet? <a href="/signup">Sign up</a>.</p>
+  <p class="muted tiny">No account yet? <a href="/signup">Sign up</a> · <a href="/pricing">Pricing</a>.</p>
   </form>`, error);
   }
 

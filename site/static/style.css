@@ -1566,6 +1566,14 @@ body.app-fixed .cal-gutter-spacer {
 .public-foot { text-align: center; margin-top: 28px; }
 .public-pay { text-align: center; margin: 28px 0 8px; }
 .public-pay-btn { font-size: 1.0625rem; padding: 14px 32px; border-radius: 999px; }
+/* #729: public pricing page shares the minimal public chrome. */
+.page-pricing { max-width: 720px; margin: 0 auto; padding: 32px 24px 48px; }
+.pricing-card { border-radius: 28px; padding: 28px; margin-top: 24px; }
+.pricing-plan { margin: 0 0 4px; }
+.pricing-price { margin: 0 0 12px; }
+.pricing-amount { font-size: 2.5rem; font-weight: 700; }
+.pricing-cta { margin-top: 20px; }
+.pricing-cta-btn { font-size: 1.0625rem; padding: 14px 32px; border-radius: 999px; }
 
 /* Reusable M3 Expressive determinate progress bar, ported from
    homeschool-planner's dashboard (#85). The gold fill is wave-masked and
