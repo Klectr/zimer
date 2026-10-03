@@ -55,7 +55,7 @@ This is the most violated thing by new agents, so it's up front, not linked:
 
 ## Working in this repo
 
-- Canonical remote: `github.com/tristonarmstrong/timekeep`, branch `main`.
+- Canonical remote: `github.com/tristonarmstrong/zimer`, branch `main`.
 - The local working copy may be a **non-git directory** — that's fine, don't
   `git init` it.
 - Some machines have no git credentials: push via the GitHub git-database API

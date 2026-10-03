@@ -71,7 +71,7 @@ describe("autotracker rule helpers (#641)", () => {
 
   test("matchRule finds by title substring and URL substring, case-insensitively", () => {
     const rs = rules();
-    expect(matchRule(rs, "Fix bug — repo", "https://github.com/tristonarmstrong/timekeep")!.id).toBe("r1");
+    expect(matchRule(rs, "Fix bug — repo", "https://github.com/tristonarmstrong/zimer")!.id).toBe("r1");
     expect(matchRule(rs, "Notes", "https://x.test/my-docs/page")!.id).toBe("r2");
     expect(matchRule(rs, "GITHUB.COM pull request", "")!.id).toBe("r1");
   });
@@ -101,7 +101,7 @@ describe("autotracker rule helpers (#641)", () => {
     // the stored pattern keeps its original casing
     expect(out[0].pattern).toBe("github.com");
     // the matcher now resolves to the updated project
-    expect(matchRule(out, "pull request", "https://github.com/tristonarmstrong/timekeep")!.projectId).toBe(9);
+    expect(matchRule(out, "pull request", "https://github.com/tristonarmstrong/zimer")!.projectId).toBe(9);
   });
 
   test("upsertRule tolerates a missing rules list", () => {
