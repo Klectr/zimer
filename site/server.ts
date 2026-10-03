@@ -32,7 +32,7 @@ import { createCalendarViews } from "./views/calendar.ts";
 import { createManageViews } from "./views/manage.ts";
 import { createInvoiceViews } from "./views/invoices.ts";
 import { createApiRouter, type ApiTenant } from "./routes/api.ts"; /* #733: +ApiTenant */
-import { createBillingRouter } from "./routes/billing.ts"; /* #728 */
+import { createBillingRouter, createSubscriptionGate } from "./routes/billing.ts"; /* #728, #736 */
 import { createPricingRouter } from "./routes/pricing.ts"; /* #729 */
 import { createWebRouter, type WebTenant } from "./routes/web.ts"; /* #733: +WebTenant */
 
@@ -165,6 +165,12 @@ const { loginPage, signupPage, hostedLoginPage, changelogPage, termsPage, privac
    variants live on each tenant tree. */
 const { notFoundPage: publicNotFound, errorPage: publicError, noSuchInvoicePage, rateLimitPage } =
   createLayoutViews({ get: () => null } as unknown as Statement);
+const { handleBilling, billing } = createBillingRouter({ /* #728: before handleWeb */
+  HOSTED, accounts, json, html, verifyWebhookSignature, /* #736: html for the /billing wall */
+  shareOrigin: (req: Request) => PUBLIC_BASE_URL || publicOrigin(req, PORT),
+});
+/* #736: hosted subscription gate — shared by the page and API routers. */
+const { inactiveAuthedUser } = createSubscriptionGate({ HOSTED, accounts, billing });
 const { handleApi } = createApiRouter({
   getTenant, TOKEN,
   /* #732: hosted API calls also accept a valid account session cookie. */
@@ -173,12 +179,9 @@ const { handleApi } = createApiRouter({
   json,
   entryToJson, verifyWebhookSignature,
   shareOrigin: (req: Request) => PUBLIC_BASE_URL || publicOrigin(req, PORT), /* #301 */
+  inactiveAuthedUser, /* #736 */
 });
 const { pricingPage } = createPricingViews({ hosted: HOSTED }); /* #729 */
-const { handleBilling } = createBillingRouter({ /* #728: before handleWeb */
-  HOSTED, accounts, json, verifyWebhookSignature,
-  shareOrigin: (req: Request) => PUBLIC_BASE_URL || publicOrigin(req, PORT),
-});
 const { handlePricing } = createPricingRouter({ hosted: HOSTED, pricingPage, html }); /* #729 */
 const { handleWeb } = createWebRouter({
   getTenant,
@@ -188,6 +191,7 @@ const { handleWeb } = createWebRouter({
   PORT, loginPage, signupPage, hostedLoginPage, changelogPage, termsPage, privacyPage, notFoundPage: publicNotFound, noSuchInvoicePage, rateLimitPage, errorPage: publicError,
   invoicePdf, stripeConfigured,
   workspaceEmpty, demoIds, seedDemoData, removeDemoData, entryToJson,
+  inactiveAuthedUser, /* #736 */
 });
 
 Bun.serve({

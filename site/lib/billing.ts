@@ -14,6 +14,13 @@
  *                                       (covers cancel-at-end), blocked after
  *    - no row                         → not active
  *
+ *  #736: the page/API subscription gate uses billingActive instead — same
+ *  rules, plus a pre-checkout trial: a user with NO subscription row yet
+ *  counts as trialing for 14 days from user.created_at (the $12/mo
+ *  14-day-trial offer, no Stripe subscription needed). A row that exists
+ *  but is inactive (unpaid, expired…) grants nothing — the trial only
+ *  covers users who never checked out.
+ *
  *  Live Stripe calls were NOT tested (no key in this environment) — all
  *  Stripe API traffic is covered by mocked-fetch unit tests.
  */
@@ -151,6 +158,21 @@ CREATE INDEX IF NOT EXISTS idx_subscriptions_subscription ON subscriptions(strip
     }
   }
 
+  /** #736: entitlement for the hosted subscription gate. Same rules as
+   *  subscriptionActive, plus the pre-checkout trial: no row → trialing
+   *  for TRIAL_DAYS from signup (userCreatedAtMs, epoch ms; null = no
+   *  trial grant). A row that exists but is inactive stays inactive. */
+  function billingActive(
+    userId: number,
+    userCreatedAtMs: number | null,
+    now: Date = new Date()
+  ): boolean {
+    if (subscriptionActive(userId, now)) return true;
+    if (getSubscriptionStatus(userId)) return false;
+    if (!Number.isFinite(userCreatedAtMs)) return false;
+    return now.getTime() < (userCreatedAtMs as number) + TRIAL_DAYS * 24 * 3600 * 1000;
+  }
+
   function upsertRow(row: {
     user_id: number;
     stripe_customer_id?: string | null;
@@ -248,6 +270,7 @@ CREATE INDEX IF NOT EXISTS idx_subscriptions_subscription ON subscriptions(strip
   return {
     getSubscriptionStatus,
     subscriptionActive,
+    billingActive, /* #736 */
     upsertFromSubscription,
     upsertFromStripeEvent,
   };

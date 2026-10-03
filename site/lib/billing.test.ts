@@ -170,3 +170,59 @@ describe("#728: subscription status and grace periods", () => {
     ).toBe(false);
   });
 });
+
+describe("#736: billingActive — gate entitlement incl. pre-checkout trial", () => {
+  const DAY = 86400000;
+  const daysAgoMs = (d: number) => Date.now() - d * DAY;
+  const subEventFor = (uid: number, status: string, endDays: number) => ({
+    id: "e1",
+    type: "customer.subscription.created",
+    data: {
+      object: {
+        id: `sub_${status}`,
+        customer: "cus_1",
+        status,
+        current_period_end: Math.floor(Date.now() / 1000) + endDays * 86400,
+        metadata: { user_id: String(uid) },
+      },
+    },
+  });
+
+  test("row statuses follow subscriptionActive (active, past-due grace, expired)", async () => {
+    const { accounts, billing } = mkBilling();
+    const uid = await userId(accounts);
+    const created = daysAgoMs(100);
+    billing.upsertFromStripeEvent(subEventFor(uid, "active", 5));
+    expect(billing.billingActive(uid, created)).toBe(true);
+    billing.upsertFromStripeEvent(subEventFor(uid, "past_due", -3));
+    expect(billing.billingActive(uid, created)).toBe(true); /* within grace */
+    billing.upsertFromStripeEvent(subEventFor(uid, "past_due", -10));
+    expect(billing.billingActive(uid, created)).toBe(false); /* past grace */
+    billing.upsertFromStripeEvent(subEventFor(uid, "canceled", 5));
+    expect(billing.billingActive(uid, created)).toBe(true); /* cancel-at-end */
+    billing.upsertFromStripeEvent(subEventFor(uid, "canceled", -1));
+    expect(billing.billingActive(uid, created)).toBe(false);
+  });
+
+  test("inactive row grants nothing even inside the signup trial window", async () => {
+    const { accounts, billing } = mkBilling();
+    const uid = await userId(accounts);
+    billing.upsertFromStripeEvent(subEventFor(uid, "unpaid", 5));
+    expect(billing.billingActive(uid, daysAgoMs(2))).toBe(false);
+  });
+
+  test("no row: trialing for 14 days from signup, then inactive", async () => {
+    const { billing } = mkBilling();
+    const uid = 4242; /* never checked out — no row */
+    expect(billing.billingActive(uid, daysAgoMs(5))).toBe(true);
+    expect(billing.billingActive(uid, daysAgoMs(13))).toBe(true);
+    expect(billing.billingActive(uid, daysAgoMs(15))).toBe(false);
+    expect(billing.billingActive(uid, daysAgoMs(100))).toBe(false);
+  });
+
+  test("no row and no created_at -> inactive", async () => {
+    const { billing } = mkBilling();
+    expect(billing.billingActive(4242, null)).toBe(false);
+    expect(billing.billingActive(4242, NaN)).toBe(false);
+  });
+});

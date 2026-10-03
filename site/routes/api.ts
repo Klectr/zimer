@@ -41,11 +41,16 @@ export interface ApiDeps {
   entryToJson: (e: Entry) => any;
   verifyWebhookSignature: (payload: string, sig: string | null, secret: string) => boolean;
   shareOrigin: (req: Request) => string; /* #301 */
+  /* #736: hosted subscription gate — true when the request's session user
+     is authenticated but past entitlement. Optional so older callers keep
+     compiling; server.ts always passes it in hosted mode. */
+  inactiveAuthedUser?: (req: Request) => boolean;
 }
 
 export function createApiRouter(deps: ApiDeps) {
   const {
     getTenant, TOKEN, authedApi, json, entryToJson, verifyWebhookSignature, shareOrigin,
+    inactiveAuthedUser, /* #736 */
   } = deps;
 
   /** Serve a /api/* request, or null when the path is not an API route. */
@@ -108,6 +113,13 @@ export function createApiRouter(deps: ApiDeps) {
             /* #733: auth passed but no tenant — hosted mode, master Bearer
                token with no session. Tenant data needs a user session. */
             if (!tenant) return json({ error: "unauthorized" }, 401);
+            /* #736: hosted subscription gate — an authed user past
+               entitlement gets 403 on the data API. /billing/* never
+               reaches this router (the billing router is mounted first),
+               so customers can always pay; the unauthenticated Stripe
+               webhook above is unaffected. */
+            if (inactiveAuthedUser && inactiveAuthedUser(req))
+              return json({ error: "subscription_inactive" }, 403);
             const {
               db, qRunning, qOne, qRange, qInvoice, qInvoices,
               groupToLineItems, unbilledEntries, getInvoice,
