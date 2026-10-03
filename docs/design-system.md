@@ -28,7 +28,7 @@ not to need it.
 
 ## Typography
 
-Font stack: `"Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`.
+Font stack: `-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif` (system fonts; no webfont — the Google Fonts link was dropped in #757 so self-hosted pages make no third-party requests).
 
 Classes: `.md-headline-small`, `.md-title-large`, `.md-title-medium`,
 `.md-title-small`, `.md-body-large`, `.md-body-medium`, `.md-label-large`,
