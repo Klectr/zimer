@@ -29,6 +29,7 @@ import { createCalendarViews } from "./views/calendar.ts";
 import { createManageViews } from "./views/manage.ts";
 import { createInvoiceViews } from "./views/invoices.ts";
 import { createApiRouter } from "./routes/api.ts";
+import { createBillingRouter } from "./routes/billing.ts"; /* #728 */
 import { createWebRouter } from "./routes/web.ts";
 
 const PORT = Number(process.env.PORT || 3000);
@@ -113,6 +114,10 @@ const { handleApi } = createApiRouter({
   revenueTotals, revenueMonthly, revenueByClient, revenueOverdue,
   freezeInvoiceSnapshots, shareOrigin: (req: Request) => PUBLIC_BASE_URL || publicOrigin(req, PORT), /* #301 */
 });
+const { handleBilling } = createBillingRouter({ /* #728: before handleWeb */
+  HOSTED, accounts, json, verifyWebhookSignature,
+  shareOrigin: (req: Request) => PUBLIC_BASE_URL || publicOrigin(req, PORT),
+});
 const { handleWeb } = createWebRouter({
   db, qRunning, qOne, qRange, qInvoice, qInvoices,
   DATA_DIR, STATIC_DIR, TOKEN, authedPage, tokensEqual, html, json, csvResponse, isHtmx,
@@ -138,6 +143,7 @@ Bun.serve({
     const path = url.pathname;
     const method = req.method;
     return await handleApi(req, url, path, method)
+      ?? await handleBilling(req, url, path, method) /* #728 */
       ?? await handleWeb(req, url, path, method)
       ?? html(notFoundPage(authedPage(req, TOKEN)), 404);
   },
