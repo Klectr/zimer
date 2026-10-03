@@ -7,7 +7,7 @@ import { existsSync } from "node:fs";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createDb } from "../db.ts";
+import { createDbAt } from "../db.ts";
 import { createAccountsDb } from "../lib/accounts.ts";
 import { authedApi } from "../lib/auth.ts";
 import { entryToJson } from "../lib/format.ts";
@@ -140,10 +140,9 @@ function apiReq(path: string, method: string, cookie?: string, body?: unknown) {
 describe("hosted tenant isolation (#733)", () => {
   test("tenant files are created lazily on the first authenticated request", async () => {
     const { dataDir, accounts, handleApi } = setupHosted();
-    expect(existsSync(join(dataDir, "tenants"))).toBe(false);
     const { user, cookie } = await signupLogin(accounts, "a@example.com");
     /* Signup/login touch only the accounts control plane — no tenant yet. */
-    expect(existsSync(join(dataDir, "tenants"))).toBe(false);
+    expect(existsSync(tenantDbPath(dataDir, user.id))).toBe(false);
     const req = apiReq("/api/entries", "GET", cookie);
     const res = (await handleApi(req, new URL(req.url), "/api/entries", "GET"))!;
     expect(res.status).toBe(200);
@@ -175,8 +174,8 @@ describe("hosted tenant isolation (#733)", () => {
     expect(entries[0].description).toBe("alice work");
 
     /* The files on disk agree — and B can't reach A's rows by id either. */
-    const aDb = createDb(join(dataDir, "tenants", String(a.user.id))).db;
-    const bDb = createDb(join(dataDir, "tenants", String(b.user.id))).db;
+    const aDb = createDbAt(join(dataDir, `${a.user.id}.db`)).db;
+    const bDb = createDbAt(join(dataDir, `${b.user.id}.db`)).db;
     const count = (db: any) =>
       (db.query("SELECT COUNT(*) AS n FROM time_entries").get() as { n: number }).n;
     expect(count(aDb)).toBe(1);

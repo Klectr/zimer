@@ -1,6 +1,6 @@
 /** #730 part 2: per-customer SQLite backups for hosted mode.
  *
- *  Every tenant database (DATA_DIR/tenants/<user_id>/timekeep.db) is copied
+ *  Every tenant database (DATA_DIR/<user_id>.db, #745) is copied
  *  on a schedule to DATA_DIR/backups/<user_id>/timekeep-<utc-timestamp>.db,
  *  and the accounts control plane goes separately to
  *  DATA_DIR/backups/accounts-<utc-timestamp>.db — never inside a tenant's
@@ -24,6 +24,7 @@
 import { Database } from "bun:sqlite";
 import { mkdirSync, readdirSync, statSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
+import { tenantDbPath } from "./tenants.ts"; /* #745 */
 
 export const RETENTION_DAYS = 7;
 /** Freshness threshold for /health — matches the hosted-ops.md alert rule. */
@@ -82,7 +83,7 @@ function vacuumInto(srcPath: string, destPath: string): string {
 /** Copy one tenant's database. Returns the backup path, or null when the
  *  tenant has no database yet (nothing to back up — not an error). */
 export function backupTenant(dataDir: string, userId: number): string | null {
-  const src = join(dataDir, "tenants", String(userId), "timekeep.db");
+  const src = tenantDbPath(dataDir, userId);
   let st: ReturnType<typeof statSync>;
   try {
     st = statSync(src);
@@ -156,10 +157,10 @@ export function pruneBackups(dir: string, keepDays: number = RETENTION_DAYS): nu
   return pruned;
 }
 
-/** Back up every tenant found under DATA_DIR/tenants/<id>/ plus the accounts
- *  control plane. Non-numeric tenant directory names are skipped. Never
- *  throws on a per-tenant failure — one broken customer file must not stop
- *  the other backups; failures are returned in `errors`. */
+/** Back up every tenant database (DATA_DIR/<user_id>.db, #745) plus the
+ *  accounts control plane. Non-numeric .db names are skipped (timekeep.db,
+ *  accounts.db). Never throws on a per-tenant failure — one broken customer
+ *  file must not stop the other backups; failures are returned in `errors`. */
 export function backupAll(dataDir: string): {
   tenants: { userId: number; dest: string }[];
   accounts: string | null;
@@ -167,15 +168,16 @@ export function backupAll(dataDir: string): {
 } {
   const tenants: { userId: number; dest: string }[] = [];
   const errors: string[] = [];
-  let tenantNames: string[] = [];
+  let names: string[] = [];
   try {
-    tenantNames = readdirSync(join(dataDir, "tenants"));
+    names = readdirSync(dataDir);
   } catch {
-    /* No tenants directory yet — still back up accounts. */
+    /* No data dir yet — still back up accounts (no-op). */
   }
-  for (const name of tenantNames) {
-    if (!/^\d+$/.test(name)) continue;
-    const userId = Number(name);
+  for (const name of names) {
+    const m = name.match(/^(\d+)\.db$/);
+    if (!m) continue;
+    const userId = Number(m[1]);
     try {
       const dest = backupTenant(dataDir, userId);
       if (dest) tenants.push({ userId, dest });
@@ -220,16 +222,17 @@ export function backupFreshness(dataDir: string): {
   const accountsMtime = newestDbMtime(root);
   let tenants = 0;
   const now = Date.now();
-  let tenantNames: string[] = [];
+  let names: string[] = [];
   try {
-    tenantNames = readdirSync(join(dataDir, "tenants"));
+    names = readdirSync(dataDir);
   } catch {
-    tenantNames = [];
+    names = [];
   }
-  for (const name of tenantNames) {
-    if (!/^\d+$/.test(name)) continue;
-    const m = newestDbMtime(tenantBackupDir(dataDir, Number(name)));
-    if (m !== null && now - m < FRESH_BACKUP_MS) tenants++;
+  for (const name of names) {
+    const m = name.match(/^(\d+)\.db$/);
+    if (!m) continue;
+    const bh = newestDbMtime(tenantBackupDir(dataDir, Number(m[1])));
+    if (bh !== null && now - bh < FRESH_BACKUP_MS) tenants++;
   }
   return {
     accounts: accountsMtime === null ? null : new Date(accountsMtime).toISOString(),

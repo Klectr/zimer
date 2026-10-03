@@ -81,7 +81,7 @@ customer file doesn't stop the rest of the fleet.
    file.
 2. Pick the backup to restore from `DATA_DIR/backups/<user_id>/`
    (newest `timekeep-<UTC-timestamp>.db` unless you have a reason to go
-   older) and copy it over `DATA_DIR/tenants/<user_id>/timekeep.db`.
+   older) and copy it over `DATA_DIR/<user_id>.db`.
 3. Restart via `setsid /opt/timekeep/start.sh`, re-check `/health`.
 4. Same steps for `accounts-<UTC-timestamp>.db` → `DATA_DIR/accounts.db`
    if the control plane is what's broken — mind that it holds live

@@ -16,6 +16,7 @@ import {
   backupTimestamp,
   RETENTION_DAYS,
 } from "./backups.ts";
+import { tenantDbPath } from "./tenants.ts"; /* #745 */
 
 function tmpDataDir() {
   return mkdtempSync(join(tmpdir(), "tk-backups-"));
@@ -23,9 +24,7 @@ function tmpDataDir() {
 
 /** A real tenant db (WAL mode, some rows) like createDb() produces. */
 function makeTenantDb(dataDir: string, userId: number, rows: number): string {
-  const dir = join(dataDir, "tenants", String(userId));
-  mkdirSync(dir, { recursive: true });
-  const path = join(dir, "timekeep.db");
+  const path = tenantDbPath(dataDir, userId); /* #745: flat DATA_DIR/<user_id>.db */
   const db = new Database(path, { create: true });
   db.exec("PRAGMA journal_mode = WAL;");
   db.exec("CREATE TABLE time_entries (id INTEGER PRIMARY KEY, description TEXT)");
@@ -65,11 +64,10 @@ describe("backups (#730 part 2)", () => {
     db.close();
   });
 
-  test("missing tenant dir / db returns null instead of throwing", () => {
+  test("missing tenant db returns null instead of throwing", () => {
     const dataDir = tmpDataDir();
     expect(backupTenant(dataDir, 999)).toBeNull();
-    mkdirSync(join(dataDir, "tenants", "7"), { recursive: true }); /* dir, no db */
-    expect(backupTenant(dataDir, 7)).toBeNull();
+    expect(backupTenant(dataDir, 7)).toBeNull(); /* no db file at all */
     expect(existsSync(tenantBackupDir(dataDir, 7))).toBe(false); /* no dir created */
   });
 
