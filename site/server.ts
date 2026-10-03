@@ -26,12 +26,14 @@ import { workspaceEmpty, demoIds, seedDemoData, removeDemoData, demoBanner } fro
 import { createDomain, CAL_HOUR_PX, DAY_TARGET_SECS } from "./lib/domain.ts";
 import { createLayoutViews } from "./views/layout.ts";
 import { createPublicViews } from "./views/public.ts";
+import { createPricingViews } from "./views/pricing.ts"; /* #729 */
 import { createTimerViews } from "./views/timer.ts";
 import { createCalendarViews } from "./views/calendar.ts";
 import { createManageViews } from "./views/manage.ts";
 import { createInvoiceViews } from "./views/invoices.ts";
 import { createApiRouter, type ApiTenant } from "./routes/api.ts"; /* #733: +ApiTenant */
 import { createBillingRouter } from "./routes/billing.ts"; /* #728 */
+import { createPricingRouter } from "./routes/pricing.ts"; /* #729 */
 import { createWebRouter, type WebTenant } from "./routes/web.ts"; /* #733: +WebTenant */
 
 const PORT = Number(process.env.PORT || 3000);
@@ -172,10 +174,12 @@ const { handleApi } = createApiRouter({
   entryToJson, verifyWebhookSignature,
   shareOrigin: (req: Request) => PUBLIC_BASE_URL || publicOrigin(req, PORT), /* #301 */
 });
+const { pricingPage } = createPricingViews({ hosted: HOSTED }); /* #729 */
 const { handleBilling } = createBillingRouter({ /* #728: before handleWeb */
   HOSTED, accounts, json, verifyWebhookSignature,
   shareOrigin: (req: Request) => PUBLIC_BASE_URL || publicOrigin(req, PORT),
 });
+const { handlePricing } = createPricingRouter({ hosted: HOSTED, pricingPage, html }); /* #729 */
 const { handleWeb } = createWebRouter({
   getTenant,
   STATIC_DIR, TOKEN, authedPage, tokensEqual, html, json, csvResponse, isHtmx,
@@ -195,6 +199,7 @@ Bun.serve({
     const method = req.method;
     return await handleApi(req, url, path, method)
       ?? await handleBilling(req, url, path, method) /* #728 */
+      ?? await handlePricing(req, url, path, method) /* #729 */
       ?? await handleWeb(req, url, path, method)
       /* #733: tenant's app-layout 404 when there is one, else public chrome. */
       ?? html((getTenant(req)?.notFoundPage ?? publicNotFound)(authedPage(req, TOKEN)), 404);
