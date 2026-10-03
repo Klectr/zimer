@@ -1156,9 +1156,6 @@ body.app-fixed .cal-gutter-spacer {
 .settings-dialog-head { display: flex; align-items: center; justify-content: space-between; }
 .settings-dialog-head h2 { margin: 0; }
 #settings-body p { margin: 0; }
-/* #693: full-page Settings (direct /settings visits) — same section rhythm
-   as the settings dialog. */
-.settings-sections { display: grid; gap: 16px; align-content: start; }
 #biz-profile h2 { margin: 0 0 4px; }
 /* #355: the calendar dialog gets the same title/close header row as the
    settings dialog; the close button is compact-only (600px+ keeps the
