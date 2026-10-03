@@ -18,6 +18,7 @@ import { json, html, isHtmx, publicOrigin } from "./lib/http.ts";
 import { getToken, tokensEqual, authedApi, authedPage } from "./lib/auth.ts";
 import { createAccountsDb } from "./lib/accounts.ts"; /* #732 */
 import { createTenantStore } from "./lib/tenants.ts"; /* #733 */
+import { backupAll, backupFreshness } from "./lib/backups.ts"; /* #730 part 2 */
 import { createDb, getMeta, type DbBundle } from "./db.ts";
 import { resourcePath } from "./lib/paths.ts"; /* #519 */
 import { isLicensed, licenseBannerHtml } from "./lib/license.ts"; /* #304 */
@@ -184,6 +185,7 @@ const { handleWeb } = createWebRouter({
   getTenant,
   STATIC_DIR, TOKEN, authedPage, tokensEqual, html, json, csvResponse, isHtmx,
   HOSTED, accounts, /* #732 */
+  backupHealth: HOSTED ? () => backupFreshness(DATA_DIR) : null, /* #730 part 2 */
   shareOrigin: (req: Request) => PUBLIC_BASE_URL || publicOrigin(req, PORT),
   PORT, loginPage, signupPage, hostedLoginPage, changelogPage, termsPage, privacyPage, notFoundPage: publicNotFound, noSuchInvoicePage, rateLimitPage, errorPage: publicError,
   invoicePdf, stripeConfigured,
@@ -207,3 +209,20 @@ Bun.serve({
 });
 
 console.log(`\n  ⏱ Timekeep running → http://${HOST}:${PORT}\n`);
+
+/* #730 part 2: per-customer backups in hosted mode only. BACKUP_INTERVAL_HOURS
+   (default 6) is overridable for tests; 0 disables the scheduler. One pass
+   shortly after boot covers a restart window, then the interval repeats. */
+if (HOSTED && Number(process.env.BACKUP_INTERVAL_HOURS ?? 6) > 0) {
+  const backupHours = Number(process.env.BACKUP_INTERVAL_HOURS ?? 6);
+  const runBackups = () => {
+    try {
+      const { tenants, accounts: acct, errors } = backupAll(DATA_DIR);
+      console.log(`[backup] ${tenants.length} tenant(s), accounts ${acct ? "ok" : "n/a"}${errors.length ? ` — ERRORS: ${errors.join("; ")}` : ""}`);
+    } catch (e) {
+      console.error("[backup] pass failed:", e instanceof Error ? e.message : e);
+    }
+  };
+  setTimeout(runBackups, 60_000);
+  setInterval(runBackups, backupHours * 3600_000);
+}

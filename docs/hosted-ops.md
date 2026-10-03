@@ -1,7 +1,8 @@
 # Hosted ops baseline (#730)
 
-What keeps the hosted tier alive and reachable. Part 1 of #730; per-customer
-backups are part 2 (separate issue/worker).
+What keeps the hosted tier alive and reachable. Part 1 covered the health
+endpoint, privacy page, terms, and support channel; part 2 added automated
+per-customer backups (this doc).
 
 ## Health endpoint
 
@@ -9,6 +10,13 @@ backups are part 2 (separate issue/worker).
 
 ```json
 { "ok": true, "version": "1.0.0" }
+```
+
+Hosted mode also carries backup freshness:
+
+```json
+{ "ok": true, "version": "1.0.0",
+  "backups": { "accounts": "2026-10-03T12:00:00.000Z", "tenants": 41 } }
 ```
 
 `version` comes from the repo `VERSION` file (see `site/lib/version.ts`).
@@ -42,11 +50,42 @@ Beyond "is it up":
 - **Disk:** one SQLite file in WAL mode; invoice PDFs are generated on
   demand, not stored. Alert at 80% on the data volume — a full disk is
   the most likely way a SQLite app dies.
-- **Backup freshness:** currently one-click DB backup at `/backup`
-  (admin). Automated per-customer backups are #730 part 2 — once they
-  land, alert if the newest backup per customer is older than 24h.
+- **Backup freshness:** automated per-customer backups run on the server
+  (below). Alert if `/health`'s `backups.accounts` is older than 24h, or if
+  `backups.tenants` drops below the known customer count.
 - **TLS/cert:** Cloudflare terminates TLS. If browsers report cert
   errors but `/health` is fine, it's the Cloudflare edge, not us.
+
+## Backups (part 2 of #730)
+
+Hosted mode only (`HOSTED=1`). Each tenant's SQLite file is copied with
+`VACUUM INTO` (a consistent, compacted snapshot of the live database — no
+downtime, safe against WAL):
+
+- `DATA_DIR/backups/<user_id>/timekeep-<UTC-timestamp>.db` — per customer.
+- `DATA_DIR/backups/accounts-<UTC-timestamp>.db` — the accounts control
+  plane, backed up **separately and never into a tenant's folder**.
+  accounts.db holds password hashes and session tokens; treat it like a
+  secret — encrypt at rest and restrict who can copy the backups volume.
+
+Retention: one backup per UTC day, newest kept, 7 days; older days are
+pruned automatically after each pass (see `site/lib/backups.ts`).
+Schedule: one pass 60s after boot, then every `BACKUP_INTERVAL_HOURS`
+(default 6). A per-tenant failure is logged, never throws — one broken
+customer file doesn't stop the rest of the fleet.
+
+### Runbook: restore one customer from backup
+
+1. Stop the app: on the box, kill the `bun site/server.ts` process (by
+   captured PID — never `pkill -f`) so no handle is writing the tenant
+   file.
+2. Pick the backup to restore from `DATA_DIR/backups/<user_id>/`
+   (newest `timekeep-<UTC-timestamp>.db` unless you have a reason to go
+   older) and copy it over `DATA_DIR/tenants/<user_id>/timekeep.db`.
+3. Restart via `setsid /opt/timekeep/start.sh`, re-check `/health`.
+4. Same steps for `accounts-<UTC-timestamp>.db` → `DATA_DIR/accounts.db`
+   if the control plane is what's broken — mind that it holds live
+   session tokens.
 
 ## Support channel
 
@@ -69,3 +108,9 @@ One inbox, one human. Reply within one business day.
 
 Any ops-affecting change (new env var, new port, new cron, monitoring
 target) gets a line here and in the changelog. Future-you is on call.
+
+- 2026-10-03 (#730 part 2): automated per-customer backups — `VACUUM INTO`
+  to `DATA_DIR/backups/<user_id>/`, accounts separately to
+  `DATA_DIR/backups/accounts-<ts>.db`, 7-day daily retention, 60s-after-boot
+  + every `BACKUP_INTERVAL_HOURS` (default 6; 0 disables) in hosted mode
+  only, freshness on `GET /health` as `backups.accounts`/`backups.tenants`.
