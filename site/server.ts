@@ -227,7 +227,7 @@ Bun.serve({
   },
 });
 
-console.log(`\n  ⏱ Timekeep running → http://${HOST}:${PORT}\n`);
+console.log(`\n  ⏱ Zimer running → http://${HOST}:${PORT}\n`);
 
 /* #730 part 2: per-customer backups in hosted mode only. BACKUP_INTERVAL_HOURS
    (default 6) is overridable for tests; 0 disables the scheduler. One pass

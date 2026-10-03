@@ -17,7 +17,7 @@ export function createLandingViews() {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
-  <title>Timekeep: your timer is your invoice</title>
+  <title>Zimer: your timer is your invoice</title>
   <meta name="description" content="Self-hosted time tracking for invoicing. Track your time, hit one button, send the invoice. $12/month with a 14-day free trial.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
@@ -27,7 +27,7 @@ export function createLandingViews() {
   </head>
   <body>
   <main class="page-landing">
-  <h1 class="landing-brand">${logo(32)}<span>Timekeep</span></h1>
+  <h1 class="landing-brand">${logo(32)}<span>Zimer</span></h1>
   <p class="md-headline-small landing-headline">Your timer is your invoice.</p>
   <p class="md-body-medium landing-sub">Time tracking for invoicing. Track your time, hit one button, send the invoice.</p>
   <p class="landing-price"><strong>$12/month.</strong> 14-day free trial. Cancel anytime.</p>

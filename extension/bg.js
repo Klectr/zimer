@@ -38,7 +38,7 @@ async function toggleTimer() {
 if (typeof chrome !== "undefined" && chrome.commands && chrome.commands.onCommand) {
   chrome.commands.onCommand.addListener(async (command) => {
     if (command !== "toggle-timer") return;
-    try { await toggleTimer(); } catch (e) { console.warn("[timekeep] hotkey toggle failed:", e.message); }
+    try { await toggleTimer(); } catch (e) { console.warn("[zimer] hotkey toggle failed:", e.message); }
   });
 }
 

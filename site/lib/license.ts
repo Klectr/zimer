@@ -114,7 +114,7 @@ export function licenseBannerHtml(licensed: boolean): string {
   if (!isLaunchMode() || licensed) return "";
   return `<div class="license-banner" id="license-banner" data-enter="1" role="note">
     ${icon("info")}
-    <span><strong>Timekeep is ${esc(licensePrice())} one-time.</strong> Enter your license key in Settings — everything keeps working either way.</span>
+    <span><strong>Zimer is ${esc(licensePrice())} one-time.</strong> Enter your license key in Settings — everything keeps working either way.</span>
     <button class="md-text-button" type="button" id="license-banner-settings">Open Settings</button>
   </div>
   <script>(function(){
@@ -139,7 +139,7 @@ export function licenseSectionHtml(db: Database, licensed: boolean, error = ""):
   const body = licensed
     ? `<div class="status-row status-row-licensed">${icon("check")}<div class="status-row-text">
         <p class="status-row-headline">Licensed</p>
-        <p class="status-row-supporting">${keyId ? `Key <code>${esc(keyId)}</code> verified — thanks for supporting Timekeep.` : "Thanks for supporting Timekeep."}</p>
+        <p class="status-row-supporting">${keyId ? `Key <code>${esc(keyId)}</code> verified — thanks for supporting Zimer.` : "Thanks for supporting Zimer."}</p>
       </div></div>`
     : `${buy}
       <form method="post" action="/license" class="manage-form" hx-post="/license" hx-target="#license-section" hx-swap="outerHTML">

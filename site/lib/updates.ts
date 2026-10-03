@@ -112,7 +112,7 @@ export function updateStatusHtml(s: UpdateStatus): string {
     case "up-to-date":
       return `<div class="status-row">${icon("check")}<div class="status-row-text">
         <p class="status-row-headline">You're up to date</p>
-        <p class="status-row-supporting">Timekeep v${esc(s.version)}</p>
+        <p class="status-row-supporting">Zimer v${esc(s.version)}</p>
       </div></div>`;
     case "no-releases":
       return `<div class="status-row">${icon("info")}<div class="status-row-text">
@@ -159,7 +159,7 @@ export function updateSectionHtml(): string {
   return `<section id="update-section">
       <h2 class="md-headline-small">Updates</h2>
       <div id="update-status"><div class="status-row">${icon("info")}<div class="status-row-text">
-        <p class="status-row-headline">Timekeep v${esc(appVersion())}</p>
+        <p class="status-row-headline">Zimer v${esc(appVersion())}</p>
         <p class="status-row-supporting">Press the button below to check for new releases.</p>
       </div></div></div>
       <div class="manage-form-row">

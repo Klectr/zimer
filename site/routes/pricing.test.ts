@@ -56,7 +56,7 @@ describe("#729: pricing page", () => {
       expect(body).toContain("timer, calendar, invoices, clients");
       expect(body).toContain("Self-host");
       expect(body).toContain("free forever");
-      expect(body).toContain("<title>Pricing · Timekeep</title>");
+      expect(body).toContain("<title>Pricing · Zimer</title>");
     }
   });
 

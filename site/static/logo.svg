@@ -3,7 +3,7 @@
      Hardcode the primary gold instead; keep it matching the app's primary
      color token (#f2c14e). -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" stroke="#f2c14e" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
-  <title>Timekeep logo: a hand keeping time</title>
+  <title>Zimer logo: a hand keeping time</title>
   <path d="M 34 9.5 C 41 9.5 45.5 15 45.5 22 C 45.5 29 41 34.5 34 34.5 C 27 34.5 20.5 29 20.5 22.2 C 20.5 15.2 26 10 33 9.6"/>
   <path d="M 33 22 C 32.9 19.5 32.9 17.5 33 15"/>
   <path d="M 33 22 C 34.8 22.8 36.5 23.6 38.2 24.4"/>

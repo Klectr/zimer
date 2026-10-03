@@ -109,7 +109,7 @@ describe("shortcut.js site-wide ticker (#444)", () => {
     expect(js).toContain('"/timer/stop"');
     expect(js).toContain("disarmTicker()");
     expect(js).toContain("document.title = baseTitle");
-    expect(js).toContain('" · Timekeep"');
+    expect(js).toContain('" · Zimer"');
   });
 
   test("the t shortcut drives the ticker directly (no htmx:afterRequest on raw fetch)", async () => {

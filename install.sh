@@ -49,7 +49,7 @@ read -r VERSION EXPECT_SHA TARBALL_URL < <(RELEASES_BASE="$RELEASES_BASE" bun -e
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
-say "Downloading Timekeep v$VERSION ..."
+say "Downloading Zimer v$VERSION ..."
 curl -fsSL -o "$TMP/timekeep.tgz" "$TARBALL_URL"
 ACTUAL_SHA="$(sha256sum "$TMP/timekeep.tgz" | cut -d' ' -f1)"
 [ "$ACTUAL_SHA" = "$EXPECT_SHA" ] || die "checksum mismatch — the download may be corrupted, refusing to install."
@@ -58,7 +58,7 @@ mkdir -p "$TMP/new"
 # The release tarball is flat (site/, VERSION, ... at its root) — extract
 # straight into the staging dir.
 tar xzf "$TMP/timekeep.tgz" -C "$TMP/new"
-[ -f "$TMP/new/site/server.ts" ] || die "the tarball doesn't look like a Timekeep release."
+[ -f "$TMP/new/site/server.ts" ] || die "the tarball doesn't look like a Zimer release."
 
 # Stop a previous server. Primary: the .pid file written by start.sh.
 # Fallback (Linux): bun processes whose working directory is the install dir.
@@ -91,7 +91,7 @@ if [ -f "$INSTALL_DIR/site/server.ts" ]; then
   ( cd "$INSTALL_DIR" && ls -A | grep -vx -e data -e .token -e start.sh -e .version -e .pid -e .stripe.env | xargs -r rm -rf )
   cp -a "$TMP/new/." "$INSTALL_DIR/"
 else
-  say "Installing Timekeep v$VERSION to $INSTALL_DIR ..."
+  say "Installing Zimer v$VERSION to $INSTALL_DIR ..."
   mkdir -p "$INSTALL_DIR/data"
   cp -a "$TMP/new/." "$INSTALL_DIR/"
   TOKEN="$(bun -e 'console.log(crypto.randomUUID().replace(/-/g, ""))')"
@@ -109,7 +109,7 @@ fi
 
 printf '%s' "$VERSION" > "$INSTALL_DIR/.version"
 
-say "Starting Timekeep v$VERSION ..."
+say "Starting Zimer v$VERSION ..."
 # Double-fork + disown: the subshell exits right after backgrounding, and
 # disown drops the server from the job table. Without disown, bash blocks in
 # wait4 at exit: the daemon calls setsid() (new session/pgid), which breaks
@@ -118,7 +118,7 @@ say "Starting Timekeep v$VERSION ..."
 ( cd "$INSTALL_DIR" && setsid ./start.sh >/dev/null 2>&1 < /dev/null & disown )
 sleep 4
 if curl -fsS "http://127.0.0.1:$PORT/login" >/dev/null 2>&1; then
-  say "Timekeep v$VERSION is running at http://127.0.0.1:$PORT"
+  say "Zimer v$VERSION is running at http://127.0.0.1:$PORT"
   [ -f "$INSTALL_DIR/.token" ] && say "API token: $INSTALL_DIR/.token"
 else
   die "the server didn't come up — run $INSTALL_DIR/start.sh manually to see why."

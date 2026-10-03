@@ -114,17 +114,17 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     const rows = qInvoices.all() as any[];
     const head = `
       <div class="page-head" data-enter="2">
-        <h1 class="md-headline-small">Invoices</h1>
+        <h1 class="md-headline-small">Zinvoices</h1>
         <div class="page-head-actions">
           ${rows.length ? `<a class="md-text-button" href="/export/invoices.csv" download>${icon("download")}Export CSV</a>` : ""}
           <a class="md-filled-button" href="/invoices/new">${icon("add")}New invoice</a>
         </div>
       </div>`;
     if (!rows.length) {
-      return layout("Invoices", `${head}
+      return layout("Zinvoices", `${head}
         <div class="scroll-region" data-enter="3">${emptyInvoices()}</div>`, "invoices", true);
     }
-    return layout("Invoices", `${head}
+    return layout("Zinvoices", `${head}
       <div class="invoice-list-detail${selected ? " has-selection" : ""}" data-enter="3">
         <section class="invoice-list-pane" aria-label="Invoice list">
           <p class="muted" id="inv-outstanding">Outstanding: <strong>${money(outstandingTotal(rows))}</strong></p>
@@ -573,7 +573,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     return `<div id="invoice-detail">
       <div class="page-head no-print">
         <div class="invoice-detail-head">
-          <a class="md-text-button detail-back" href="/invoices">${icon("arrow_left")}Invoices</a>
+          <a class="md-text-button detail-back" href="/invoices">${icon("arrow_left")}Zinvoices</a>
         </div>
         <div class="row">
           ${inv.status === "paid" && inv.paid_at ? `<span class="md-chip">${icon("check")}Paid ${esc(shortYmd(inv.paid_at))}</span>` : ""}

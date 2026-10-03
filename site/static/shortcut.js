@@ -99,7 +99,7 @@
       const t0 = new Date(startIso).getTime();
       if (!isFinite(t0)) return;
       const render = () => {
-        document.title = fmt(Math.max(0, Date.now() - t0)) + " · Timekeep";
+        document.title = fmt(Math.max(0, Date.now() - t0)) + " · Zimer";
       };
       render();
       tick = setInterval(render, 1000);

@@ -1,11 +1,11 @@
 {
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Timekeep"
+    "default_title": "Zimer"
   },
-  "description": "Track time against your self-hosted Timekeep server.",
+  "description": "Track time against your self-hosted Zimer server.",
   "manifest_version": 3,
-  "name": "Timekeep",
+  "name": "Zimer",
   "optional_host_permissions": [
     "http://*/*",
     "https://*/*"
@@ -24,7 +24,7 @@
         "default": "Ctrl+Shift+Y",
         "mac": "Command+Shift+Y"
       },
-      "description": "Start or stop the Timekeep timer"
+      "description": "Start or stop the Zimer timer"
     }
   }
 }
