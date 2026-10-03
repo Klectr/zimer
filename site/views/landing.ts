@@ -19,8 +19,6 @@ export function createLandingViews() {
   <meta name="robots" content="noindex">
   <title>Zimer: your timer is your invoice</title>
   <meta name="description" content="Self-hosted time tracking for invoicing. Track your time, hit one button, send the invoice. $12/month with a 14-day free trial.">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
   <link rel="stylesheet" href="/static/style.css">
   <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32.png">
   <link rel="apple-touch-icon" href="/static/alien-180.png">

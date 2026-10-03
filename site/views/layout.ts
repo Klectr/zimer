@@ -34,8 +34,6 @@ export function createLayoutViews(qRunning: Statement, bannerHtml?: () => string
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${esc(title)} · Zimer</title>
   <script src="https://unpkg.com/htmx.org@2.0.4"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
   <link rel="stylesheet" href="/static/style.css">
   <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32.png">
   <link rel="apple-touch-icon" href="/static/alien-180.png">
@@ -84,8 +82,6 @@ export function createLayoutViews(qRunning: Statement, bannerHtml?: () => string
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
   <title>${esc(title)} &middot; Zimer</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
   <link rel="stylesheet" href="/static/style.css">
   <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32.png">
   <link rel="apple-touch-icon" href="/static/alien-180.png">
