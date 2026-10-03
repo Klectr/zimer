@@ -43,6 +43,7 @@ function setup() {
   };
   const { handleWeb } = createWebRouter({
     getTenant: () => tenant as any,
+    unknownSubdomain: () => false, /* #734 */
     STATIC_DIR: "", TOKEN: "t",
     authedPage: () => true,
     tokensEqual: (a: string, b: string) => a === b,

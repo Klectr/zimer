@@ -19,6 +19,7 @@ const DUMMY_HASH =
 export interface AccountUser {
   id: number;
   email: string;
+  subdomain: string | null; /* #734: claimed workspace slug, unique, nullable */
   created_at: string;
 }
 
@@ -30,6 +31,7 @@ CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   email TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
+  subdomain TEXT, /* #734: claimed workspace slug, UNIQUE, optional */
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
 CREATE TABLE IF NOT EXISTS sessions (
@@ -40,35 +42,63 @@ CREATE TABLE IF NOT EXISTS sessions (
 );
 CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
 `);
+  /* #734 migration: accounts.db files created by #732 lack the column. */
+  try {
+    db.exec("ALTER TABLE users ADD COLUMN subdomain TEXT;");
+  } catch {
+    /* column already present */
+  }
+  /* SQLite UNIQUE allows multiple NULLs — the optional field stays optional. */
+  db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_subdomain ON users(subdomain);");
 
   const qUserByEmail = db.query(
-    "SELECT id, email, created_at FROM users WHERE email = ?"
+    "SELECT id, email, subdomain, created_at FROM users WHERE email = ?"
   );
   const qHashByEmail = db.query("SELECT password_hash FROM users WHERE email = ?");
   const qSession = db.query("SELECT user_id, expires_at FROM sessions WHERE token = ?");
-  const qUserById = db.query("SELECT id, email, created_at FROM users WHERE id = ?");
+  const qUserById = db.query(
+    "SELECT id, email, subdomain, created_at FROM users WHERE id = ?"
+  );
+  const qUserBySubdomain = db.query(
+    "SELECT id, email, subdomain, created_at FROM users WHERE subdomain = ?"
+  ); /* #734 */
 
   const normEmail = (email: string): string => email.trim().toLowerCase();
   const validEmail = (email: string): boolean =>
     email.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
+  /* #734: workspace slug — lowercase letters, digits, dashes, 3–30 chars. */
+  const normSubdomain = (s: string): string => s.trim().toLowerCase();
+  const validSubdomain = (s: string): boolean => /^[a-z0-9-]{3,30}$/.test(s);
 
   /** Create a user. Returns { user } or { error }. The plaintext password
-   *  is hashed with argon2id and never stored. */
+   *  is hashed with argon2id and never stored.
+   *  #734: subdomain is optional — an empty value skips the claim. */
   async function signup(
     email: string,
-    password: string
+    password: string,
+    subdomain?: string
   ): Promise<{ user?: AccountUser; error?: string }> {
     const e = normEmail(email);
     if (!validEmail(e)) return { error: "Enter a valid email address." };
     if (password.length < 8)
       return { error: "Password must be at least 8 characters." };
     if (qUserByEmail.get(e)) return { error: "That email is already registered." };
+    const slug = normSubdomain(subdomain || "");
+    if (slug) {
+      if (!validSubdomain(slug))
+        return {
+          error:
+            "Workspace address must be 3 to 30 lowercase letters, numbers, or dashes.",
+        };
+      if (qUserBySubdomain.get(slug))
+        return { error: "That workspace address is already taken." };
+    }
     const password_hash = await Bun.password.hash(password);
     const user = db
       .query(
-        "INSERT INTO users (email, password_hash) VALUES (?, ?) RETURNING id, email, created_at"
+        "INSERT INTO users (email, password_hash, subdomain) VALUES (?, ?, ?) RETURNING id, email, subdomain, created_at"
       )
-      .get(e, password_hash) as AccountUser;
+      .get(e, password_hash, slug || null) as AccountUser;
     return { user };
   }
 
@@ -109,6 +139,14 @@ CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
     return (qUserById.get(s.user_id) as AccountUser | null) ?? null;
   }
 
+  /** The account owning a workspace slug, or null. #734: powers subdomain
+   *  tenant resolution. */
+  function userBySubdomain(slug: string): AccountUser | null {
+    const s = normSubdomain(slug);
+    if (!s) return null;
+    return (qUserBySubdomain.get(s) as AccountUser | null) ?? null;
+  }
+
   function destroySession(token: string): void {
     db.query("DELETE FROM sessions WHERE token = ?").run(token);
   }
@@ -141,6 +179,7 @@ CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
     login,
     createSession,
     sessionUser,
+    userBySubdomain, /* #734 */
     destroySession,
     sessionTokenFromRequest,
     sessionUserFromRequest,

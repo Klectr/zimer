@@ -73,6 +73,9 @@ export interface WebDeps {
   /* #733: per-request tenant resolution. Null = hosted mode with no session
      (public paths only); self-host always returns the global tree. */
   getTenant: (req: Request) => WebTenant | null;
+  /* #734: true when the Host claims <slug>.HOSTED_DOMAIN but no account owns
+     the slug — every web path 404s instead of bouncing to /login. */
+  unknownSubdomain: (req: Request) => boolean;
   STATIC_DIR: string;
   TOKEN: string;
   authedPage: (req: Request, token: string) => boolean;
@@ -108,7 +111,7 @@ export interface WebDeps {
 
 export function createWebRouter(deps: WebDeps) {
   const {
-    getTenant, STATIC_DIR, TOKEN, authedPage, tokensEqual, html, json, csvResponse, isHtmx,
+    getTenant, unknownSubdomain, STATIC_DIR, TOKEN, authedPage, tokensEqual, html, json, csvResponse, isHtmx,
     shareOrigin, PORT, loginPage, signupPage, hostedLoginPage, HOSTED, accounts,
     changelogPage, termsPage, privacyPage, noSuchInvoicePage, rateLimitPage,
     notFoundPage: publicNotFound, errorPage: publicError,
@@ -128,6 +131,11 @@ export function createWebRouter(deps: WebDeps) {
 
   /** Serve a web request, or null when the path is not a web route. */
   async function handleWeb(req: Request, url: URL, path: string, method: string): Promise<Response | null> {
+        /* #734: unknown subdomain claims no tenant — 404 in public chrome,
+           never a login bounce, and no tenant is ever created for it. */
+        if (unknownSubdomain(req)) {
+          return html(publicNotFound(authedPage(req, TOKEN)), 404);
+        }
         /* #733: resolve this request's tenant up front. Null = hosted mode
            with no session — only the public paths below may run. Self-host
            always resolves the single global tree. */
@@ -205,9 +213,11 @@ export function createWebRouter(deps: WebDeps) {
               return html(rateLimitPage(), 429, { "Retry-After": String(rl.retryAfterSec) });
             }
             const form = await req.formData();
+            /* #734: optional workspace-address claim. */
             const { user, error } = await accounts!.signup(
               String(form.get("email") || ""),
-              String(form.get("password") || "")
+              String(form.get("password") || ""),
+              String(form.get("subdomain") || "")
             );
             if (user) {
               const token = accounts!.createSession(user.id);
@@ -302,8 +312,14 @@ export function createWebRouter(deps: WebDeps) {
             return new Response(null, { status: 302, headers: { Location: "/login" } });
           }
           /* #733: the session gate above guarantees a tenant in hosted mode
-             (session → user → tenant tree); self-host always has one. */
+             (session → user → tenant tree); self-host always has one.
+             #734: authed-but-tenantless means a workspace subdomain whose
+             owner isn't this session — 404, since /login would bounce
+             straight back here (the visitor is logged in, just not to this
+             workspace). Rendering the tenant would leak another account's
+             data. */
           if (!tenant) {
+            if (pageAuthed(req)) return html(publicNotFound(true), 404);
             return new Response(null, { status: 302, headers: { Location: "/login" } });
           }
           const {

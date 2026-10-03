@@ -86,6 +86,7 @@ function setupHosted() {
   const noop = () => "";
   const { handleWeb } = createWebRouter({
     getTenant,
+    unknownSubdomain: () => false, /* #734 */
     STATIC_DIR: "",
     TOKEN: "test-token",
     authedPage: () => false,

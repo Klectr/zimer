@@ -14,10 +14,11 @@ export interface PublicViewDeps {
   invoiceTotals: (items: InvoiceItem[], taxRate: number) => { subtotal: number; tax: number; total: number };
   invoiceDocumentHtml: (inv: Invoice & { items: InvoiceItem[] }) => string; /* #301: frozen at send, live for drafts */
   ensurePublicToken: (id: number) => string;
+  hostedDomain: string; /* #734: HOSTED_DOMAIN — the workspace-address suffix; "" hides it */
 }
 
 export function createPublicViews(deps: PublicViewDeps) {
-  const { getInvoice, invoiceTotals, invoiceDocumentHtml, ensurePublicToken } = deps;
+  const { getInvoice, invoiceTotals, invoiceDocumentHtml, ensurePublicToken, hostedDomain } = deps;
 
   /** Public client invoice page: no auth, read-only, no actions or navigation. */
   function publicInvoicePage(inv: Invoice & { items: InvoiceItem[] }): string {
@@ -196,6 +197,18 @@ export function createPublicViews(deps: PublicViewDeps) {
   }
 
   function signupPage(error?: string): string {
+    /* #734: optional workspace-address claim. The affix shows the real
+       suffix so "acme" reads as acme.<domain>; input padding grows with it. */
+    const suffix = hostedDomain
+      ? `<span class="affix suffix" aria-hidden="true">.${esc(hostedDomain)}</span>`
+      : "";
+    const suffixClass = hostedDomain ? " has-suffix" : "";
+    const suffixPad = hostedDomain
+      ? ` style="padding-right:calc(${hostedDomain.length + 1}ch + 36px)"`
+      : "";
+    const hint = hostedDomain
+      ? `Optional &mdash; claim your login address, e.g. <b>acme</b>.${esc(hostedDomain)}. 3&ndash;30 lowercase letters, numbers, or dashes.`
+      : `Optional &mdash; your workspace address (3&ndash;30 lowercase letters, numbers, or dashes).`;
     return authShell("Sign up", `
   <form method="post" action="/signup" class="form">
   <div class="md-text-field">
@@ -206,6 +219,12 @@ export function createPublicViews(deps: PublicViewDeps) {
     <input type="password" name="password" autocomplete="new-password" required minlength="8" placeholder=" " aria-label="Password">
     <label>Password</label>
   </div>
+  <div class="md-text-field${suffixClass}">
+    <input type="text" name="subdomain" autocapitalize="none" spellcheck="false" autocomplete="off" pattern="[a-z0-9-]{3,30}" maxlength="30" placeholder=" " aria-label="Workspace address (optional)"${suffixPad}>
+    <label>Workspace address</label>
+    ${suffix}
+  </div>
+  <p class="muted tiny">${hint}</p>
   <button class="md-filled-button" type="submit">Create account</button>
   <p class="muted tiny">14-day free trial, then $12/month. <a href="/pricing">Pricing</a> · <a href="/login">Log in</a> instead.</p>
   </form>`, error);

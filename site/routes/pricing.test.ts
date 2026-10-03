@@ -66,6 +66,7 @@ describe("#729: pricing page", () => {
       invoiceTotals: () => ({ subtotal: 0, tax: 0, total: 0 }),
       invoiceDocumentHtml: () => "",
       ensurePublicToken: () => "",
+      hostedDomain: "", /* #734 */
     });
     expect(hostedLoginPage()).toContain('href="/pricing"');
   });
@@ -76,6 +77,7 @@ describe("#729: pricing page", () => {
       invoiceTotals: () => ({ subtotal: 0, tax: 0, total: 0 }),
       invoiceDocumentHtml: () => "",
       ensurePublicToken: () => "",
+      hostedDomain: "", /* #734 */
     });
     expect(signupPage()).toContain('href="/pricing"');
   });

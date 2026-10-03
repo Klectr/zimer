@@ -18,6 +18,7 @@ import { json, html, isHtmx, publicOrigin } from "./lib/http.ts";
 import { getToken, tokensEqual, authedApi, authedPage } from "./lib/auth.ts";
 import { createAccountsDb } from "./lib/accounts.ts"; /* #732 */
 import { createTenantStore } from "./lib/tenants.ts"; /* #733 */
+import { subdomainFromHost } from "./lib/subdomain.ts"; /* #734 */
 import { createDb, getMeta, type DbBundle } from "./db.ts";
 import { resourcePath } from "./lib/paths.ts"; /* #519 */
 import { isLicensed, licenseBannerHtml } from "./lib/license.ts"; /* #304 */
@@ -56,6 +57,10 @@ const TOKEN = getToken(DATA_DIR);
    single shared token and never touches the accounts control plane. */
 const HOSTED = process.env.HOSTED === "1";
 const accounts = HOSTED ? createAccountsDb(DATA_DIR) : null;
+/* #734: subdomain tenant routing — <slug>.HOSTED_DOMAIN resolves to the
+   account that claimed the slug at signup. Unset → subdomain routing
+   disabled (session-only), never crashes. */
+const HOSTED_DOMAIN = (process.env.HOSTED_DOMAIN || "").trim().toLowerCase();
 
 /* #733: the full per-database app tree — every closure derived from one
    SQLite bundle (prepared queries, domain, revenue, views). Built once per
@@ -113,6 +118,7 @@ function buildTenantTree(bundle: DbBundle, dbPath: string): WebTenant & ApiTenan
   };
   const { publicInvoicePage } = createPublicViews({
     getInvoice, invoiceTotals, invoiceDocumentHtml, ensurePublicToken,
+    hostedDomain: HOSTED_DOMAIN, /* #734 */
   });
 
   return {
@@ -133,12 +139,28 @@ function buildTenantTree(bundle: DbBundle, dbPath: string): WebTenant & ApiTenan
 
 /* #733: tenant resolution. Hosted: session → user → tenant tree, cached by
    user id; the tenant's SQLite file is created lazily on the first
-   authenticated request. Self-host: the one global tree, always. */
+   authenticated request. Self-host: the one global tree, always.
+   #734: with HOSTED_DOMAIN set, <slug>.HOSTED_DOMAIN resolves the tenant by
+   slug instead — the session cookie stays the fallback on the bare domain. */
 const getTenant: (req: Request) => (WebTenant & ApiTenant) | null = HOSTED
   ? (() => {
       const tenants = createTenantStore<WebTenant & ApiTenant>(DATA_DIR, buildTenantTree);
       const accts = accounts!;
       return (req: Request) => {
+        /* #734: subdomain wins when HOSTED_DOMAIN is set; the session
+           cookie stays the fallback on the bare domain. A subdomain pins
+           the tenant to the slug's owner — a session for anyone else is
+           not authenticated here (null, same as no session), so one
+           account can never open another's database via Host juggling. */
+        const slug = subdomainFromHost(req.headers.get("host"), HOSTED_DOMAIN);
+        if (slug !== null) {
+          const owner = accts.userBySubdomain(slug);
+          if (!owner) return null; /* unknown subdomain — web answers 404 */
+          const sessionUser = accts.sessionUserFromRequest(req);
+          return sessionUser && sessionUser.id === owner.id
+            ? tenants.get(owner.id)
+            : null;
+        }
         const user = accts.sessionUserFromRequest(req);
         return user ? tenants.get(user.id) : null;
       };
@@ -147,6 +169,14 @@ const getTenant: (req: Request) => (WebTenant & ApiTenant) | null = HOSTED
       const tree = buildTenantTree(createDb(DATA_DIR), join(DATA_DIR, "timekeep.db"));
       return () => tree;
     })();
+
+/* #734: unknown subdomain — the Host claims <slug>.HOSTED_DOMAIN but no
+   account owns the slug. App pages answer 404 instead of bouncing to /login. */
+const unknownSubdomain = (req: Request): boolean => {
+  if (!HOSTED) return false;
+  const slug = subdomainFromHost(req.headers.get("host"), HOSTED_DOMAIN);
+  return slug !== null && accounts!.userBySubdomain(slug) === null;
+};
 
 /* #733: pure public pages need no tenant — built once. The login/signup/
    changelog/terms/privacy renderers never touch the domain deps; the stubs
@@ -159,6 +189,7 @@ const { loginPage, signupPage, hostedLoginPage, changelogPage, termsPage, privac
   invoiceTotals: unreachableDomain("invoiceTotals"),
   invoiceDocumentHtml: unreachableDomain("invoiceDocumentHtml"),
   ensurePublicToken: unreachableDomain("ensurePublicToken"),
+  hostedDomain: HOSTED_DOMAIN, /* #734 */
 });
 /* #733: public-chrome 404/500 + invoice-link dead-ends for the pre-auth
    paths. qRunning never fires on these pages; the authed (app-layout)
@@ -182,6 +213,7 @@ const { handleBilling } = createBillingRouter({ /* #728: before handleWeb */
 const { handlePricing } = createPricingRouter({ hosted: HOSTED, pricingPage, html }); /* #729 */
 const { handleWeb } = createWebRouter({
   getTenant,
+  unknownSubdomain, /* #734 */
   STATIC_DIR, TOKEN, authedPage, tokensEqual, html, json, csvResponse, isHtmx,
   HOSTED, accounts, /* #732 */
   shareOrigin: (req: Request) => PUBLIC_BASE_URL || publicOrigin(req, PORT),

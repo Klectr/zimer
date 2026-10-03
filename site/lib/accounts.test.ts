@@ -91,6 +91,70 @@ describe("hosted accounts (#732)", () => {
     expect(a.sessionUserFromRequest(anon)).toBeNull();
   });
 
+  test("subdomain claim is stored, normalized, and looked up (#734)", async () => {
+    const a = accountsDb();
+    const { user, error } = await a.signup("ada@example.com", "correct-horse-8", "ACME-1 ");
+    expect(error).toBeUndefined();
+    expect(user!.subdomain).toBe("acme-1");
+    expect(a.userBySubdomain("acme-1")!.email).toBe("ada@example.com");
+    expect(a.userBySubdomain("ACME-1")!.email).toBe("ada@example.com");
+    expect(a.userBySubdomain("nobody")).toBeNull();
+    expect(a.userBySubdomain("")).toBeNull();
+  });
+
+  test("duplicate subdomain is rejected (#734)", async () => {
+    const a = accountsDb();
+    const r1 = await a.signup("ada@example.com", "correct-horse-8", "acme");
+    expect(r1.error).toBeUndefined();
+    const r2 = await a.signup("bob@example.com", "correct-horse-8", "ACME");
+    expect(r2.error).toBe("That workspace address is already taken.");
+    expect(r2.user).toBeUndefined();
+  });
+
+  test("invalid subdomains are rejected; blank is no claim (#734)", async () => {
+    const a = accountsDb();
+    for (const bad of ["ab", "a".repeat(31), "has space", "under_score", "UPPER!"]) {
+      const r = await a.signup(`u-${bad.length}@example.com`, "correct-horse-8", bad);
+      expect(r.error).toBe(
+        "Workspace address must be 3 to 30 lowercase letters, numbers, or dashes."
+      );
+      expect(r.user).toBeUndefined();
+    }
+    const blank = await a.signup("ada@example.com", "correct-horse-8", "   ");
+    expect(blank.error).toBeUndefined();
+    expect(blank.user!.subdomain).toBeNull();
+    const omitted = await a.signup("bob@example.com", "correct-horse-8");
+    expect(omitted.error).toBeUndefined();
+    expect(omitted.user!.subdomain).toBeNull();
+  });
+
+  test("the #732 schema migrates: subdomain column is added (#734)", async () => {
+    /* Simulate an accounts.db created before #734 — no subdomain column. */
+    const dir = mkdtempSync(join(tmpdir(), "tk-acct-mig-"));
+    const { Database } = await import("bun:sqlite");
+    const legacy = new Database(join(dir, "accounts.db"), { create: true });
+    legacy.exec(`CREATE TABLE users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+    );
+    CREATE TABLE sessions (
+      token TEXT PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      expires_at TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+    );`);
+    legacy.close();
+    const a = createAccountsDb(dir);
+    const { user, error } = await a.signup("ada@example.com", "correct-horse-8", "acme");
+    expect(error).toBeUndefined();
+    expect(user!.subdomain).toBe("acme");
+    /* idempotent — reopening doesn't fail or duplicate */
+    const a2 = createAccountsDb(dir);
+    expect(a2.userBySubdomain("acme")!.email).toBe("ada@example.com");
+  });
+
   test("session cookie is HttpOnly with a 30-day max age", () => {
     const a = accountsDb();
     const c = a.sessionCookie("abc123");
