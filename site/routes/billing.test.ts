@@ -41,6 +41,8 @@ function setup(hosted = true) {
     HOSTED: hosted,
     accounts,
     json,
+    html: (body: string, status = 200) =>
+      new Response(body, { status, headers: { "Content-Type": "text/html" } }),
     verifyWebhookSignature,
     shareOrigin: () => "http://localhost:3000",
   });
@@ -58,6 +60,115 @@ async function authedCookie(accounts: ReturnType<typeof createAccountsDb>) {
   const token = accounts.createSession(user!.id);
   return { user: user!, cookie: `tksession=${token}` };
 }
+
+async function get(handleBilling: any, path: string, cookie?: string) {
+  const headers: Record<string, string> = {};
+  if (cookie) headers.cookie = cookie;
+  const req = new Request(`http://localhost${path}`, { method: "GET", headers });
+  return (await handleBilling(req, new URL(req.url), path, "GET"))!;
+}
+
+describe("#736: billing wall page + subscription gate", () => {
+  const periodEnd = (daysFromNow: number) =>
+    Math.floor(Date.now() / 1000) + daysFromNow * 86400;
+  const subEventFor = (uid: number, status: string, endDays: number) => ({
+    id: "e1",
+    type: "customer.subscription.created",
+    data: {
+      object: {
+        id: `sub_${status}`,
+        customer: "cus_1",
+        status,
+        current_period_end: periodEnd(endDays),
+        metadata: { user_id: String(uid) },
+      },
+    },
+  });
+
+  test("exact /billing renders (no auth gate) for an anonymous visitor", async () => {
+    const { handleBilling } = setup();
+    const res = await get(handleBilling, "/billing");
+    expect(res).not.toBeNull();
+    expect(res.status).toBe(200);
+    const body = await res.text();
+    expect(body).toContain("Your trial ended");
+    expect(body).toContain('href="/billing/portal"');
+    expect(body).toContain("md-filled-button");
+  });
+
+  test("past_due subscriber sees the payment-failed headline", async () => {
+    const { accounts, handleBilling, billing } = setup();
+    const { user, cookie } = await authedCookie(accounts);
+    billing!.upsertFromStripeEvent(subEventFor(user.id, "past_due", -10));
+    const res = await get(handleBilling, "/billing", cookie);
+    expect(res.status).toBe(200);
+    const body = await res.text();
+    expect(body).toContain("Payment failed");
+    expect(body).toContain('href="/billing/portal"');
+  });
+
+  test("expired trial, no subscription row -> 'Your trial ended'", async () => {
+    const { accounts, handleBilling } = setup();
+    const { user, cookie } = await authedCookie(accounts);
+    accounts.db
+      .query("UPDATE users SET created_at = ? WHERE id = ?")
+      .run(new Date(Date.now() - 20 * 86400000).toISOString(), user.id);
+    const res = await get(handleBilling, "/billing", cookie);
+    expect(res.status).toBe(200);
+    expect(await res.text()).toContain("Your trial ended");
+  });
+
+  test("self-host mode: GET /billing -> 404", async () => {
+    const { handleBilling } = setup(false);
+    const res = await get(handleBilling, "/billing");
+    expect(res.status).toBe(404);
+  });
+
+  test("createSubscriptionGate: active -> false, past-grace -> true", async () => {
+    const { accounts, billing } = setup();
+    const { user, cookie } = await authedCookie(accounts);
+    const { createSubscriptionGate } = await import("./billing.ts");
+    const { inactiveAuthedUser } = createSubscriptionGate({
+      HOSTED: true, accounts, billing,
+    });
+    const authedReq = () =>
+      new Request("http://localhost/", { headers: { cookie } });
+    /* no row yet: inside the 14-day trial -> not gated */
+    expect(inactiveAuthedUser(authedReq())).toBe(false);
+    expect(inactiveAuthedUser(new Request("http://localhost/"))).toBe(false);
+    /* past_due beyond grace -> gated */
+    billing!.upsertFromStripeEvent(subEventFor(user.id, "past_due", -10));
+    expect(inactiveAuthedUser(authedReq())).toBe(true);
+    /* trialing again -> not gated */
+    billing!.upsertFromStripeEvent(subEventFor(user.id, "trialing", 5));
+    expect(inactiveAuthedUser(authedReq())).toBe(false);
+  });
+
+  test("createSubscriptionGate: self-host never gates", async () => {
+    const { accounts, billing } = setup();
+    const { cookie } = await authedCookie(accounts);
+    const { createSubscriptionGate } = await import("./billing.ts");
+    const { inactiveAuthedUser } = createSubscriptionGate({
+      HOSTED: false, accounts, billing,
+    });
+    expect(
+      inactiveAuthedUser(new Request("http://localhost/", { headers: { cookie } }))
+    ).toBe(false);
+  });
+
+  test("portal stays reachable for an inactive (past-grace) subscriber", async () => {
+    const { accounts, handleBilling, billing } = setup();
+    const { user, cookie } = await authedCookie(accounts);
+    billing!.upsertFromStripeEvent(subEventFor(user.id, "past_due", -10));
+    const req = new Request("http://localhost/billing/portal", {
+      method: "GET",
+      headers: { cookie },
+    });
+    const res = (await handleBilling(req, new URL(req.url), "/billing/portal", "GET"))!;
+    expect(res.status).toBe(303);
+    expect(res.headers.get("location")).toBe("https://billing.stripe.com/p/bps_1");
+  });
+});
 
 beforeEach(() => {
   for (const k of ["STRIPE_SECRET_KEY", "STRIPE_PRICE_ID", "STRIPE_WEBHOOK_SECRET"])

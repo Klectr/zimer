@@ -105,6 +105,10 @@ export interface WebDeps {
   seedDemoData: (db: Database) => void;
   removeDemoData: (db: Database) => void;
   entryToJson: (e: Entry) => any;
+  /* #736: hosted subscription gate — true when the request's session user
+     is authenticated but past entitlement. Optional so older callers keep
+     compiling; server.ts always passes it in hosted mode. */
+  inactiveAuthedUser?: (req: Request) => boolean;
 }
 
 export function createWebRouter(deps: WebDeps) {
@@ -115,6 +119,7 @@ export function createWebRouter(deps: WebDeps) {
     notFoundPage: publicNotFound, errorPage: publicError,
     invoicePdf, stripeConfigured,
     workspaceEmpty, demoIds, seedDemoData, removeDemoData, entryToJson,
+    inactiveAuthedUser, /* #736 */
   } = deps;
 
   /* #308: rate limits for the public surface — in-memory, per client IP.
@@ -313,6 +318,15 @@ export function createWebRouter(deps: WebDeps) {
              (session → user → tenant tree); self-host always has one. */
           if (!tenant) {
             return new Response(null, { status: 302, headers: { Location: "/login" } });
+          }
+          /* #736: hosted subscription gate — a session user past entitlement
+             302s to the billing wall. The auth/billing/legal/pricing/health
+             surface is all handled above (before this section), and /billing
+             is served by the billing router, so nothing allowlisted is
+             reachable from here; everything else redirects. Self-host never
+             gates. */
+          if (HOSTED && inactiveAuthedUser && inactiveAuthedUser(req)) {
+            return new Response(null, { status: 302, headers: { Location: "/billing" } });
           }
           const {
             db, dbPath, qRunning, qOne, qRange, qInvoice, qInvoices,
