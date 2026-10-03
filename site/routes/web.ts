@@ -14,6 +14,7 @@ import { clientIp } from "../lib/http.ts";
 import { createRateLimiter } from "../lib/ratelimit.ts";
 import { loadChangelog } from "../lib/changelog.ts"; /* #303 */
 import { licenseTerms } from "../lib/license-terms.ts"; /* #341 */
+import { appVersion } from "../lib/version.ts"; /* #730 */
 import { updateSectionHtml, checkForUpdates, updateStatusHtml } from "../lib/updates.ts"; /* #340 */
 import { isLaunchMode, isLicensed, licenseSectionHtml, storeLicenseKey } from "../lib/license.ts"; /* #304 */
 import type { AccountsDb } from "../lib/accounts.ts"; /* #732 */
@@ -44,6 +45,7 @@ export interface WebDeps {
   publicInvoicePage: (inv: Invoice & { items: InvoiceItem[] }) => string;
   changelogPage: (entries: import("../lib/changelog.ts").ChangelogEntry[]) => string;
   termsPage: (sections: import("../lib/license-terms.ts").TermsSection[]) => string; /* #341 */
+  privacyPage: () => string; /* #730 */
   notFoundPage: (authed: boolean) => string;
   rateLimitPage: () => string;
   errorPage: (authed: boolean) => string;
@@ -94,7 +96,7 @@ export function createWebRouter(deps: WebDeps) {
     db, qRunning, qOne, qRange, qInvoice, qInvoices,
     DATA_DIR, STATIC_DIR, TOKEN, authedPage, tokensEqual, html, json, csvResponse, isHtmx,
     shareOrigin, PORT, loginPage, signupPage, hostedLoginPage, HOSTED, accounts,
-    publicInvoicePage, changelogPage, termsPage, notFoundPage, noSuchInvoicePage, rateLimitPage, errorPage, /* #341: +termsPage */
+    publicInvoicePage, changelogPage, termsPage, privacyPage, notFoundPage, noSuchInvoicePage, rateLimitPage, errorPage, /* #341: +termsPage; #730: +privacyPage */
     dashboardPage, timerPartial, todayPartial, weekInner, weekStrip,
     calendarPage, editPage, managePage, clientSelection, clientDetailBody, clientListOob, bizProfileSection, clientSettingsForm, settingsPage, invoicesPage, invoiceNewPage,
     defaultNewInvParams, invoiceStep2, invoiceDetailBody, invoiceListOob, invoiceDoc,
@@ -217,6 +219,13 @@ export function createWebRouter(deps: WebDeps) {
           });
         }
 
+        /* #730: health check for external uptime monitoring. No auth, no rate
+           limit — monitoring services hit this every few minutes, and it
+           must answer even when the app is otherwise idle. */
+        if (path === "/health" && method === "GET") {
+          return json({ ok: true, version: appVersion() });
+        }
+
         /* #341: public license terms — no auth, same rate limit as the public
            invoice surface. Linked from Settings → License. */
         if (path === "/terms" && method === "GET") {
@@ -225,6 +234,16 @@ export function createWebRouter(deps: WebDeps) {
             return html(rateLimitPage(), 429, { "Retry-After": String(rl.retryAfterSec) });
           }
           return html(termsPage(licenseTerms()));
+        }
+
+        /* #730: public privacy policy — no auth, same rate limit and chrome
+           as /terms. */
+        if (path === "/privacy" && method === "GET") {
+          const rl = invoiceLimiter.check(clientIp(req));
+          if (!rl.allowed) {
+            return html(rateLimitPage(), 429, { "Retry-After": String(rl.retryAfterSec) });
+          }
+          return html(privacyPage());
         }
 
         /* #303: public changelog — no auth, same rate limit as the public
@@ -479,12 +498,14 @@ export function createWebRouter(deps: WebDeps) {
         /* #304: settings modal body — business profile plus the License
            section in launch mode; profile only in beta (no licensing UI).
            #340: Updates section for paid users — hidden when unpaid in
-           launch mode (#345); beta keeps it (no licensing concept there). */
+           launch mode (#345); beta keeps it (no licensing concept there).
+           #730: support channel — one mailto link at the end, no new UI. */
         if (path === "/settings" && method === "GET") {
           const licensed = isLicensed(db);
           const launch = isLaunchMode();
           const updates = (!launch || licensed) ? updateSectionHtml() : "";
-          const body = bizProfileSection() + (launch ? licenseSectionHtml(db, licensed) : "") + updates;
+          const support = `<p class="muted tiny" style="margin-top:24px">Need help? <a href="mailto:support@klectr.dev">support@klectr.dev</a></p>`;
+          const body = bizProfileSection() + (launch ? licenseSectionHtml(db, licensed) : "") + updates + support;
           if (isHtmx(req)) return html(body);
           /* #693: direct visits get the full app layout — the bare fragment
              renders unstyled. */

@@ -100,7 +100,7 @@ const freezeInvoiceSnapshots = (id: number, origin: string) => {
   db.query("UPDATE invoices SET html_snapshot = ? WHERE id = ?")
     .run(invoiceSheet(inv), id);
 };
-const { loginPage, signupPage, hostedLoginPage, publicInvoicePage, changelogPage, termsPage } = createPublicViews({ /* #303: +changelogPage; #341: +termsPage; #732: +signupPage, +hostedLoginPage */
+const { loginPage, signupPage, hostedLoginPage, publicInvoicePage, changelogPage, termsPage, privacyPage } = createPublicViews({ /* #303: +changelogPage; #341: +termsPage; #732: +signupPage, +hostedLoginPage; #730: +privacyPage */
   getInvoice, invoiceTotals, invoiceDocumentHtml, ensurePublicToken,
 });
 const { handleApi } = createApiRouter({
@@ -123,7 +123,7 @@ const { handleWeb } = createWebRouter({
   DATA_DIR, STATIC_DIR, TOKEN, authedPage, tokensEqual, html, json, csvResponse, isHtmx,
   HOSTED, accounts, /* #732 */
   shareOrigin: (req: Request) => PUBLIC_BASE_URL || publicOrigin(req, PORT),
-  PORT, loginPage, signupPage, hostedLoginPage, publicInvoicePage, changelogPage, termsPage, notFoundPage, noSuchInvoicePage, rateLimitPage, errorPage,
+  PORT, loginPage, signupPage, hostedLoginPage, publicInvoicePage, changelogPage, termsPage, privacyPage, notFoundPage, noSuchInvoicePage, rateLimitPage, errorPage,
   dashboardPage, timerPartial, todayPartial, weekInner, weekStrip,
   calendarPage, editPage, managePage, clientSelection, clientDetailBody, clientListOob, bizProfileSection, clientSettingsForm, settingsPage, invoicesPage, invoiceNewPage,
   defaultNewInvParams, invoiceStep2, invoiceDetailBody, invoiceListOob, invoiceDoc,

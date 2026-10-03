@@ -48,6 +48,55 @@ export function createPublicViews(deps: PublicViewDeps) {
   </html>`;
   }
 
+  /* #730: public privacy policy — same minimal public chrome as the
+     changelog: no auth, no app nav, noindex. Content is deliberately
+     brief: what we store, where, what we don't do, and how to delete. */
+  function privacyPage(): string {
+    const sections: TermsSection[] = [
+      {
+        heading: "What we store",
+        body: "Your account email and a hash of your password (your actual password is never stored), plus everything you track: time entries, clients, projects, and invoices. That's the entire list.",
+      },
+      {
+        heading: "Where it lives",
+        body: "On our server, in a single database. Your data never leaves our infrastructure except when you export it yourself (PDF, CSV, backup download).",
+      },
+      {
+        heading: "What we don't do",
+        body: "We don't sell your data, we don't share it with advertisers, and we don't track you around the web. Public pages load a font and HTMX from public CDNs — standard practice, not tracking.",
+      },
+      {
+        heading: "Deletion",
+        body: "Email support@klectr.dev from your account address and we'll delete your account and all of its data.",
+      },
+    ];
+    const body = sections.map(s => `
+      <section class="changelog-release">
+        <h2 class="md-title-large">${esc(s.heading)}</h2>
+        <p>${esc(s.body)}</p>
+      </section>`).join("");
+    return `<!DOCTYPE html>
+  <html lang="en">
+  <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Privacy policy · Timekeep</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
+  <script src="/static/motion.js" defer></script>
+  </head>
+  <body>
+  <main class="page-public page-changelog">
+  <h1 class="md-headline-small changelog-title">${logo(28)}<span>Timekeep privacy policy</span></h1>
+  ${body}
+  <p class="muted tiny no-print public-foot">Shared securely via Timekeep · <a href="/changelog">Changelog</a> · <a href="/terms">Terms</a></p>
+  </main>
+  </html>`;
+  }
+
   /* #303: public changelog — same minimal public chrome as the invoice page:
      no auth, no app nav, noindex. */
   function changelogPage(entries: ChangelogEntry[]): string {
@@ -93,7 +142,7 @@ export function createPublicViews(deps: PublicViewDeps) {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
-  <title>License terms · Timekeep</title>
+  <title>Terms of service · Timekeep</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
   <link rel="stylesheet" href="/static/style.css">
@@ -102,9 +151,9 @@ export function createPublicViews(deps: PublicViewDeps) {
   </head>
   <body>
   <main class="page-public page-changelog">
-  <h1 class="md-headline-small changelog-title">${logo(28)}<span>Timekeep license terms</span></h1>
+  <h1 class="md-headline-small changelog-title">${logo(28)}<span>Timekeep terms of service</span></h1>
   ${body}
-  <p class="muted tiny no-print public-foot">Shared securely via Timekeep · <a href="/changelog">Changelog</a></p>
+  <p class="muted tiny no-print public-foot">Shared securely via Timekeep · <a href="/changelog">Changelog</a> · <a href="/privacy">Privacy</a></p>
   </main>
   </html>`;
   }
@@ -178,6 +227,6 @@ export function createPublicViews(deps: PublicViewDeps) {
   </form>`, error);
   }
 
-  return { loginPage, signupPage, hostedLoginPage, publicInvoicePage, changelogPage, termsPage };
+  return { loginPage, signupPage, hostedLoginPage, publicInvoicePage, changelogPage, termsPage, privacyPage };
 }
 

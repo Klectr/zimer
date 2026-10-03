@@ -1,10 +1,12 @@
-/** #341: Timekeep license terms. Rendered publicly at GET /terms (no auth,
- *  same public chrome as /changelog) and linked from Settings → License.
+/** #341: Timekeep terms of service. Rendered publicly at GET /terms (no auth,
+ *  same public chrome as /changelog).
  *
- *  Terms (approved 2026-09-18): $59 one-time, one key per user, valid for
- *  the current major version (new major needs a new key), 30-day refunds,
- *  fully offline verification (no PII in keys, can't be revoked, never
- *  phones home).
+ *  Terms (license model approved 2026-09-18): $59 one-time, one key per user,
+ *  valid for the current major version, 30-day refunds, fully offline
+ *  verification.
+ *
+ *  #730: rewritten for the hosted model — $12/month subscription, 14-day
+ *  free trial, one tier; the old license-key sections are gone.
  */
 
 export interface TermsSection {
@@ -15,28 +17,28 @@ export interface TermsSection {
 export function licenseTerms(): TermsSection[] {
   return [
     {
-      heading: "One-time purchase",
-      body: "Timekeep costs $59 once. There is no subscription, no renewal, and no recurring charge — pay once and it's yours.",
+      heading: "Subscription",
+      body: "Timekeep costs $12/month, one tier. The first 14 days are a free trial. Cancel anytime — you keep access until the end of the paid period.",
     },
     {
-      heading: "One key per user",
-      body: "Your license key covers you personally. Use it on every machine you run Timekeep on. Please don't publish it — if a key leaks publicly it still works (there's nothing to revoke), but you'd be sharing your purchase with the internet.",
-    },
-    {
-      heading: "Major versions",
-      body: "Your key is valid for the current major version of Timekeep (v1.x), including all v1 updates. If a new major version is ever released (v2), it requires a new key — v1 keys keep working on v1 forever.",
+      heading: "Your account",
+      body: "Your account covers you personally. Keep your login to yourself — you're responsible for everything done under it.",
     },
     {
       heading: "Refunds",
-      body: "30 days from purchase, no questions asked. Just reply to the email your key arrived in and you'll get a full refund.",
+      body: "30 days from payment, no questions asked. Email support@klectr.dev and you'll get a full refund.",
     },
     {
       heading: "Privacy",
-      body: "License verification happens entirely on your machine. Your key contains no personal information, is never transmitted anywhere, and cannot be revoked — there is nothing to phone home to, so there is nothing that can break or be taken away.",
+      body: "Your email, a hash of your password, and everything you track live on our server. We don't sell your data. Want it all deleted? Email support@klectr.dev. See the full privacy policy at /privacy.",
     },
     {
-      heading: "The honesty bit",
-      body: "Timekeep keeps working with or without a key — the unlicensed reminder is a nudge, not a lockout. Buying a license removes the reminder and supports continued development. That's the whole deal.",
+      heading: "Self-host",
+      body: "Prefer to run it yourself? The self-hosted version is free forever and always will be — these hosted terms don't apply to it.",
+    },
+    {
+      heading: "Changes",
+      body: "If these terms change, we'll say so in the changelog. The terms in effect when you paid are the terms that apply.",
     },
   ];
 }
