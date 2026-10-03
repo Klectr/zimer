@@ -4,6 +4,8 @@ What's new in Timekeep, newest first.
 
 ## 2026-10-02
 
+- **One emphasized action per screen.** "Load demo data" was a second filled gold button on the timer banner and the invoices empty state, competing with Start and New invoice — it's a text button now. Each screen has exactly one gold action.
+- **Tracking label keeps the project name whole.** The timer card's TRACKING · project label split the project name across lines next to Stop on narrow screens — it now stays on one line with an ellipsis.
 - **Nudge chip holds together on phones.** The calendar's "not yet invoiced" pill broke "Invoice this week" across two lines on narrow screens — the link now stays on one line and the chip wraps between its two parts instead.
 
 ## 2026-10-01
