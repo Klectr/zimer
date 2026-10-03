@@ -19,39 +19,23 @@ import { updateSectionHtml, checkForUpdates, updateStatusHtml } from "../lib/upd
 import { isLaunchMode, isLicensed, licenseSectionHtml, storeLicenseKey } from "../lib/license.ts"; /* #304 */
 import type { AccountsDb } from "../lib/accounts.ts"; /* #732 */
 
-export interface WebDeps {
+/* #733: everything derived from one tenant's SQLite bundle. Resolved per
+   request from the session (session → user → tenant tree, cached by user
+   id); self-host resolves the single global bundle, so behavior there is
+   unchanged. */
+export interface WebTenant {
   db: Database;
+  dbPath: string; /* tenant's timekeep.db file — /backup downloads exactly this */
   qRunning: Statement;
   qOne: Statement;
   qRange: Statement;
   qInvoice: Statement;
   qInvoices: Statement;
-  DATA_DIR: string;
-  STATIC_DIR: string;
-  TOKEN: string;
-  authedPage: (req: Request, token: string) => boolean;
-  tokensEqual: (a: string, b: string) => boolean;
-  html: (body: string, status?: number, extra?: Record<string, string>) => Response;
-  json: (data: unknown, status?: number) => Response;
-  isHtmx: (req: Request) => boolean;
-  csvResponse: (filename: string, rows: string[][]) => Response;
-  shareOrigin: (req: Request) => string;
-  PORT: number;
-  loginPage: () => string;
-  signupPage: (error?: string) => string; /* #732 */
-  hostedLoginPage: (error?: string) => string; /* #732 */
-  HOSTED: boolean; /* #732 */
-  accounts: AccountsDb | null; /* #732 */
-  publicInvoicePage: (inv: Invoice & { items: InvoiceItem[] }) => string;
-  changelogPage: (entries: import("../lib/changelog.ts").ChangelogEntry[]) => string;
-  termsPage: (sections: import("../lib/license-terms.ts").TermsSection[]) => string; /* #341 */
-  privacyPage: () => string; /* #730 */
   notFoundPage: (authed: boolean) => string;
-  rateLimitPage: () => string;
   errorPage: (authed: boolean) => string;
   dashboardPage: () => string;
   timerPartial: () => string;
-  todayPartial: () => string;
+  todayPartial: (from?: string, to?: string) => string;
   weekInner: (weekStr?: string, tz?: string) => string;
   weekStrip: (weekStr?: string, tz?: string) => string;
   calendarPage: (week?: string) => string;
@@ -70,6 +54,7 @@ export interface WebDeps {
   invoiceDetailBody: (inv: Invoice & { items: InvoiceItem[] }, origin: string) => string;
   invoiceListOob: (selectedId: number) => string; /* #364 */
   invoiceDoc: (inv: Invoice & { items: InvoiceItem[] }) => string;
+  publicInvoicePage: (inv: Invoice & { items: InvoiceItem[] }) => string;
   getInvoice: (id: number) => (Invoice & { items: InvoiceItem[] }) | null;
   invoiceTotals: (items: InvoiceItem[], taxRate: number) => { subtotal: number; tax: number; total: number };
   nextInvoiceNumber: () => string;
@@ -80,9 +65,39 @@ export interface WebDeps {
   ensurePublicToken: (id: number) => string;
   getPublicToken: (id: number) => string | null;
   mintPublicToken: (id: number) => string;
-  invoicePdf: (inv: PdfInvoice) => Uint8Array;
   invoicePdfInput: (inv: Invoice & { items: InvoiceItem[] }, origin: string) => PdfInvoice; /* #301 */
   freezeInvoiceSnapshots: (id: number, origin: string) => void; /* #301 */
+}
+
+export interface WebDeps {
+  /* #733: per-request tenant resolution. Null = hosted mode with no session
+     (public paths only); self-host always returns the global tree. */
+  getTenant: (req: Request) => WebTenant | null;
+  STATIC_DIR: string;
+  TOKEN: string;
+  authedPage: (req: Request, token: string) => boolean;
+  tokensEqual: (a: string, b: string) => boolean;
+  html: (body: string, status?: number, extra?: Record<string, string>) => Response;
+  json: (data: unknown, status?: number) => Response;
+  isHtmx: (req: Request) => boolean;
+  csvResponse: (filename: string, rows: string[][]) => Response;
+  shareOrigin: (req: Request) => string;
+  PORT: number;
+  loginPage: () => string;
+  signupPage: (error?: string) => string; /* #732 */
+  hostedLoginPage: (error?: string) => string; /* #732 */
+  HOSTED: boolean; /* #732 */
+  accounts: AccountsDb | null; /* #732 */
+  changelogPage: (entries: import("../lib/changelog.ts").ChangelogEntry[]) => string;
+  termsPage: (sections: import("../lib/license-terms.ts").TermsSection[]) => string; /* #341 */
+  privacyPage: () => string; /* #730 */
+  noSuchInvoicePage: () => string;
+  rateLimitPage: () => string;
+  /* #733: public-chrome 404/500 for the pre-auth paths — no tenant, no app
+     layout. The tenant tree carries the authed (app-layout) variants. */
+  notFoundPage: (authed: boolean) => string;
+  errorPage: (authed: boolean) => string;
+  invoicePdf: (inv: PdfInvoice) => Uint8Array;
   stripeConfigured: () => boolean;
   workspaceEmpty: (db: Database) => boolean;
   demoIds: (db: Database) => number[];
@@ -93,17 +108,11 @@ export interface WebDeps {
 
 export function createWebRouter(deps: WebDeps) {
   const {
-    db, qRunning, qOne, qRange, qInvoice, qInvoices,
-    DATA_DIR, STATIC_DIR, TOKEN, authedPage, tokensEqual, html, json, csvResponse, isHtmx,
+    getTenant, STATIC_DIR, TOKEN, authedPage, tokensEqual, html, json, csvResponse, isHtmx,
     shareOrigin, PORT, loginPage, signupPage, hostedLoginPage, HOSTED, accounts,
-    publicInvoicePage, changelogPage, termsPage, privacyPage, notFoundPage, noSuchInvoicePage, rateLimitPage, errorPage, /* #341: +termsPage; #730: +privacyPage */
-    dashboardPage, timerPartial, todayPartial, weekInner, weekStrip,
-    calendarPage, editPage, managePage, clientSelection, clientDetailBody, clientListOob, bizProfileSection, clientSettingsForm, settingsPage, invoicesPage, invoiceNewPage,
-    defaultNewInvParams, invoiceStep2, invoiceDetailBody, invoiceListOob, invoiceDoc,
-    getInvoice, invoiceTotals,
-    nextInvoiceNumber, stripeLinkFor, unbilledEntries,
-    groupToLineItems, clientRestFrom, ensurePublicToken, getPublicToken, mintPublicToken,
-    invoicePdf, invoicePdfInput, freezeInvoiceSnapshots, stripeConfigured,
+    changelogPage, termsPage, privacyPage, noSuchInvoicePage, rateLimitPage,
+    notFoundPage: publicNotFound, errorPage: publicError,
+    invoicePdf, stripeConfigured,
     workspaceEmpty, demoIds, seedDemoData, removeDemoData, entryToJson,
   } = deps;
 
@@ -119,12 +128,19 @@ export function createWebRouter(deps: WebDeps) {
 
   /** Serve a web request, or null when the path is not a web route. */
   async function handleWeb(req: Request, url: URL, path: string, method: string): Promise<Response | null> {
+        /* #733: resolve this request's tenant up front. Null = hosted mode
+           with no session — only the public paths below may run. Self-host
+           always resolves the single global tree. */
+        const tenant = getTenant(req);
+        /* Pre-auth paths render through the tenant when there is one, else
+           the pure public-chrome pages (no app layout, no tenant reads). */
+        const pages = tenant ?? { notFoundPage: publicNotFound, errorPage: publicError };
         /* static + login (no auth) */
         if (path.startsWith("/static/")) {
           const p = normalize(join(STATIC_DIR, path.slice("/static/".length)));
           if (!p.startsWith(STATIC_DIR + sep) && p !== STATIC_DIR) return new Response("Forbidden", { status: 403 });
           const f = Bun.file(p);
-          if (!(await f.exists())) return html(notFoundPage(authedPage(req, TOKEN)), 404);
+          if (!(await f.exists())) return html(pages.notFoundPage(authedPage(req, TOKEN)), 404);
           /* #374: filenames aren't fingerprinted, so browsers must revalidate
              every load — otherwise a deploy's new CSS/JS never reaches cached
              clients. ETag from size+mtime; If-None-Match gets a 304. */
@@ -266,9 +282,12 @@ export function createWebRouter(deps: WebDeps) {
           if (!rl.allowed) {
             return html(rateLimitPage(), 429, { "Retry-After": String(rl.retryAfterSec) });
           }
-          const idRow = db.query("SELECT id FROM invoices WHERE public_token = ?").get(pub[1]) as { id: number } | null;
-          const inv = idRow ? getInvoice(idRow.id) : null;
-          return inv ? html(publicInvoicePage(inv)) : html(noSuchInvoicePage(), 404);
+          /* #733: without a session there is no tenant to read from — public
+             links need cross-tenant token routing (follow-up issue). */
+          if (!tenant) return html(noSuchInvoicePage(), 404);
+          const idRow = tenant.db.query("SELECT id FROM invoices WHERE public_token = ?").get(pub[1]) as { id: number } | null;
+          const inv = idRow ? tenant.getInvoice(idRow.id) : null;
+          return inv ? html(tenant.publicInvoicePage(inv)) : html(noSuchInvoicePage(), 404);
         }
         /* Malformed /i/ paths (too short, bad chars): same dead-end. */
         if (method === "GET" && (path === "/i" || path === "/i/" || path.startsWith("/i/"))) {
@@ -282,6 +301,22 @@ export function createWebRouter(deps: WebDeps) {
           if (!pageAuthed(req)) {
             return new Response(null, { status: 302, headers: { Location: "/login" } });
           }
+          /* #733: the session gate above guarantees a tenant in hosted mode
+             (session → user → tenant tree); self-host always has one. */
+          if (!tenant) {
+            return new Response(null, { status: 302, headers: { Location: "/login" } });
+          }
+          const {
+            db, dbPath, qRunning, qOne, qRange, qInvoice, qInvoices,
+            notFoundPage, errorPage,
+            dashboardPage, timerPartial, todayPartial, weekInner, weekStrip,
+            calendarPage, editPage, managePage, clientSelection, clientDetailBody, clientListOob, bizProfileSection, clientSettingsForm, settingsPage, invoicesPage, invoiceNewPage,
+            defaultNewInvParams, invoiceStep2, invoiceDetailBody, invoiceListOob, invoiceDoc, publicInvoicePage,
+            getInvoice, invoiceTotals,
+            nextInvoiceNumber, stripeLinkFor, unbilledEntries,
+            groupToLineItems, clientRestFrom, ensurePublicToken, getPublicToken, mintPublicToken,
+            invoicePdfInput, freezeInvoiceSnapshots,
+          } = tenant;
 
           if (path === "/" && method === "GET") return html(dashboardPage());
           if (path === "/partial/timer" && method === "GET") return html(timerPartial());
@@ -404,7 +439,7 @@ export function createWebRouter(deps: WebDeps) {
            timestamped filename. */
         if (path === "/backup" && method === "GET") {
           db.exec("PRAGMA wal_checkpoint(TRUNCATE);");
-          const dbPath = join(DATA_DIR, "timekeep.db");
+          /* #733: dbPath is the tenant's own file in hosted mode. */
           const now = new Date();
           const ts = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}-${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}${String(now.getSeconds()).padStart(2, "0")}`;
           const bytes = await Bun.file(dbPath).bytes();
@@ -502,7 +537,9 @@ export function createWebRouter(deps: WebDeps) {
            #730: support channel — one mailto link at the end, no new UI. */
         if (path === "/settings" && method === "GET") {
           const licensed = isLicensed(db);
-          const launch = isLaunchMode();
+          /* #733: hosted tenants bill through Stripe, not license keys — the
+             dead $59-key licensing UI stays a self-host concept. */
+          const launch = isLaunchMode() && !HOSTED;
           const updates = (!launch || licensed) ? updateSectionHtml() : "";
           const support = `<p class="muted tiny" style="margin-top:24px">Need help? <a href="mailto:support@klectr.dev">support@klectr.dev</a></p>`;
           const body = bizProfileSection() + (launch ? licenseSectionHtml(db, licensed) : "") + updates + support;
@@ -516,14 +553,14 @@ export function createWebRouter(deps: WebDeps) {
            rest of settings; never called automatically. #345: unpaid users
            in launch mode get no update checks. */
         if (path === "/check-updates" && method === "POST") {
-          if (isLaunchMode() && !isLicensed(db)) return new Response("License required.", { status: 403 });
+          if (isLaunchMode() && !HOSTED && !isLicensed(db)) return new Response("License required.", { status: 403 });
           return html(updateStatusHtml(await checkForUpdates()));
         }
         /* #304: license key entry. Invalid keys are rejected with a specific
            message and the stored key is left untouched. No licensing routes
            exist at all in beta. */
         if (path === "/license" && method === "POST") {
-          if (!isLaunchMode()) return new Response("Not found", { status: 404 });
+          if (!isLaunchMode() || HOSTED) return new Response("Not found", { status: 404 }); /* #733: no license keys in hosted mode */
           const form = await req.formData();
           const key = String(form.get("license_key") || "");
           if (!storeLicenseKey(db, key))
@@ -837,7 +874,8 @@ export function createWebRouter(deps: WebDeps) {
           return html(notFoundPage(authedPage(req, TOKEN)), 404);
         } catch (err) {
           console.error(`[timekeep] page ${method} ${path} threw:`, err);
-          return html(errorPage(authedPage(req, TOKEN)), 500);
+          /* #733: tenant error page when there is one, else public chrome. */
+          return html((tenant?.errorPage ?? publicError)(authedPage(req, TOKEN)), 500);
         }
 
     return null;

@@ -6,17 +6,17 @@ import type { Database, Statement } from "bun:sqlite";
 import { entryIsLocked, round2, todayStr } from "../lib/format.ts";
 import type { Entry, Invoice, InvoiceItem } from "../lib/types.ts";
 
-export interface ApiDeps {
+/* #733: everything derived from one tenant's SQLite bundle. Resolved per
+   request from the session (session → user → tenant tree, cached by user
+   id); self-host resolves the single global bundle, so behavior there is
+   unchanged. */
+export interface ApiTenant {
   db: Database;
   qRunning: Statement;
   qOne: Statement;
   qRange: Statement;
   qInvoice: Statement;
   qInvoices: Statement;
-  TOKEN: string;
-  authedApi: (req: Request, token: string) => boolean;
-  json: (data: unknown, status?: number) => Response;
-  entryToJson: (e: Entry) => any;
   groupToLineItems: (groups: any[], rate: number) => any[];
   unbilledEntries: (clientId: number, from: string, to: string) => any[];
   getInvoice: (id: number) => (Invoice & { items: InvoiceItem[] }) | null;
@@ -24,31 +24,45 @@ export interface ApiDeps {
   nextInvoiceNumber: () => string;
   mintPublicToken: (id: number) => string;
   stripeLinkFor: (id: number) => Promise<{ url?: string; error?: string; status?: number }>;
-  verifyWebhookSignature: (payload: string, sig: string | null, secret: string) => boolean;
   revenueTotals: () => any;
   revenueMonthly: () => any[];
   revenueByClient: () => any[];
   revenueOverdue: () => any[];
   freezeInvoiceSnapshots: (id: number, origin: string) => void; /* #301 */
+}
+
+export interface ApiDeps {
+  /* #733: per-request tenant resolution. Null = hosted mode with no session;
+     self-host always returns the global tree. */
+  getTenant: (req: Request) => ApiTenant | null;
+  TOKEN: string;
+  authedApi: (req: Request, token: string) => boolean;
+  json: (data: unknown, status?: number) => Response;
+  entryToJson: (e: Entry) => any;
+  verifyWebhookSignature: (payload: string, sig: string | null, secret: string) => boolean;
   shareOrigin: (req: Request) => string; /* #301 */
 }
 
 export function createApiRouter(deps: ApiDeps) {
   const {
-    db, qRunning, qOne, qRange, qInvoice, qInvoices, TOKEN, authedApi, json,
-    entryToJson, groupToLineItems, unbilledEntries, getInvoice,
-    invoiceTotals, nextInvoiceNumber, mintPublicToken, stripeLinkFor, verifyWebhookSignature,
-    revenueTotals, revenueMonthly, revenueByClient, revenueOverdue,
-    freezeInvoiceSnapshots, shareOrigin,
+    getTenant, TOKEN, authedApi, json, entryToJson, verifyWebhookSignature, shareOrigin,
   } = deps;
 
   /** Serve a /api/* request, or null when the path is not an API route. */
   async function handleApi(req: Request, url: URL, path: string, method: string): Promise<Response | null> {
     if (!path.startsWith("/api/")) return null;
+    /* #733: resolve the tenant up front — null means hosted mode with no
+       session (the Stripe webhook is the only unauthenticated API route). */
+    const tenant = getTenant(req);
 
           /* ---- Stripe webhook: no Bearer auth — verified by signature instead.
              Reads the raw body; signature is checked before any DB access. ---- */
           if (path === "/api/stripe/webhook" && method === "POST") {
+            /* #733: webhooks carry no session, so there is no tenant to read
+               — cross-tenant routing is a follow-up. Fail loud (Stripe
+               retries) instead of silently dropping paid invoices. */
+            if (!tenant) return json({ error: "multi-tenant webhook routing not configured" }, 503);
+            const { db, qInvoice, freezeInvoiceSnapshots } = tenant;
             const secret = process.env.STRIPE_WEBHOOK_SECRET || "";
             if (!secret) return json({ error: "webhook not configured" }, 503);
             const payload = await req.text();
@@ -91,6 +105,16 @@ export function createApiRouter(deps: ApiDeps) {
           }
           try {
             if (!authedApi(req, TOKEN)) return json({ error: "unauthorized" }, 401);
+            /* #733: auth passed but no tenant — hosted mode, master Bearer
+               token with no session. Tenant data needs a user session. */
+            if (!tenant) return json({ error: "unauthorized" }, 401);
+            const {
+              db, qRunning, qOne, qRange, qInvoice, qInvoices,
+              groupToLineItems, unbilledEntries, getInvoice,
+              invoiceTotals, nextInvoiceNumber, mintPublicToken, stripeLinkFor,
+              revenueTotals, revenueMonthly, revenueByClient, revenueOverdue,
+              freezeInvoiceSnapshots,
+            } = tenant;
             const body = (await req.json().catch(() => ({}))) as any;
 
             if (path === "/api/status" && method === "GET") {

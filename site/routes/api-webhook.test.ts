@@ -27,7 +27,8 @@ function setup(sigOk: boolean) {
     "INSERT INTO invoices (id, status, stripe_payment_link_id) VALUES (1, 'sent', 'plink_abc'), (2, 'sent', NULL), (3, 'paid', 'plink_paid')"
   ).run();
 
-  const { handleApi } = createApiRouter({
+  /* #733: data deps resolve per request through getTenant now. */
+  const tenant = {
     db: db as unknown as Database,
     qRunning: stubStatement(),
     qOne: stubStatement(),
@@ -37,10 +38,6 @@ function setup(sigOk: boolean) {
         db.query("SELECT id, status FROM invoices WHERE id = ?").get(id),
     } as unknown as Statement,
     qInvoices: stubStatement(),
-TOKEN: "tok",
-    authedApi: () => true,
-    json: (data: unknown, status = 200) => Response.json(data, { status }),
-    entryToJson: (e: any) => e,
     groupToLineItems: () => [],
     unbilledEntries: () => [],
     getInvoice: (id: number) => ({ id, items: [], tax_rate: 0 }) as any,
@@ -48,12 +45,20 @@ TOKEN: "tok",
     nextInvoiceNumber: () => "INV-0001",
     mintPublicToken: () => "tok",
     stripeLinkFor: async () => ({}),
-    verifyWebhookSignature: () => sigOk,
     revenueTotals: () => null,
     revenueMonthly: () => [],
     revenueByClient: () => [],
     revenueOverdue: () => [],
     freezeInvoiceSnapshots: () => {},
+  };
+
+  const { handleApi } = createApiRouter({
+    getTenant: () => tenant as any,
+TOKEN: "tok",
+    authedApi: () => true,
+    json: (data: unknown, status = 200) => Response.json(data, { status }),
+    entryToJson: (e: any) => e,
+    verifyWebhookSignature: () => sigOk,
     shareOrigin: () => "",
   });
 
