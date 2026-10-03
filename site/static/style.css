@@ -1574,6 +1574,18 @@ body.app-fixed .cal-gutter-spacer {
 .pricing-amount { font-size: 2.5rem; font-weight: 700; }
 .pricing-cta { margin-top: 20px; }
 .pricing-cta-btn { font-size: 1.0625rem; padding: 14px 32px; border-radius: 999px; }
+/* #731: hosted landing page — centered hero, minimal public chrome. */
+.page-landing { max-width: 640px; margin: 0 auto; padding: 72px 24px 48px; text-align: center; }
+.landing-brand { display: flex; align-items: center; justify-content: center; gap: 12px;
+  margin: 0 0 28px; color: var(--md-sys-color-primary); font-size: 1.375rem; font-weight: 500; }
+.landing-headline { margin: 0 0 16px; color: var(--md-sys-color-primary); font-weight: 500; }
+.landing-sub { margin: 0 0 20px; }
+.landing-price { margin: 0 0 28px; }
+.landing-cta { margin: 0 0 16px; }
+.landing-cta-btn { font-size: 1.0625rem; padding: 14px 36px; border-radius: 999px; }
+.landing-selfhost { margin-top: 20px; }
+.landing-foot { margin-top: 56px; }
+.landing-support { margin-top: 8px; }
 
 /* Reusable M3 Expressive determinate progress bar, ported from
    homeschool-planner's dashboard (#85). The gold fill is wave-masked and

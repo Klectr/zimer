@@ -28,6 +28,7 @@ import { createDomain, CAL_HOUR_PX, DAY_TARGET_SECS } from "./lib/domain.ts";
 import { createLayoutViews } from "./views/layout.ts";
 import { createPublicViews } from "./views/public.ts";
 import { createPricingViews } from "./views/pricing.ts"; /* #729 */
+import { createLandingViews } from "./views/landing.ts"; /* #731 */
 import { createTimerViews } from "./views/timer.ts";
 import { createCalendarViews } from "./views/calendar.ts";
 import { createManageViews } from "./views/manage.ts";
@@ -35,6 +36,7 @@ import { createInvoiceViews } from "./views/invoices.ts";
 import { createApiRouter, type ApiTenant } from "./routes/api.ts"; /* #733: +ApiTenant */
 import { createBillingRouter, createSubscriptionGate } from "./routes/billing.ts"; /* #728, #736 */
 import { createPricingRouter } from "./routes/pricing.ts"; /* #729 */
+import { createLandingRouter } from "./routes/landing.ts"; /* #731 */
 import { createWebRouter, type WebTenant } from "./routes/web.ts"; /* #733: +WebTenant */
 
 const PORT = Number(process.env.PORT || 3000);
@@ -188,6 +190,13 @@ const { handleApi } = createApiRouter({
 });
 const { pricingPage } = createPricingViews({ hosted: HOSTED }); /* #729 */
 const { handlePricing } = createPricingRouter({ hosted: HOSTED, pricingPage, html }); /* #729 */
+/* #731: hosted landing page for logged-out visitors on GET / — the same
+   auth check web.ts uses for pages, so authed hosted users and self-host
+   both fall through to handleWeb's existing behavior. */
+const { landingPage } = createLandingViews(); /* #731 */
+const visitorAuthed = (req: Request): boolean =>
+  HOSTED ? accounts!.sessionUserFromRequest(req) !== null : authedPage(req, TOKEN);
+const { handleLanding } = createLandingRouter({ hosted: HOSTED, visitorAuthed, landingPage, html }); /* #731 */
 const { handleWeb } = createWebRouter({
   getTenant,
   STATIC_DIR, TOKEN, authedPage, tokensEqual, html, json, csvResponse, isHtmx,
@@ -210,6 +219,7 @@ Bun.serve({
     const method = req.method;
     return await handleApi(req, url, path, method)
       ?? await handleBilling(req, url, path, method) /* #728 */
+      ?? await handleLanding(req, url, path, method) /* #731 */
       ?? await handlePricing(req, url, path, method) /* #729 */
       ?? await handleWeb(req, url, path, method)
       /* #733: tenant's app-layout 404 when there is one, else public chrome. */
