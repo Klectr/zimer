@@ -18,6 +18,7 @@ import { appVersion } from "../lib/version.ts"; /* #730 */
 import { updateSectionHtml, checkForUpdates, updateStatusHtml } from "../lib/updates.ts"; /* #340 */
 import { isLaunchMode, isLicensed, licenseSectionHtml, storeLicenseKey } from "../lib/license.ts"; /* #304 */
 import type { AccountsDb } from "../lib/accounts.ts"; /* #732 */
+import { findTenantByPublicToken } from "../lib/tenants.ts"; /* #741 */
 
 /* #733: everything derived from one tenant's SQLite bundle. Resolved per
    request from the session (session → user → tenant tree, cached by user
@@ -109,6 +110,11 @@ export interface WebDeps {
      is authenticated but past entitlement. Optional so older callers keep
      compiling; server.ts always passes it in hosted mode. */
   inactiveAuthedUser?: (req: Request) => boolean;
+  /* #741: hosted cross-tenant public-invoice routing. When set (hosted),
+     /i/:token resolves by scanning the tenant DBs instead of using the
+     session tenant; self-host never sets them. */
+  dataDir?: string;
+  tenantById?: (userId: number) => WebTenant | null;
 }
 
 export function createWebRouter(deps: WebDeps) {
@@ -120,6 +126,7 @@ export function createWebRouter(deps: WebDeps) {
     invoicePdf, stripeConfigured,
     workspaceEmpty, demoIds, seedDemoData, removeDemoData, entryToJson,
     inactiveAuthedUser, /* #736 */
+    dataDir, tenantById, /* #741 */
   } = deps;
 
   /* #308: rate limits for the public surface — in-memory, per client IP.
@@ -295,12 +302,19 @@ export function createWebRouter(deps: WebDeps) {
           if (!rl.allowed) {
             return html(rateLimitPage(), 429, { "Retry-After": String(rl.retryAfterSec) });
           }
-          /* #733: without a session there is no tenant to read from — public
-             links need cross-tenant token routing (follow-up issue). */
-          if (!tenant) return html(noSuchInvoicePage(), 404);
-          const idRow = tenant.db.query("SELECT id FROM invoices WHERE public_token = ?").get(pub[1]) as { id: number } | null;
-          const inv = idRow ? tenant.getInvoice(idRow.id) : null;
-          return inv ? html(tenant.publicInvoicePage(inv)) : html(noSuchInvoicePage(), 404);
+          /* #741: hosted public links carry no session — route the token to
+             its tenant by scanning the tenant DBs (no routing map in the
+             control plane). The token is a credential: never logged. In
+             self-host the session/singleton tenant serves as before. */
+          let t = tenant;
+          if (HOSTED && dataDir && tenantById) {
+            const userId = findTenantByPublicToken(dataDir, pub[1]);
+            t = userId !== null ? tenantById(userId) : null;
+          }
+          if (!t) return html(noSuchInvoicePage(), 404);
+          const idRow = t.db.query("SELECT id FROM invoices WHERE public_token = ?").get(pub[1]) as { id: number } | null;
+          const inv = idRow ? t.getInvoice(idRow.id) : null;
+          return inv ? html(t.publicInvoicePage(inv)) : html(noSuchInvoicePage(), 404);
         }
         /* Malformed /i/ paths (too short, bad chars): same dead-end. */
         if (method === "GET" && (path === "/i" || path === "/i/" || path.startsWith("/i/"))) {

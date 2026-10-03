@@ -5,6 +5,7 @@
 import type { Database, Statement } from "bun:sqlite";
 import { entryIsLocked, round2, todayStr } from "../lib/format.ts";
 import type { Entry, Invoice, InvoiceItem } from "../lib/types.ts";
+import { findTenantByPaymentLinkId } from "../lib/tenants.ts"; /* #741 */
 
 /* #733: everything derived from one tenant's SQLite bundle. Resolved per
    request from the session (session → user → tenant tree, cached by user
@@ -41,6 +42,11 @@ export interface ApiDeps {
   entryToJson: (e: Entry) => any;
   verifyWebhookSignature: (payload: string, sig: string | null, secret: string) => boolean;
   shareOrigin: (req: Request) => string; /* #301 */
+  /* #741: hosted cross-tenant webhook routing. When getTenant returns null
+     (hosted, no session), the tenant is resolved from the event's payment
+     link id via these; self-host never sets them. */
+  dataDir?: string;
+  tenantById?: (userId: number) => ApiTenant | null;
   /* #736: hosted subscription gate — true when the request's session user
      is authenticated but past entitlement. Optional so older callers keep
      compiling; server.ts always passes it in hosted mode. */
@@ -50,6 +56,7 @@ export interface ApiDeps {
 export function createApiRouter(deps: ApiDeps) {
   const {
     getTenant, TOKEN, authedApi, json, entryToJson, verifyWebhookSignature, shareOrigin,
+    dataDir, tenantById, /* #741 */
     inactiveAuthedUser, /* #736 */
   } = deps;
 
@@ -63,11 +70,6 @@ export function createApiRouter(deps: ApiDeps) {
           /* ---- Stripe webhook: no Bearer auth — verified by signature instead.
              Reads the raw body; signature is checked before any DB access. ---- */
           if (path === "/api/stripe/webhook" && method === "POST") {
-            /* #733: webhooks carry no session, so there is no tenant to read
-               — cross-tenant routing is a follow-up. Fail loud (Stripe
-               retries) instead of silently dropping paid invoices. */
-            if (!tenant) return json({ error: "multi-tenant webhook routing not configured" }, 503);
-            const { db, qInvoice, freezeInvoiceSnapshots } = tenant;
             const secret = process.env.STRIPE_WEBHOOK_SECRET || "";
             if (!secret) return json({ error: "webhook not configured" }, 503);
             const payload = await req.text();
@@ -79,6 +81,32 @@ export function createApiRouter(deps: ApiDeps) {
             } catch {
               return json({ error: "invalid payload" }, 400);
             }
+            /* #741: hosted webhooks carry no session. Signature is verified
+               above, before any tenant lookup; now resolve the owning tenant
+               from the event's payment-link id (globally unique per Stripe,
+               stored on the invoice at link creation). Only a resolved
+               tenant gets a 200 — an unattributable paid session fails loud
+               (Stripe retries) instead of silently dropping a paid invoice. */
+            let tenant = getTenant(req);
+            if (!tenant) {
+              if (!dataDir || !tenantById)
+                return json({ error: "multi-tenant webhook routing not configured" }, 503);
+              const session =
+                event.type === "checkout.session.completed" ? event.data?.object || {} : null;
+              const paid = !!session && session.payment_status === "paid";
+              const pl = session?.payment_link;
+              const linkId = typeof pl === "string" ? pl : pl?.id;
+              if (!(paid && typeof linkId === "string" && linkId)) {
+                /* Not an invoice-payment event, or nothing to attribute it
+                   by — acknowledge like the ignored events below. */
+                return json({ received: true });
+              }
+              const userId = findTenantByPaymentLinkId(dataDir, linkId);
+              tenant = userId !== null ? tenantById(userId) : null;
+              if (!tenant)
+                return json({ error: "unresolved tenant for paid checkout session" }, 503);
+            }
+            const { db, qInvoice, freezeInvoiceSnapshots } = tenant;
             if (event.type === "checkout.session.completed") {
               const session = event.data?.object || {};
               if (session.payment_status === "paid") {

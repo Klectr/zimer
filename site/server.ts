@@ -135,19 +135,22 @@ function buildTenantTree(bundle: DbBundle, dbPath: string): WebTenant & ApiTenan
 /* #733: tenant resolution. Hosted: session → user → tenant tree, cached by
    user id; the tenant's SQLite file is created lazily on the first
    authenticated request. Self-host: the one global tree, always. */
+const tenantStore = HOSTED
+  ? createTenantStore<WebTenant & ApiTenant>(DATA_DIR, buildTenantTree)
+  : null;
 const getTenant: (req: Request) => (WebTenant & ApiTenant) | null = HOSTED
-  ? (() => {
-      const tenants = createTenantStore<WebTenant & ApiTenant>(DATA_DIR, buildTenantTree);
-      const accts = accounts!;
-      return (req: Request) => {
-        const user = accts.sessionUserFromRequest(req);
-        return user ? tenants.get(user.id) : null;
-      };
-    })()
+  ? (req: Request) => {
+      const user = accounts!.sessionUserFromRequest(req);
+      return user ? tenantStore!.get(user.id) : null;
+    }
   : (() => {
       const tree = buildTenantTree(createDb(DATA_DIR), join(DATA_DIR, "timekeep.db"));
       return () => tree;
     })();
+/* #741: cross-tenant routing for the sessionless surfaces (public invoice
+   links, the Stripe webhook) — hosted only; self-host never needs it. */
+const tenantById = HOSTED ? (userId: number) => tenantStore!.get(userId) : undefined;
+const hostedDataDir = HOSTED ? DATA_DIR : undefined;
 
 /* #733: pure public pages need no tenant — built once. The login/signup/
    changelog/terms/privacy renderers never touch the domain deps; the stubs
@@ -180,6 +183,7 @@ const { handleApi } = createApiRouter({
   json,
   entryToJson, verifyWebhookSignature,
   shareOrigin: (req: Request) => PUBLIC_BASE_URL || publicOrigin(req, PORT), /* #301 */
+  dataDir: hostedDataDir, tenantById, /* #741 */
   inactiveAuthedUser, /* #736 */
 });
 const { pricingPage } = createPricingViews({ hosted: HOSTED }); /* #729 */
@@ -194,6 +198,7 @@ const { handleWeb } = createWebRouter({
   invoicePdf, stripeConfigured,
   workspaceEmpty, demoIds, seedDemoData, removeDemoData, entryToJson,
   inactiveAuthedUser, /* #736 */
+  dataDir: hostedDataDir, tenantById, /* #741 */
 });
 
 Bun.serve({
