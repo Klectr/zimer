@@ -267,6 +267,24 @@ describe("tracking label project name (#718)", () => {
   });
 });
 
+describe("running card description ellipsis (#761)", () => {
+  test("description carries timer-desc so it ellipsizes clear of the Stop button", () => {
+    // the Stop button is absolutely positioned — without the class a long
+    // description slides under it and clips mid-word on narrow screens.
+    expect(partial(true)).toContain(
+      '<div class="md-title-medium timer-desc">deep work</div>');
+  });
+  test("blank description still gets the class", () => {
+    const entry = { ...runningEntry, description: "" };
+    const deps = {
+      ...baseDeps,
+      qRunning: { get: () => entry } as unknown as Statement,
+    };
+    expect(createTimerViews(deps as any).timerPartial()).toContain(
+      '<div class="md-title-medium timer-desc">No description</div>');
+  });
+});
+
 describe("timer card annotation hygiene (#477)", () => {
   // A /* ... */ note once sat inside the template literal and rendered as
   // visible text between the TRACKING label and the Stop button. Inline
