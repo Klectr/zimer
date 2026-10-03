@@ -1,13 +1,13 @@
 /** #733: per-tenant SQLite isolation — the tenant store. Tenant files are
- *  created lazily under DATA_DIR/tenants/<user_id>/, cached by user id, and
- *  fully isolated from each other. */
+ *  created lazily as DATA_DIR/<user_id>.db (#745: flat layout, no nesting),
+ *  cached by user id, and fully isolated from each other. */
 import { describe, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createDb, type DbBundle } from "../db.ts";
-import { createTenantStore, tenantDbPath, tenantDir } from "./tenants.ts";
+import { createDbAt, type DbBundle } from "../db.ts";
+import { createTenantStore, tenantDbPath } from "./tenants.ts";
 
 function setup() {
   const dataDir = mkdtempSync(join(tmpdir(), "tk-tenants-"));
@@ -20,14 +20,13 @@ function setup() {
 }
 
 describe("tenant store (#733)", () => {
-  test("paths nest under DATA_DIR/tenants/<user_id>", () => {
-    expect(tenantDir("/data", 42)).toBe(join("/data", "tenants", "42"));
-    expect(tenantDbPath("/data", 42)).toBe(join("/data", "tenants", "42", "timekeep.db"));
+  test("paths are flat DATA_DIR/<user_id>.db (#745)", () => {
+    expect(tenantDbPath("/data", 42)).toBe(join("/data", "42.db"));
   });
 
   test("tenant file is created lazily on first get(), with full schema", () => {
     const { dataDir, store, built } = setup();
-    expect(existsSync(join(dataDir, "tenants"))).toBe(false);
+    expect(existsSync(join(dataDir, "7.db"))).toBe(false);
     const t = store.get(7);
     expect(existsSync(tenantDbPath(dataDir, 7))).toBe(true);
     expect(t.dbPath).toBe(tenantDbPath(dataDir, 7));
@@ -64,7 +63,7 @@ describe("tenant store (#733)", () => {
     expect(aRows.n).toBe(1);
     expect(bRows.n).toBe(0);
     /* And it survives a reopen — the file on disk is the source of truth. */
-    const reopened = createDb(join(dataDir, "tenants", "1"));
+    const reopened = createDbAt(join(dataDir, "1.db"));
     const n = reopened.db.query("SELECT COUNT(*) AS n FROM time_entries").get() as { n: number };
     expect(n.n).toBe(1);
   });

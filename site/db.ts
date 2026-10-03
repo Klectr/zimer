@@ -7,8 +7,14 @@
 import { Database } from "bun:sqlite";
 import { join } from "node:path";
 
+/* #745: file-addressed variant — the schema/migration body lives here so
+   hosted tenants can live at DATA_DIR/<user_id>.db instead of a directory. */
 export function createDb(dataDir: string) {
-  const db = new Database(join(dataDir, "timekeep.db"), { create: true });
+  return createDbAt(join(dataDir, "timekeep.db"));
+}
+
+export function createDbAt(dbPath: string) {
+  const db = new Database(dbPath, { create: true });
   db.exec("PRAGMA journal_mode = WAL;");
   /* NOTE: the ON DELETE actions declared below are NOT enforced by SQLite
      (no PRAGMA foreign_keys). Delete routes null out / clean up referencing
