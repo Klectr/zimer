@@ -88,6 +88,7 @@ export interface WebDeps {
   hostedLoginPage: (error?: string) => string; /* #732 */
   HOSTED: boolean; /* #732 */
   accounts: AccountsDb | null; /* #732 */
+  backupHealth: (() => { accounts: string | null; tenants: number }) | null; /* #730 part 2 */
   changelogPage: (entries: import("../lib/changelog.ts").ChangelogEntry[]) => string;
   termsPage: (sections: import("../lib/license-terms.ts").TermsSection[]) => string; /* #341 */
   privacyPage: () => string; /* #730 */
@@ -109,7 +110,7 @@ export interface WebDeps {
 export function createWebRouter(deps: WebDeps) {
   const {
     getTenant, STATIC_DIR, TOKEN, authedPage, tokensEqual, html, json, csvResponse, isHtmx,
-    shareOrigin, PORT, loginPage, signupPage, hostedLoginPage, HOSTED, accounts,
+    shareOrigin, PORT, loginPage, signupPage, hostedLoginPage, HOSTED, accounts, backupHealth,
     changelogPage, termsPage, privacyPage, noSuchInvoicePage, rateLimitPage,
     notFoundPage: publicNotFound, errorPage: publicError,
     invoicePdf, stripeConfigured,
@@ -239,7 +240,14 @@ export function createWebRouter(deps: WebDeps) {
            limit — monitoring services hit this every few minutes, and it
            must answer even when the app is otherwise idle. */
         if (path === "/health" && method === "GET") {
-          return json({ ok: true, version: appVersion() });
+          return json({
+            ok: true,
+            version: appVersion(),
+            /* #730 part 2: backup freshness, hosted mode only. `accounts` is
+               the ISO time of the newest accounts.db backup (null when none);
+               `tenants` counts tenants whose newest backup is under 24h old. */
+            ...(backupHealth ? { backups: backupHealth() } : {}),
+          });
         }
 
         /* #341: public license terms — no auth, same rate limit as the public
