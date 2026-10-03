@@ -16,7 +16,7 @@ export function createLayoutViews(qRunning: Statement, bannerHtml?: () => string
   const dests = [
     { href: "/", label: "Timer", key: "timer", ic: "timer" as const },
     { href: "/calendar", label: "Calendar", key: "calendar", ic: "calendar" as const },
-    { href: "/invoices", label: "Zinvoices", key: "invoices", ic: "receipt" as const },
+    { href: "/invoices", label: "Invoices", key: "invoices", ic: "receipt" as const },
     { href: "/manage", label: "Clients", key: "manage", ic: "group" as const },
   ];
   function layout(title: string, body: string, active?: "timer" | "calendar" | "manage" | "invoices", fixed?: boolean): string {
@@ -106,7 +106,7 @@ export function createLayoutViews(qRunning: Statement, bannerHtml?: () => string
         <div class="error-actions">
           <a class="md-filled-button" href="/">Timer</a>
           <a class="md-text-button" href="/calendar">Calendar</a>
-          <a class="md-text-button" href="/invoices">Zinvoices</a>
+          <a class="md-text-button" href="/invoices">Invoices</a>
           <a class="md-text-button" href="/manage">Clients</a>
         </div>` : ""}
       </div>`;
