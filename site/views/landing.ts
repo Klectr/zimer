@@ -22,11 +22,19 @@ export function createLandingViews() {
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
   <link rel="stylesheet" href="/static/style.css">
-  <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32.png">
+  <link rel="apple-touch-icon" href="/static/alien-180.png">
+  <meta property="og:title" content="Zimer: your timer is your invoice">
+  <meta property="og:description" content="Track your time, hit one button, send the invoice. $12/month with a 14-day free trial.">
+  <meta property="og:image" content="/static/og-image.png">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="/static/og-image.png">
   <script src="/static/motion.js" defer></script>
   </head>
   <body>
   <main class="page-landing">
+  <img class="landing-mascot" src="/static/mascot.png" alt="Zimer alien mascot with a laptop" width="280" height="280">
   <h1 class="landing-brand">${logo(32)}<span>Zimer</span></h1>
   <p class="md-headline-small landing-headline">Your timer is your invoice.</p>
   <p class="md-body-medium landing-sub">Time tracking for invoicing. Track your time, hit one button, send the invoice.</p>

@@ -1956,3 +1956,8 @@ body.app-fixed .cal-gutter-spacer {
   padding: 4px 12px; border-radius: 999px;
   font-size: 0.75rem; font-weight: 500;
 }
+
+/* #753: Zimer mascot placements — subtle, never competing with CTAs. */
+.landing-mascot { display: block; width: min(280px, 64vw); height: auto; margin: 0 auto 4px; }
+.empty-mascot { width: 132px; height: auto; }
+.demo-banner .demo-mascot { flex: none; width: 44px; height: 44px; }

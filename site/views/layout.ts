@@ -37,7 +37,8 @@ export function createLayoutViews(qRunning: Statement, bannerHtml?: () => string
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
   <link rel="stylesheet" href="/static/style.css">
-  <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32.png">
+  <link rel="apple-touch-icon" href="/static/alien-180.png">
   <script src="/static/motion.js" defer></script>
   <script src="/static/shortcut.js" defer></script>
   <script src="/static/terms.js" defer></script>
@@ -86,7 +87,8 @@ export function createLayoutViews(qRunning: Statement, bannerHtml?: () => string
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
   <link rel="stylesheet" href="/static/style.css">
-  <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32.png">
+  <link rel="apple-touch-icon" href="/static/alien-180.png">
   <script src="/static/motion.js" defer></script>
   </head>
   <body>
