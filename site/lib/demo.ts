@@ -135,7 +135,7 @@ export function demoBanner(db: Database): string {
   </div>`;
   }
   if (workspaceEmpty(db)) return `<div class="demo-banner" data-enter="1">
-    ${icon("info")}
+    <img class="demo-mascot" src="/static/mascot.png" alt="" width="44" height="44">
     <span><strong>New here?</strong> Load a fictional workspace — clients, a week of entries, invoices — and try every page in 30 seconds.</span>
     <form method="post" action="/demo/load" class="inline"><button class="md-text-button" type="submit">Load demo data</button></form>
   </div>`;
