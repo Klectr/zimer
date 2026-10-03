@@ -1,0 +1,256 @@
+/** #728: hosted subscription billing — subscription state lives in accounts.db
+ *  next to users/sessions. Zero-dependency Stripe: plain fetch to
+ *  api.stripe.com, no SDK (same ethos as site/stripe.ts).
+ *
+ *  Offer: $12/mo, one tier, 14-day trial. The price id comes from the
+ *  STRIPE_PRICE_ID env var (created in the Stripe dashboard) — never
+ *  hardcoded here.
+ *
+ *  Grace rules (subscriptionActive):
+ *    - trialing / active              → active
+ *    - past_due                       → active for 7 days after the failed
+ *                                       period end, then blocked
+ *    - canceled                       → stays active until current_period_end
+ *                                       (covers cancel-at-end), blocked after
+ *    - no row                         → not active
+ *
+ *  Live Stripe calls were NOT tested (no key in this environment) — all
+ *  Stripe API traffic is covered by mocked-fetch unit tests.
+ */
+
+import type { AccountsDb } from "./accounts.ts";
+
+export const TRIAL_DAYS = 14;
+export const PAST_DUE_GRACE_DAYS = 7;
+
+export interface Subscription {
+  user_id: number;
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
+  status: string | null; /* Stripe subscription status */
+  trial_ends_at: string | null;
+  current_period_end: string | null;
+  updated_at: string;
+}
+
+const isoFromUnix = (ts: number | null | undefined): string | null =>
+  typeof ts === "number" && Number.isFinite(ts)
+    ? new Date(ts * 1000).toISOString()
+    : null;
+
+function stripeCfg() {
+  return {
+    apiBase: (process.env.STRIPE_API_BASE || "https://api.stripe.com").replace(/\/+$/, ""),
+    secret: process.env.STRIPE_SECRET_KEY || "",
+    priceId: process.env.STRIPE_PRICE_ID || "",
+  };
+}
+
+/** POST a form-encoded Stripe API call. Throws on transport or Stripe errors. */
+export async function stripePost(path: string, params: URLSearchParams): Promise<any> {
+  const { apiBase, secret } = stripeCfg();
+  if (!secret) throw new Error("STRIPE_SECRET_KEY is not set");
+  const res = await fetch(`${apiBase}/v1/${path}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${secret}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: params.toString(),
+  });
+  const data = (await res.json().catch(() => ({}))) as any;
+  if (!res.ok) throw new Error(data?.error?.message || `Stripe request failed (${res.status})`);
+  return data;
+}
+
+/** Create a hosted Checkout Session in subscription mode with a 14-day
+ *  trial. Stripe collects the card and creates the customer + subscription;
+ *  the webhook upserts the local row via subscription_data metadata. */
+export async function createCheckoutSession(opts: {
+  userId: number;
+  email: string;
+  origin: string;
+}): Promise<{ url: string }> {
+  const { priceId } = stripeCfg();
+  if (!priceId) throw new Error("STRIPE_PRICE_ID is not set");
+  const p = new URLSearchParams();
+  p.set("mode", "subscription");
+  p.set("line_items[0][price]", priceId);
+  p.set("line_items[0][quantity]", "1");
+  p.set("trial_period_days", String(TRIAL_DAYS));
+  p.set("customer_email", opts.email);
+  p.set("client_reference_id", String(opts.userId));
+  p.set("subscription_data[metadata][user_id]", String(opts.userId));
+  p.set("success_url", `${opts.origin}/?billing=success`);
+  p.set("cancel_url", `${opts.origin}/?billing=cancelled`);
+  const session = await stripePost("checkout/sessions", p);
+  if (!session.url) throw new Error("Stripe did not return a checkout URL");
+  return { url: String(session.url) };
+}
+
+/** Create a customer-portal session (self-serve card update / cancel). */
+export async function createPortalSession(opts: {
+  customerId: string;
+  returnUrl: string;
+}): Promise<{ url: string }> {
+  const p = new URLSearchParams();
+  p.set("customer", opts.customerId);
+  p.set("return_url", opts.returnUrl);
+  const session = await stripePost("billing_portal/sessions", p);
+  if (!session.url) throw new Error("Stripe did not return a portal URL");
+  return { url: String(session.url) };
+}
+
+export function createBilling(accounts: AccountsDb) {
+  const db = accounts.db;
+  db.exec(`
+CREATE TABLE IF NOT EXISTS subscriptions (
+  user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  stripe_customer_id TEXT,
+  stripe_subscription_id TEXT,
+  status TEXT,
+  trial_ends_at TEXT,
+  current_period_end TEXT,
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_customer ON subscriptions(stripe_customer_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_subscription ON subscriptions(stripe_subscription_id);
+`);
+
+  const qByUser = db.query("SELECT * FROM subscriptions WHERE user_id = ?");
+  const qBySub = db.query(
+    "SELECT * FROM subscriptions WHERE stripe_subscription_id = ?"
+  );
+
+  function getSubscriptionStatus(userId: number): Subscription | null {
+    return (qByUser.get(userId) as Subscription | null) ?? null;
+  }
+
+  /** Is this user currently entitled to the hosted product? */
+  function subscriptionActive(userId: number, now: Date = new Date()): boolean {
+    const s = getSubscriptionStatus(userId);
+    if (!s || !s.status) return false;
+    const nowMs = now.getTime();
+    const periodEndMs = s.current_period_end ? Date.parse(s.current_period_end) : NaN;
+    switch (s.status) {
+      case "trialing":
+      case "active":
+        return true;
+      case "past_due":
+        /* 7-day grace after the failed period end, then blocked. */
+        return (
+          Number.isFinite(periodEndMs) &&
+          nowMs < periodEndMs + PAST_DUE_GRACE_DAYS * 24 * 3600 * 1000
+        );
+      case "canceled":
+        /* Cancel-at-end: stays active until the paid period runs out. */
+        return Number.isFinite(periodEndMs) && nowMs < periodEndMs;
+      default:
+        /* incomplete, incomplete_expired, unpaid, paused: not entitled. */
+        return false;
+    }
+  }
+
+  function upsertRow(row: {
+    user_id: number;
+    stripe_customer_id?: string | null;
+    stripe_subscription_id?: string | null;
+    status?: string | null;
+    trial_ends_at?: string | null;
+    current_period_end?: string | null;
+  }): void {
+    db.query(
+      `INSERT INTO subscriptions
+         (user_id, stripe_customer_id, stripe_subscription_id, status,
+          trial_ends_at, current_period_end, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+       ON CONFLICT(user_id) DO UPDATE SET
+         stripe_customer_id = excluded.stripe_customer_id,
+         stripe_subscription_id = excluded.stripe_subscription_id,
+         status = excluded.status,
+         trial_ends_at = excluded.trial_ends_at,
+         current_period_end = excluded.current_period_end,
+         updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')`
+    ).run(
+      row.user_id,
+      row.stripe_customer_id ?? null,
+      row.stripe_subscription_id ?? null,
+      row.status ?? null,
+      row.trial_ends_at ?? null,
+      row.current_period_end ?? null
+    );
+  }
+
+  /** Apply a customer.subscription.* event object to the local row.
+   *  Returns the user id it was applied to, or null when the event
+   *  couldn't be attributed to a user. */
+  function upsertFromSubscription(sub: any): number | null {
+    const metaUserId = Number(sub?.metadata?.user_id || 0);
+    let userId = Number.isFinite(metaUserId) && metaUserId > 0 ? metaUserId : 0;
+    if (!userId && sub?.id) {
+      const existing = qBySub.get(String(sub.id)) as Subscription | null;
+      if (existing) userId = existing.user_id;
+    }
+    if (!userId) return null;
+    upsertRow({
+      user_id: userId,
+      stripe_customer_id: sub.customer ? String(sub.customer) : null,
+      stripe_subscription_id: sub.id ? String(sub.id) : null,
+      status: sub.status ? String(sub.status) : null,
+      trial_ends_at: isoFromUnix(sub.trial_end),
+      current_period_end: isoFromUnix(sub.current_period_end),
+    });
+    return userId;
+  }
+
+  /** Apply one Stripe webhook event. Returns true when the event type is
+   *  one we handle (even if attribution failed), false for unknown types. */
+  function upsertFromStripeEvent(event: any): boolean {
+    const type = String(event?.type || "");
+    const obj = event?.data?.object || {};
+    switch (type) {
+      case "customer.subscription.created":
+      case "customer.subscription.updated":
+        upsertFromSubscription(obj);
+        return true;
+      case "customer.subscription.deleted": {
+        const userId = upsertFromSubscription(obj);
+        if (userId) {
+          db.query("UPDATE subscriptions SET status = 'canceled' WHERE user_id = ?").run(
+            userId
+          );
+        }
+        return true;
+      }
+      case "invoice.payment_failed": {
+        /* Belt-and-braces: the subscription.updated event normally carries
+           past_due already, but invoices can fail first. */
+        const subId = obj.subscription ? String(obj.subscription) : "";
+        if (subId) {
+          const existing = qBySub.get(subId) as Subscription | null;
+          if (existing) {
+            db.query(
+              "UPDATE subscriptions SET status = 'past_due', updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE user_id = ?"
+            ).run(existing.user_id);
+          }
+        }
+        return true;
+      }
+      case "customer.subscription.trial_will_end":
+        /* No email sending in timekeep (product decision) — acknowledged
+           and ignored; the status stays trialing until updated. */
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  return {
+    getSubscriptionStatus,
+    subscriptionActive,
+    upsertFromSubscription,
+    upsertFromStripeEvent,
+  };
+}
+
+export type Billing = ReturnType<typeof createBilling>;
