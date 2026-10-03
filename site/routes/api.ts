@@ -87,8 +87,8 @@ export function createApiRouter(deps: ApiDeps) {
                stored on the invoice at link creation). Only a resolved
                tenant gets a 200 — an unattributable paid session fails loud
                (Stripe retries) instead of silently dropping a paid invoice. */
-            let tenant = getTenant(req);
-            if (!tenant) {
+            let webhookTenant = tenant;
+            if (!webhookTenant) {
               if (!dataDir || !tenantById)
                 return json({ error: "multi-tenant webhook routing not configured" }, 503);
               const session =
@@ -102,11 +102,11 @@ export function createApiRouter(deps: ApiDeps) {
                 return json({ received: true });
               }
               const userId = findTenantByPaymentLinkId(dataDir, linkId);
-              tenant = userId !== null ? tenantById(userId) : null;
-              if (!tenant)
+              webhookTenant = userId !== null ? tenantById(userId) : null;
+              if (!webhookTenant)
                 return json({ error: "unresolved tenant for paid checkout session" }, 503);
             }
-            const { db, qInvoice, freezeInvoiceSnapshots } = tenant;
+            const { db, qInvoice, freezeInvoiceSnapshots } = webhookTenant;
             if (event.type === "checkout.session.completed") {
               const session = event.data?.object || {};
               if (session.payment_status === "paid") {
