@@ -712,6 +712,11 @@ input[type="number"] {
    label row is padded for the absolute Stop button, so a long name wraps
    awkwardly there. One line with an ellipsis instead. */
 .timer-state-proj { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+/* #761: the running card's description sat in normal flow while the Stop
+   button is absolutely positioned — a long description slid under the button
+   and clipped mid-word on narrow screens. Same one-line ellipsis treatment
+   as the label row, with matching right padding to clear the button. */
+.timer-desc { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 140px; }
 .timer-elapsed {
   font-size: 2.8125rem;
   line-height: 52px;

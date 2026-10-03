@@ -118,7 +118,7 @@ export function createTimerViews(deps: TimerViewDeps) {
             ${icon("stop")}Stop
           </button>
         </div>
-        <div class="md-title-medium">${running.description ? esc(running.description) : "No description"}</div>
+        <div class="md-title-medium timer-desc">${running.description ? esc(running.description) : "No description"}</div>
         <div class="timer-elapsed" id="elapsed" data-start="${esc(running.start_time)}">…</div>
         <script>(function(){var el=document.getElementById('elapsed');if(!el)return;
           /* #444: the tab-title ticker moved to shortcut.js (site-wide) — the
