@@ -15,6 +15,7 @@ import { stripeConfigured, verifyWebhookSignature } from "./stripe.ts";
 import { entryToJson, csvResponse, statusPill } from "./lib/format.ts";
 import { json, html, isHtmx, publicOrigin } from "./lib/http.ts";
 import { getToken, tokensEqual, authedApi, authedPage } from "./lib/auth.ts";
+import { createAccountsDb } from "./lib/accounts.ts"; /* #732 */
 import { createDb, getMeta } from "./db.ts";
 import { resourcePath } from "./lib/paths.ts"; /* #519 */
 import { isLicensed, licenseBannerHtml } from "./lib/license.ts"; /* #304 */
@@ -45,6 +46,11 @@ const STATIC_DIR = resourcePath("static", resolve(import.meta.dir, "static"));
 mkdirSync(DATA_DIR, { recursive: true });
 
 const TOKEN = getToken(DATA_DIR);
+
+/* #732: hosted mode — multi-customer accounts. Self-host keeps the
+   single shared token and never touches the accounts control plane. */
+const HOSTED = process.env.HOSTED === "1";
+const accounts = HOSTED ? createAccountsDb(DATA_DIR) : null;
 
 const {
   db, ENTRY_SELECT,
@@ -93,11 +99,15 @@ const freezeInvoiceSnapshots = (id: number, origin: string) => {
   db.query("UPDATE invoices SET html_snapshot = ? WHERE id = ?")
     .run(invoiceSheet(inv), id);
 };
-const { loginPage, publicInvoicePage, changelogPage, termsPage } = createPublicViews({ /* #303: +changelogPage; #341: +termsPage */
+const { loginPage, signupPage, hostedLoginPage, publicInvoicePage, changelogPage, termsPage } = createPublicViews({ /* #303: +changelogPage; #341: +termsPage; #732: +signupPage, +hostedLoginPage */
   getInvoice, invoiceTotals, invoiceDocumentHtml, ensurePublicToken,
 });
 const { handleApi } = createApiRouter({
-  db, qRunning, qOne, qRange, qInvoice, qInvoices, TOKEN, authedApi, json,
+  db, qRunning, qOne, qRange, qInvoice, qInvoices, TOKEN,
+  /* #732: hosted API calls also accept a valid account session cookie. */
+  authedApi: (req, token) =>
+    authedApi(req, token) || (HOSTED && accounts!.sessionUserFromRequest(req) !== null),
+  json,
   entryToJson, groupToLineItems, unbilledEntries, getInvoice,
   invoiceTotals, nextInvoiceNumber, mintPublicToken, stripeLinkFor, verifyWebhookSignature,
   revenueTotals, revenueMonthly, revenueByClient, revenueOverdue,
@@ -106,8 +116,9 @@ const { handleApi } = createApiRouter({
 const { handleWeb } = createWebRouter({
   db, qRunning, qOne, qRange, qInvoice, qInvoices,
   DATA_DIR, STATIC_DIR, TOKEN, authedPage, tokensEqual, html, json, csvResponse, isHtmx,
+  HOSTED, accounts, /* #732 */
   shareOrigin: (req: Request) => PUBLIC_BASE_URL || publicOrigin(req, PORT),
-  PORT, loginPage, publicInvoicePage, changelogPage, termsPage, notFoundPage, noSuchInvoicePage, rateLimitPage, errorPage,
+  PORT, loginPage, signupPage, hostedLoginPage, publicInvoicePage, changelogPage, termsPage, notFoundPage, noSuchInvoicePage, rateLimitPage, errorPage,
   dashboardPage, timerPartial, todayPartial, weekInner, weekStrip,
   calendarPage, editPage, managePage, clientSelection, clientDetailBody, clientListOob, bizProfileSection, clientSettingsForm, settingsPage, invoicesPage, invoiceNewPage,
   defaultNewInvParams, invoiceStep2, invoiceDetailBody, invoiceListOob, invoiceDoc,

@@ -16,6 +16,7 @@ import { loadChangelog } from "../lib/changelog.ts"; /* #303 */
 import { licenseTerms } from "../lib/license-terms.ts"; /* #341 */
 import { updateSectionHtml, checkForUpdates, updateStatusHtml } from "../lib/updates.ts"; /* #340 */
 import { isLaunchMode, isLicensed, licenseSectionHtml, storeLicenseKey } from "../lib/license.ts"; /* #304 */
+import type { AccountsDb } from "../lib/accounts.ts"; /* #732 */
 
 export interface WebDeps {
   db: Database;
@@ -36,6 +37,10 @@ export interface WebDeps {
   shareOrigin: (req: Request) => string;
   PORT: number;
   loginPage: () => string;
+  signupPage: (error?: string) => string; /* #732 */
+  hostedLoginPage: (error?: string) => string; /* #732 */
+  HOSTED: boolean; /* #732 */
+  accounts: AccountsDb | null; /* #732 */
   publicInvoicePage: (inv: Invoice & { items: InvoiceItem[] }) => string;
   changelogPage: (entries: import("../lib/changelog.ts").ChangelogEntry[]) => string;
   termsPage: (sections: import("../lib/license-terms.ts").TermsSection[]) => string; /* #341 */
@@ -88,7 +93,8 @@ export function createWebRouter(deps: WebDeps) {
   const {
     db, qRunning, qOne, qRange, qInvoice, qInvoices,
     DATA_DIR, STATIC_DIR, TOKEN, authedPage, tokensEqual, html, json, csvResponse, isHtmx,
-    shareOrigin, PORT, loginPage, publicInvoicePage, changelogPage, termsPage, notFoundPage, noSuchInvoicePage, rateLimitPage, errorPage, /* #341: +termsPage */
+    shareOrigin, PORT, loginPage, signupPage, hostedLoginPage, HOSTED, accounts,
+    publicInvoicePage, changelogPage, termsPage, notFoundPage, noSuchInvoicePage, rateLimitPage, errorPage, /* #341: +termsPage */
     dashboardPage, timerPartial, todayPartial, weekInner, weekStrip,
     calendarPage, editPage, managePage, clientSelection, clientDetailBody, clientListOob, bizProfileSection, clientSettingsForm, settingsPage, invoicesPage, invoiceNewPage,
     defaultNewInvParams, invoiceStep2, invoiceDetailBody, invoiceListOob, invoiceDoc,
@@ -103,6 +109,11 @@ export function createWebRouter(deps: WebDeps) {
      A page view pulls ~4 subrequests (html, css, logo, motion.js). */
   const invoiceLimiter = createRateLimiter({ windowMs: 60_000, max: 60 });
   const loginLimiter = createRateLimiter({ windowMs: 5 * 60_000, max: 10 });
+
+  /* #732: page auth in hosted mode is a valid account session; self-host
+     keeps the single shared token. */
+  const pageAuthed = (req: Request): boolean =>
+    HOSTED ? accounts!.sessionUserFromRequest(req) !== null : authedPage(req, TOKEN);
 
   /** Serve a web request, or null when the path is not a web route. */
   async function handleWeb(req: Request, url: URL, path: string, method: string): Promise<Response | null> {
@@ -124,18 +135,32 @@ export function createWebRouter(deps: WebDeps) {
         if (path === "/login") {
           if (method === "GET") {
             /* #379: already logged in — bounce to the timer. */
-            if (authedPage(req, TOKEN)) {
+            if (pageAuthed(req)) {
               return new Response(null, { status: 302, headers: { Location: "/" } });
             }
-            return html(loginPage());
+            return html(HOSTED ? hostedLoginPage() : loginPage());
           }
           if (method === "POST") {
-            /* #308: slow down token brute-forcing. */
+            /* #308: slow down credential brute-forcing. */
             const rl = loginLimiter.check(clientIp(req));
             if (!rl.allowed) {
               return html(rateLimitPage(), 429, { "Retry-After": String(rl.retryAfterSec) });
             }
             const form = await req.formData();
+            if (HOSTED) {
+              /* #732: email + password against the accounts control plane. */
+              const { token, error } = await accounts!.login(
+                String(form.get("email") || ""),
+                String(form.get("password") || "")
+              );
+              if (token) {
+                return new Response(null, {
+                  status: 302,
+                  headers: { Location: "/", "Set-Cookie": accounts!.sessionCookie(token) },
+                });
+              }
+              return html(hostedLoginPage(error), 401);
+            }
             if (tokensEqual(String(form.get("token") || ""), TOKEN)) {
               return new Response(null, {
                 status: 302,
@@ -148,7 +173,44 @@ export function createWebRouter(deps: WebDeps) {
             return html(loginPage().replace("</form>", `<p class="error">Wrong token.</p></form>`), 401);
           }
         }
+        /* #732: hosted signup — 404 in self-host mode. */
+        if (HOSTED && path === "/signup") {
+          if (method === "GET") {
+            if (pageAuthed(req)) {
+              return new Response(null, { status: 302, headers: { Location: "/" } });
+            }
+            return html(signupPage());
+          }
+          if (method === "POST") {
+            const rl = loginLimiter.check(clientIp(req));
+            if (!rl.allowed) {
+              return html(rateLimitPage(), 429, { "Retry-After": String(rl.retryAfterSec) });
+            }
+            const form = await req.formData();
+            const { user, error } = await accounts!.signup(
+              String(form.get("email") || ""),
+              String(form.get("password") || "")
+            );
+            if (user) {
+              const token = accounts!.createSession(user.id);
+              return new Response(null, {
+                status: 302,
+                headers: { Location: "/", "Set-Cookie": accounts!.sessionCookie(token) },
+              });
+            }
+            return html(signupPage(error), 400);
+          }
+        }
         if (path === "/logout") {
+          if (HOSTED) {
+            /* #732 */
+            const t = accounts!.sessionTokenFromRequest(req);
+            if (t) accounts!.destroySession(t);
+            return new Response(null, {
+              status: 302,
+              headers: { Location: "/login", "Set-Cookie": accounts!.clearSessionCookie },
+            });
+          }
           return new Response(null, {
             status: 302,
             headers: { Location: "/login", "Set-Cookie": "tk=; HttpOnly; Path=/; Max-Age=0" },
@@ -198,7 +260,7 @@ export function createWebRouter(deps: WebDeps) {
 
         /* ---- pages ---- */
         try {
-          if (!authedPage(req, TOKEN)) {
+          if (!pageAuthed(req)) {
             return new Response(null, { status: 302, headers: { Location: "/login" } });
           }
 
