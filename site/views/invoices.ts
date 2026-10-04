@@ -74,10 +74,13 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     /* #770: a paid invoice is done — the row only needs when the money
        landed; issued/due stay in the detail pane. One short segment also
        keeps the nowrap dates group from wrapping whole onto a second line
-       with a dangling leading middot. */
+       with a dangling leading middot. #772: unpaid rows get the same
+       treatment — one segment ("due", or "issued" when there's no due
+       date yet) so the narrow list pane can't wrap the dates group whole
+       onto line 2 either. */
     const dates = r.status === "paid"
       ? (r.paid_at ? seg("paid", shortYmd(r.paid_at)) : "")
-      : `${seg("issued", shortYmd(r.issue_date))}${r.due_date ? ` ${seg("due", shortYmd(r.due_date))}` : ""}`;
+      : (r.due_date ? seg("due", shortYmd(r.due_date)) : seg("issued", shortYmd(r.issue_date)));
     return `<li class="md-list-item inv-row${selected ? " selected" : ""}">
       <a class="inv-row-hit" href="/invoices?invoice=${r.id}" aria-label="View invoice ${esc(r.number)}">
         <div class="md-list-item-content">
