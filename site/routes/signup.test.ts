@@ -111,28 +111,18 @@ afterEach(() => {
   }
 });
 
-describe("#783: signup starts the Stripe trial", () => {
-  test("Stripe configured -> 303 to Checkout with trial_end ~14d out", async () => {
+describe("#791: signup starts the trial with no card", () => {
+  test("signup -> 302 straight into the app, no Stripe call", async () => {
     const { accounts, handleWeb } = setup();
     const res = await signupPost(handleWeb, "ada@example.com", "correct-horse-8");
-    expect(res!.status).toBe(303);
-    expect(res!.headers.get("location")).toBe("https://checkout.stripe.com/pay/cs_1");
+    expect(res!.status).toBe(302);
+    expect(res!.headers.get("location")).toBe("/");
     expect(res!.headers.get("set-cookie")).toMatch(/tksession=/);
-    const params = new URLSearchParams(lastStripeCall!.body);
-    expect(params.get("mode")).toBe("subscription");
-    expect(params.get("customer_email")).toBe("ada@example.com");
-    expect(params.get("trial_period_days")).toBeNull();
-    const trialEnd = Number(params.get("subscription_data[trial_end]"));
-    /* #787: anchored to the signup window, rounded up to UTC midnight */
-    const expected = Math.floor(
-      (Math.ceil((Date.now() + 14 * 86400000) / 86400000) * 86400000) / 1000
-    );
-    expect(Math.abs(trialEnd - expected)).toBeLessThan(120);
-    /* the account exists regardless of the redirect */
+    expect(lastStripeCall).toBeNull();
     expect(accounts.db.query("SELECT id FROM users WHERE email = ?").get("ada@example.com")).toBeTruthy();
   });
 
-  test("Stripe not configured -> 302 to the app (local-dev fallback)", async () => {
+  test("signup with no Stripe configured -> same 302, no Stripe call", async () => {
     delete process.env.STRIPE_SECRET_KEY;
     delete process.env.STRIPE_PRICE_ID;
     const { handleWeb } = setup();
@@ -140,15 +130,6 @@ describe("#783: signup starts the Stripe trial", () => {
     expect(res!.status).toBe(302);
     expect(res!.headers.get("location")).toBe("/");
     expect(lastStripeCall).toBeNull();
-  });
-
-  test("Stripe call fails -> 302 to the app, account still created", async () => {
-    stripeOk = false;
-    const { accounts, handleWeb } = setup();
-    const res = await signupPost(handleWeb, "hopper@example.com", "correct-horse-8");
-    expect(res!.status).toBe(302);
-    expect(res!.headers.get("location")).toBe("/");
-    expect(accounts.db.query("SELECT id FROM users WHERE email = ?").get("hopper@example.com")).toBeTruthy();
   });
 
   test("invalid signup still 400s, no Stripe call", async () => {
