@@ -252,7 +252,7 @@ describe("#728: billing routes", () => {
     /* #783: one 14-day window from signup — trial_end, not a fresh
        trial_period_days that would stack a second free trial. */
     expect(params.get("trial_period_days")).toBeNull();
-    const trialEnd = Number(params.get("trial_end"));
+    const trialEnd = Number(params.get("subscription_data[trial_end]"));
     const expected = Math.floor((createdMs + 14 * 86400000) / 1000);
     expect(Math.abs(trialEnd - expected)).toBeLessThan(120);
     expect(params.get("subscription_data[metadata][user_id]")).toBe(String(user.id));
@@ -272,7 +272,7 @@ describe("#728: billing routes", () => {
     const res = (await handleBilling(req, new URL(req.url), "/billing/checkout", "POST"))!;
     expect(res.status).toBe(303);
     const params = new URLSearchParams(lastStripeCall!.body);
-    expect(params.get("trial_end")).toBeNull();
+    expect(params.get("subscription_data[trial_end]")).toBeNull();
     expect(params.get("trial_period_days")).toBeNull();
   });
 
