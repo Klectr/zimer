@@ -253,7 +253,10 @@ describe("#728: billing routes", () => {
        trial_period_days that would stack a second free trial. */
     expect(params.get("trial_period_days")).toBeNull();
     const trialEnd = Number(params.get("subscription_data[trial_end]"));
-    const expected = Math.floor((createdMs + 14 * 86400000) / 1000);
+    /* #787: anchored to the signup window, rounded up to UTC midnight */
+    const expected = Math.floor(
+      (Math.ceil((createdMs + 14 * 86400000) / 86400000) * 86400000) / 1000
+    );
     expect(Math.abs(trialEnd - expected)).toBeLessThan(120);
     expect(params.get("subscription_data[metadata][user_id]")).toBe(String(user.id));
     expect(params.get("client_reference_id")).toBe(String(user.id));

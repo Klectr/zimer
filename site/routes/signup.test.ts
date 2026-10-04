@@ -123,7 +123,10 @@ describe("#783: signup starts the Stripe trial", () => {
     expect(params.get("customer_email")).toBe("ada@example.com");
     expect(params.get("trial_period_days")).toBeNull();
     const trialEnd = Number(params.get("subscription_data[trial_end]"));
-    const expected = Math.floor((Date.now() + 14 * 86400000) / 1000);
+    /* #787: anchored to the signup window, rounded up to UTC midnight */
+    const expected = Math.floor(
+      (Math.ceil((Date.now() + 14 * 86400000) / 86400000) * 86400000) / 1000
+    );
     expect(Math.abs(trialEnd - expected)).toBeLessThan(120);
     /* the account exists regardless of the redirect */
     expect(accounts.db.query("SELECT id FROM users WHERE email = ?").get("ada@example.com")).toBeTruthy();
