@@ -96,7 +96,10 @@ export async function createCheckoutSession(opts: {
   p.set("line_items[0][price]", priceId);
   p.set("line_items[0][quantity]", "1");
   if (trialEnd > Date.now() + 60 * 1000) {
-    p.set("trial_end", String(Math.floor(trialEnd / 1000)));
+    /* #785: on Checkout Sessions the trial end lives under
+       subscription_data — a top-level trial_end 400s ("unknown
+       parameter"; that's the Subscriptions API). */
+    p.set("subscription_data[trial_end]", String(Math.floor(trialEnd / 1000)));
   }
   if (opts.customerId) p.set("customer", opts.customerId);
   else p.set("customer_email", opts.email);
