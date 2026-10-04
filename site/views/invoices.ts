@@ -71,7 +71,13 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
        The segments now sit inside one nowrap .inv-dates group, so the wrap
        lands between the client name and the dates, never before a middot. */
     const seg = (label: string, val: string) => `<span class="inv-date">· ${label} ${esc(val)}</span>`;
-    const dates = `${seg("issued", shortYmd(r.issue_date))}${r.due_date ? ` ${seg("due", shortYmd(r.due_date))}` : ""}${r.status === "paid" && r.paid_at ? ` ${seg("paid", shortYmd(r.paid_at))}` : ""}`;
+    /* #770: a paid invoice is done — the row only needs when the money
+       landed; issued/due stay in the detail pane. One short segment also
+       keeps the nowrap dates group from wrapping whole onto a second line
+       with a dangling leading middot. */
+    const dates = r.status === "paid"
+      ? (r.paid_at ? seg("paid", shortYmd(r.paid_at)) : "")
+      : `${seg("issued", shortYmd(r.issue_date))}${r.due_date ? ` ${seg("due", shortYmd(r.due_date))}` : ""}`;
     return `<li class="md-list-item inv-row${selected ? " selected" : ""}">
       <a class="inv-row-hit" href="/invoices?invoice=${r.id}" aria-label="View invoice ${esc(r.number)}">
         <div class="md-list-item-content">

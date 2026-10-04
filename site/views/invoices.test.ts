@@ -66,6 +66,13 @@ describe("paid-on date", () => {
     expect(html).not.toContain("paid ");
   });
 
+  test("#770: paid row shows only the paid date, not issued/due", () => {
+    const html = views([{ ...baseRow, status: "paid", paid_at: "2026-09-21" }]).invoiceListOob(7);
+    expect(html).toContain("paid Sep 21");
+    expect(html).not.toContain("issued ");
+    expect(html).not.toContain("due ");
+  });
+
   test("#432: detail actions are icon buttons with M3 tooltips", () => {
     const html = views([]).invoiceDetailBody(detailInv("draft", null) as any, "http://x");
     const row = html.match(/<div class="page-head no-print">[\s\S]*?<div class="row">([\s\S]*?)<\/div>\s*<\/div>/)?.[1] || "";
@@ -109,10 +116,12 @@ describe("paid-on date", () => {
   });
 
   test("#442: list row keeps date phrases on one line", () => {
+    /* #770: a paid row shows only the paid date — issued/due live in the
+       detail pane now, so nothing can wrap onto a second line. */
     const html = views([{ ...baseRow, status: "paid", paid_at: "2026-09-21" }]).invoiceListOob(7);
-    expect(html).toContain('<span class="inv-date">· issued Sep 1</span>');
-    expect(html).toContain('<span class="inv-date">· due Sep 30</span>');
     expect(html).toContain('<span class="inv-date">· paid Sep 21</span>');
+    expect(html).not.toContain('<span class="inv-date">· issued');
+    expect(html).not.toContain('<span class="inv-date">· due');
     const html2 = views([{ ...baseRow, status: "sent", paid_at: null }]).invoiceListOob(0);
     expect(html2).toContain('<span class="inv-date">· issued Sep 1</span>');
     expect(html2).toContain('<span class="inv-date">· due Sep 30</span>');
@@ -123,8 +132,9 @@ describe("paid-on date", () => {
     const html = views([{ ...baseRow, status: "paid", paid_at: "2026-09-21" }]).invoiceListOob(7);
     const supporting = html.match(/<div class="md-list-item-supporting">([\s\S]*?)<\/div>/)?.[1] || "";
     /* The middot is a leading separator inside each nowrap span, so a wrap
-       breaks before a middot, never after one — no " · " in raw text. */
-    expect(supporting).toContain('Acme <span class="inv-dates"><span class="inv-date">· issued Sep 1</span> <span class="inv-date">· due Sep 30</span> <span class="inv-date">· paid Sep 21</span></span>');
+       breaks before a middot, never after one — no " · " in raw text.
+       #770: a paid row has just one segment, so there is nothing to dangle. */
+    expect(supporting).toContain('Acme <span class="inv-dates"><span class="inv-date">· paid Sep 21</span></span>');
     expect(supporting).not.toMatch(/ · </);
   });
 
