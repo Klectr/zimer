@@ -58,7 +58,7 @@
          header; this raw-fetch path never did, so the today list kept showing
          stale data after a t toggle. Fire the same event for parity. */
       if (window.htmx) htmx.trigger(document.body, "timer-updated");
-      snackbar(running ? "Timer stopped" : "Timer started — press t to stop");
+      snackbar(running ? "Zimer stopped" : "Zimer started — press t to stop");
     } catch (e) {
       snackbar("Couldn't toggle the timer");
     } finally {

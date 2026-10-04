@@ -490,7 +490,7 @@ describe("#668: manual line items on step 2", () => {
     expect(html).toContain('name="groups" value="0"');
     expect(html).toContain("data-add-item");
     expect(html).toContain("Add line item");
-    expect(html).toContain("Create invoice");
+    expect(html).toContain("Create zinvoice");
   });
 
   test("preview with items also gets the add button", () => {

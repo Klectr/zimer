@@ -286,11 +286,11 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       <a class="md-icon-button tip-right" href="/calendar?week=${next}" hx-get="/partial/week?week=${next}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?week=${next}" data-slide="next" data-tip="Next week" aria-label="Next week">${icon("chevron_right")}</a>`;
     const nudgeChip = uninvoiced > 0 ? `
       <a class="nudge-chip" href="/invoices/new?from=${sun}&to=${addDays(sun, 7)}">
-        <span class="md-label-large">${fmtDur(uninvoiced)} not yet invoiced</span>
+        <span class="md-label-large">${fmtDur(uninvoiced)} not yet zinvoiced</span>
         ${/* #592: the link invoices the VIEWED week, so "this week" lies on
            past/future weeks. Keep it on the current week, "this period"
            everywhere else. */ ""}
-        <span class="md-label-large nudge-go">${icon("receipt")} ${isThisWeek ? "Invoice this week" : "Invoice this period"}</span>
+        <span class="md-label-large nudge-go">${icon("receipt")} ${isThisWeek ? "Zinvoice this week" : "Zinvoice this period"}</span>
       </a>` : "";
     const clientStrip = clientRows.length === 0 ? "" : `
       <div class="week-clients">
@@ -1044,7 +1044,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     const dis = locked ? " disabled" : "";
     return layout(locked ? "Entry" : "Edit entry", `
       <h2 class="md-headline-small" data-enter="2">${locked ? "Entry" : "Edit entry"}</h2>
-      ${locked ? `<p class="muted md-body-medium">Invoiced on ${esc(e.invoice_number || "")} — this time can\u2019t be edited.</p>` : ""}
+      ${locked ? `<p class="muted md-body-medium">Zinvoiced on ${esc(e.invoice_number || "")} — this time can\u2019t be edited.</p>` : ""}
       <form method="post" action="/entries/${e.id}" class="form" id="edit-entry-form">
         <div class="md-text-field">
           <input type="text" id="ee-desc" name="description" value="${esc(e.description)}" placeholder=" "${dis}>

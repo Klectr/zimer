@@ -144,7 +144,7 @@ export function createTimerViews(deps: TimerViewDeps) {
       </div>`;
     }
     return `<div class="md-card" id="timer-card">
-      <div class="timer-state-label">TIMER</div>
+      <div class="timer-state-label">ZIMER</div>
       <div class="md-title-medium muted">Nothing tracking</div>
       <form hx-post="/timer/start" hx-target="#timer-card" hx-swap="outerHTML swap:200ms" class="start-form">
         <div class="md-text-field grow">
@@ -186,15 +186,15 @@ export function createTimerViews(deps: TimerViewDeps) {
   }
 
   function dashboardPage(): string {
-    return layout("Timer", `
+    return layout("Zimer", `
       ${demoBanner(db)}
       <div class="pane-layout">
-        <section class="pane-focus" data-enter="2" aria-label="Timer and today's entries">
+        <section class="pane-focus" data-enter="2" aria-label="Zimer and today's entries">
           ${timerPartial()}
           <div class="scroll-region">
             <div class="page-head">
               <h1 class="md-headline-small">Today</h1>
-              <a class="md-text-button" id="invoice-week" href="/invoices/new">${icon("receipt")} Invoice this week</a>
+              <a class="md-text-button" id="invoice-week" href="/invoices/new">${icon("receipt")} Zinvoice this week</a>
             </div>
             <div id="today-list" hx-get="/partial/today" hx-trigger="load, timer-updated from:body">
               <div class="skel-stack" aria-hidden="true">

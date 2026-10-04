@@ -14,9 +14,9 @@ export function createLayoutViews(qRunning: Statement, bannerHtml?: () => string
      brand mark and account actions only. Labels are one word
      ("Clients", not "Clients & projects") per the rail/bar guidelines. */
   const dests = [
-    { href: "/", label: "Timer", key: "timer", ic: "timer" as const },
+    { href: "/", label: "Zimer", key: "timer", ic: "timer" as const },
     { href: "/calendar", label: "Calendar", key: "calendar", ic: "calendar" as const },
-    { href: "/invoices", label: "Invoices", key: "invoices", ic: "receipt" as const },
+    { href: "/invoices", label: "Zinvoices", key: "invoices", ic: "receipt" as const },
     { href: "/manage", label: "Clients", key: "manage", ic: "group" as const },
   ];
   function layout(title: string, body: string, active?: "timer" | "calendar" | "manage" | "invoices", fixed?: boolean): string {
@@ -104,9 +104,9 @@ export function createLayoutViews(qRunning: Statement, bannerHtml?: () => string
         <p class="muted">The page you&rsquo;re looking for doesn&rsquo;t exist or was moved.</p>
         ${authed ? `
         <div class="error-actions">
-          <a class="md-filled-button" href="/">Timer</a>
+          <a class="md-filled-button" href="/">Zimer</a>
           <a class="md-text-button" href="/calendar">Calendar</a>
-          <a class="md-text-button" href="/invoices">Invoices</a>
+          <a class="md-text-button" href="/invoices">Zinvoices</a>
           <a class="md-text-button" href="/manage">Clients</a>
         </div>` : ""}
       </div>`;
@@ -123,7 +123,7 @@ export function createLayoutViews(qRunning: Statement, bannerHtml?: () => string
         <p class="muted">An unexpected error occurred. Please try again.</p>
         <div class="error-actions">
           <button class="md-tonal-button" onclick="history.back()">Go back</button>
-          <a class="md-filled-button" href="/">Timer</a>
+          <a class="md-filled-button" href="/">Zimer</a>
         </div>
       </div>`;
     if (authed) return layout("Something went wrong", body);
@@ -138,10 +138,10 @@ export function createLayoutViews(qRunning: Statement, bannerHtml?: () => string
     const body = `
       <div class="error-page">
         <div class="error-mark">${logo(40)}</div>
-        <h1 class="md-headline-small">This invoice doesn&rsquo;t exist.</h1>
-        <p class="muted">The link you followed doesn&rsquo;t match any invoice. Check the address, or ask the sender for a fresh link.</p>
+        <h1 class="md-headline-small">This zinvoice doesn&rsquo;t exist.</h1>
+        <p class="muted">The link you followed doesn&rsquo;t match any zinvoice. Check the address, or ask the sender for a fresh link.</p>
       </div>`;
-    return publicShell("Invoice not found", body);
+    return publicShell("Zinvoice not found", body);
   }
 
   /* Public 429 page (#308): minimal public chrome, no app nav leaked. */

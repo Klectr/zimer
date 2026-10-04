@@ -365,7 +365,7 @@ export function createManageViews(deps: ManageViewDeps) {
             </div>`;
     return `<section id="biz-profile">
           <h2 class="md-headline-small">Business profile</h2>
-          <p class="muted" style="margin:0 0 12px">Shown in the <em>From</em> block on invoices; the payment terms print on the invoice too.</p>
+          <p class="muted" style="margin:0 0 12px">Shown in the <em>From</em> block on zinvoices; the payment terms print on the zinvoice too.</p>
           <form method="post" action="/business-profile" id="biz-profile-form" class="manage-form" hx-post="/business-profile" hx-target="#biz-profile" hx-swap="outerHTML">
             ${field("business_name", "Business name", name)}
             ${field("business_email", "Email", email, "email")}

@@ -96,11 +96,11 @@ describe("page-level h1 (#701)", () => {
     expect(h1).toHaveLength(1);
     expect(h1[0].length).toBeGreaterThan(0);
   });
-  test("invoices list page has exactly one h1: Invoices", () => {
-    expect(h1Texts(invoicePages().list)).toEqual(["Invoices"]);
+  test("invoices list page has exactly one h1: Zinvoices", () => {
+    expect(h1Texts(invoicePages().list)).toEqual(["Zinvoices"]);
   });
-  test("new invoice page has exactly one h1: New invoice", () => {
-    expect(h1Texts(invoicePages().form)).toEqual(["New invoice"]);
+  test("new invoice page has exactly one h1: New zinvoice", () => {
+    expect(h1Texts(invoicePages().form)).toEqual(["New zinvoice"]);
   });
   test("manage page has exactly one h1: Clients", () => {
     expect(h1Texts(managePages().manage)).toEqual(["Clients"]);

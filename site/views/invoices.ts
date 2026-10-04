@@ -51,8 +51,8 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       </form>` : "";
     return `<div class="empty-state" data-enter="3">
       <img class="empty-mascot" src="/static/mascot-empty.png" alt="" width="132" height="132">
-      <h3 class="md-title-large">No invoices yet</h3>
-      <p class="muted">Turn tracked time into an invoice — or explore first with fictional sample data.</p>
+      <h3 class="md-title-large">No zinvoices yet</h3>
+      <p class="muted">Turn tracked time into a zinvoice — or explore first with fictional sample data.</p>
       <div class="row">${demoCta}</div>
     </div>`;
   }
@@ -82,7 +82,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       ? (r.paid_at ? seg("paid", shortYmd(r.paid_at)) : "")
       : (r.due_date ? seg("due", shortYmd(r.due_date)) : seg("issued", shortYmd(r.issue_date)));
     return `<li class="md-list-item inv-row${selected ? " selected" : ""}">
-      <a class="inv-row-hit" href="/invoices?invoice=${r.id}" aria-label="View invoice ${esc(r.number)}">
+      <a class="inv-row-hit" href="/invoices?invoice=${r.id}" aria-label="View zinvoice ${esc(r.number)}">
         <div class="md-list-item-content">
           <div class="md-list-item-headline">${esc(r.number)} ${statusPill(r.status)}${od ? ` <span class="attn-chip">${od}d overdue</span>` : ""}</div>
           <div class="md-list-item-supporting">${r.client_name ? esc(r.client_name) : "<em>No client</em>"} <span class="inv-dates">${dates}</span></div>
@@ -112,7 +112,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
   }
 
   function detailPlaceholder(): string {
-    return `<div class="detail-placeholder">${icon("receipt")}<p class="muted">Select an invoice to preview it here.</p></div>`;
+    return `<div class="detail-placeholder">${icon("receipt")}<p class="muted">Select a zinvoice to preview it here.</p></div>`;
   }
 
   /* #364: M3 list-detail — the list pane owns the outstanding summary,
@@ -123,24 +123,24 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     const rows = qInvoices.all() as any[];
     const head = `
       <div class="page-head" data-enter="2">
-        <h1 class="md-headline-small">Invoices</h1>
+        <h1 class="md-headline-small">Zinvoices</h1>
         <div class="page-head-actions">
           ${rows.length ? `<a class="md-text-button" href="/export/invoices.csv" download>${icon("download")}Export CSV</a>` : ""}
-          <a class="md-filled-button" href="/invoices/new">${icon("add")}New invoice</a>
+          <a class="md-filled-button" href="/invoices/new">${icon("add")}New zinvoice</a>
         </div>
       </div>`;
     if (!rows.length) {
-      return layout("Invoices", `${head}
+      return layout("Zinvoices", `${head}
         <div class="scroll-region" data-enter="3">${emptyInvoices()}</div>`, "invoices", true);
     }
-    return layout("Invoices", `${head}
+    return layout("Zinvoices", `${head}
       <div class="invoice-list-detail${selected ? " has-selection" : ""}" data-enter="3">
-        <section class="invoice-list-pane" aria-label="Invoice list">
+        <section class="invoice-list-pane" aria-label="Zinvoice list">
           <p class="muted" id="inv-outstanding">Outstanding: <strong>${money(outstandingTotal(rows))}</strong></p>
           ${unbilledSection(rows)}
           ${invoiceListHtml(rows, selected ? selected.id : null)}
         </section>
-        <section class="invoice-detail-pane" id="invoice-detail-pane" aria-label="Invoice detail">
+        <section class="invoice-detail-pane" id="invoice-detail-pane" aria-label="Zinvoice detail">
           ${selected ? invoiceDetailBody(selected, origin) : detailPlaceholder()}
         </section>
       </div>
@@ -176,7 +176,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
             <div class="md-list-item-headline">${esc(u.name)}</div>
             <div class="md-list-item-supporting">${fmtDur(u.secs)} unbilled</div>
           </div>
-          <div class="md-list-item-trailing"><a class="md-text-button" href="/invoices/new?client_id=${u.id}">Invoice</a></div>
+          <div class="md-list-item-trailing"><a class="md-text-button" href="/invoices/new?client_id=${u.id}">Zinvoice</a></div>
         </li>`).join("")}</ul>`;
   }
 
@@ -218,7 +218,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
             <div class="md-text-field filled has-suffix"><input type="number" name="tax_rate" value="${esc(p.tax_rate)}" min="0" step="0.01" placeholder=" " aria-label="Tax"><label>Tax</label><span class="affix suffix" aria-hidden="true">%</span></div>
           </div>
           <div class="two-field">
-            <div class="md-text-field"><input type="text" id="inv-number" name="number" value="${esc(p.number)}" required placeholder=" "><label for="inv-number">Invoice number</label></div>
+            <div class="md-text-field"><input type="text" id="inv-number" name="number" value="${esc(p.number)}" required placeholder=" "><label for="inv-number">Zinvoice number</label></div>
           </div>
           <div class="two-field">
             <div class="md-text-field filled"><input type="date" name="issue_date" id="inv-issue" value="${esc(p.issue_date)}" required placeholder=" "><label for="inv-issue">Issue date</label></div>
@@ -283,10 +283,10 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       })();</script>`;
 
 
-    return layout("New invoice", `
+    return layout("New zinvoice", `
       <div class="page-narrow" data-enter="2">
       <div class="page-head">
-        <h1 class="md-headline-small">New invoice</h1>
+        <h1 class="md-headline-small">New zinvoice</h1>
         <a class="md-text-button" href="/invoices">Cancel</a>
       </div>
       ${step1}<div id="invoice-step2">${invoiceStep2(p, preview)}</div>
@@ -338,8 +338,8 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
             </tfoot>
           </table></div>
           <div class="row"><button type="button" class="md-text-button" data-add-item>${icon("add")}<span>Add line item</span></button></div>
-          <p class="muted tiny">Amounts recalculate on save. Entries are marked billed when the invoice is created.</p>
-          <div class="row end"><button class="md-filled-button" type="submit">Create invoice</button></div>
+          <p class="muted tiny">Amounts recalculate on save. Entries are marked billed when the zinvoice is created.</p>
+          <div class="row end"><button class="md-filled-button" type="submit">Create zinvoice</button></div>
         </form>
       </div>`;
   }
@@ -396,7 +396,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     const datesLine = `<div class="inv-dates-line muted"><span class="inv-date">Issued ${esc(shortYmd(inv.issue_date))}</span>${inv.due_date && termsKey_ !== "pay_when_paid" ? `${sep}<span class="inv-date"><strong>Due ${esc(shortYmd(inv.due_date))}</strong></span>` : ""}${period ? `${sep}<span class="inv-date">Billing period: ${esc(period)}</span>` : ""}</div>`;
     const head = `
         <div class="inv-modern-band">
-          <div class="inv-modern-title">Invoice</div>
+          <div class="inv-modern-title">Zinvoice</div>
           <div class="inv-modern-right">
             <div class="inv-modern-number">${esc(inv.number)}</div>
             <span class="inv-modern-badge${inv.status === "paid" ? " paid" : ""}">${inv.status === "paid" ? "Paid" : "Unpaid"}</span>${paidChip}
@@ -582,7 +582,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     return `<div id="invoice-detail">
       <div class="page-head no-print">
         <div class="invoice-detail-head">
-          <a class="md-text-button detail-back" href="/invoices">${icon("arrow_left")}Invoices</a>
+          <a class="md-text-button detail-back" href="/invoices">${icon("arrow_left")}Zinvoices</a>
         </div>
         <div class="row">
           ${inv.status === "paid" && inv.paid_at ? `<span class="md-chip">${icon("check")}Paid ${esc(shortYmd(inv.paid_at))}</span>` : ""}
@@ -592,7 +592,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
             <button class="md-icon-button tip-right" type="submit" data-tip="${nextLabel}" aria-label="${nextLabel}">${icon("check")}</button>
           </form>` : ""}
           ${inv.status === "draft" ? `<form method="post" action="/invoices/${inv.id}/delete" class="inline">
-            <button class="md-icon-button danger tip-right" type="submit" data-tip="Delete draft" aria-label="Delete draft" data-confirm="Delete this draft invoice? Its entries become unbilled again.">${icon("delete")}</button>
+            <button class="md-icon-button danger tip-right" type="submit" data-tip="Delete draft" aria-label="Delete draft" data-confirm="Delete this draft zinvoice? Its entries become unbilled again.">${icon("delete")}</button>
           </form>` : ""}
         </div>
       </div>

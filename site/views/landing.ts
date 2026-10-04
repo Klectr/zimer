@@ -17,13 +17,13 @@ export function createLandingViews() {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
-  <title>Zimer: your timer is your invoice</title>
-  <meta name="description" content="Self-hosted time tracking for invoicing. Track your time, hit one button, send the invoice. $12/month with a 14-day free trial.">
+  <title>Zimer: your Zimer is your Zinvoice</title>
+  <meta name="description" content="Self-hosted time tracking for zinvoicing. Track your time, hit one button, send the Zinvoice. $12/month with a 14-day free trial.">
   <link rel="stylesheet" href="/static/style.css">
   <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32.png">
   <link rel="apple-touch-icon" href="/static/alien-180.png">
-  <meta property="og:title" content="Zimer: your timer is your invoice">
-  <meta property="og:description" content="Track your time, hit one button, send the invoice. $12/month with a 14-day free trial.">
+  <meta property="og:title" content="Zimer: your Zimer is your Zinvoice">
+  <meta property="og:description" content="Track your time, hit one button, send the Zinvoice. $12/month with a 14-day free trial.">
   <meta property="og:image" content="/static/og-image.png">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
@@ -35,9 +35,9 @@ export function createLandingViews() {
   <section class="landing-hero">
   <div class="landing-hero-copy" data-enter>
   <p class="landing-brand">${logo(28)}<span>Zimer</span></p>
-  <p class="landing-eyebrow"><span class="landing-eyebrow-dot" aria-hidden="true"></span>Time tracking to invoicing</p>
-  <h1 class="landing-headline">Your timer is your invoice.</h1>
-  <p class="landing-sub">Start the timer while you work. When the work is done, Zimer turns your tracked hours into a clean invoice you can send in one step.</p>
+  <p class="landing-eyebrow"><span class="landing-eyebrow-dot" aria-hidden="true"></span>Time tracking to zinvoicing</p>
+  <h1 class="landing-headline">Your Zimer is your Zinvoice.</h1>
+  <p class="landing-sub">Start the Zimer while you work. When the work is done, Zimer turns your tracked hours into a clean Zinvoice you can send in one step.</p>
   <div class="landing-cta-row">
   <a class="md-filled-button landing-cta-btn" href="/signup">Start free trial</a>
   <a class="md-text-button" href="#pricing">See pricing</a>
@@ -51,11 +51,11 @@ export function createLandingViews() {
   </section>
   <section class="landing-section" data-enter="3">
   <h2 class="landing-section-title">Everything from first tap to paid</h2>
-  <p class="muted landing-section-sub">One app for the whole loop: track the time, send the invoice, watch the money land.</p>
+  <p class="muted landing-section-sub">One app for the whole loop: track the time, send the Zinvoice, watch the money land.</p>
   <div class="landing-feature-grid">
   <article class="landing-feature">
   <span class="landing-feature-icon">${icon("timer")}</span>
-  <h3 class="landing-feature-title">One-tap timer</h3>
+  <h3 class="landing-feature-title">One-tap Zimer</h3>
   <p class="md-body-medium muted">Start, stop, and switch projects in a click. Every entry lands on your calendar on its own.</p>
   </article>
   <article class="landing-feature">
@@ -65,8 +65,8 @@ export function createLandingViews() {
   </article>
   <article class="landing-feature">
   <span class="landing-feature-icon">${icon("receipt")}</span>
-  <h3 class="landing-feature-title">Invoice in one step</h3>
-  <p class="md-body-medium muted">Pick a date range, adjust the line items, download the PDF. Sent invoices freeze as snapshots.</p>
+  <h3 class="landing-feature-title">Zinvoice in one step</h3>
+  <p class="md-body-medium muted">Pick a date range, adjust the line items, download the PDF. Sent zinvoices freeze as snapshots.</p>
   </article>
   <article class="landing-feature">
   <span class="landing-feature-icon">${icon("group")}</span>
@@ -85,7 +85,7 @@ export function createLandingViews() {
   <p class="md-body-medium landing-plan-copy">Your own workspace on our servers. Nothing to run, nothing to maintain.</p>
   <ul class="landing-plan-list">
   <li>${icon("check")}<span>14-day free trial, no card up front</span></li>
-  <li>${icon("check")}<span>Timer, calendar, invoices, clients</span></li>
+  <li>${icon("check")}<span>Zimer, calendar, zinvoices, clients</span></li>
   <li>${icon("check")}<span>Cancel anytime</span></li>
   </ul>
   <a class="md-filled-button landing-cta-btn" href="/signup">Start free trial</a>

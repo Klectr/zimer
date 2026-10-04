@@ -55,7 +55,7 @@ describe("#753: mascot placements", () => {
     const html = invoiceViews().invoicesPage(null, "/invoices");
     expect(html).toContain('class="empty-mascot"');
     expect(html).toContain('src="/static/mascot-empty.png"');
-    expect(html).toContain("No invoices yet");
+    expect(html).toContain("No zinvoices yet");
   });
 
   test("timer first-run demo banner shows the mascot", () => {
