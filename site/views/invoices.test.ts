@@ -117,14 +117,16 @@ describe("paid-on date", () => {
 
   test("#442: list row keeps date phrases on one line", () => {
     /* #770: a paid row shows only the paid date — issued/due live in the
-       detail pane now, so nothing can wrap onto a second line. */
+       detail pane now, so nothing can wrap onto a second line. #772:
+       unpaid rows get the same treatment — one segment ("due", or
+       "issued" when there is no due date yet). */
     const html = views([{ ...baseRow, status: "paid", paid_at: "2026-09-21" }]).invoiceListOob(7);
     expect(html).toContain('<span class="inv-date">· paid Sep 21</span>');
     expect(html).not.toContain('<span class="inv-date">· issued');
     expect(html).not.toContain('<span class="inv-date">· due');
     const html2 = views([{ ...baseRow, status: "sent", paid_at: null }]).invoiceListOob(0);
-    expect(html2).toContain('<span class="inv-date">· issued Sep 1</span>');
     expect(html2).toContain('<span class="inv-date">· due Sep 30</span>');
+    expect(html2).not.toContain('<span class="inv-date">· issued');
     expect(html2).not.toContain('inv-date">· paid');
   });
 
@@ -138,12 +140,20 @@ describe("paid-on date", () => {
     expect(supporting).not.toMatch(/ · </);
   });
 
-  test("#588: date segments share one nowrap group, not the client line", () => {
+  test("#772: unpaid row shows only the due date segment", () => {
     const html = views([{ ...baseRow, status: "sent", paid_at: null }]).invoiceListOob(0);
     const supporting = html.match(/<div class="md-list-item-supporting">([\s\S]*?)<\/div>/)?.[1] || "";
-    /* The dates wrap as one unit: the break lands between the client name
-       and the .inv-dates group, never between two date segments. */
-    expect(supporting).toContain('<span class="inv-dates"><span class="inv-date">· issued Sep 1</span> <span class="inv-date">· due Sep 30</span></span>');
+    /* One segment per row: the .inv-dates group can't wrap whole onto a
+       second line with a dangling leading middot on narrow list panes. */
+    expect(supporting).toContain('<span class="inv-dates"><span class="inv-date">· due Sep 30</span></span>');
+    expect(supporting).not.toContain('inv-date">· issued');
+  });
+
+  test("#772: unpaid row with no due date falls back to the issued date", () => {
+    const html = views([{ ...baseRow, status: "draft", paid_at: null, due_date: null }]).invoiceListOob(0);
+    const supporting = html.match(/<div class="md-list-item-supporting">([\s\S]*?)<\/div>/)?.[1] || "";
+    expect(supporting).toContain('<span class="inv-dates"><span class="inv-date">· issued Sep 1</span></span>');
+    expect(supporting).not.toContain('inv-date">· due');
   });
 
   test("#448: stripe-paid chip uses the icon system, not an emoji", () => {
