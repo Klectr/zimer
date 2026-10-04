@@ -331,8 +331,8 @@ describe("entry row tooltips (#484)", () => {
     // native title shows an OS-styled tooltip and never fires on touch —
     // the chip joins the M3 plain tooltip system (450ms long-press, #496).
     expect(html).toContain('class="inv-mark "');
-    expect(html).toContain('data-tip="Invoiced on INV-0042"');
-    expect(html).not.toContain('title="Invoiced on INV-0042"');
+    expect(html).toContain('data-tip="Zinvoiced on INV-0042"');
+    expect(html).not.toContain('title="Zinvoiced on INV-0042"');
   });
 });
 

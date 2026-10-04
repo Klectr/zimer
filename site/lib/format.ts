@@ -25,10 +25,10 @@ export function entryInvoiceMark(e: { invoice_number: string | null; invoice_sta
   const draft = e.invoice_status === "draft";
   return {
     cls: draft ? "draft" : "",
-    label: draft ? "Draft" : "Invoiced",
+    label: draft ? "Draft" : "Zinvoiced",
     title: draft
       ? `In draft ${e.invoice_number} — not billed yet`
-      : `Invoiced on ${e.invoice_number}`,
+      : `Zinvoiced on ${e.invoice_number}`,
   };
 }
 

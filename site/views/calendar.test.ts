@@ -272,7 +272,7 @@ describe("calendar entry invoiced-mark tooltip (#500)", () => {
   test("invoiced entry card uses data-tip, not the native title", () => {
     const html = weekInnerHtml([plain, invoiced]);
     const tag = cardTag(html, 21);
-    expect(tag).toContain('data-tip="Invoiced on INV-0042"');
+    expect(tag).toContain('data-tip="Zinvoiced on INV-0042"');
     expect(tag).not.toContain("title=");
   });
   test("plain entries get no mark tip at all", () => {
