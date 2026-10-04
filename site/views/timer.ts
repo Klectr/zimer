@@ -245,7 +245,7 @@ export function createTimerViews(deps: TimerViewDeps) {
         <div class="md-title-large${cls ? ` ${cls}` : ""}">${money(val)}</div>
       </div>`;
     return `<div class="rev-cards">
-      ${card("Invoiced", t.invoiced)}
+      ${card("Zinvoiced", t.invoiced)}
       ${card("Paid", t.paid, "rev-paid")}
       ${card("Outstanding", t.outstanding)}
     </div>`;
@@ -264,7 +264,7 @@ export function createTimerViews(deps: TimerViewDeps) {
       const ho = h - hp;
       const x = Math.round(i * slot + (slot - bw) / 2);
       const cx = Math.round(i * slot + slot / 2);
-      return `<g><title>${esc(`${m.label}: ${money(m.paid)} paid of ${money(m.invoiced)} invoiced`)}</title>` +
+      return `<g><title>${esc(`${m.label}: ${money(m.paid)} paid of ${money(m.invoiced)} zinvoiced`)}</title>` +
         (ho > 0 ? `<rect x="${x}" y="${baseline - h}" width="${bw}" height="${ho}" rx="4" class="bar-out" style="animation-delay:${i * 40}ms"/>` : "") +
         (hp > 0 ? `<rect x="${x}" y="${baseline - hp}" width="${bw}" height="${hp}" rx="4" class="bar-paid" style="animation-delay:${i * 40}ms"/>` : "") +
         `<text x="${cx}" y="${baseline + 18}" text-anchor="middle">${m.label}</text></g>`;
@@ -272,13 +272,13 @@ export function createTimerViews(deps: TimerViewDeps) {
     return `<div class="md-card rev-chart-card">
       <div class="md-title-medium rev-chart-title">Last 12 months</div>
       <svg class="rev-chart" viewBox="0 0 ${W} 215" role="img" aria-label="Monthly revenue, last 12 months">${bars}</svg>
-      <div class="rev-legend"><span class="rev-swatch paid"></span>Paid<span class="rev-swatch out"></span>Invoiced</div>
+      <div class="rev-legend"><span class="rev-swatch paid"></span>Paid<span class="rev-swatch out"></span>Zinvoiced</div>
     </div>`;
   }
 
   function revenueSection(): string {
     if (revenueTotals().invoiced === 0)
-      return `<p class="muted">No invoices yet — revenue will show up here.</p>`;
+      return `<p class="muted">No zinvoices yet — revenue will show up here.</p>`;
     return revenueAttention() + revenueCards() + revenueChart() + revenueClients();
   }
 
@@ -313,7 +313,7 @@ export function createTimerViews(deps: TimerViewDeps) {
       const pct = c.invoiced > 0 ? Math.min(100, (c.paid / c.invoiced) * 100) : 0;
       const met = c.invoiced > 0 && c.outstanding <= 0;
       const bar = c.invoiced > 0
-        ? `<div class="m3-progress rev-collection">${m3ProgressBar(pct, met, `${esc(c.name)}: ${money(c.paid)} paid of ${money(c.invoiced)} invoiced`)}</div>`
+        ? `<div class="m3-progress rev-collection">${m3ProgressBar(pct, met, `${esc(c.name)}: ${money(c.paid)} paid of ${money(c.invoiced)} zinvoiced`)}</div>`
         : "";
       return `
       <li class="md-list-item">

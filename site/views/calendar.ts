@@ -645,14 +645,14 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       var locked=el.dataset.locked||''; /* #334: sent/paid time opens read-only */
       var running=el.classList.contains('running'); /* #462: the timer card owns
         the running entry — deleting it here orphaned the card. */
-      title.textContent=locked?'Entry (invoiced)':'Edit entry';
+      title.textContent=locked?'Entry (zinvoiced)':'Edit entry';
       delBtn.hidden=!!locked||running; err.hidden=true;
       var d=new Date(dayStr+'T12:00:00');
       dateLine.textContent=d.toLocaleDateString([],{weekday:'long',month:'long',day:'numeric'});
       desc.value=el.dataset.desc||''; project.value=el.dataset.projectId||'';
       startI.value=el.dataset.start||'09:00'; endI.value=el.dataset.end||toHM(toMin(startI.value)+60); updDur();
       if(locked){
-        lockNote.textContent='Invoiced on '+locked+' — this time can\u2019t be edited.';
+        lockNote.textContent='Zinvoiced on '+locked+' — this time can\u2019t be edited.';
         lockNote.hidden=false;
         desc.disabled=true; project.disabled=true; startI.disabled=true; endI.disabled=true;
         saveBtn.hidden=true;
