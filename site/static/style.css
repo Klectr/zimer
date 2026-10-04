@@ -2001,6 +2001,14 @@ body.app-fixed .cal-gutter-spacer {
 .cal-ag-desc { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cal-ag-dur { flex: none; }
 .cal-ag-empty { margin: 6px 0 2px; }
+/* #781: the week-summary hint teaches the grid's drag-to-create gesture, but
+   on the narrow agenda the gesture is the per-day + button. Both variants
+   render; the client toggles .cal-agenda-hint on <body> by strip width. A
+   container query can't do this — the aside isn't a strip descendant — so the
+   JS mirrors the 639px breakpoint above exactly. */
+.cal-hint-agenda { display: none; }
+.cal-agenda-hint .cal-hint-grid { display: none; }
+.cal-agenda-hint .cal-hint-agenda { display: inline; }
 
 /* M3 press ripple (JS-driven, see motion.js). Buttons already clip with
    overflow: hidden; the span paints above the ::after state layer. */

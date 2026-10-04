@@ -680,8 +680,10 @@ describe("calendar pane hint (#766)", () => {
     const html = views().weekInner("2026-09-20", "America/Chicago");
     const hint = html.match(/<p class="muted tiny cal-hint">.*?<\/p>/);
     expect(hint).not.toBeNull();
+    /* #781: both variants render unconditionally — the server still branches
+       on nothing viewport-specific; the client picks by strip width. */
     expect(hint![0]).toBe(
-      '<p class="muted tiny cal-hint">Drag across the calendar to log time. Click an entry to edit it.</p>'
+      '<p class="muted tiny cal-hint"><span class="cal-hint-grid">Drag across the calendar to log time. Click an entry to edit it.</span><span class="cal-hint-agenda">Tap + on a day to log time. Tap an entry to edit it.</span></p>'
     );
   });
 });

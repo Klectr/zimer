@@ -331,7 +331,10 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       ${nudgeChip}
       ${weekTargetBar(weekTotal)}
       ${clientStrip}
-      <p class="muted tiny cal-hint">Drag across the calendar to log time. Click an entry to edit it.</p>
+      ${/* #781: the create gesture differs per presentation — drag-to-create on
+         the 24h grid, the per-day + button on the narrow agenda. Both variants
+         render in place; the client picks by strip width (see syncCalHint). */ ""}
+      <p class="muted tiny cal-hint"><span class="cal-hint-grid">Drag across the calendar to log time. Click an entry to edit it.</span><span class="cal-hint-agenda">Tap + on a day to log time. Tap an entry to edit it.</span></p>
       ${workspaceEmpty(db) ? `<div class="cal-first-run">
         ${icon("info")}
         <p class="md-label-large"><strong>New here?</strong> Load fictional sample data to explore the calendar.</p>
@@ -960,6 +963,17 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       }
     }
     /* Scroll one strip: center the now-line when today is visible, else top. */
+    /* #781: the aside hint teaches the grid's drag-to-create gesture, which
+       doesn't exist on the narrow agenda (creation is the per-day + button).
+       The aside isn't a strip descendant, so the 639px container query can't
+       reach it — mirror the breakpoint in JS against the strip's own width
+       (the strip has no padding/border, so clientWidth IS the container width)
+       and toggle the pre-rendered variant via a body class. */
+    function syncCalHint(){
+      var strip=document.querySelector('#week .cal-strip');
+      if(!strip) return;
+      document.body.classList.toggle('cal-agenda-hint',strip.clientWidth<=639);
+    }
     function initStripScroll(strip){
       var sc=strip.querySelector('.cal-scroll'); if(!sc) return;
       var line=strip.querySelector('[data-now]');
@@ -1005,10 +1019,12 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       setTimeout(function(){ centerVisible(true); }, 650);
     })();
     setInterval(placeNow,30000);
+    syncCalHint(); /* #781: hint variant follows the strip presentation */
+    window.addEventListener('resize',syncCalHint);
     /* no-JS fallback: htmx swaps the whole window; re-init the carousel. */
     document.body.addEventListener('htmx:afterSwap',function(e){
       if(e.detail&&e.detail.target&&e.detail.target.id==='week'){
-        initCarousel(); placeNow(); centerVisible(false); }
+        initCarousel(); placeNow(); centerVisible(false); syncCalHint(); }
     });
   })();`;
   }
