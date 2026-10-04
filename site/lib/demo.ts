@@ -4,6 +4,7 @@
 
 import type { Database } from "bun:sqlite";
 import { icon } from "./icons.ts";
+import { addDays, termsDays, termsKey } from "./format.ts";
 
 export function workspaceEmpty(db: Database): boolean {
   const c = (db.query("SELECT COUNT(*) AS n FROM clients").get() as any).n
@@ -74,6 +75,11 @@ export function seedDemoData(db: Database): void {
      every first-run demo invoice. */
   /* #763: the seeded paid invoice needs paid_at like the real mark-paid
      flow sets — without it the detail actions row drops the paid chip. */
+  /* #774: seeded due dates follow the default payment terms (Net 30)
+     instead of a hardcoded +15d — the old dates contradicted the
+     "due within 30 days" terms text the invoices themselves print. */
+  const defaultTermsDays = termsDays(termsKey(null, null)) ?? 30;
+  const demoDue = (issue: string) => addDays(issue, defaultTermsDays);
   const invQ = db.query("INSERT INTO invoices (client_id, number, issue_date, due_date, status, tax_rate, notes, paid_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
   const itemQ = db.query("INSERT INTO invoice_items (invoice_id, description, hours, rate, amount, date_from, date_to) VALUES (?, ?, ?, ?, ?, ?, ?)");
   const mk = (cid: number | null, num: string, issue: string, due: string, status: string,
@@ -87,13 +93,11 @@ export function seedDemoData(db: Database): void {
   const lm = lastMonth.toISOString().slice(0, 10);
   const today = dayStr(new Date());
   const monthStart = today.slice(0, 8) + "01";
-  mk(clientIds[0], "DEMO-001", lm, lm, "paid",
+  mk(clientIds[0], "DEMO-001", lm, demoDue(lm), "paid",
     [["Brand refresh — design", 24, 120, lm, lm]], "Paid in full. Thank you!", lm);
-  mk(clientIds[1], "DEMO-002", new Date().toISOString().slice(0, 10),
-    new Date(Date.now() + 15 * 864e5).toISOString().slice(0, 10), "sent",
+  mk(clientIds[1], "DEMO-002", today, demoDue(today), "sent",
     [["Mobile app — onboarding flow", 18.5, 95, demoFrom, demoTo]]);
-  mk(clientIds[2], "DEMO-003", new Date().toISOString().slice(0, 10),
-    new Date(Date.now() + 15 * 864e5).toISOString().slice(0, 10), "draft",
+  mk(clientIds[2], "DEMO-003", today, demoDue(today), "draft",
     [["Advisory retainer — September", 1, 150, monthStart, today]], "Demo draft — not a real invoice.");
   db.query("INSERT OR REPLACE INTO meta (key, value) VALUES ('demo_ids', ?)")
     .run(JSON.stringify(ids));

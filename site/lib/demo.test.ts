@@ -10,7 +10,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createDb } from "../db.ts";
 import { seedDemoData, demoIds } from "./demo.ts";
-import { shortDateRange } from "./format.ts";
+import { addDays, DEFAULT_PAYMENT_TERMS, shortDateRange, termsDays } from "./format.ts";
 
 describe("demo paid invoice paid_at (#763)", () => {
   test("DEMO-001 (paid) has a paid_at date like the mark-paid flow sets", () => {
@@ -33,6 +33,20 @@ function seededDb() {
   seedDemoData(db);
   return db;
 }
+
+/** #774: seeded demo due dates follow the default payment terms — the old
+ *  hardcoded +15d contradicted the "due within 30 days" terms text the
+ *  demo invoices print. */
+describe("demo due dates follow default terms (#774)", () => {
+  test("every demo invoice is due issue_date + the default terms' days", () => {
+    const db = seededDb();
+    const days = termsDays(DEFAULT_PAYMENT_TERMS);
+    expect(days).not.toBeNull();
+    const rows = db.query("SELECT number, issue_date, due_date FROM invoices").all() as any[];
+    expect(rows.length).toBe(3);
+    for (const r of rows) expect(r.due_date).toBe(addDays(r.issue_date, days ?? 30));
+  });
+});
 
 describe("demo invoice dates (#492)", () => {
   test("every demo invoice item has a date range that renders", () => {
