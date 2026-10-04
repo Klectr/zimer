@@ -650,3 +650,38 @@ describe("edit-entry floating labels (#709)", () => {
     }
   });
 });
+
+/** #766: the "This week" pane hint named the per-day + buttons, which only
+ *  render inside the narrow agenda view (display:none above 639px of strip
+ *  width) — at desktop widths the hint pointed at a control that was not
+ *  there. The hint is now one sentence that is true at every width.
+ */
+describe("calendar pane hint (#766)", () => {
+  const stubQuery = () => ({
+    get: (..._a: unknown[]) => ({ n: 1 }),
+    all: (..._a: unknown[]) => [],
+  });
+  function views() {
+    const db = {
+      query: (_sql: string) => ({ get: () => ({ n: 1 }), all: () => [] }),
+    } as unknown as Database;
+    return createCalendarViews({
+      db,
+      qOne: stubQuery(),
+      qRange: stubQuery(),
+      entrySelect: "SELECT",
+      layout: (_t: string, b: string) => b,
+      projectOptions: () => "",
+      weekTargetBar: () => "",
+      calHourPx: 64,
+    } as any);
+  }
+  test("names no viewport-specific control", () => {
+    const html = views().weekInner("2026-09-20", "America/Chicago");
+    const hint = html.match(/<p class="muted tiny cal-hint">.*?<\/p>/);
+    expect(hint).not.toBeNull();
+    expect(hint![0]).toBe(
+      '<p class="muted tiny cal-hint">Drag across the calendar to log time. Click an entry to edit it.</p>'
+    );
+  });
+});
