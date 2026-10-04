@@ -70,22 +70,36 @@ export async function stripePost(path: string, params: URLSearchParams): Promise
   return data;
 }
 
-/** Create a hosted Checkout Session in subscription mode with a 14-day
- *  trial. Stripe collects the card and creates the customer + subscription;
- *  the webhook upserts the local row via subscription_data metadata. */
+/** Create a hosted Checkout Session in subscription mode. Stripe collects
+ *  the card and creates the customer + subscription; the webhook upserts
+ *  the local row via subscription_data metadata.
+ *
+ *  Trial anchoring (#783): the free trial is ONE 14-day window starting at
+ *  signup. trialEndMs pins the Stripe trial to that window (unix seconds in
+ *  `trial_end`) so checking out mid-trial doesn't stack a second free
+ *  trial. When trialEndMs is null it defaults to 14 days from now; when
+ *  it's already past, no trial params are sent and billing starts
+ *  immediately. */
 export async function createCheckoutSession(opts: {
   userId: number;
   email: string;
   origin: string;
+  trialEndMs?: number | null;
+  customerId?: string | null;
 }): Promise<{ url: string }> {
   const { priceId } = stripeCfg();
   if (!priceId) throw new Error("STRIPE_PRICE_ID is not set");
+  const trialEnd =
+    opts.trialEndMs ?? Date.now() + TRIAL_DAYS * 24 * 3600 * 1000;
   const p = new URLSearchParams();
   p.set("mode", "subscription");
   p.set("line_items[0][price]", priceId);
   p.set("line_items[0][quantity]", "1");
-  p.set("trial_period_days", String(TRIAL_DAYS));
-  p.set("customer_email", opts.email);
+  if (trialEnd > Date.now() + 60 * 1000) {
+    p.set("trial_end", String(Math.floor(trialEnd / 1000)));
+  }
+  if (opts.customerId) p.set("customer", opts.customerId);
+  else p.set("customer_email", opts.email);
   p.set("client_reference_id", String(opts.userId));
   p.set("subscription_data[metadata][user_id]", String(opts.userId));
   p.set("success_url", `${opts.origin}/?billing=success`);
@@ -262,6 +276,37 @@ CREATE INDEX IF NOT EXISTS idx_subscriptions_subscription ON subscriptions(strip
         /* No email sending in timekeep (product decision) — acknowledged
            and ignored; the status stays trialing until updated. */
         return true;
+      case "checkout.session.completed": {
+        /* #783: Stripe redirects the buyer back the moment checkout
+           completes, but customer.subscription.created can lag a few
+           seconds behind. Upsert a provisional trialing row from the
+           session so the subscription gate passes immediately; the
+           subscription events correct the row (trial_ends_at, period
+           end) when they arrive. */
+        const session = obj as any;
+        const metaUserId = Number(
+          session?.client_reference_id || session?.metadata?.user_id || 0
+        );
+        let userId =
+          Number.isFinite(metaUserId) && metaUserId > 0 ? metaUserId : 0;
+        if (!userId && session?.customer) {
+          const existing = db
+            .query("SELECT user_id FROM subscriptions WHERE stripe_customer_id = ?")
+            .get(String(session.customer)) as { user_id: number } | null;
+          if (existing) userId = existing.user_id;
+        }
+        if (userId && session?.subscription && !qByUser.get(userId)) {
+          upsertRow({
+            user_id: userId,
+            stripe_customer_id: session.customer
+              ? String(session.customer)
+              : null,
+            stripe_subscription_id: String(session.subscription),
+            status: "trialing",
+          });
+        }
+        return true;
+      }
       default:
         return false;
     }

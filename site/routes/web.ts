@@ -19,6 +19,7 @@ import { updateSectionHtml, checkForUpdates, updateStatusHtml } from "../lib/upd
 import { isLaunchMode, isLicensed, licenseSectionHtml, storeLicenseKey } from "../lib/license.ts"; /* #304 */
 import type { AccountsDb } from "../lib/accounts.ts"; /* #732 */
 import { findTenantByPublicToken } from "../lib/tenants.ts"; /* #741 */
+import { createCheckoutSession, TRIAL_DAYS } from "../lib/billing.ts"; /* #783 */
 
 /* #733: everything derived from one tenant's SQLite bundle. Resolved per
    request from the session (session → user → tenant tree, cached by user
@@ -224,9 +225,32 @@ export function createWebRouter(deps: WebDeps) {
             );
             if (user) {
               const token = accounts!.createSession(user.id);
+              const cookie = accounts!.sessionCookie(token);
+              /* #783: the free trial starts in Stripe, not just locally —
+                 card up front, 14-day trial, no charge today. Falls back
+                 to the app when Stripe isn't configured (local dev) or the
+                 call fails; the local trial grant + billing wall cover
+                 those users. */
+              if (process.env.STRIPE_SECRET_KEY && process.env.STRIPE_PRICE_ID) {
+                try {
+                  const { url } = await createCheckoutSession({
+                    userId: user.id,
+                    email: user.email,
+                    origin: shareOrigin(req),
+                    trialEndMs:
+                      Date.now() + TRIAL_DAYS * 24 * 3600 * 1000,
+                  });
+                  return new Response(null, {
+                    status: 303,
+                    headers: { Location: url, "Set-Cookie": cookie },
+                  });
+                } catch {
+                  /* fall through to the app */
+                }
+              }
               return new Response(null, {
                 status: 302,
-                headers: { Location: "/", "Set-Cookie": accounts!.sessionCookie(token) },
+                headers: { Location: "/", "Set-Cookie": cookie },
               });
             }
             return html(signupPage(error), 400);
