@@ -169,6 +169,60 @@ describe("#728: subscription status and grace periods", () => {
       billing.upsertFromStripeEvent({ type: "charge.refunded", data: { object: {} } })
     ).toBe(false);
   });
+
+  test("#783: checkout.session.completed upserts a provisional trialing row", async () => {
+    const { accounts, billing } = mkBilling();
+    const uid = await userId(accounts);
+    const handled = billing.upsertFromStripeEvent({
+      id: "evt_cs",
+      type: "checkout.session.completed",
+      data: {
+        object: {
+          id: "cs_1",
+          customer: "cus_123",
+          subscription: "sub_123",
+          client_reference_id: String(uid),
+        },
+      },
+    });
+    expect(handled).toBe(true);
+    const row = billing.getSubscriptionStatus(uid)!;
+    expect(row.status).toBe("trialing");
+    expect(row.stripe_customer_id).toBe("cus_123");
+    expect(row.stripe_subscription_id).toBe("sub_123");
+    expect(billing.subscriptionActive(uid)).toBe(true);
+  });
+
+  test("#783: checkout.session.completed never clobbers an existing row", async () => {
+    const { accounts, billing } = mkBilling();
+    const uid = await userId(accounts);
+    billing.upsertFromStripeEvent(subEvent(uid)); /* trialing, full row */
+    const before = billing.getSubscriptionStatus(uid)!;
+    billing.upsertFromStripeEvent({
+      id: "evt_cs2",
+      type: "checkout.session.completed",
+      data: {
+        object: {
+          id: "cs_2",
+          customer: "cus_123",
+          subscription: "sub_123",
+          client_reference_id: String(uid),
+        },
+      },
+    });
+    expect(billing.getSubscriptionStatus(uid)).toEqual(before);
+  });
+
+  test("#783: checkout.session.completed without attribution creates no row", async () => {
+    const { billing } = mkBilling();
+    const handled = billing.upsertFromStripeEvent({
+      id: "evt_cs3",
+      type: "checkout.session.completed",
+      data: { object: { id: "cs_3", customer: "cus_x", subscription: "sub_x" } },
+    });
+    expect(handled).toBe(true);
+    expect(billing.getSubscriptionStatus(9999)).toBeNull();
+  });
 });
 
 describe("#736: billingActive — gate entitlement incl. pre-checkout trial", () => {

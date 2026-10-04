@@ -19,7 +19,9 @@ import {
   createBilling,
   createCheckoutSession,
   createPortalSession,
+  TRIAL_DAYS,
   type Billing,
+  type Subscription,
 } from "../lib/billing.ts";
 
 export interface BillingDeps {
@@ -61,13 +63,23 @@ export function createSubscriptionGate(opts: {
 
 /** #736: the subscription wall. Minimal M3 public chrome (same as the
  *  login/signup pages): logo, status headline, what-happens-next copy,
- *  and one gold CTA to the customer portal. No app nav, no auth gate. */
-function billingWallPage(status: string | null): string {
-  const failed = status === "past_due";
+ *  and one gold CTA. No app nav, no auth gate.
+ *
+ *  #783: the CTA depends on Stripe state. Past-due users have a customer,
+ *  so they get the portal. Everyone else gets a Subscribe button that
+ *  POSTs to /billing/checkout — the old portal link 409'd for users with
+ *  no Stripe customer, leaving no way to subscribe at all. */
+function billingWallPage(sub: Subscription | null): string {
+  const failed = sub?.status === "past_due";
   const headline = failed ? "Payment failed" : "Your trial ended";
   const copy = failed
     ? "Your last payment didn't go through, so Zimer is paused until billing is current."
     : "Your 14-day trial has ended, so Zimer is paused until you subscribe.";
+  const cta = failed || sub?.stripe_customer_id
+    ? `<a class="md-filled-button" href="/billing/portal">Manage billing</a>`
+    : `<form method="POST" action="/billing/checkout" style="margin:0">
+         <button class="md-filled-button" type="submit">Subscribe · $12/month</button>
+       </form>`;
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${headline} · Zimer</title>
   <link rel="stylesheet" href="/static/style.css">
@@ -79,7 +91,7 @@ function billingWallPage(status: string | null): string {
   <h2 class="md-title-large" style="margin:0 0 8px">${headline}</h2>
   <p>${copy}</p>
   <p class="muted">Nothing is deleted — your time entries, clients, and invoices are saved and waiting.</p>
-  <a class="md-filled-button" href="/billing/portal">Manage billing</a>
+  ${cta}
   <p class="muted tiny" style="margin-top:20px"><a href="/logout">Log out</a></p>
   </div></main></body></html>`;
 }
@@ -121,7 +133,20 @@ export function createBillingRouter(deps: BillingDeps) {
     if (path === "/billing" && method === "GET") {
       const viewer = accounts.sessionUserFromRequest(req);
       const sub = viewer ? billing.getSubscriptionStatus(viewer.id) : null;
-      return html(billingWallPage(sub?.status ?? null));
+      /* #783: entitled users who land here directly go back to the app —
+         the wall must never tell a paying user their trial ended. */
+      if (viewer) {
+        const createdMs = Date.parse(viewer.created_at);
+        if (
+          billing.billingActive(
+            viewer.id,
+            Number.isFinite(createdMs) ? createdMs : null
+          )
+        ) {
+          return new Response(null, { status: 302, headers: { Location: "/" } });
+        }
+      }
+      return html(billingWallPage(sub));
     }
 
     const user = accounts.sessionUserFromRequest(req);
@@ -139,10 +164,20 @@ export function createBillingRouter(deps: BillingDeps) {
         return json({ error: "billing not configured" }, 503);
       }
       try {
+        /* #783: anchor the Stripe trial to the original signup window so
+           checking out mid-trial doesn't stack a second free trial. When
+           the window already elapsed, trial_end is omitted and the first
+           charge happens today. Reuse the existing Stripe customer so one
+           user never gets two. */
+        const createdMs = Date.parse(user.created_at);
         const { url: checkoutUrl } = await createCheckoutSession({
           userId: user.id,
           email: user.email,
           origin: shareOrigin(req),
+          trialEndMs: Number.isFinite(createdMs)
+            ? createdMs + TRIAL_DAYS * 24 * 3600 * 1000
+            : null,
+          customerId: existing?.stripe_customer_id ?? null,
         });
         return Response.redirect(checkoutUrl, 303);
       } catch (err: any) {

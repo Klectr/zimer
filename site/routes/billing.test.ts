@@ -92,7 +92,11 @@ describe("#736: billing wall page + subscription gate", () => {
     expect(res.status).toBe(200);
     const body = await res.text();
     expect(body).toContain("Your trial ended");
-    expect(body).toContain('href="/billing/portal"');
+    /* #783: no Stripe customer yet -> Subscribe posts to checkout, not the
+       portal (the old portal link 409'd with no way to subscribe). */
+    expect(body).toContain('action="/billing/checkout"');
+    expect(body).toContain("Subscribe");
+    expect(body).not.toContain('href="/billing/portal"');
     expect(body).toContain("md-filled-button");
   });
 
@@ -107,7 +111,7 @@ describe("#736: billing wall page + subscription gate", () => {
     expect(body).toContain('href="/billing/portal"');
   });
 
-  test("expired trial, no subscription row -> 'Your trial ended'", async () => {
+  test("expired trial, no subscription row -> 'Your trial ended' + subscribe", async () => {
     const { accounts, handleBilling } = setup();
     const { user, cookie } = await authedCookie(accounts);
     accounts.db
@@ -115,7 +119,26 @@ describe("#736: billing wall page + subscription gate", () => {
       .run(new Date(Date.now() - 20 * 86400000).toISOString(), user.id);
     const res = await get(handleBilling, "/billing", cookie);
     expect(res.status).toBe(200);
-    expect(await res.text()).toContain("Your trial ended");
+    const body = await res.text();
+    expect(body).toContain("Your trial ended");
+    expect(body).toContain('action="/billing/checkout"');
+  });
+
+  test("trial-active user with no subscription row -> 302 to the app", async () => {
+    const { accounts, handleBilling } = setup();
+    const { cookie } = await authedCookie(accounts);
+    const res = await get(handleBilling, "/billing", cookie);
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toBe("/");
+  });
+
+  test("entitled subscriber visiting /billing directly -> 302 to the app", async () => {
+    const { accounts, handleBilling, billing } = setup();
+    const { user, cookie } = await authedCookie(accounts);
+    billing!.upsertFromStripeEvent(subEventFor(user.id, "active", 30));
+    const res = await get(handleBilling, "/billing", cookie);
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toBe("/");
   });
 
   test("self-host mode: GET /billing -> 404", async () => {
@@ -212,9 +235,10 @@ describe("#728: billing routes", () => {
     expect(res.status).toBe(401);
   });
 
-  test("checkout creates a subscription Checkout Session with a 14-day trial, then 303s", async () => {
+  test("checkout creates a subscription Checkout Session with the trial anchored to signup, then 303s", async () => {
     const { accounts, handleBilling } = setup();
     const { user, cookie } = await authedCookie(accounts);
+    const createdMs = Date.parse(user.created_at);
     const req = new Request("http://localhost/billing/checkout", {
       method: "POST",
       headers: { cookie },
@@ -225,9 +249,58 @@ describe("#728: billing routes", () => {
     const params = new URLSearchParams(lastStripeCall!.body);
     expect(params.get("mode")).toBe("subscription");
     expect(params.get("line_items[0][price]")).toBe("price_test_728");
-    expect(params.get("trial_period_days")).toBe("14");
+    /* #783: one 14-day window from signup — trial_end, not a fresh
+       trial_period_days that would stack a second free trial. */
+    expect(params.get("trial_period_days")).toBeNull();
+    const trialEnd = Number(params.get("trial_end"));
+    const expected = Math.floor((createdMs + 14 * 86400000) / 1000);
+    expect(Math.abs(trialEnd - expected)).toBeLessThan(120);
     expect(params.get("subscription_data[metadata][user_id]")).toBe(String(user.id));
     expect(params.get("client_reference_id")).toBe(String(user.id));
+  });
+
+  test("checkout after the trial window elapsed sends no trial (bills today)", async () => {
+    const { accounts, handleBilling } = setup();
+    const { user, cookie } = await authedCookie(accounts);
+    accounts.db
+      .query("UPDATE users SET created_at = ? WHERE id = ?")
+      .run(new Date(Date.now() - 20 * 86400000).toISOString(), user.id);
+    const req = new Request("http://localhost/billing/checkout", {
+      method: "POST",
+      headers: { cookie },
+    });
+    const res = (await handleBilling(req, new URL(req.url), "/billing/checkout", "POST"))!;
+    expect(res.status).toBe(303);
+    const params = new URLSearchParams(lastStripeCall!.body);
+    expect(params.get("trial_end")).toBeNull();
+    expect(params.get("trial_period_days")).toBeNull();
+  });
+
+  test("checkout reuses the existing Stripe customer instead of customer_email", async () => {
+    const { accounts, handleBilling, billing } = setup();
+    const { user, cookie } = await authedCookie(accounts);
+    billing!.upsertFromStripeEvent({
+      id: "e1",
+      type: "customer.subscription.created",
+      data: {
+        object: {
+          id: "sub_old",
+          customer: "cus_1",
+          status: "canceled",
+          current_period_end: Math.floor(Date.now() / 1000) - 86400,
+          metadata: { user_id: String(user.id) },
+        },
+      },
+    });
+    const req = new Request("http://localhost/billing/checkout", {
+      method: "POST",
+      headers: { cookie },
+    });
+    const res = (await handleBilling(req, new URL(req.url), "/billing/checkout", "POST"))!;
+    expect(res.status).toBe(303);
+    const params = new URLSearchParams(lastStripeCall!.body);
+    expect(params.get("customer")).toBe("cus_1");
+    expect(params.get("customer_email")).toBeNull();
   });
 
   test("checkout for an already-subscribed user -> 409, no Stripe call", async () => {
