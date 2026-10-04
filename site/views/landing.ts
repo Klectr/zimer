@@ -40,7 +40,7 @@ export function createLandingViews() {
   <p class="landing-sub">Start the timer while you work. When the work is done, Zimer turns your tracked hours into a clean invoice you can send in one step.</p>
   <div class="landing-cta-row">
   <a class="md-filled-button landing-cta-btn" href="/signup">Start free trial</a>
-  <a class="md-text-button" href="/pricing">See pricing</a>
+  <a class="md-text-button" href="#pricing">See pricing</a>
   </div>
   <p class="muted landing-price"><strong>$12/month.</strong> 14-day free trial. Cancel anytime.</p>
   <p class="muted landing-selfhost">Prefer to run it yourself? Self-host is free forever.</p>
@@ -75,7 +75,7 @@ export function createLandingViews() {
   </article>
   </div>
   </section>
-  <section class="landing-section" data-enter="4">
+  <section class="landing-section" id="pricing" data-enter="4">
   <h2 class="landing-section-title">Simple, honest pricing</h2>
   <p class="muted landing-section-sub">Hosted for $12 a month, or self-host it for nothing. Both get the whole app.</p>
   <div class="landing-plan-grid">
@@ -99,12 +99,11 @@ export function createLandingViews() {
   <li>${icon("check")}<span>Browser extension included</span></li>
   <li>${icon("check")}<span>Back up by copying one file</span></li>
   </ul>
-  <a class="md-text-button" href="/pricing">See pricing</a>
   </article>
   </div>
   </section>
   <footer class="landing-foot">
-  <p class="muted tiny landing-foot-links"><a href="/pricing">Pricing</a> · <a href="/terms">License terms</a> · <a href="/privacy">Privacy</a> · <a href="/changelog">Changelog</a></p>
+  <p class="muted tiny landing-foot-links"><a href="/terms">License terms</a> · <a href="/privacy">Privacy</a> · <a href="/changelog">Changelog</a></p>
   <p class="muted tiny landing-support">Questions: <a href="mailto:support@klectr.dev">support@klectr.dev</a></p>
   </footer>
   </main>

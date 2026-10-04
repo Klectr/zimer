@@ -255,3 +255,13 @@ describe("manual line items (#668)", () => {
     expect(db.query("SELECT COUNT(*) AS n FROM invoices").get()).toEqual({ n: 0 });
   });
 });
+
+describe("retired /pricing page", () => {
+  test("GET /pricing redirects to the landing pricing section", async () => {
+    const { handleWeb } = setup();
+    const req = new Request("http://x/pricing");
+    const res = await handleWeb(req, new URL(req.url), "/pricing", "GET");
+    expect(res!.status).toBe(302);
+    expect(res!.headers.get("Location")).toBe("/#pricing");
+  });
+});

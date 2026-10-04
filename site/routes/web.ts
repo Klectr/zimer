@@ -262,6 +262,10 @@ export function createWebRouter(deps: WebDeps) {
           });
         }
 
+        if (path === "/pricing" && method === "GET") {
+          return new Response(null, { status: 302, headers: { Location: "/#pricing" } });
+        }
+
         /* #341: public license terms — no auth, same rate limit as the public
            invoice surface. Linked from Settings → License. */
         if (path === "/terms" && method === "GET") {

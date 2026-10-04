@@ -34,7 +34,7 @@ describe("#731: landing page router", () => {
     expect(body).toContain("$12/month");
     expect(body).toContain("14-day free trial");
     expect(body).toContain('href="/signup"');
-    expect(body).toContain('href="/pricing"');
+    expect(body).toContain('href="#pricing"');
     expect(body).toContain("support@klectr.dev");
   });
 
