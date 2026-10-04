@@ -72,11 +72,13 @@ export function seedDemoData(db: Database): void {
   /* Three invoices: paid, sent, draft. #492: items carry date ranges so the
      invoice sheet's Date column renders — NULL dates left empty cells on
      every first-run demo invoice. */
-  const invQ = db.query("INSERT INTO invoices (client_id, number, issue_date, due_date, status, tax_rate, notes) VALUES (?, ?, ?, ?, ?, ?, ?)");
+  /* #763: the seeded paid invoice needs paid_at like the real mark-paid
+     flow sets — without it the detail actions row drops the paid chip. */
+  const invQ = db.query("INSERT INTO invoices (client_id, number, issue_date, due_date, status, tax_rate, notes, paid_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
   const itemQ = db.query("INSERT INTO invoice_items (invoice_id, description, hours, rate, amount, date_from, date_to) VALUES (?, ?, ?, ?, ?, ?, ?)");
   const mk = (cid: number | null, num: string, issue: string, due: string, status: string,
-              items: [string, number, number, string?, string?][], notes = "") => {
-    const id = Number(invQ.run(cid, num, issue, due, status, 0, notes).lastInsertRowid);
+              items: [string, number, number, string?, string?][], notes = "", paidAt: string | null = null) => {
+    const id = Number(invQ.run(cid, num, issue, due, status, 0, notes, paidAt).lastInsertRowid);
     for (const [desc, hours, rate, from, to] of items)
       itemQ.run(id, desc, hours, rate, hours * rate, from ?? null, to ?? from ?? null);
     ids.invoices.push(id);
@@ -86,7 +88,7 @@ export function seedDemoData(db: Database): void {
   const today = dayStr(new Date());
   const monthStart = today.slice(0, 8) + "01";
   mk(clientIds[0], "DEMO-001", lm, lm, "paid",
-    [["Brand refresh — design", 24, 120, lm, lm]], "Paid in full. Thank you!");
+    [["Brand refresh — design", 24, 120, lm, lm]], "Paid in full. Thank you!", lm);
   mk(clientIds[1], "DEMO-002", new Date().toISOString().slice(0, 10),
     new Date(Date.now() + 15 * 864e5).toISOString().slice(0, 10), "sent",
     [["Mobile app — onboarding flow", 18.5, 95, demoFrom, demoTo]]);

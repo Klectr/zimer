@@ -1,6 +1,9 @@
 /** #492: seeded demo invoices must carry item date ranges — NULL dates left
  *  the invoice sheet's Date column rendering empty cells on every first-run
  *  demo invoice. */
+/** #763: the seeded paid demo invoice must carry paid_at — the real
+ *  mark-paid flow always sets it, and the detail actions row only renders
+ *  the paid chip when it exists. */
 import { describe, expect, test } from "bun:test";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -8,6 +11,22 @@ import { join } from "node:path";
 import { createDb } from "../db.ts";
 import { seedDemoData, demoIds } from "./demo.ts";
 import { shortDateRange } from "./format.ts";
+
+describe("demo paid invoice paid_at (#763)", () => {
+  test("DEMO-001 (paid) has a paid_at date like the mark-paid flow sets", () => {
+    const db = seededDb();
+    const row = db.query("SELECT status, paid_at FROM invoices WHERE number = 'DEMO-001'").get() as any;
+    expect(row.status).toBe("paid");
+    expect(row.paid_at).toBeTruthy();
+    expect(/^\d{4}-\d{2}-\d{2}$/.test(row.paid_at)).toBe(true);
+  });
+  test("unpaid demo invoices keep paid_at NULL", () => {
+    const db = seededDb();
+    const rows = db.query("SELECT number, paid_at FROM invoices WHERE status != 'paid'").all() as any[];
+    expect(rows.length).toBeGreaterThan(0);
+    for (const r of rows) expect(r.paid_at).toBeNull();
+  });
+});
 
 function seededDb() {
   const db = createDb(mkdtempSync(join(tmpdir(), "tk-demo-"))).db;
