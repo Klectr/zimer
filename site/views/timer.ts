@@ -177,7 +177,7 @@ export function createTimerViews(deps: TimerViewDeps) {
     const entries = qRange.all(f, t) as Entry[];
     const total = entries.reduce((a, e) => a + durationSeconds(e.start_time, e.end_time), 0);
     const bar = todayTargetBar(total);
-    if (!entries.length) return `${bar}<p class="muted">Nothing tracked today yet.</p>`;
+    if (!entries.length) return `${bar}<p class="muted oct-nothing">${icon("jack_o_lantern", "oct-pumpkin")}<span>Nothing tracked today yet.</span></p>`;
     /* #473: repeat is only offered when nothing is running — /timer/start
        409s while a timer runs, so showing it then would be a silent no-op. */
     const canRepeat = !qRunning.get();
