@@ -79,7 +79,8 @@ export async function stripePost(path: string, params: URLSearchParams): Promise
  *  `trial_end`) so checking out mid-trial doesn't stack a second free
  *  trial. When trialEndMs is null it defaults to 14 days from now; when
  *  it's already past, no trial params are sent and billing starts
- *  immediately. */
+ *  immediately. #787: the pinned end is rounded up to the next UTC
+ *  midnight so Stripe's whole-day trial display reads 14, not 13. */
 export async function createCheckoutSession(opts: {
   userId: number;
   email: string;
@@ -98,8 +99,15 @@ export async function createCheckoutSession(opts: {
   if (trialEnd > Date.now() + 60 * 1000) {
     /* #785: on Checkout Sessions the trial end lives under
        subscription_data — a top-level trial_end 400s ("unknown
-       parameter"; that's the Subscriptions API). */
-    p.set("subscription_data[trial_end]", String(Math.floor(trialEnd / 1000)));
+       parameter"; that's the Subscriptions API).
+       #787: round UP to the next UTC midnight. Stripe's checkout page
+       floors the remaining trial to whole days, so an exact
+       signup+14d reads as "13 days" minutes after signup. Rounding up
+       keeps the advertised 14 days while staying anchored to the
+       original signup window (checking out late still can't extend
+       the trial). */
+    const rounded = Math.ceil(trialEnd / 86400000) * 86400000;
+    p.set("subscription_data[trial_end]", String(Math.floor(rounded / 1000)));
   }
   if (opts.customerId) p.set("customer", opts.customerId);
   else p.set("customer_email", opts.email);
