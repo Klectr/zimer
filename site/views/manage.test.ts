@@ -103,7 +103,7 @@ describe("client settings modal (#630)", () => {
     expect(html).toContain('name="rate" value="45"');
     expect(html).toContain('name="payment_terms"');
     expect(html).toContain('<option value="" data-desc="Falls back to the global payment terms.">Use global terms</option>');
-    expect(html).toContain('<option value="net_15" data-desc="Payment is due within 15 days of the invoice date." selected>');
+    expect(html).toContain('<option value="net_15" data-desc="Payment is due within 15 days of the zinvoice date." selected>');
     expect(html).toContain('<option value="pay_when_paid"');
     expect(html).toContain('name="email" value="ap@bytebot.io"');
     expect(html).toContain('name="phone" value="555-0100"');

@@ -375,14 +375,14 @@ describe("calendar week-only carousel (#572)", () => {
     expect(html).toContain("Acme");
     // #592: 2026-09-20 is a past week, so the chip invoices "this period"
     const aside = asideOf(html);
-    expect(aside).toContain("Invoice this period");
-    expect(aside).not.toContain("Invoice this week");
+    expect(aside).toContain("Zinvoice this period");
+    expect(aside).not.toContain("Zinvoice this week");
   });
 
-  test("nudge chip says \"Invoice this week\" on the current week (#592)", () => {
+  test("nudge chip says \"Zinvoice this week\" on the current week (#592)", () => {
     const aside = asideOf(viewsFor([monEntry, tueEntry]).weekInner(undefined, "America/Chicago"));
-    expect(aside).toContain("Invoice this week");
-    expect(aside).not.toContain("Invoice this period");
+    expect(aside).toContain("Zinvoice this week");
+    expect(aside).not.toContain("Zinvoice this period");
   });
 
   test("weekGrid loads the week skeleton with no day param", () => {

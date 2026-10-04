@@ -273,7 +273,7 @@ function drawModern(inv: PdfInvoice, doc: PdfDoc) {
   const logoSize = 40;
   drawLogo(doc, M, PAGE_H - 28, logoSize, WHITE);
   const titleX = M + logoSize + 14;
-  doc.text(titleX, PAGE_H - 62, 30, "INVOICE", true, false, WHITE);
+  doc.text(titleX, PAGE_H - 62, 30, "ZINVOICE", true, false, WHITE);
   doc.fill(titleX, PAGE_H - 74, 72, 3.5, GOLD);
   doc.rtext(RIGHT, PAGE_H - 52, 15, inv.number, true, WHITE);
   statusBadge(doc, RIGHT, PAGE_H - 74, inv.status === "paid");

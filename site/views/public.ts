@@ -32,7 +32,7 @@ export function createPublicViews(deps: PublicViewDeps) {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
-  <title>Invoice ${esc(inv.number)} · Zimer</title>
+  <title>Zinvoice ${esc(inv.number)} · Zimer</title>
   <link rel="stylesheet" href="/static/style.css">
   <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
   <script src="/static/motion.js" defer></script>
@@ -53,7 +53,7 @@ export function createPublicViews(deps: PublicViewDeps) {
     const sections: TermsSection[] = [
       {
         heading: "What we store",
-        body: "Your account email and a hash of your password (your actual password is never stored), plus everything you track: time entries, clients, projects, and invoices. That's the entire list.",
+        body: "Your account email and a hash of your password (your actual password is never stored), plus everything you track: time entries, clients, projects, and zinvoices. That's the entire list.",
       },
       {
         heading: "Where it lives",

@@ -90,7 +90,7 @@ function billingWallPage(sub: Subscription | null): string {
   <h1 class="md-headline-small" style="margin-top:0;display:flex;align-items:center;gap:12px">${logo(32)}<span>Zimer</span></h1>
   <h2 class="md-title-large" style="margin:0 0 8px">${headline}</h2>
   <p>${copy}</p>
-  <p class="muted">Nothing is deleted — your time entries, clients, and invoices are saved and waiting.</p>
+  <p class="muted">Nothing is deleted — your time entries, clients, and zinvoices are saved and waiting.</p>
   ${cta}
   <p class="muted tiny" style="margin-top:20px"><a href="/logout">Log out</a></p>
   </div></main></body></html>`;

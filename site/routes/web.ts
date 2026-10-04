@@ -767,7 +767,7 @@ export function createWebRouter(deps: WebDeps) {
           const selId = selRaw && /^\d+$/.test(selRaw) ? Number(selRaw) : null;
           if (sp.get("fragment") === "detail" && isHtmx(req)) {
             const inv = selId ? getInvoice(selId) : null;
-            if (!inv) return new Response("Invoice not found.", { status: 404 });
+            if (!inv) return new Response("Zinvoice not found.", { status: 404 });
             /* #364: the OOB list carries the selected row — the pushed-URL
                history snapshot then restores the right selection on back. */
             return html(invoiceDetailBody(inv, shareOrigin(req)) + invoiceListOob(inv.id), 200,
@@ -826,10 +826,10 @@ export function createWebRouter(deps: WebDeps) {
               date_to: String(form.get(`g${i}_date_to`) || "") || null,
             });
           }
-          if (!items.length) return new Response("No line items — nothing to invoice.", { status: 400 });
+          if (!items.length) return new Response("No line items — nothing to zinvoice.", { status: 400 });
           const number = String(form.get("number") || nextInvoiceNumber());
           if (db.query("SELECT 1 FROM invoices WHERE number = ?").get(number))
-            return new Response("Invoice number already exists.", { status: 400 });
+            return new Response("Zinvoice number already exists.", { status: 400 });
           const clientId = form.get("client_id") ? Number(form.get("client_id")) : null;
           const dueRaw = String(form.get("due_date") || "");
           const inv = db.query(
@@ -922,7 +922,7 @@ export function createWebRouter(deps: WebDeps) {
         if (m && method === "POST") {
           const inv = qInvoice.get(Number(m[1])) as Invoice | null;
           if (!inv) return html(notFoundPage(authedPage(req, TOKEN)), 404);
-          if (inv.status !== "draft") return new Response("Only draft invoices can be deleted.", { status: 400 });
+          if (inv.status !== "draft") return new Response("Only draft zinvoices can be deleted.", { status: 400 });
           db.transaction(() => {
             db.query("UPDATE time_entries SET invoice_id = NULL WHERE invoice_id = ?").run(inv.id);
             db.query("DELETE FROM invoice_items WHERE invoice_id = ?").run(inv.id);

@@ -130,12 +130,12 @@ export function daysBetween(a: string, b: string): number {
  *  of truth: key → { label, days (null = no fixed window), description
  *  printed on invoices }. */
 export const PAYMENT_TERMS = {
-  due_on_receipt: { label: "Due on receipt", days: 0, description: "Payment is due upon receipt of this invoice." },
-  net_7: { label: "Net 7", days: 7, description: "Payment is due within 7 days of the invoice date." },
-  net_15: { label: "Net 15", days: 15, description: "Payment is due within 15 days of the invoice date." },
-  net_30: { label: "Net 30", days: 30, description: "Payment is due within 30 days of the invoice date." },
-  net_45: { label: "Net 45", days: 45, description: "Payment is due within 45 days of the invoice date." },
-  net_60: { label: "Net 60", days: 60, description: "Payment is due within 60 days of the invoice date." },
+  due_on_receipt: { label: "Due on receipt", days: 0, description: "Payment is due upon receipt of this zinvoice." },
+  net_7: { label: "Net 7", days: 7, description: "Payment is due within 7 days of the zinvoice date." },
+  net_15: { label: "Net 15", days: 15, description: "Payment is due within 15 days of the zinvoice date." },
+  net_30: { label: "Net 30", days: 30, description: "Payment is due within 30 days of the zinvoice date." },
+  net_45: { label: "Net 45", days: 45, description: "Payment is due within 45 days of the zinvoice date." },
+  net_60: { label: "Net 60", days: 60, description: "Payment is due within 60 days of the zinvoice date." },
   pay_when_paid: { label: "Pay-when-paid", days: null, description: "Due within 5 business days after the client receives customer payment." },
 } as const;
 export type PaymentTermsKey = keyof typeof PAYMENT_TERMS;
