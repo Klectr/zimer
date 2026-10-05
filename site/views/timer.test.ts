@@ -446,3 +446,17 @@ describe("timer description suggestions (#546)", () => {
     expect(html).not.toContain("<datalist");
   });
 });
+
+describe("dashboard document title (#798)", () => {
+  test("title is the page heading, not the brand (no 'Zimer · Zimer')", () => {
+    let captured = "";
+    const deps = {
+      ...baseDeps,
+      qRunning: { get: () => null } as unknown as Statement,
+      layout: (t: string, b: string) => { captured = t; return b; },
+    };
+    createTimerViews(deps as any).dashboardPage();
+    expect(captured).toBe("Today");
+    expect(captured).not.toBe("Zimer");
+  });
+});
