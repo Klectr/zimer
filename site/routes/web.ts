@@ -545,7 +545,14 @@ export function createWebRouter(deps: WebDeps) {
            fragment=detail is the HTMX swap the list pane's row clicks request. */
         if (path === "/manage" && method === "GET") {
           const sp = new URL(req.url).searchParams;
-          const sel = clientSelection(sp.get("client"));
+          let sel = clientSelection(sp.get("client"));
+          /* #805: same default as zinvoices — first client fills the detail
+             pane on desktop; no has-selection, so mobile still opens the list. */
+          let isDefault = false;
+          if (!sel) {
+            const first = db.query("SELECT * FROM clients ORDER BY name").get() as any;
+            if (first) { sel = { kind: "client", client: first }; isDefault = true; }
+          }
           if (sp.get("fragment") === "detail" && isHtmx(req)) {
             if (!sel) return new Response("Client not found.", { status: 404 });
             /* #367: the OOB list carries the selected row — the pushed-URL
@@ -553,7 +560,7 @@ export function createWebRouter(deps: WebDeps) {
             const push = sel.kind === "client" ? `/manage?client=${sel.client.id}` : "/manage?client=none";
             return html(clientDetailBody(sel) + clientListOob(sel), 200, { "HX-Push-Url": push });
           }
-          return html(managePage(sel));
+          return html(managePage(sel, isDefault));
         }
         /* #233: business profile for the Modern PDF template's FROM block.
            #245: rendered inside the settings modal (GET) and saved from it
@@ -756,7 +763,16 @@ export function createWebRouter(deps: WebDeps) {
               { "HX-Push-Url": `/invoices?invoice=${inv.id}` });
           }
           const selected = selId ? getInvoice(selId) : null;
-          return html(invoicesPage(selected, shareOrigin(req)));
+          /* #805: default the two-pane detail to the first zinvoice so the
+             pane has content on desktop load. isDefault keeps has-selection
+             unset, so the single-pane (mobile) layout still opens on the
+             list — the URL stays /invoices until the user picks one. */
+          let shown = selected, isDefault = false;
+          if (!shown) {
+            const first = (qInvoices.all() as any[])[0];
+            if (first) { shown = getInvoice(first.id); isDefault = !!shown; }
+          }
+          return html(invoicesPage(shown, shareOrigin(req), isDefault));
         }
         if (path === "/invoices/new" && method === "GET") {
           const sp = new URL(req.url).searchParams;
