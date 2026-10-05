@@ -4,7 +4,7 @@ import { Database } from "bun:sqlite";
 import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, basename } from "node:path";
 import {
   backupAccounts,
   backupAll,
@@ -51,6 +51,8 @@ describe("backups (#730 part 2)", () => {
     expect(existsSync(dest!)).toBe(true);
     expect(dest!.startsWith(tenantBackupDir(dataDir, 3))).toBe(true);
     expect(dest!.endsWith(".db")).toBe(true);
+    /* #807: on-disk snapshots use the zimer- prefix, matching the download name */
+    expect(basename(dest!)).toMatch(/^zimer-\d{8}T\d{6}Z\.db$/);
     const db = new Database(dest!, { readonly: true });
     const { c } = db.query("SELECT COUNT(*) c FROM time_entries").get() as { c: number };
     expect(c).toBe(5);
@@ -93,17 +95,17 @@ describe("backups (#730 part 2)", () => {
     mkdirSync(dir, { recursive: true });
     for (let d = 1; d <= 10; d++) {
       const day = `202601${String(d).padStart(2, "0")}`;
-      writeFileSync(join(dir, `timekeep-${day}T060000Z.db`), "x");
-      writeFileSync(join(dir, `timekeep-${day}T180000Z.db`), "x"); /* two per day */
+      writeFileSync(join(dir, `zimer-${day}T060000Z.db`), "x");
+      writeFileSync(join(dir, `zimer-${day}T180000Z.db`), "x"); /* two per day */
     }
     const pruned = pruneBackups(dir);
     expect(pruned).toBe(6 * 2 + 1); /* 3 oldest days gone (2 files each) + 1 extra of day 4 */
     const kept = readdirSync(dir).sort();
     expect(kept.length).toBe(7);
     /* newest file of each kept day survives */
-    expect(kept).toContain("timekeep-20260110T180000Z.db");
-    expect(kept).not.toContain("timekeep-20260101T180000Z.db");
-    expect(kept).not.toContain("timekeep-20260104T060000Z.db");
+    expect(kept).toContain("zimer-20260110T180000Z.db");
+    expect(kept).not.toContain("zimer-20260101T180000Z.db");
+    expect(kept).not.toContain("zimer-20260104T060000Z.db");
   });
 
   test("RETENTION_DAYS is 7", () => {
