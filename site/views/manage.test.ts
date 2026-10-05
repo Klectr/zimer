@@ -122,3 +122,22 @@ describe("client settings modal (#630)", () => {
     expect(html).toContain("></textarea>");
   });
 });
+
+/** #805: first-client preselect — same contract as the zinvoices pane: the
+ *  route defaults the two-pane detail to the first client; the view renders
+ *  it without has-selection so single-pane (mobile) still opens on the list. */
+describe("#805: client list-detail default selection", () => {
+  function render(isDefault: boolean): string {
+    const { db, client } = testDb();
+    const views = createManageViews({ db, layout: (_t: string, b: string) => b });
+    return views.managePage({ kind: "client", client }, isDefault);
+  }
+  test("explicit selection sets has-selection", () => {
+    expect(render(false)).toContain("has-selection");
+  });
+  test("default selection renders the detail pane without has-selection", () => {
+    const html = render(true);
+    expect(html).not.toContain("has-selection");
+    expect(html).toContain("Website");
+  });
+});

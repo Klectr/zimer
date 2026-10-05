@@ -118,8 +118,10 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
   /* #364: M3 list-detail — the list pane owns the outstanding summary,
      unbilled time, and invoice rows; the detail pane shows the selected
      invoice (or a placeholder). Below 840px the panes take turns via
-     .has-selection. */
-  function invoicesPage(selected: (Invoice & { items: InvoiceItem[] }) | null, origin: string): string {
+     .has-selection. #805: isDefault marks the route's first-invoice
+     fallback — the detail pane gets content on desktop, but has-selection
+     stays unset so single-pane (mobile) still opens on the list. */
+  function invoicesPage(selected: (Invoice & { items: InvoiceItem[] }) | null, origin: string, isDefault = false): string {
     const rows = qInvoices.all() as any[];
     const head = `
       <div class="page-head" data-enter="2">
@@ -134,7 +136,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
         <div class="scroll-region" data-enter="3">${emptyInvoices()}</div>`, "invoices", true);
     }
     return layout("Zinvoices", `${head}
-      <div class="invoice-list-detail${selected ? " has-selection" : ""}" data-enter="3">
+      <div class="invoice-list-detail${selected && !isDefault ? " has-selection" : ""}" data-enter="3">
         <section class="invoice-list-pane" aria-label="Zinvoice list">
           <p class="muted" id="inv-outstanding">Outstanding: <strong>${money(outstandingTotal(rows))}</strong></p>
           ${unbilledSection(rows)}

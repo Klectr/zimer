@@ -522,3 +522,26 @@ describe("#687: invoice sheet grand-total label", () => {
     expect(html).toContain('<tr class="grand"><td colspan="4">Total due</td>');
   });
 });
+
+/** #805: first-zinvoice preselect — the route defaults the two-pane detail
+ *  to the first zinvoice so the pane has content on desktop load. The view
+ *  marks that fallback with isDefault: the detail renders, but has-selection
+ *  stays unset so the single-pane (mobile) layout still opens on the list. */
+describe("#805: list-detail default selection", () => {
+  const sel = { ...detailInv("sent", null), items: [] } as any;
+  const rows = [{ ...baseRow, status: "sent", paid_at: null }];
+  test("explicit selection sets has-selection and renders the detail", () => {
+    const html = views(rows).invoicesPage(sel, "http://x");
+    expect(html).toContain("has-selection");
+    expect(html).not.toContain("Select a zinvoice to preview it here.");
+  });
+  test("default selection renders the detail but no has-selection", () => {
+    const html = views(rows).invoicesPage(sel, "http://x", true);
+    expect(html).not.toContain("has-selection");
+    expect(html).not.toContain("Select a zinvoice to preview it here.");
+  });
+  test("no selection still shows the placeholder", () => {
+    const html = views(rows).invoicesPage(null, "http://x");
+    expect(html).toContain("Select a zinvoice to preview it here.");
+  });
+});

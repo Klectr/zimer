@@ -243,13 +243,16 @@ export function createManageViews(deps: ManageViewDeps) {
     </div>`;
   }
 
-  function managePage(sel: ClientSel | null): string {
+  /* #805: isDefault marks the route's first-client fallback — same deal
+     as the zinvoices pane: content on desktop, no has-selection so the
+     single-pane (mobile) still opens on the list. */
+  function managePage(sel: ClientSel | null, isDefault = false): string {
     /* #71: data-enter sits on the shell HTMX never replaces, so the entrance
        plays once per page load and never replays on swaps.
        #245: the business profile section moved into the settings modal
        behind the account menu button; the Manage page is clients & projects only. */
     return layout("Clients & Projects", `
-      <div class="client-list-detail${sel ? " has-selection" : ""}" data-enter="2">
+      <div class="client-list-detail${sel && !isDefault ? " has-selection" : ""}" data-enter="2">
         <section class="client-list-pane" aria-label="Client list">
           <h1 class="md-headline-small">Clients</h1>
           ${addClientForm()}
