@@ -158,7 +158,7 @@ export function createPublicViews(deps: PublicViewDeps) {
   <script src="/static/motion.js" defer></script></head>
   <body><main class="login">
   <div class="md-card" style="border-radius:28px;padding:28px">
-  <h1 class="md-headline-small" style="margin-top:0;display:flex;align-items:center;gap:12px">${logo(32)}<span>Zimer</span></h1>
+  <h1 class="md-headline-small" style="margin-top:0;display:flex;align-items:center;gap:12px">${logo(32)}<span>Zimer</span>${icon("jack_o_lantern", "oct-pumpkin oct-login")}</h1>
   <form method="post" action="/login" class="form">
   <div class="md-text-field">
     <input type="password" name="token" autocomplete="off" required placeholder=" " aria-label="API token">

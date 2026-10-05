@@ -51,7 +51,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       </form>` : "";
     return `<div class="empty-state" data-enter="3">
       <img class="empty-mascot" src="/static/mascot-empty.png" alt="" width="132" height="132">
-      <h3 class="md-title-large">No zinvoices yet</h3>
+      <h3 class="md-title-large oct-h3">${icon("jack_o_lantern", "oct-pumpkin")}<span>No zinvoices yet</span></h3>
       <p class="muted">Turn tracked time into a zinvoice — or explore first with fictional sample data.</p>
       <div class="row">${demoCta}</div>
     </div>`;
