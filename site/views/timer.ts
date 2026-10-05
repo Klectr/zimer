@@ -186,7 +186,7 @@ export function createTimerViews(deps: TimerViewDeps) {
   }
 
   function dashboardPage(): string {
-    return layout("Zimer", `
+    return layout("Today", `
       ${demoBanner(db)}
       <div class="pane-layout">
         <section class="pane-focus" data-enter="2" aria-label="Zimer and today's entries">
