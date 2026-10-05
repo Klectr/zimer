@@ -62,7 +62,7 @@ Hosted mode only (`HOSTED=1`). Each tenant's SQLite file is copied with
 `VACUUM INTO` (a consistent, compacted snapshot of the live database — no
 downtime, safe against WAL):
 
-- `DATA_DIR/backups/<user_id>/timekeep-<UTC-timestamp>.db` — per customer.
+- `DATA_DIR/backups/<user_id>/zimer-<UTC-timestamp>.db` — per customer.
 - `DATA_DIR/backups/accounts-<UTC-timestamp>.db` — the accounts control
   plane, backed up **separately and never into a tenant's folder**.
   accounts.db holds password hashes and session tokens; treat it like a
@@ -80,7 +80,7 @@ customer file doesn't stop the rest of the fleet.
    captured PID — never `pkill -f`) so no handle is writing the tenant
    file.
 2. Pick the backup to restore from `DATA_DIR/backups/<user_id>/`
-   (newest `timekeep-<UTC-timestamp>.db` unless you have a reason to go
+   (newest `zimer-<UTC-timestamp>.db` unless you have a reason to go
    older) and copy it over `DATA_DIR/<user_id>.db`.
 3. Restart via `setsid /opt/timekeep/start.sh`, re-check `/health`.
 4. Same steps for `accounts-<UTC-timestamp>.db` → `DATA_DIR/accounts.db`

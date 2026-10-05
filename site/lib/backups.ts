@@ -1,7 +1,7 @@
 /** #730 part 2: per-customer SQLite backups for hosted mode.
  *
  *  Every tenant database (DATA_DIR/<user_id>.db, #745) is copied
- *  on a schedule to DATA_DIR/backups/<user_id>/timekeep-<utc-timestamp>.db,
+ *  on a schedule to DATA_DIR/backups/<user_id>/zimer-<utc-timestamp>.db,
  *  and the accounts control plane goes separately to
  *  DATA_DIR/backups/accounts-<utc-timestamp>.db — never inside a tenant's
  *  folder, because accounts.db holds password hashes and session tokens and
@@ -93,7 +93,7 @@ export function backupTenant(dataDir: string, userId: number): string | null {
   if (!st.isFile()) return null;
   const dir = tenantBackupDir(dataDir, userId);
   mkdirSync(dir, { recursive: true });
-  const dest = vacuumInto(src, join(dir, `timekeep-${backupTimestamp()}.db`));
+  const dest = vacuumInto(src, join(dir, `zimer-${backupTimestamp()}.db`));
   pruneBackups(dir);
   return dest;
 }
