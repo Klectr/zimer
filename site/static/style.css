@@ -1617,9 +1617,9 @@ body.app-fixed .cal-gutter-spacer {
   border-radius: 50%;
   background: radial-gradient(closest-side, rgba(242, 193, 78, 0.22), rgba(242, 193, 78, 0) 72%);
   pointer-events: none; }
-.landing-hero-visual .landing-mascot { position: relative; width: min(240px, 60vw); height: auto; margin: 0; }
+.landing-hero-visual .landing-mascot { position: relative; width: min(300px, 72vw); height: auto; margin: 0; }
 @media (min-width: 840px) {
-  .landing-hero-visual .landing-mascot { width: min(320px, 68vw); }
+  .landing-hero-visual .landing-mascot { width: min(400px, 80vw); }
 }
 
 .landing-section { margin-top: clamp(40px, 8vw, 80px); scroll-margin-top: 16px; }
