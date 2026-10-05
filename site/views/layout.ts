@@ -69,6 +69,7 @@ export function createLayoutViews(qRunning: Statement, bannerHtml?: () => string
   ${/* #355: the settings scrim is a direct body child — inside the app bar it
        would be trapped in the header's stacking context and paint below the
        bottom navigation bar. */ settingsDialog()}
+  </body>
   </html>`;
   }
 
