@@ -487,7 +487,7 @@ export function createWebRouter(deps: WebDeps) {
           const bytes = await Bun.file(dbPath).bytes();
           return new Response(bytes, { status: 200, headers: {
             "Content-Type": "application/x-sqlite3",
-            "Content-Disposition": `attachment; filename="timekeep-backup-${ts}.db"`,
+            "Content-Disposition": `attachment; filename="zimer-backup-${ts}.db"`,
           } });
         }
 
@@ -517,7 +517,7 @@ export function createWebRouter(deps: WebDeps) {
             ];
             out.push(cells.map(csvCell).join(","));
           }
-          return csvResponse(out.join("\n"), "timekeep-entries.csv");
+          return csvResponse(out.join("\n"), "zimer-entries.csv");
         }
 
         if (path === "/export/invoices.csv" && method === "GET") {
@@ -537,7 +537,7 @@ export function createWebRouter(deps: WebDeps) {
               (subtotal + tax).toFixed(2)];
             out.push(cells.map(csvCell).join(","));
           }
-          return csvResponse(out.join("\n"), "timekeep-invoices.csv");
+          return csvResponse(out.join("\n"), "zimer-invoices.csv");
         }
 
         /* #367: M3 list-detail — ?client=<id> (or "none") selects into the
