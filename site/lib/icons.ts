@@ -47,8 +47,8 @@ export const ICONS: Record<string, string> = {
   table: `<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9.3h18M3 14.6h18M9 9.3V20"/>`,
   database: `<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>`,
   /* #712: jack-o-lantern for the October theme (temporary — revert after
-     October). Doodle pumpkin in the same hand as the set, wearing the same
-     doodle witch hat as the logo. Face filled, body outlined. */
+     October). Doodle pumpkin in the same hand as the set, wearing a doodle
+     witch hat. Face filled, body outlined. */
   jack_o_lantern: `<path d="M 8.6 6.4 C 10.6 5.7 13.4 5.7 15.4 6.4"/><path d="M 10.8 6 C 11.2 4.2 11.8 2.8 12.8 1.6"/><path d="M 13.8 5.9 C 13.4 4.2 13 2.8 12.8 1.6"/><path d="M 12.8 1.6 C 12.2 0.7 11 0.5 10.3 1.1"/><path d="M 12 9 C 7.2 9 4.3 11.8 4.3 15.2 C 4.3 18.9 7.6 21.5 12 21.5 C 16.4 21.5 19.7 18.9 19.7 15.2 C 19.7 11.8 16.8 9 12 9 Z"/><path d="M 8.6 9.8 C 8 12.6 8 17.6 9 20.6"/><path d="M 15.4 9.8 C 16 12.6 16 17.6 15 20.6"/><path d="M 12 9 C 12 7.6 12.6 6.6 13.8 6"/><path d="M 8.4 13.2 L 10.2 13.2 L 9.3 15 Z" fill="currentColor" stroke="none"/><path d="M 13.8 13.2 L 15.6 13.2 L 14.7 15 Z" fill="currentColor" stroke="none"/><path d="M 8 16.8 L 9.6 18.6 L 11.2 17 L 12.8 18.6 L 14.4 17 L 16 17.6"/>`,
 };
 
@@ -64,15 +64,10 @@ export function icon(name: keyof typeof ICONS, cls = ""): string {
 const LOGO_CLOCK = `<path d="M 34 9.5 C 41 9.5 45.5 15 45.5 22 C 45.5 29 41 34.5 34 34.5 C 27 34.5 20.5 29 20.5 22.2 C 20.5 15.2 26 10 33 9.6"/>`;
 const LOGO_HANDS = `<path d="M 33 22 C 32.9 19.5 32.9 17.5 33 15"/><path d="M 33 22 C 34.8 22.8 36.5 23.6 38.2 24.4"/><circle cx="33" cy="22" r="2.4" fill="currentColor" stroke="none"/>`;
 const LOGO_CUP = `<path d="M 11 35 C 15 49 25 56 35 56 C 45 56 53 48 55 37"/><path d="M 11 35 C 9 31 10 27 13 25"/><path d="M 55 37 C 57 33 56 29 53 27"/>`;
-/* #712: doodle witch hat perched on the clock (October theme, temporary —
-   revert after October). Same hand-drawn stroke style as the mark. The
-   viewBox shifts up 18 for headroom; the 64-grid drawing is untouched. */
-const LOGO_HAT = `<path d="M 20 12 C 27 9.5 41 9.5 47 12"/><path d="M 29 10.5 C 30 4 32  -2.5 34.5 -8"/><path d="M 44.5 11 C 43 4.5 40.5 -1 37.5 -6.5"/><path d="M 34.5 -8 C 33.5 -10.5 31.5 -11.5 29.5 -11"/><path d="M 30 5 C 35 3.8 40 3.8 43.8 4.8"/>`;
-
 export function logo(size = 24, spinHands = false): string {
   /* #406: spinHands wraps the clock hands in a group so CSS can rotate them
      (update-check progress state). Default output is byte-identical to before. */
   const hands = spinHands ? `<g class="tk-logo-hands">${LOGO_HANDS}</g>` : LOGO_HANDS;
   const cls = spinHands ? ` class="tk-logo-spinning"` : "";
-  return `<svg${cls} width="${size}" height="${size}" viewBox="0 -18 64 82" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${LOGO_CLOCK}${LOGO_HAT}${hands}${LOGO_CUP}</svg>`;
+  return `<svg${cls} width="${size}" height="${size}" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${LOGO_CLOCK}${hands}${LOGO_CUP}</svg>`;
 }
