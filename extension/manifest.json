@@ -24,7 +24,7 @@
         "default": "Ctrl+Shift+Y",
         "mac": "Command+Shift+Y"
       },
-      "description": "Start or stop the Zimer"
+      "description": "Start or stop the Zimer timer"
     }
   }
 }
