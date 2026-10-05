@@ -70,7 +70,7 @@ describe("calendar entry aria-label (#479)", () => {
     const label = labelFor(html, 11);
     expect(label).not.toContain("<");
     expect(label).toContain("No description");
-    expect(label).toContain("1h 00m");
+    expect(label).toContain("1h"); /* #817: whole hours drop the 00m */
   });
 
   test("described entry keeps its (escaped) description in the label", () => {
@@ -370,8 +370,8 @@ describe("calendar week-only carousel (#572)", () => {
 
   test("the supporting pane stays week-scoped", () => {
     const html = viewsFor([monEntry, tueEntry]).weekInner("2026-09-20", "America/Chicago");
-    // 2h monday + 1h tuesday = 3h week total, all billable
-    expect(html).toContain("3h 00m");
+    // 2h monday + 1h tuesday = 3h week total, all billable (#817: no 00m)
+    expect(html).toContain("3h");
     expect(html).toContain("Acme");
     // #592: 2026-09-20 is a past week, so the chip invoices "this period"
     const aside = asideOf(html);
@@ -440,7 +440,7 @@ describe("week summary delta (#524)", () => {
 
   test("no previous-week data: billable figure stands alone, no dash", () => {
     const s = summaryHtml([]);
-    expect(s).toContain("1h 00m billable");
+    expect(s).toContain("1h billable"); /* #817: whole hours drop the 00m */
     expect(s).not.toContain("·");
     expect(s).not.toContain("—");
   });

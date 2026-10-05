@@ -175,7 +175,9 @@ export function fmtDur(totalSecs: number): string {
   const h = Math.floor(totalSecs / 3600);
   const m = Math.floor((totalSecs % 3600) / 60);
   const s = totalSecs % 60;
-  if (h > 0) return `${h}h ${String(m).padStart(2, "0")}m`;
+  /* #817: whole-hour durations drop the pointless 00m ("15h", not
+     "15h 00m") — same logic as #596 below, which dropped the 00s. */
+  if (h > 0) return m > 0 ? `${h}h ${String(m).padStart(2, "0")}m` : `${h}h`;
   /* #596: whole-minute durations drop the pointless 00s ("30m", not "30m
      00s") — the legend and entry rows read cleaner; nonzero seconds stay. */
   if (m > 0) return s > 0 ? `${m}m ${String(s).padStart(2, "0")}s` : `${m}m`;

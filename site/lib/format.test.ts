@@ -36,16 +36,16 @@ describe("shortYmd", () => {
   });
 });
 
-/* #596: whole-minute durations drop the pointless 00s; nonzero seconds and
-   the hour branch are unchanged. */
+/* #596: whole-minute durations drop the pointless 00s; #817: whole-hour
+   durations drop the pointless 00m ("15h", not "15h 00m"). */
 describe("fmtDur", () => {
-  test("hours branch pads minutes", () => {
-    expect(fmtDur(54000)).toBe("15h 00m");
+  test("hours branch pads nonzero minutes, drops 00m", () => {
+    expect(fmtDur(54000)).toBe("15h");
     expect(fmtDur(23400)).toBe("6h 30m");
   });
   test("whole minutes drop the 00s", () => {
     expect(fmtDur(1800)).toBe("30m");
-    expect(fmtDur(3600)).toBe("1h 00m");
+    expect(fmtDur(3600)).toBe("1h");
     expect(fmtDur(60)).toBe("1m");
   });
   test("nonzero seconds stay", () => {
