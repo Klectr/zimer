@@ -46,7 +46,7 @@ export function createLandingViews() {
   <p class="muted landing-selfhost">Prefer to run it yourself? Self-host is free forever.</p>
   </div>
   <div class="landing-hero-visual" data-enter="2">
-  <img class="landing-mascot" src="/static/mascot.png" alt="Klectr the Alien, the Zimer mascot" width="280" height="280">
+  <img class="landing-mascot" src="/static/mascot.png" alt="Klectr the Alien, the Zimer mascot" width="400" height="400">
   </div>
   </section>
   <section class="landing-section" data-enter="3">
