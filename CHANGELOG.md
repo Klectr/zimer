@@ -2,6 +2,13 @@
 
 What's new in Zimer, newest first.
 
+## 2026-10-05
+
+- **Downloads and backups carry the Zimer name.** CSV exports and on-disk backup files that still said timekeep-* are named zimer-* now.
+- **List panes open with the first item selected.** On desktop, the Zinvoices and Clients pages preselect the first row so the detail pane has content on load — phones still open on the list.
+- **The logo lost its witch hat.** The app-bar mark is the plain cupped-hand clock again.
+- **Demo banners say zinvoices.** The last "invoice" wording in the demo-data banners now reads zinvoices.
+
 ## 2026-10-02
 
 - **One emphasized action per screen.** "Load demo data" was a second filled gold button on the timer banner and the invoices empty state, competing with Start and New invoice — it's a text button now. Each screen has exactly one gold action.
