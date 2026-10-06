@@ -141,3 +141,37 @@ describe("#805: client list-detail default selection", () => {
     expect(html).toContain("Website");
   });
 });
+
+/** #827: the manage page's floating labels are wired to their fields —
+ *  add-project, client settings, add-client, and business profile. */
+describe("manage labels (#827)", () => {
+  test("client settings form fields are wired via matching id/for", () => {
+    const { db, client } = testDb();
+    const views = createManageViews({ db, layout: (_t: string, b: string) => b });
+    const html = views.clientSettingsForm(client);
+    for (const id of ["cs-name", "cs-rate", "cs-terms", "cs-email", "cs-phone", "cs-website", "cs-address"]) {
+      expect(html).toContain(`id="${id}"`);
+      expect(html).toContain(`<label for="${id}">`);
+    }
+  });
+
+  test("add-project and add-client labels are wired via matching id/for", () => {
+    expect(detailHtml()).toContain('<label for="mp-name">');
+    expect(detailHtml()).toContain('id="mp-name"');
+    const page = pageHtml();
+    for (const id of ["mc-name", "mc-rate"]) {
+      expect(page).toContain(`id="${id}"`);
+      expect(page).toContain(`<label for="${id}">`);
+    }
+  });
+
+  test("business profile labels are wired via matching id/for", () => {
+    const { db } = testDb();
+    const views = createManageViews({ db, layout: (_t: string, b: string) => b });
+    const html = views.bizProfileSection();
+    for (const id of ["bp-business_name", "bp-business_email", "bp-business_address", "bp-terms"]) {
+      expect(html).toContain(`id="${id}"`);
+      expect(html).toContain(`<label for="${id}">`);
+    }
+  });
+});

@@ -112,8 +112,8 @@ export function createManageViews(deps: ManageViewDeps) {
             <form method="post" action="/projects" class="add-project-form" hx-post="/projects" hx-target="#client-detail" hx-swap="outerHTML">
               ${clientId == null ? "" : `<input type="hidden" name="client_id" value="${clientId}">`}
               <div class="md-text-field compact">
-                <input type="text" name="name" placeholder=" " required aria-label="New project name">
-                <label>New project</label>
+                <input type="text" id="mp-name" name="name" placeholder=" " required aria-label="New project name">
+                <label for="mp-name">New project</label>
               </div>
               <button class="md-icon-button" type="submit" data-tip="Add project" aria-label="Add project">${icon("add")}</button>
             </form>
@@ -167,31 +167,31 @@ export function createManageViews(deps: ManageViewDeps) {
   function clientSettingsForm(c: any): string {
     const field = (type: string, name: string, label: string, val: string, extra = "") => `
           <div class="md-text-field">
-            <input type="${type}" name="${name}" value="${esc(val)}" placeholder=" " aria-label="${label}"${extra}>
-            <label>${label}</label>
+            <input type="${type}" id="cs-${name}" name="${name}" value="${esc(val)}" placeholder=" " aria-label="${label}"${extra}>
+            <label for="cs-${name}">${label}</label>
           </div>`;
     return `<form method="post" action="/clients/${c.id}/settings" id="client-settings-form" class="manage-form" hx-post="/clients/${c.id}/settings" hx-swap="outerHTML">
         ${field("text", "name", "Client name", c.name || "", " required")}
         <div class="md-text-field has-prefix has-suffix">
           <span class="affix prefix" aria-hidden="true">$</span>
-          <input type="number" name="rate" value="${c.rate || ""}" min="0" step="0.01" placeholder=" " aria-label="Hourly rate">
-          <label>Hourly rate</label>
+          <input type="number" id="cs-rate" name="rate" value="${c.rate || ""}" min="0" step="0.01" placeholder=" " aria-label="Hourly rate">
+          <label for="cs-rate">Hourly rate</label>
           <span class="affix suffix" aria-hidden="true">/hr</span>
         </div>
         <div class="md-text-field">
-          <select name="payment_terms" class="terms-select" aria-label="Payment terms">
+          <select name="payment_terms" id="cs-terms" class="terms-select" aria-label="Payment terms">
             <option value="" data-desc="Falls back to the global payment terms."${c.payment_terms ? "" : " selected"}>Use global terms</option>
             ${termsOptions(c.payment_terms)}
           </select>
-          <label>Payment terms</label>
+          <label for="cs-terms">Payment terms</label>
         </div>
         <p class="terms-desc muted">${esc(termsDescription(termsKey(c.payment_terms, globalTerms())))}</p>
         ${field("email", "email", "Email", c.email || "")}
         ${field("tel", "phone", "Phone", c.phone || "")}
         ${field("text", "website", "Website", c.website || "", ' autocapitalize="none" spellcheck="false"')}
         <div class="md-text-field">
-          <textarea name="address" placeholder=" " rows="3" aria-label="Client address">${esc(c.address || "")}</textarea>
-          <label>Address</label>
+          <textarea name="address" id="cs-address" placeholder=" " rows="3" aria-label="Client address">${esc(c.address || "")}</textarea>
+          <label for="cs-address">Address</label>
         </div>
         <button class="md-filled-button" type="submit">Save</button>
       </form>`;
@@ -221,14 +221,14 @@ export function createManageViews(deps: ManageViewDeps) {
       <button class="md-text-button" type="button" id="client-add-toggle">${icon("add")}Add client</button>
       <form method="post" action="/clients" id="client-add-form" class="manage-form" hidden>
         <div class="md-text-field">
-          <input type="text" name="name" placeholder=" " required aria-label="Client name">
-          <label>Client name</label>
+          <input type="text" id="mc-name" name="name" placeholder=" " required aria-label="Client name">
+          <label for="mc-name">Client name</label>
         </div>
         <div class="manage-form-row">
           <div class="md-text-field has-prefix has-suffix" style="max-width:172px">
             <span class="affix prefix" aria-hidden="true">$</span>
-            <input type="number" name="rate" min="0" step="0.01" placeholder=" " aria-label="Hourly rate">
-            <label>Hourly rate</label>
+            <input type="number" id="mc-rate" name="rate" min="0" step="0.01" placeholder=" " aria-label="Hourly rate">
+            <label for="mc-rate">Hourly rate</label>
             <span class="affix suffix" aria-hidden="true">/hr</span>
           </div>
           <label class="md-color-control">
@@ -363,8 +363,8 @@ export function createManageViews(deps: ManageViewDeps) {
     const terms = getMeta(db, "business_payment_terms");
     const field = (fname: string, label: string, val: string, type = "text") => `
             <div class="md-text-field">
-              <input type="${type}" name="${fname}" value="${esc(val)}" placeholder=" " aria-label="${label}">
-              <label>${label}</label>
+              <input type="${type}" id="bp-${fname}" name="${fname}" value="${esc(val)}" placeholder=" " aria-label="${label}">
+              <label for="bp-${fname}">${label}</label>
             </div>`;
     return `<section id="biz-profile">
           <h2 class="md-headline-small">Business profile</h2>
@@ -374,10 +374,10 @@ export function createManageViews(deps: ManageViewDeps) {
             ${field("business_email", "Email", email, "email")}
             ${field("business_address", "Address", address)}
             <div class="md-text-field">
-              <select name="business_payment_terms" class="terms-select" aria-label="Payment terms">
+              <select name="business_payment_terms" id="bp-terms" class="terms-select" aria-label="Payment terms">
                 ${termsOptions(terms || null)}
               </select>
-              <label>Payment terms</label>
+              <label for="bp-terms">Payment terms</label>
             </div>
             <p class="terms-desc muted">${esc(termsDescription(termsKey(null, terms)))}</p>
             <div class="manage-form-row">

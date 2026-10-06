@@ -460,3 +460,15 @@ describe("dashboard document title (#798)", () => {
     expect(captured).not.toBe("Zimer");
   });
 });
+
+/** #827: the start form's floating labels are wired to their fields — clicking
+ *  the label text focuses the field (same completion as #709's invoice labels). */
+describe("start-form labels (#827)", () => {
+  test("description and project labels are wired via matching id/for", () => {
+    const html = partial(false);
+    for (const id of ["tm-desc", "tm-project"]) {
+      expect(html).toContain(`id="${id}"`);
+      expect(html).toContain(`<label for="${id}">`);
+    }
+  });
+});

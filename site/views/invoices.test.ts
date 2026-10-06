@@ -175,24 +175,24 @@ describe("paid-on date", () => {
     // rate: $ prefix affix, label is just "Hourly rate"
     expect(html).toContain('class="md-text-field filled has-prefix"');
     expect(html).toContain('<span class="affix prefix" aria-hidden="true">$</span>');
-    expect(html).toContain('aria-label="Hourly rate"><label>Hourly rate</label>');
+    expect(html).toContain('aria-label="Hourly rate"><label for="inv-rate">Hourly rate</label>');
     expect(html).not.toContain("Hourly rate ($)");
     // tax: % suffix affix, label is just "Tax"
     expect(html).toContain('class="md-text-field filled has-suffix"');
     expect(html).toContain('<span class="affix suffix" aria-hidden="true">%</span>');
-    expect(html).toContain('aria-label="Tax"><label>Tax</label>');
+    expect(html).toContain('aria-label="Tax"><label for="inv-tax">Tax</label>');
     expect(html).not.toContain("Tax %");
   });
 
   test("#703: new-invoice Notes/Internal notes inputs have accessible names", () => {
     const html = views([]).invoiceNewPage(views([]).defaultNewInvParams());
-    expect(html).toContain('aria-label="Notes (optional)"><label>Notes (optional)</label>');
-    expect(html).toContain('aria-label="Internal notes (only you see this)"><label>Internal notes (only you see this)</label>');
+    expect(html).toContain('aria-label="Notes (optional)"><label for="inv-notes">Notes (optional)</label>');
+    expect(html).toContain('aria-label="Internal notes (only you see this)"><label for="inv-internal">Internal notes (only you see this)</label>');
   });
 
-  test("#709: new-invoice date/number labels are wired via matching id/for", () => {
+  test("#709/#827: new-invoice step-1 labels are wired via matching id/for", () => {
     const html = views([]).invoiceNewPage(views([]).defaultNewInvParams());
-    for (const id of ["inv-from", "inv-to", "inv-number", "inv-issue", "inv-due"]) {
+    for (const id of ["inv-from", "inv-to", "inv-number", "inv-issue", "inv-due", "inv-client", "inv-rate", "inv-tax", "inv-notes", "inv-internal"]) {
       expect(html).toContain(`id="${id}"`);
       expect(html).toContain(`<label for="${id}">`);
     }

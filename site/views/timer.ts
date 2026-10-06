@@ -149,13 +149,13 @@ export function createTimerViews(deps: TimerViewDeps) {
       <div class="md-title-medium muted">Nothing tracking</div>
       <form hx-post="/timer/start" hx-target="#timer-card" hx-swap="outerHTML swap:200ms" class="start-form">
         <div class="md-text-field grow">
-          <input type="text" name="description" placeholder=" " autocomplete="off" aria-label="What are you working on?" list="tk-desc-suggest">
-          <label>What are you working on?</label>
+          <input type="text" id="tm-desc" name="description" placeholder=" " autocomplete="off" aria-label="What are you working on?" list="tk-desc-suggest">
+          <label for="tm-desc">What are you working on?</label>
         </div>
         ${descDatalist()}
         <div class="md-text-field shrink filled">
-          <select name="project_id" aria-label="Project"><option value="">No project</option>${projectOptions()}</select>
-          <label>Project</label>
+          <select name="project_id" id="tm-project" aria-label="Project"><option value="">No project</option>${projectOptions()}</select>
+          <label for="tm-project">Project</label>
         </div>
         <button class="md-filled-button" type="submit" data-tip="Start (t)" aria-keyshortcuts="t">
           ${icon("play")}Start
