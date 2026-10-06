@@ -592,3 +592,24 @@ describe("#829: new-zinvoice due-date prefill follows global payment terms", () 
     expect(dueInDays("")).toBe(30);
   });
 });
+
+/** #831: the detail header badge agrees with the list's status pill — a draft
+ *  was never sent, so it reads "Draft" in the neutral tonal treatment instead
+ *  of the amber "Unpaid" reserved for sent invoices awaiting payment. */
+describe("#831: detail badge labels drafts Draft, not Unpaid", () => {
+  test("draft badge reads Draft with the draft (neutral) treatment", () => {
+    const html = views([]).invoiceDetailBody(detailInv("draft", null) as any, "http://x");
+    expect(html).toContain('<span class="inv-modern-badge draft">Draft</span>');
+    expect(html).not.toContain("Unpaid");
+  });
+
+  test("sent badge still reads Unpaid with the amber treatment", () => {
+    const html = views([]).invoiceDetailBody(detailInv("sent", null) as any, "http://x");
+    expect(html).toContain('<span class="inv-modern-badge">Unpaid</span>');
+  });
+
+  test("paid badge still reads Paid with the paid treatment", () => {
+    const html = views([]).invoiceDetailBody(detailInv("paid", "2026-09-21") as any, "http://x");
+    expect(html).toContain('<span class="inv-modern-badge paid">Paid</span>');
+  });
+});

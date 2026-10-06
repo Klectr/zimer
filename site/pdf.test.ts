@@ -68,3 +68,24 @@ describe("#687: PDF grand-total label drops DUE for paid invoices", () => {
     expect(text).toContain("TOTAL DUE");
   });
 });
+
+/** #831: the PDF status badge agrees with the list's status pill — a draft
+ *  was never sent, so it reads DRAFT on neutral gray instead of the amber
+ *  UNPAID reserved for sent invoices awaiting payment. */
+describe("#831: PDF status badge reads DRAFT for drafts", () => {
+  test("draft invoice prints DRAFT, not UNPAID", () => {
+    const text = pdfText({ ...base, status: "draft" });
+    expect(text).toContain("DRAFT");
+    expect(text).not.toContain("UNPAID");
+  });
+
+  test("sent invoice still prints UNPAID", () => {
+    const text = pdfText({ ...base, status: "sent" });
+    expect(text).toContain("UNPAID");
+  });
+
+  test("paid invoice still prints PAID", () => {
+    const text = pdfText({ ...base, status: "paid" });
+    expect(text).toContain("PAID");
+  });
+});

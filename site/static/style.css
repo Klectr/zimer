@@ -1790,6 +1790,9 @@ body.app-fixed .cal-gutter-spacer {
 .inv-modern-badge { display: inline-block; background: #fb923c; color: #1c1c1f; font-size: 0.6875rem; font-weight: 700;
   letter-spacing: 1px; text-transform: uppercase; padding: 6px 14px; border-radius: 4px; }
 .inv-modern-badge.paid { background: #2e9e4f; color: #fff; }
+/* #831: draft badge mirrors .pill-draft — a draft was never sent, so it gets
+   the neutral secondary-container treatment, not the amber unpaid attention color. */
+.inv-modern-badge.draft { background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container); }
 .inv-modern-parties { display: flex; gap: 40px; margin: 0 0 20px; }
 .inv-modern-label { font-size: 0.6875rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
   color: var(--md-sys-color-on-surface-variant); margin-bottom: 6px; }
