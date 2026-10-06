@@ -132,7 +132,7 @@ export function demoBanner(db: Database): string {
     /* #300: guide the fresh install to a prefilled invoice — the sample week
        lands on the client picker with the range already filled in. */
     const r = demoRange(db);
-    const tryIt = r ? `<a class="md-filled-button" href="/invoices/new?from=${r.from}&amp;to=${r.to}">${icon("receipt")}<span>Zinvoice the sample week</span></a>` : "";
+    const tryIt = r ? `<a class="md-text-button" href="/invoices/new?from=${r.from}&amp;to=${r.to}">${icon("receipt")}<span>Zinvoice the sample week</span></a>` : "";
     return `<div class="demo-banner" data-enter="1">
     ${icon("info")}
     <span><strong>Demo data.</strong> This workspace is filled with fictional examples — poke around, then remove them when you're ready.</span>
