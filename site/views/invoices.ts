@@ -209,15 +209,15 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
             <select name="client_id" id="inv-client" required aria-label="Client">
               <option value="">Choose a client…</option>${clientOptions(p.client_id ? Number(p.client_id) : null)}
             </select>
-            <label>Client</label>
+            <label for="inv-client">Client</label>
           </div>
           <div class="two-field" id="inv-range">
             <div class="md-text-field filled"><input type="date" id="inv-from" name="from" value="${esc(p.from)}" required placeholder=" "><label for="inv-from">From</label></div>
             <div class="md-text-field filled"><input type="date" id="inv-to" name="to" value="${esc(p.to)}" required placeholder=" "><label for="inv-to">To</label></div>
           </div>
           <div class="two-field">
-            <div class="md-text-field filled has-prefix"><span class="affix prefix" aria-hidden="true">$</span><input type="number" name="rate" id="inv-rate" value="${esc(p.rate || (selClient ? String(selClient.rate || "") : ""))}" min="0" step="0.01" placeholder=" " aria-label="Hourly rate"><label>Hourly rate</label></div>
-            <div class="md-text-field filled has-suffix"><input type="number" name="tax_rate" value="${esc(p.tax_rate)}" min="0" step="0.01" placeholder=" " aria-label="Tax"><label>Tax</label><span class="affix suffix" aria-hidden="true">%</span></div>
+            <div class="md-text-field filled has-prefix"><span class="affix prefix" aria-hidden="true">$</span><input type="number" name="rate" id="inv-rate" value="${esc(p.rate || (selClient ? String(selClient.rate || "") : ""))}" min="0" step="0.01" placeholder=" " aria-label="Hourly rate"><label for="inv-rate">Hourly rate</label></div>
+            <div class="md-text-field filled has-suffix"><input type="number" name="tax_rate" id="inv-tax" value="${esc(p.tax_rate)}" min="0" step="0.01" placeholder=" " aria-label="Tax"><label for="inv-tax">Tax</label><span class="affix suffix" aria-hidden="true">%</span></div>
           </div>
           <div class="two-field">
             <div class="md-text-field"><input type="text" id="inv-number" name="number" value="${esc(p.number)}" required placeholder=" "><label for="inv-number">Zinvoice number</label></div>
@@ -226,8 +226,8 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
             <div class="md-text-field filled"><input type="date" name="issue_date" id="inv-issue" value="${esc(p.issue_date)}" required placeholder=" "><label for="inv-issue">Issue date</label></div>
             <div class="md-text-field filled"><input type="date" name="due_date" id="inv-due" value="${esc(p.due_date)}" placeholder=" "><label for="inv-due">Due date</label></div>
           </div>
-          <div class="md-text-field"><input type="text" name="notes" value="${esc(p.notes)}" placeholder=" " aria-label="Notes (optional)"><label>Notes (optional)</label></div>
-          <div class="md-text-field"><input type="text" name="internal_notes" value="${esc(p.internal_notes)}" placeholder=" " aria-label="Internal notes (only you see this)"><label>Internal notes (only you see this)</label></div>
+          <div class="md-text-field"><input type="text" name="notes" id="inv-notes" value="${esc(p.notes)}" placeholder=" " aria-label="Notes (optional)"><label for="inv-notes">Notes (optional)</label></div>
+          <div class="md-text-field"><input type="text" name="internal_notes" id="inv-internal" value="${esc(p.internal_notes)}" placeholder=" " aria-label="Internal notes (only you see this)"><label for="inv-internal">Internal notes (only you see this)</label></div>
           <div class="row end"><button class="md-filled-button" type="submit">Preview line items</button></div>
         </form>
       </div>

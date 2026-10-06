@@ -161,8 +161,8 @@ export function createPublicViews(deps: PublicViewDeps) {
   <h1 class="md-headline-small" style="margin-top:0;display:flex;align-items:center;gap:12px">${logo(32)}<span>Zimer</span>${icon("jack_o_lantern", "oct-pumpkin oct-login")}</h1>
   <form method="post" action="/login" class="form">
   <div class="md-text-field">
-    <input type="password" name="token" autocomplete="off" required placeholder=" " aria-label="API token">
-    <label>API token</label>
+    <input type="password" id="login-token" name="token" autocomplete="off" required placeholder=" " aria-label="API token">
+    <label for="login-token">API token</label>
   </div>
   <button class="md-filled-button" type="submit">Log in</button>
   <p class="muted tiny">Printed in the server log on first run, or set via TIMEKEEP_TOKEN.</p>
@@ -187,12 +187,12 @@ export function createPublicViews(deps: PublicViewDeps) {
     return authShell("Sign up", `
   <form method="post" action="/signup" class="form">
   <div class="md-text-field">
-    <input type="email" name="email" autocomplete="email" required placeholder=" " aria-label="Email">
-    <label>Email</label>
+    <input type="email" id="su-email" name="email" autocomplete="email" required placeholder=" " aria-label="Email">
+    <label for="su-email">Email</label>
   </div>
   <div class="md-text-field">
-    <input type="password" name="password" autocomplete="new-password" required minlength="8" placeholder=" " aria-label="Password">
-    <label>Password</label>
+    <input type="password" id="su-password" name="password" autocomplete="new-password" required minlength="8" placeholder=" " aria-label="Password">
+    <label for="su-password">Password</label>
   </div>
   <button class="md-filled-button" type="submit">Create account</button>
   <p class="muted tiny">14-day free trial, then $12/month. <a href="/#pricing">Pricing</a> · <a href="/login">Log in</a> instead.</p>
@@ -203,12 +203,12 @@ export function createPublicViews(deps: PublicViewDeps) {
     return authShell("Log in", `
   <form method="post" action="/login" class="form">
   <div class="md-text-field">
-    <input type="email" name="email" autocomplete="email" required placeholder=" " aria-label="Email">
-    <label>Email</label>
+    <input type="email" id="li-email" name="email" autocomplete="email" required placeholder=" " aria-label="Email">
+    <label for="li-email">Email</label>
   </div>
   <div class="md-text-field">
-    <input type="password" name="password" autocomplete="current-password" required placeholder=" " aria-label="Password">
-    <label>Password</label>
+    <input type="password" id="li-password" name="password" autocomplete="current-password" required placeholder=" " aria-label="Password">
+    <label for="li-password">Password</label>
   </div>
   <button class="md-filled-button" type="submit">Log in</button>
   <p class="muted tiny">No account yet? <a href="/signup">Sign up</a> · <a href="/#pricing">Pricing</a>.</p>
