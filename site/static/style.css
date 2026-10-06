@@ -948,7 +948,14 @@ body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
 body.app-fixed .cal-day-head,
 body.app-fixed .cal-gutter-spacer {
   position: sticky; top: 0; z-index: 5;
-  background: var(--md-sys-color-surface);
+}
+body.app-fixed .cal-gutter-spacer { background: var(--md-sys-color-surface); }
+/* #845: the sticky day header carries the column's rounded top in the lane
+   tone — it is the visible top of the column at every scroll position, so the
+   columns always read rounded on top. */
+body.app-fixed .cal-day-head {
+  background: var(--lane-bg);
+  border-radius: var(--md-sys-shape-corner-medium) var(--md-sys-shape-corner-medium) 0 0;
 }
 /* ---------------- calendar: tonal day lanes, no hard dividers ----------------
  * Separation comes from spacing (8px gutters) + tone (lane surfaces). */
@@ -1011,23 +1018,45 @@ body.app-fixed .cal-gutter-spacer {
   /* #69: today is marked with the primary color, not a filled badge */
   color: var(--md-sys-color-primary); font-weight: 700;
 }
+/* #845: per-day lane tone, shared by the lane and its sticky header so the
+   two read as one capsule with a permanently rounded top. */
+.cal-day { --lane-bg: var(--md-sys-color-surface-container-low); }
+.cal-day.today { --lane-bg: color-mix(in srgb, var(--md-sys-color-primary) 10%, var(--md-sys-color-surface-container-low)); }
+/* Past days under 8h get a subtle one-step tonal lift; today and future
+   days are never tinted. Background only, so no layout shift. */
+.cal-day.paced-short { --lane-bg: var(--md-sys-color-surface-container); }
 .cal-day-col {
   position: relative; height: calc(var(--cal-hour) * 24); flex: none;
-  background-color: var(--md-sys-color-surface-container-low);
-  border-radius: var(--md-sys-shape-corner-medium);
+  display: flex; flex-direction: column;
+  background-color: var(--lane-bg);
+  border-radius: 0 0 var(--md-sys-shape-corner-medium) var(--md-sys-shape-corner-medium);
   background-image: repeating-linear-gradient(to bottom,
     transparent 0, transparent calc(var(--cal-hour) - 1px),
     color-mix(in srgb, var(--md-sys-color-outline-variant) 30%, transparent) calc(var(--cal-hour) - 1px),
     color-mix(in srgb, var(--md-sys-color-outline-variant) 30%, transparent) var(--cal-hour));
   cursor: crosshair; touch-action: none;
 }
-.cal-day.today .cal-day-col {
-  background-color: color-mix(in srgb, var(--md-sys-color-primary) 10%, var(--md-sys-color-surface-container-low));
-}
-/* Past days under 8h get a subtle one-step tonal lift; today and future
-   days are never tinted. Background only, so no layout shift. */
-.cal-day.paced-short .cal-day-col {
-  background-color: var(--md-sys-color-surface-container);
+/* #845: the lane's own rounded bottom scrolls out of view — a sticky cutter
+   re-rounds the visible bottom edge at every scroll position. Only the two
+   bottom-corner crescents paint (page bg); entries and night bands sliding
+   underneath get clean rounded cutouts instead of square cuts. */
+.cal-day-col::after {
+  content: ""; display: block; flex: none;
+  /* margin-top: auto parks the cutter at the lane's end in normal flow, so
+     sticky bottom:0 pins it to the viewport's bottom edge whenever the lane's
+     end is scrolled below it. At max scroll it sits exactly over the lane's
+     own rounded corners and its crescents blend invisibly into them. */
+  margin-top: auto;
+  position: sticky; bottom: 0; z-index: 6;
+  height: var(--md-sys-shape-corner-medium);
+  background: var(--md-sys-color-surface);
+  -webkit-mask:
+    radial-gradient(circle var(--md-sys-shape-corner-medium) at 100% 0, transparent calc(var(--md-sys-shape-corner-medium) - 1px), #000 var(--md-sys-shape-corner-medium)) left bottom / var(--md-sys-shape-corner-medium) var(--md-sys-shape-corner-medium) no-repeat,
+    radial-gradient(circle var(--md-sys-shape-corner-medium) at 0 0, transparent calc(var(--md-sys-shape-corner-medium) - 1px), #000 var(--md-sys-shape-corner-medium)) right bottom / var(--md-sys-shape-corner-medium) var(--md-sys-shape-corner-medium) no-repeat;
+  mask:
+    radial-gradient(circle var(--md-sys-shape-corner-medium) at 100% 0, transparent calc(var(--md-sys-shape-corner-medium) - 1px), #000 var(--md-sys-shape-corner-medium)) left bottom / var(--md-sys-shape-corner-medium) var(--md-sys-shape-corner-medium) no-repeat,
+    radial-gradient(circle var(--md-sys-shape-corner-medium) at 0 0, transparent calc(var(--md-sys-shape-corner-medium) - 1px), #000 var(--md-sys-shape-corner-medium)) right bottom / var(--md-sys-shape-corner-medium) var(--md-sys-shape-corner-medium) no-repeat;
+  pointer-events: none;
 }
 /* Night bands (7 PM – 6 AM): deep purple with stars. Translucent so the hour
    lines show through; behind entries; pointer-events none so drag-create
