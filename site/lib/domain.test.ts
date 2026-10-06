@@ -12,7 +12,7 @@ import { createDomain } from "./domain.ts";
 function setup() {
   const db = new BunDatabase(":memory:");
   db.exec(`CREATE TABLE clients (id INTEGER PRIMARY KEY, name TEXT NOT NULL,
-      color TEXT NOT NULL DEFAULT '#f2c14e', rate REAL NOT NULL DEFAULT 0, payment_terms TEXT);
+      color TEXT NOT NULL DEFAULT '#fb923c', rate REAL NOT NULL DEFAULT 0, payment_terms TEXT);
     CREATE TABLE projects (id INTEGER PRIMARY KEY, client_id INTEGER, name TEXT NOT NULL);
     CREATE TABLE time_entries (id INTEGER PRIMARY KEY, project_id INTEGER,
       description TEXT NOT NULL DEFAULT '', start_time TEXT NOT NULL, end_time TEXT,

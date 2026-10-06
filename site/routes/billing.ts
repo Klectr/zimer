@@ -63,7 +63,7 @@ export function createSubscriptionGate(opts: {
 
 /** #736: the subscription wall. Minimal M3 public chrome (same as the
  *  login/signup pages): logo, status headline, what-happens-next copy,
- *  and one gold CTA. No app nav, no auth gate.
+ *  and one pumpkin CTA. No app nav, no auth gate.
  *
  *  #783: the CTA depends on Stripe state. Past-due users have a customer,
  *  so they get the portal. Everyone else gets a Subscribe button that

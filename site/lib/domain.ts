@@ -203,9 +203,9 @@ export function createDomain(deps: DomainDeps) {
   /* Milestone 20: sundayOf/addDays live in lib/format.ts. */
 
   /** Shared M3 Expressive determinate progress track (#87). Under target: a
-      wave-masked gold fill that ripples while motion is allowed, a tonal
-      remainder track, and a small gold gap dot. At/over target: settles to a
-      flat full-width gold fill with a one-pass completion sheen. `pct` is
+      wave-masked pumpkin fill that ripples while motion is allowed, a tonal
+      remainder track, and a small pumpkin gap dot. At/over target: settles to a
+      flat full-width pumpkin fill with a one-pass completion sheen. `pct` is
       clamped 0..100; `met` selects the settled state. */
   function m3ProgressBar(pct: number, met: boolean, ariaLabel: string): string {
     const bar = met

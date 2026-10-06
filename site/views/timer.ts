@@ -253,7 +253,7 @@ export function createTimerViews(deps: TimerViewDeps) {
   }
 
 
-  /** A2: trailing-12-month bar chart, hand-rolled SVG. Gold = paid, tonal = outstanding remainder. */
+  /** A2: trailing-12-month bar chart, hand-rolled SVG. Pumpkin = paid, tonal = outstanding remainder. */
   function revenueChart(): string {
     const months = revenueMonthly();
     const max = Math.max(1, ...months.map(m => m.invoiced));
@@ -318,7 +318,7 @@ export function createTimerViews(deps: TimerViewDeps) {
         : "";
       return `
       <li class="md-list-item">
-        <span class="rev-dot" style="background:${esc(c.color || "#f2c14e")}"></span>
+        <span class="rev-dot" style="background:${esc(c.color || "#fb923c")}"></span>
         <div class="md-list-item-content">
           <div class="md-list-item-headline">${esc(c.name)}</div>
           <div class="md-list-item-supporting">${money(c.paid)} paid · ${money(c.outstanding)} outstanding</div>

@@ -83,7 +83,7 @@ export function createManageViews(deps: ManageViewDeps) {
       </li>`;
     const rows = clients.map(c => {
       const n = (byClient.get(c.id) || []).length;
-      return row(`/manage?client=${c.id}`, dot(c.color || "#f2c14e"), c.name,
+      return row(`/manage?client=${c.id}`, dot(c.color || "#fb923c"), c.name,
         `${n} project${n === 1 ? "" : "s"}${c.rate ? ` · $${c.rate}/hr` : ""}`,
         sk === c.id, `Manage client ${c.name}`);
     }).join("");
@@ -234,7 +234,7 @@ export function createManageViews(deps: ManageViewDeps) {
           <label class="md-color-control">
             ${icon("palette")}
             <span>Color</span>
-            <input type="color" name="color" value="#f2c14e" aria-label="Client color">
+            <input type="color" name="color" value="#fb923c" aria-label="Client color">
           </label>
           <span class="manage-form-spacer"></span>
           <button class="md-filled-button" type="submit">${icon("add")}Add</button>

@@ -12,7 +12,7 @@ import { createManageViews } from "../views/manage.ts";
 
 function setup() {
   const db = createDb(mkdtempSync(join(tmpdir(), "tk-web-"))).db;
-  db.query("INSERT INTO clients (name, color, rate) VALUES ('Bytebot', '#f2c14e', 40)").run();
+  db.query("INSERT INTO clients (name, color, rate) VALUES ('Bytebot', '#fb923c', 40)").run();
   const client = db.query("SELECT * FROM clients").get() as any;
   const views = createManageViews({ db, layout: (_t: string, b: string) => b });
   const noop = () => "";

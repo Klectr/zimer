@@ -7,9 +7,9 @@ Material 3, dark theme. Everything below is grounded in
 
 | Token | Value | Use |
 |---|---|---|
-| `--md-sys-color-primary` | `#f2c14e` | Primary actions, active states **only** |
-| `--md-sys-color-on-primary` | `#3a2a00` | Text/icons on primary |
-| `--md-sys-color-primary-container` | `#6b4e12` | Tonal primary surfaces |
+| `--md-sys-color-primary` | `#fb923c` | Primary actions, active states **only** |
+| `--md-sys-color-on-primary` | `#442100` | Text/icons on primary |
+| `--md-sys-color-primary-container` | `#713d00` | Tonal primary surfaces |
 | `--md-sys-color-on-primary-container` | `#ffe9bd` | Text on primary container |
 | `--md-sys-color-surface` | `#131318` | Page background |
 | `--md-sys-color-on-surface` | `#e5e1e9` | Primary text |
@@ -68,8 +68,8 @@ per-page:
   headline (body-large), supporting text (body-medium,
   on-surface-variant). The icon top-aligns with the first line; wrapped
   supporting text keeps its hanging indent. The license row adds
-  `.status-row-licensed` for the gold check — licensed is an active state,
-  which is where the design doc allows gold. Update statuses each get their
+  `.status-row-licensed` for the pumpkin check — licensed is an active state,
+  which is where the design doc allows pumpkin. Update statuses each get their
   own leading icon (#404): up-to-date → check (on-surface-variant); an
   available update → download in primary (`.status-row-primary`) — it prompts
   a primary action (re-run the installer / buy a new major); unreachable →
