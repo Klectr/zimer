@@ -7,6 +7,7 @@
 import { describe, expect, test } from "bun:test";
 import type { Database, Statement } from "bun:sqlite";
 import { createInvoiceViews } from "./invoices.ts";
+import { daysBetween } from "../lib/format.ts";
 
 const stubQuery = () => ({
   get: (..._a: unknown[]) => ({ n: 0 }),
@@ -543,5 +544,51 @@ describe("#805: list-detail default selection", () => {
   test("no selection still shows the placeholder", () => {
     const html = views(rows).invoicesPage(null, "http://x");
     expect(html).toContain("Select a zinvoice to preview it here.");
+  });
+});
+
+/** #829: the new-zinvoice due-date prefill follows the business payment
+ *  terms instead of a hardcoded +15 days — the +15 contradicted the
+ *  "due within 30 days" terms text the zinvoices print under the default
+ *  Net 30. The derivation mirrors the client-picker's data-terms-days
+ *  (termsKey → termsDays; due-on-receipt → the issue date itself). */
+describe("#829: new-zinvoice due-date prefill follows global payment terms", () => {
+  function v(terms: string) {
+    const db = {
+      query: (_sql: string) => ({
+        get: (..._a: unknown[]) => ({ value: terms }),
+        all: (..._a: unknown[]) => [],
+        run: (..._a: unknown[]) => {},
+      }),
+    } as unknown as Database;
+    return createInvoiceViews({
+      db,
+      qInvoices: { all: () => [] } as unknown as Statement,
+      layout: (_t: string, b: string) => b,
+      clientOptions: () => "",
+      getPublicToken: () => null,
+      stripeConfigured: () => false,
+      nextInvoiceNumber: () => "INV-0001",
+      invoiceTotals: () => ({ subtotal: 0, tax: 0, total: 0 }),
+      statusPill: (s: string) => s,
+      isOverdue: () => false,
+      unbilledByClient: () => [],
+    });
+  }
+  const dueInDays = (terms: string) => {
+    const p = v(terms).defaultNewInvParams();
+    return daysBetween(p.issue_date, p.due_date);
+  };
+  test("Net 30 -> due = issue + 30", () => {
+    expect(dueInDays("net_30")).toBe(30);
+  });
+  test("Net 15 -> due = issue + 15 (dynamic, not a new hardcode)", () => {
+    expect(dueInDays("net_15")).toBe(15);
+  });
+  test("due-on-receipt -> due = the issue date itself", () => {
+    expect(dueInDays("due_on_receipt")).toBe(0);
+  });
+  test("unset global terms -> Net 30 default", () => {
+    expect(dueInDays("")).toBe(30);
   });
 });

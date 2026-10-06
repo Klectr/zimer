@@ -3,7 +3,7 @@
  *  invoiceSheet is also returned so the public-views factory can reuse it. */
 
 import type { Database, Statement } from "bun:sqlite";
-import { addDays, daysBetween, esc, fmtDur, money, round2, shortDateRange, shortDateRangeYear, shortYmd, termsDescription, termsKey, todayStr } from "../lib/format.ts";
+import { addDays, daysBetween, esc, fmtDur, money, round2, shortDateRange, shortDateRangeYear, shortYmd, termsDays, termsDescription, termsKey, todayStr } from "../lib/format.ts";
 import { icon } from "../lib/icons.ts";
 import { getMeta } from "../db.ts";
 import { workspaceEmpty } from "../lib/demo.ts"; /* #300: empty-state CTA */
@@ -186,10 +186,15 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
 
   function defaultNewInvParams(): NewInvParams {
     const t = todayStr();
+    /* #829: the prefilled due date follows the global payment terms (Net 30
+       by default) — the hardcoded +15d contradicted the "due within N days"
+       terms text the zinvoices print. Mirrors the data-terms-days derivation
+       the client picker uses; due-on-receipt yields the issue date itself. */
+    const days = termsDays(termsKey(null, getMeta(db, "business_payment_terms"))) ?? 30;
     return {
       client_id: "", from: addDays(t, -13), to: addDays(t, 1),
       rate: "", number: nextInvoiceNumber(), issue_date: t,
-      due_date: addDays(t, 15), tax_rate: "0", notes: "", internal_notes: "",
+      due_date: addDays(t, days), tax_rate: "0", notes: "", internal_notes: "",
     };
   }
 
