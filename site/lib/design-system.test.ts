@@ -107,3 +107,44 @@ describe("update-check progress state (#406)", () => {
     expect(css).toContain(".tk-logo-spinning .tk-logo-hands { animation: none; }");
   });
 });
+
+/** #841: the theme scheme has one source of truth — :root defines the short
+ *  aliases once, the M3 primary tokens reference them, and no rule hardcodes
+ *  the primary hexes. A scheme change is one edit in :root. */
+describe("theme scheme single source of truth (#841)", () => {
+  const rootBlock = (() => {
+    const m = css.match(/:root\s*\{[^}]*\}/);
+    if (!m) throw new Error("locked-spec: :root block not found");
+    return m[0];
+  })();
+  const outsideRoot = css.replace(/:root\s*\{[^}]*\}/, "");
+
+  test(":root defines the short theme aliases with the scheme hexes", () => {
+    for (const [name, hex] of [
+      ["--primary", "#fb923c"],
+      ["--on-primary", "#442100"],
+      ["--primary-container", "#713d00"],
+      ["--on-primary-container", "#ffdcc2"],
+    ]) {
+      expect(rootBlock).toMatch(new RegExp(`${name}:\\s*${hex};`));
+    }
+  });
+
+  test("the M3 primary tokens reference the short aliases", () => {
+    for (const [token, alias] of [
+      ["--md-sys-color-primary", "--primary"],
+      ["--md-sys-color-on-primary", "--on-primary"],
+      ["--md-sys-color-primary-container", "--primary-container"],
+      ["--md-sys-color-on-primary-container", "--on-primary-container"],
+    ]) {
+      expect(rootBlock).toMatch(
+        new RegExp(`${token}:\\s*var\\(${alias}\\);`),
+      );
+    }
+  });
+
+  test("no primary hex is hardcoded outside :root", () => {
+    expect(outsideRoot).not.toMatch(/#fb923c/i);
+    expect(outsideRoot).not.toMatch(/#f2c14e/i);
+  });
+});

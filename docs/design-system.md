@@ -7,10 +7,14 @@ Material 3, dark theme. Everything below is grounded in
 
 | Token | Value | Use |
 |---|---|---|
-| `--md-sys-color-primary` | `#fb923c` | Primary actions, active states **only** |
-| `--md-sys-color-on-primary` | `#442100` | Text/icons on primary |
-| `--md-sys-color-primary-container` | `#713d00` | Tonal primary surfaces |
-| `--md-sys-color-on-primary-container` | `#ffe9bd` | Text on primary container |
+| `--primary` | `#fb923c` | **Theme scheme — the single source of truth** (change the scheme here) |
+| `--on-primary` | `#442100` | Text/icons on primary |
+| `--primary-container` | `#713d00` | Tonal primary surfaces |
+| `--on-primary-container` | `#ffdcc2` | Text on primary container |
+| `--md-sys-color-primary` | `var(--primary)` | Primary actions, active states **only** |
+| `--md-sys-color-on-primary` | `var(--on-primary)` | Text/icons on primary |
+| `--md-sys-color-primary-container` | `var(--primary-container)` | Tonal primary surfaces |
+| `--md-sys-color-on-primary-container` | `var(--on-primary-container)` | Text on primary container |
 | `--md-sys-color-surface` | `#131318` | Page background |
 | `--md-sys-color-on-surface` | `#e5e1e9` | Primary text |
 | `--md-sys-color-on-surface-variant` | `#cac4cf` | Secondary text |

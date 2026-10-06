@@ -4,7 +4,7 @@
  *  call site keeps working unchanged. */
 
 import type { Database, Statement } from "bun:sqlite";
-import { addDays, durationSeconds, entryInvoiceMark, entryIsLocked, esc, fmtDur } from "../lib/format.ts";
+import { addDays, durationSeconds, entryInvoiceMark, entryIsLocked, esc, fmtDur, schemeColor } from "../lib/format.ts";
 import { icon } from "../lib/icons.ts";
 import { workspaceEmpty } from "../lib/demo.ts"; /* #300: first-run hint */
 import type { Entry } from "../lib/types.ts";
@@ -212,7 +212,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       const h = Math.min(Math.max(trueH, 22), Math.max(roomPx, trueH));
       /* #273: 2px visual inset top and bottom so stacked cards don't touch.
          The positioning slot is unchanged; only the painted card shrinks. */
-      const color = e.client_color || "#9aa0a6"; // no-client: neutral gray, distinct from client colors
+      const color = schemeColor(e.client_color) || "#9aa0a6"; // no-client: neutral gray, distinct from client colors
       const running = !e.end_time;
       const overlap = sortedBlocks.some((o) => o.e !== e && o.a < b && o.b > a);
       /* #277: resize handles only on entries of 1 hour or more — the 12px
@@ -296,7 +296,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       <div class="week-clients">
         ${clientRows.map(c => `
           <span class="week-client">
-            <span class="week-client-dot"${c.color ? ` style="background:${esc(c.color)}"` : ""}></span>
+            <span class="week-client-dot"${c.color ? ` style="background:${esc(schemeColor(c.color))}"` : ""}></span>
             <span class="md-label-medium">${esc(c.name)}</span>
             <span class="md-label-medium muted">${fmtDur(c.secs)}</span>
           </span>`).join("")}
@@ -363,7 +363,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       const rows = entries.map((e) => {
         const a = toMin(e.start_time);
         const b = e.end_time ? toMin(e.end_time) : nowMin;
-        const color = e.client_color || "#9aa0a6"; // no-client: neutral gray, distinct from client colors
+        const color = schemeColor(e.client_color) || "#9aa0a6"; // no-client: neutral gray, distinct from client colors
         const running = !e.end_time;
         const locked = entryIsLocked(e); /* #334: sent/paid time is a frozen record */
         const mark = entryInvoiceMark(e);
