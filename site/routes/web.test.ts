@@ -255,3 +255,89 @@ describe("manual line items (#668)", () => {
     expect(db.query("SELECT COUNT(*) AS n FROM invoices").get()).toEqual({ n: 0 });
   });
 });
+
+/** #835: /manage defaults the two-pane detail when no ?client= is given.
+ *  With clients, the first client fills the detail pane (#805); with no
+ *  clients at all, the No-client row does. In both cases there is no
+ *  has-selection, so mobile still opens on the list. */
+describe("/manage default selection (#835)", () => {
+  function setupWith(rows: string[]) {
+    const db = createDb(mkdtempSync(join(tmpdir(), "tk-web-835-"))).db;
+    for (const name of rows) db.query("INSERT INTO clients (name) VALUES (?)").run(name);
+    const views = createManageViews({ db, layout: (_t: string, b: string) => b });
+    const noop = () => "";
+    const tenant = {
+      db, dbPath: "",
+      qRunning: { get: () => null } as any,
+      qOne: { get: () => null } as any,
+      qRange: { all: () => [] } as any,
+      qInvoice: { get: () => null } as any,
+      qInvoices: { all: () => [] } as any,
+      notFoundPage: noop, errorPage: noop,
+      dashboardPage: noop,
+      timerPartial: noop, todayPartial: noop, weekInner: noop, weekStrip: noop,
+      calendarPage: noop, editPage: () => null,
+      managePage: views.managePage, clientSelection: views.clientSelection,
+      clientDetailBody: views.clientDetailBody, clientListOob: views.clientListOob,
+      bizProfileSection: noop, clientSettingsForm: views.clientSettingsForm, settingsPage: noop,
+      invoicesPage: noop, invoiceNewPage: noop,
+      defaultNewInvParams: () => ({}), invoiceStep2: noop,
+      invoiceDetailBody: noop, invoiceListOob: noop, invoiceDoc: noop, publicInvoicePage: noop,
+      getInvoice: () => null, invoiceTotals: () => ({ subtotal: 0, tax: 0, total: 0 }),
+      nextInvoiceNumber: () => "INV-0001",
+      stripeLinkFor: async () => ({}),
+      unbilledEntries: () => [], groupToLineItems: () => [],
+      clientRestFrom: () => null, ensurePublicToken: () => "",
+      getPublicToken: () => null, mintPublicToken: () => "",
+      invoicePdfInput: () => ({} as any),
+      freezeInvoiceSnapshots: () => {},
+    };
+    const { handleWeb } = createWebRouter({
+      getTenant: () => tenant as any,
+      STATIC_DIR: "", TOKEN: "t",
+      authedPage: () => true,
+      tokensEqual: (a: string, b: string) => a === b,
+      html: (body: string, status = 200) => new Response(body, { status }),
+      json: (data: unknown, status = 200) => Response.json(data, { status }),
+      isHtmx: (req: Request) => req.headers.get("HX-Request") === "true",
+      csvResponse: (f: string) => new Response(f),
+      shareOrigin: () => "",
+      PORT: 3000,
+      loginPage: noop, signupPage: noop, hostedLoginPage: noop,
+      HOSTED: false, accounts: null,
+      changelogPage: () => [], termsPage: () => [],
+      notFoundPage: noop, noSuchInvoicePage: noop,
+      rateLimitPage: noop, errorPage: noop,
+      invoicePdf: () => new Uint8Array(), stripeConfigured: () => false,
+      workspaceEmpty: () => false, demoIds: () => [], seedDemoData: () => {},
+      removeDemoData: () => {}, entryToJson: (e: any) => e,
+    });
+    return { handleWeb };
+  }
+
+  async function getManage(handleWeb: any) {
+    const req = new Request("http://x/manage", { method: "GET" });
+    const res = await handleWeb(req, new URL(req.url), "/manage", "GET");
+    return { status: res.status, body: await res.text() };
+  }
+
+  test("zero clients: the No-client row fills the detail pane, no has-selection", async () => {
+    const { handleWeb } = setupWith([]);
+    const { status, body } = await getManage(handleWeb);
+    expect(status).toBe(200);
+    expect(body).toContain("Projects not assigned to a client");
+    expect(body).not.toContain("Select a client to manage");
+    expect(body).not.toContain("has-selection");
+    expect(body).toContain("client-row selected");
+  });
+
+  test("with clients: the first client fills the detail pane, no has-selection", async () => {
+    const { handleWeb } = setupWith(["Bytebot", "Acme"]);
+    const { status, body } = await getManage(handleWeb);
+    expect(status).toBe(200);
+    expect(body).toContain("Manage client Acme");
+    expect(body).not.toContain("Select a client to manage");
+    expect(body).not.toContain("has-selection");
+    expect(body).toContain("client-row selected");
+  });
+});

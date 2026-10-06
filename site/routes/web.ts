@@ -552,6 +552,9 @@ export function createWebRouter(deps: WebDeps) {
           if (!sel) {
             const first = db.query("SELECT * FROM clients ORDER BY name").get() as any;
             if (first) { sel = { kind: "client", client: first }; isDefault = true; }
+            /* #835: with no clients at all, the No-client row is the first
+               row — default to it so the detail pane has content. */
+            else { sel = { kind: "none" }; isDefault = true; }
           }
           if (sp.get("fragment") === "detail" && isHtmx(req)) {
             if (!sel) return new Response("Client not found.", { status: 404 });
