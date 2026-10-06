@@ -207,9 +207,16 @@ export function createCalendarViews(deps: CalendarViewDeps) {
          render at true height (thin but truthful, gap preserved); the
          floor still applies when there's room. Never shrink below true
          height, so overlapping entries keep full height. */
-      const nextA = i + 1 < sortedBlocks.length ? sortedBlocks[i + 1].a : Infinity;
+      /* #857: the last entry of the day has no next entry, but the lane still
+         ends at midnight — cap the minimum-height floor there too, so a short
+         entry starting near 24:00 can't poke past the lane's bottom edge.
+         laneRoomPx is a hard clip (the +2 offsets the #273 top inset); it may
+         cut into the a+15 overlap slop but never below the genuine duration,
+         since b <= 1439 < 1440 always. */
+      const nextA = i + 1 < sortedBlocks.length ? sortedBlocks[i + 1].a : 1440;
       const roomPx = ((nextA - a) / 60) * calHourPx;
-      const h = Math.min(Math.max(trueH, 22), Math.max(roomPx, trueH));
+      const laneRoomPx = ((1440 - a) / 60) * calHourPx + 2;
+      const h = Math.min(Math.max(trueH, 22), Math.max(roomPx, trueH), laneRoomPx);
       /* #273: 2px visual inset top and bottom so stacked cards don't touch.
          The positioning slot is unchanged; only the painted card shrinks. */
       const color = schemeColor(e.client_color) || "#9aa0a6"; // no-client: neutral gray, distinct from client colors
@@ -968,7 +975,13 @@ export function createCalendarViews(deps: CalendarViewDeps) {
                radius and stretched into an oval. Toggle it on the true
                height, like the server render and the resize path do. */
             var trueH=((nowMin-sm)/60)*HOUR;
-            run[i].style.height=Math.max(trueH,26).toFixed(1)+'px';
+            /* #857: same midnight cap as the server geometry — the 26px floor
+               must not push a late-night running entry past the lane's bottom
+               edge. The -2 offsets the card's +2 top inset (the tick sets raw
+               height, unlike the server's -4 inset); the max() never shrinks
+               below true height. */
+            var capH=((1440-sm)/60)*HOUR-2;
+            run[i].style.height=Math.min(Math.max(trueH,26),Math.max(capH,trueH)).toFixed(1)+'px';
             run[i].classList.toggle('cal-compact',trueH<26);
           }
         })(strips[s]);
