@@ -739,9 +739,12 @@ describe("calendar slot theme color (#841)", () => {
  *  lane's purple night band scrolled underneath and peeked through the
  *  header's rounded corner cutouts (#847). Now the sticky header is opaque
  *  page-bg and square (nothing can peek through it); a ::before top cutter
- *  pinned under the header re-rounds the lane's visible top edge, and the
- *  ::after bottom cutter re-rounds the visible bottom edge. */
-describe("calendar column rounding (#845, #847)", () => {
+ *  on the lane re-rounds the lane's visible top edge, and the ::after bottom
+ *  cutter re-rounds the visible bottom edge. #849: the top cutter moved from
+ *  the header to the lane so it paints below entries (z-0 vs entries z-1) —
+ *  the header-anchored cutter bit dark specks out of entries touching the
+ *  lane top. */
+describe("calendar column rounding (#845, #847, #849)", () => {
   test("sticky day header is opaque page-bg and square — no corner cutouts to peek through", async () => {
     const css = await Bun.file("site/static/style.css").text();
     const head = css.match(/body\.app-fixed \.cal-day-head,\s*body\.app-fixed \.cal-gutter-spacer\s*\{[^}]*\}/);
@@ -751,13 +754,23 @@ describe("calendar column rounding (#845, #847)", () => {
   });
   test("top cutter re-rounds the lane's visible top edge directly under the header", async () => {
     const css = await Bun.file("site/static/style.css").text();
-    const cutter = css.match(/body\.app-fixed \.cal-day-head::before\s*\{[^}]*\}/);
+    const cutter = css.match(/\.cal-day-col::before\s*\{[^}]*\}/);
     expect(cutter).not.toBeNull();
-    expect(cutter![0]).toMatch(/position:\s*absolute/);
-    expect(cutter![0]).toMatch(/top:\s*100%/);
+    expect(cutter![0]).toMatch(/position:\s*sticky/);
+    expect(cutter![0]).toMatch(/top:\s*var\(--cal-head-h\)/);
+    expect(cutter![0]).toMatch(/z-index:\s*0/);
     expect(cutter![0]).toMatch(/background:\s*var\(--md-sys-color-surface\)/);
     expect(cutter![0]).toMatch(/pointer-events:\s*none/);
     expect(cutter![0]).toMatch(/mask:/);
+  });
+  test("#849: entries paint above both corner cutters so cutters can't bite them", async () => {
+    const css = await Bun.file("site/static/style.css").text();
+    const entry = css.match(/\.cal-entry\s*\{[^}]*\}/);
+    expect(entry).not.toBeNull();
+    expect(entry![0]).toMatch(/z-index:\s*1/);
+    const bottomCutter = css.match(/\.cal-day-col::after\s*\{[^}]*\}/);
+    expect(bottomCutter).not.toBeNull();
+    expect(bottomCutter![0]).toMatch(/z-index:\s*0/);
   });
   test("lane tone is a shared variable across day states", async () => {
     const css = await Bun.file("site/static/style.css").text();

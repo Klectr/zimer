@@ -47,6 +47,9 @@
   --md-sys-shape-corner-extra-large: 28px;
   --md-sys-shape-corner-full: 999px;
 
+  /* #849: sticky day-header height — the lane's top cutter pins just under it */
+  --cal-head-h: 64px;
+
   /* state-layer opacities */
   --md-state-hover: 0.08;
   --md-state-focus: 0.1;
@@ -954,11 +957,18 @@ body.app-fixed .cal-gutter-spacer {
    tone + rounded top, but the lane's purple night band slides underneath while
    scrolling and peeked through the header's rounded corner cutouts. Square and
    opaque, nothing can ever peek through it. The lane's visible top edge is
-   re-rounded below it by the ::before cutter, so columns still read rounded
+   re-rounded below it by the lane's ::before cutter, so columns still read rounded
    on top at every scroll position. (::after is the day-stats tooltip.) */
-body.app-fixed .cal-day-head::before {
-  content: ""; position: absolute; top: 100%; left: 0; right: 0;
+/* #849: the top cutter lives on the lane itself (not the header) so it paints
+   BELOW entries. First flex child, sticky just under the sticky header; the
+   negative margin collapses its layout footprint. Entries (z-1) cover it, so
+   it can never bite an entry's top corners the way the old header-anchored
+   cutter did. Same crescent mask as the ::after bottom cutter, mirrored. */
+.cal-day-col::before {
+  content: ""; display: block; flex: none; width: 100%;
   height: var(--md-sys-shape-corner-medium);
+  margin-bottom: calc(-1 * var(--md-sys-shape-corner-medium));
+  position: sticky; top: var(--cal-head-h); z-index: 0;
   background: var(--md-sys-color-surface);
   -webkit-mask:
     radial-gradient(circle var(--md-sys-shape-corner-medium) at 100% 100%, transparent calc(var(--md-sys-shape-corner-medium) - 1px), #000 var(--md-sys-shape-corner-medium)) left top / var(--md-sys-shape-corner-medium) var(--md-sys-shape-corner-medium) no-repeat,
@@ -976,7 +986,7 @@ body.app-fixed .cal-day-head::before {
   grid-template-columns: 44px repeat(7, minmax(0, 1fr));
   gap: 8px;
 }
-.cal-gutter-spacer { height: 64px; } /* matches the two-line day header */
+.cal-gutter-spacer { height: var(--cal-head-h); } /* matches the two-line day header */
 .cal-gutter { position: relative; }
 .cal-hours { height: calc(var(--cal-hour) * 24); }
 .cal-hour-label {
@@ -993,7 +1003,7 @@ body.app-fixed .cal-day-head::before {
 }
 @keyframes cal-day-enter { from { opacity: 0; transform: translateY(12px); } }
 /* #69: header is two lines (weekday + date) — per-day stats moved into an M3 plain tooltip */
-.cal-day-head { position: relative; text-align: center; padding: 10px 4px 8px; min-height: 64px; }
+.cal-day-head { position: relative; text-align: center; padding: 10px 4px 8px; min-height: var(--cal-head-h); }
 .cal-day-head[data-tip] { cursor: default; }
 .cal-day-head[data-tip]::after {
   content: attr(data-tip);
@@ -1051,8 +1061,9 @@ body.app-fixed .cal-day-head::before {
 }
 /* #845: the lane's own rounded bottom scrolls out of view — a sticky cutter
    re-rounds the visible bottom edge at every scroll position. Only the two
-   bottom-corner crescents paint (page bg); entries and night bands sliding
-   underneath get clean rounded cutouts instead of square cuts. */
+   bottom-corner crescents paint (page bg). #849: the cutter sits at z-0,
+   below entries (z-1) so it can never bite them; night bands sliding
+   underneath still get clean rounded cutouts instead of square cuts. */
 .cal-day-col::after {
   content: ""; display: block; flex: none;
   /* margin-top: auto parks the cutter at the lane's end in normal flow, so
@@ -1060,7 +1071,7 @@ body.app-fixed .cal-day-head::before {
      end is scrolled below it. At max scroll it sits exactly over the lane's
      own rounded corners and its crescents blend invisibly into them. */
   margin-top: auto;
-  position: sticky; bottom: 0; z-index: 6;
+  position: sticky; bottom: 0; z-index: 0;
   height: var(--md-sys-shape-corner-medium);
   background: var(--md-sys-color-surface);
   -webkit-mask:
@@ -1104,6 +1115,9 @@ body.app-fixed .cal-day-head::before {
   padding: 4px 8px; overflow: hidden; cursor: pointer;
   font-size: 0.75rem; line-height: 1.35;
   min-width: 0;
+  /* #849: above the lane's ::before/::after corner cutters (z-0) so they can
+     never bite an entry's corners; still below the sticky header (z-5). */
+  z-index: 1;
 }
 /* #275: sub-30-minute entries render at the 22px floor — tighter padding,
    smaller single-line text, and no duration line (no room for two lines).
