@@ -242,7 +242,13 @@ export function createCalendarViews(deps: CalendarViewDeps) {
          carries <em> markup for untitled entries, which screen readers
          would announce as literal tags. */
       const label = `${esc(e.description || "No description")}, ${dur}${markA11y}`;
-      return `<div class="cal-entry${running ? " running" : ""}${overlap ? " overlap" : ""}${compact ? " cal-compact" : ""}${mark ? " invoiced" : ""}"
+      /* #851: an entry ending at midnight touches the lane's bottom edge — flag
+         it so its bottom corners get the lane's medium radius. Pre-#849 the
+         z-6 bottom cutter stamped that rounding over entries; post-#849 the
+         cutter sits below entries (z-0, no fringe) and edge entries fell back
+         to their small corners, reading as sharp. */
+      const edgeBottom = b >= 1439 && !compact;
+      return `<div class="cal-entry${running ? " running" : ""}${overlap ? " overlap" : ""}${compact ? " cal-compact" : ""}${mark ? " invoiced" : ""}${edgeBottom ? " cal-edge-bottom" : ""}"
           style="top:${(top + 2).toFixed(1)}px;height:${(h - 4).toFixed(1)}px;--c:${esc(color)}"
           data-id="${e.id}" data-desc="${esc(e.description)}" data-project-id="${e.project_id ?? ""}"
           data-date="${day}" data-start="${toHM(a)}" data-end="${running ? "" : toHM(Math.min(b, 1439))}"

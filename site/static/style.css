@@ -1135,6 +1135,15 @@ body.app-fixed .cal-gutter-spacer {
 .cal-entry.cal-compact .cal-entry-desc { flex: 1; min-width: 0; }
 .cal-entry.cal-compact .cal-entry-dur { display: none; }
 .cal-entry:hover { filter: brightness(1.08); }
+/* #851: an entry touching the lane's bottom edge (server-flagged
+   cal-edge-bottom) gets the lane's medium corner radius on its bottom corners.
+   Pre-#849 the z-6 bottom cutter stamped that rounding over entries; post-#849
+   the cutter sits below entries so it can't fringe them, but edge entries fell
+   back to small corners and read as sharp. Compact pills keep their 999px. */
+.cal-entry.cal-edge-bottom:not(.cal-compact) {
+  border-bottom-left-radius: var(--md-sys-shape-corner-medium);
+  border-bottom-right-radius: var(--md-sys-shape-corner-medium);
+}
 /* In-place week refresh (#65): load-entrance animations are suppressed while
    the #week section is swapped, so saving an entry never replays the page. */
 #week.no-enter [data-enter],
