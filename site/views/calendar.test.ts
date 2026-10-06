@@ -612,7 +612,10 @@ describe("running entry pill sync (#704)", () => {
   test("the toggle keys off the unfloored height, not the 26px floor", async () => {
     const s = await placeNowSrc();
     expect(s).toMatch(/var trueH=\(\(nowMin-sm\)\/60\)\*HOUR;/);
-    expect(s).toMatch(/style\.height=Math\.max\(trueH,26\)/);
+    /* #857: the tick now caps the floor at midnight; the toggle still keys
+       off unfloored trueH. */
+    expect(s).toMatch(/var capH=\(\(1440-sm\)\/60\)\*HOUR-2;/);
+    expect(s).toMatch(/style\.height=Math\.min\(Math\.max\(trueH,26\),Math\.max\(capH,trueH\)\)/);
   });
 });
 
@@ -872,5 +875,70 @@ describe("calendar top-edge rounding (#853)", () => {
     /* compact pills keep their 999px rounding — never flagged. */
     expect(classesFor(html, 33)).not.toContain("cal-edge-top");
     expect(classesFor(html, 33)).toContain("cal-compact");
+  });
+});
+
+/** #857: a short entry starting near midnight got the 22px minimum-height
+ *  floor with no room cap, so its card poked past the lane's bottom edge.
+ *  Midnight now caps the floor (same shape as #279's next-entry cap), and
+ *  the placeNow tick applies the same cap to running entries. */
+describe("calendar midnight lane cap (#857)", () => {
+  const stubQuery = () => ({
+    get: (..._a: unknown[]) => ({ n: 1 }),
+    all: (..._a: unknown[]) => [],
+  });
+  /* 2026-09-21 is CDT (UTC-5): 04:50Z is 23:50 local. */
+  const lateEntry = {
+    id: 34, description: "almost midnight", project_id: null, project_name: null,
+    client_name: null, client_color: null, invoice_id: null,
+    invoice_number: null, invoice_status: null,
+    start_time: "2026-09-22T04:50:00.000Z", end_time: "2026-09-22T04:55:00.000Z",
+  };
+  const middayShortEntry = {
+    id: 35, description: "midday short", project_id: null, project_name: null,
+    client_name: null, client_color: null, invoice_id: null,
+    invoice_number: null, invoice_status: null,
+    start_time: "2026-09-21T15:00:00.000Z", end_time: "2026-09-21T15:05:00.000Z",
+  };
+  function weekInnerHtml(entries: unknown[]) {
+    const db = {
+      query: (_sql: string) => ({ get: () => ({ n: 1 }), all: () => entries }),
+    } as unknown as Database;
+    const views = createCalendarViews({
+      db,
+      qOne: stubQuery(),
+      qRange: stubQuery(),
+      entrySelect: "SELECT",
+      layout: (_t: string, b: string) => b,
+      projectOptions: () => "",
+      weekTargetBar: () => "",
+      calHourPx: 64,
+    } as any);
+    return views.weekInner("2026-09-20", "America/Chicago");
+  }
+  function cardBox(html: string, id: number): { top: number; height: number; cls: string } {
+    const m = html.match(new RegExp(`style="top:([0-9.]+)px;height:([0-9.]+)px[^"]*"[^>]*data-id="${id}"`));
+    if (!m) throw new Error(`no cal-entry card with data-id=${id}`);
+    const c = html.match(new RegExp(`class="([^"]*)"[^>]*data-id="${id}"`));
+    return { top: parseFloat(m[1]), height: parseFloat(m[2]), cls: c ? c[1] : "" };
+  }
+  test("last entry of the day never extends past the lane bottom (24 * 64px)", () => {
+    const html = weekInnerHtml([lateEntry]);
+    const box = cardBox(html, 34);
+    expect(box.top + box.height).toBeLessThanOrEqual(24 * 64);
+    /* still compact — the floor treatment is capped, not removed. */
+    expect(box.cls).toContain("cal-compact");
+  });
+  test("midday short entries still get the full 22px floor", () => {
+    const html = weekInnerHtml([middayShortEntry]);
+    const box = cardBox(html, 35);
+    /* 22px floor minus the 4px #273 inset. */
+    expect(box.height).toBeCloseTo(18, 0);
+    expect(box.cls).toContain("cal-compact");
+  });
+  test("placeNow caps the running-entry floor at midnight", async () => {
+    const src = await Bun.file("site/views/calendar.ts").text();
+    const placeNow = src.slice(src.indexOf("function placeNow()"), src.indexOf("function syncCalHint()"));
+    expect(placeNow).toContain("((1440-sm)/60)*HOUR");
   });
 });
