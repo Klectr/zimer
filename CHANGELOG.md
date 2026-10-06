@@ -2,6 +2,12 @@
 
 What's new in Zimer, newest first.
 
+## 2026-10-06
+
+- **Whole-hour durations read cleaner.** A one-hour entry now shows "1h" instead of "1h 00m" — in the Today list, on the calendar, and everywhere durations render.
+- **One gold action on the demo banner.** The "Zinvoice the sample week" link in the timer page's demo banner is a text button now, so Start stays the screen's only emphasized action.
+- **Update-check wording fixed.** Settings > Updates said to press "the button below" — the button sits beside the text. It says "the button" now.
+
 ## 2026-10-05
 
 - **Downloads and backups carry the Zimer name.** CSV exports and on-disk backup files that still said timekeep-* are named zimer-* now.
