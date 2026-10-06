@@ -4,7 +4,7 @@
  *  to /login); authed hosted users fall through to the app.
  *
  *  Same minimal public chrome as /pricing: no app nav, noindex, M3 dark
- *  theme, gold #f2c14e for the CTA only, no emoji. Copy stays short:
+ *  theme, pumpkin #fb923c for the CTA only, no emoji. Copy stays short:
  *  headline, what it does, $12/mo + 14-day trial, CTA to /signup. */
 
 import { icon, logo } from "../lib/icons.ts";

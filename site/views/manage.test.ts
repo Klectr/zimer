@@ -10,7 +10,7 @@ import { createManageViews } from "./manage.ts";
 
 function testDb() {
   const db = createDb(mkdtempSync(join(tmpdir(), "tk-manage-"))).db;
-  db.query("INSERT INTO clients (name, color) VALUES ('Acme', '#f2c14e')").run();
+  db.query("INSERT INTO clients (name, color) VALUES ('Acme', '#fb923c')").run();
   const client = db.query("SELECT * FROM clients").get() as any;
   db.query("INSERT INTO projects (client_id, name) VALUES (?, 'Website')").run(client.id);
   return { db, client };

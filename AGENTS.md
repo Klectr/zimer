@@ -29,7 +29,7 @@ This is the most violated thing by new agents, so it's up front, not linked:
 - **Google Material 3, dark theme.** Follow the M3 spec, don't improvise.
 - **No hard borders.** Separate content with whitespace, color, shade, and tone —
   never `1px solid` dividers.
-- **Accent:** gold `#f2c14e` (primary), `#3a2a00` on-primary. Use sparingly:
+- **Accent:** pumpkin `#fb923c` (primary), `#442100` on-primary. Use sparingly:
   primary actions and active states only.
 - **Tonal, borderless fields.** Soft shadows, M3 shape scale (4/8/12/16/28px).
 - **Icons, never emoji/glyphs.** Actions use the `icon(name)` system in

@@ -22,7 +22,7 @@ export function seedDemoData(db: Database): void {
   const insProject = db.query("INSERT INTO projects (name, client_id) VALUES (?, ?)");
   const insEntry = db.query("INSERT INTO time_entries (project_id, description, start_time, end_time) VALUES (?, ?, ?, ?)");
   const demoClients: [string, string, number][] = [
-    ["Acme Studios", "#f2c14e", 120],
+    ["Acme Studios", "#fb923c", 120],
     ["Brightline Co", "#7cc4ff", 95],
     ["Northwind Traders", "#b39ddb", 150],
   ];

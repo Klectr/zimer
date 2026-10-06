@@ -2,16 +2,16 @@
  *
  * Tokens follow md.sys / md.comp naming from the M3 spec:
  * ref -> sys (these roles) -> comp (the classes below).
- * Seed: gold (#f2c14e family). Dark scheme, tonal spot (no shadows).
+ * Seed: pumpkin (#fb923c family). Dark scheme, tonal spot (no shadows).
  */
 
 /* ---------------- sys tokens: color (dark) ---------------- */
 :root {
   color-scheme: dark;
-  --md-sys-color-primary: #f2c14e;
-  --md-sys-color-on-primary: #3a2a00;
-  --md-sys-color-primary-container: #6b4e12;
-  --md-sys-color-on-primary-container: #ffe9bd;
+  --md-sys-color-primary: #fb923c;
+  --md-sys-color-on-primary: #442100;
+  --md-sys-color-primary-container: #713d00;
+  --md-sys-color-on-primary-container: #ffdcc2;
   --md-sys-color-secondary-container: #454654;
   --md-sys-color-on-secondary-container: #e4e1f2;
   --md-sys-color-error: #ffb4ab;
@@ -107,7 +107,7 @@
 
 /* ---------------- global scrollbars (M3 tonal, #191) ---------------- */
 /* Thin rounded tonal thumbs, transparent track — every scroll region
-   (calendar grid, lists, dialogs, page) inherits this. Gold stays
+   (calendar grid, lists, dialogs, page) inherits this. Pumpkin stays
    reserved for CTAs, so thumbs use surface tokens only. */
 * {
   scrollbar-width: thin;
@@ -688,7 +688,7 @@ input[type="number"] {
   align-items: center;
   gap: 8px;
 }
-/* Live tracking indicator (#51): gold dot pulsing while a timer runs.
+/* Live tracking indicator (#51): pumpkin dot pulsing while a timer runs.
    The #41 reduced-motion guard collapses this to a static dot. */
 .live-dot {
   width: 8px;
@@ -1318,7 +1318,7 @@ body.app-fixed .cal-gutter-spacer {
 .status-row { display: flex; align-items: flex-start; gap: 16px; margin: 0; }
 .status-row > svg { flex: none; width: 24px; height: 24px; margin-top: 2px;
   color: var(--md-sys-color-on-surface-variant); }
-/* Licensed is an active state — the gold check stays per the design doc. */
+/* Licensed is an active state — the pumpkin check stays per the design doc. */
 .status-row-licensed > svg { color: var(--md-sys-color-primary); }
 /* #404: per-status update icons — an available update prompts a primary
    action, so it takes primary; unreachable is an error state. */
@@ -1564,7 +1564,7 @@ body.app-fixed .cal-gutter-spacer {
 /* #303: public changelog shares the minimal public chrome. */
 .page-changelog { max-width: 720px; margin: 0 auto; padding: 32px 24px 48px; }
 .changelog-title { display: flex; align-items: center; gap: 12px; margin-bottom: 8px;
-  color: var(--md-sys-color-primary); } /* branded gold */
+  color: var(--md-sys-color-primary); } /* branded pumpkin */
 .changelog-release { margin-top: 24px; }
 .changelog-release h2 { margin: 0 0 8px; color: var(--md-sys-color-primary); }
 .changelog-release ul { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
@@ -1572,7 +1572,7 @@ body.app-fixed .cal-gutter-spacer {
 .public-pay { text-align: center; margin: 28px 0 8px; }
 .public-pay-btn { font-size: 1.0625rem; padding: 14px 32px; border-radius: 999px; }
 /* #731: hosted landing page — hero, feature grid, pricing. Minimal public
-   chrome (no app nav), M3 dark, gold reserved for the primary CTA. */
+   chrome (no app nav), M3 dark, pumpkin reserved for the primary CTA. */
 .page-landing { max-width: 1080px; margin: 0 auto;
   padding: clamp(24px, 7vw, 40px) var(--layout-body-margin) clamp(40px, 9vw, 56px); }
 
@@ -1669,7 +1669,7 @@ body.app-fixed .cal-gutter-spacer {
 .landing-foot a:hover { color: var(--md-sys-color-on-surface); }
 
 /* Reusable M3 Expressive determinate progress bar, ported from
-   homeschool-planner's dashboard (#85). The gold fill is wave-masked and
+   homeschool-planner's dashboard (#85). The pumpkin fill is wave-masked and
    ripples while under the target; once the target is met it settles to a flat
    fill with a one-pass sheen. The grow-in sweep (#44) is kept, `no-enter`
    still suppresses it, and the ripple/sheen only run with motion allowed.
@@ -1681,12 +1681,12 @@ body.app-fixed .cal-gutter-spacer {
 .m3-progress-track { flex: 1; min-width: 120px; height: 14px; display: flex; align-items: center; gap: 4px; }
 .m3-progress-fill-wrap { height: 100%; overflow: hidden; border-radius: 999px; transition: width 300ms;
   animation: m3-progress-fill var(--motion-duration-medium4) var(--motion-easing-emphasized-decelerate) var(--motion-duration-short2) backwards; }
-.m3-progress-fill-wave { height: 100%; width: 100%; background: #f2c14e;
+.m3-progress-fill-wave { height: 100%; width: 100%; background: #fb923c;
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 14'%3E%3Cpath d='M0 7 Q10 2 20 7 T40 7' fill='none' stroke='white' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E") 0 50% / 40px 100% repeat-x;
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 14'%3E%3Cpath d='M0 7 Q10 2 20 7 T40 7' fill='none' stroke='white' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E") 0 50% / 40px 100% repeat-x; }
 .m3-progress-remainder { height: 4px; flex: 1; min-width: 0; border-radius: 999px;
   background: var(--md-sys-color-surface-container-highest); }
-.m3-progress-dot { height: 4px; width: 4px; flex: none; border-radius: 999px; background: #f2c14e; }
+.m3-progress-dot { height: 4px; width: 4px; flex: none; border-radius: 999px; background: #fb923c; }
 @media (prefers-reduced-motion: no-preference) {
   .m3-progress-fill-wave { animation: m3-progress-wave-slide 1.6s linear infinite; }
 }
@@ -1696,7 +1696,7 @@ body.app-fixed .cal-gutter-spacer {
 }
 .m3-progress-track.complete { height: 4px; display: block; overflow: hidden; border-radius: 999px;
   background: var(--md-sys-color-surface-container-highest); }
-.m3-progress-track.complete .m3-progress-fill { height: 100%; border-radius: inherit; background: #f2c14e;
+.m3-progress-track.complete .m3-progress-fill { height: 100%; border-radius: inherit; background: #fb923c;
   position: relative; overflow: hidden;
   animation: m3-progress-fill var(--motion-duration-medium4) var(--motion-easing-emphasized-decelerate) var(--motion-duration-short2) backwards; }
 .m3-progress-track.complete .m3-progress-fill::after { content: ""; position: absolute; inset: 0; width: 28%;
@@ -1764,7 +1764,7 @@ body.app-fixed .cal-gutter-spacer {
    with the body content below. */
 .inv-modern-title { font-size: 1.875rem; line-height: 34px; font-weight: 700; letter-spacing: -0.5px; }
 .inv-modern-title::after { content: ""; display: block; width: 56px; height: 4px; border-radius: 2px;
-  background: #f2c14e; margin-top: 10px; }
+  background: #fb923c; margin-top: 10px; }
 .inv-modern-right { text-align: right; }
 .inv-modern-number { font-size: 1.0625rem; font-weight: 700; }
 .inv-modern-right .inv-modern-badge { margin-top: 12px; }
@@ -1776,7 +1776,7 @@ body.app-fixed .cal-gutter-spacer {
 .inv-dates-line .inv-date-sep { margin: 0 0.25em; }
 /* #612: Bill to left, From right. */
 .inv-from { margin-left: auto; text-align: right; }
-.inv-modern-badge { display: inline-block; background: #f2c14e; color: #1c1c1f; font-size: 0.6875rem; font-weight: 700;
+.inv-modern-badge { display: inline-block; background: #fb923c; color: #1c1c1f; font-size: 0.6875rem; font-weight: 700;
   letter-spacing: 1px; text-transform: uppercase; padding: 6px 14px; border-radius: 4px; }
 .inv-modern-badge.paid { background: #2e9e4f; color: #fff; }
 /* #831: draft badge mirrors .pill-draft — a draft was never sent, so it gets

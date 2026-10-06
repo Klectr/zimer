@@ -622,7 +622,7 @@ export function createWebRouter(deps: WebDeps) {
         if (path === "/clients" && method === "POST") {
           const form = await req.formData();
           const r = db.query("INSERT INTO clients (name, color, rate) VALUES (?, ?, ?) RETURNING id")
-            .get(String(form.get("name")), String(form.get("color") || "#f2c14e"),
+            .get(String(form.get("name")), String(form.get("color") || "#fb923c"),
                  Number(form.get("rate") || 0)) as any;
           /* #367: plain POST (see the add-client form) — land on the new
              client selected, on every width. */

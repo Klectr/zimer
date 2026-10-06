@@ -5,7 +5,7 @@
  * fonts so no embedding needed). All text is sanitized to ASCII so string
  * lengths equal byte lengths for the xref table.
  *
- * Renders a single invoice design (Modern, #233): dark header band, gold
+ * Renders a single invoice design (Modern, #233): dark header band, pumpkin
  * accent rule, status badge, letter-spaced labels, zebra rows, tinted total
  * row. Shared assembly (pages → xref PDF) lives in assemblePdf.
  */
@@ -240,9 +240,9 @@ function drawLogo(doc: PdfDoc, x: number, topY: number, size: number, rgb: [numb
 }
 
 /* ---------------- modern (#233) ----------------
- * Dark header band with a gold accent rule, status as a filled badge,
+ * Dark header band with a pumpkin accent rule, status as a filled badge,
  * letter-spaced labels, zebra-striped line items, tinted total row. */
-const GOLD: [number, number, number] = [0.949, 0.757, 0.306]; // #f2c14e
+const PUMPKIN: [number, number, number] = [0.984, 0.573, 0.235]; // #fb923c
 const INK: [number, number, number] = [0.11, 0.11, 0.13];
 const PAPER: [number, number, number] = [0.965, 0.965, 0.967];
 const TINT: [number, number, number] = [1.0, 0.961, 0.882];
@@ -267,7 +267,7 @@ function statusBadge(doc: PdfDoc, rightX: number, yy: number, status: string) {
   const label = paid ? "PAID" : draft ? "DRAFT" : "UNPAID";
   const pw = label.length * 6.4 + 20, ph = 20;
   const x = rightX - pw;
-  doc.fill(x, yy - 6, pw, ph, paid ? [0.16, 0.55, 0.28] : draft ? DRAFT_GRAY : GOLD);
+  doc.fill(x, yy - 6, pw, ph, paid ? [0.16, 0.55, 0.28] : draft ? DRAFT_GRAY : PUMPKIN);
   doc.text(x + 10, yy, 9, label, true, false, paid ? WHITE : INK);
 }
 
@@ -280,7 +280,7 @@ function drawModern(inv: PdfInvoice, doc: PdfDoc) {
   drawLogo(doc, M, PAGE_H - 28, logoSize, WHITE);
   const titleX = M + logoSize + 14;
   doc.text(titleX, PAGE_H - 62, 30, "ZINVOICE", true, false, WHITE);
-  doc.fill(titleX, PAGE_H - 74, 72, 3.5, GOLD);
+  doc.fill(titleX, PAGE_H - 74, 72, 3.5, PUMPKIN);
   doc.rtext(RIGHT, PAGE_H - 52, 15, inv.number, true, WHITE);
   statusBadge(doc, RIGHT, PAGE_H - 74, inv.status);
   doc.y = PAGE_H - bandH - 36;
