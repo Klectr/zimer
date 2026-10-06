@@ -733,3 +733,36 @@ describe("calendar slot theme color (#841)", () => {
     expect(tag).toContain("--c:#7cc4ff");
   });
 });
+
+/** #845: day columns keep rounded top/bottom corners at every scroll position.
+ *  The rounding lives on the sticky header (top) and a sticky bottom cutter
+ *  (bottom) instead of the lane's own ends, which scroll out of view. */
+describe("calendar column rounding (#845)", () => {
+  test("sticky day header carries the column's rounded top in the lane tone", async () => {
+    const css = await Bun.file("site/static/style.css").text();
+    const head = css.match(/body\.app-fixed \.cal-day-head\s*\{[^}]*\}/);
+    expect(head).not.toBeNull();
+    expect(head![0]).toMatch(/border-radius:\s*var\(--md-sys-shape-corner-medium\) var\(--md-sys-shape-corner-medium\) 0 0/);
+    expect(head![0]).toMatch(/background:\s*var\(--lane-bg\)/);
+  });
+  test("lane tone is a shared variable across day states", async () => {
+    const css = await Bun.file("site/static/style.css").text();
+    expect(css).toMatch(/\.cal-day\s*\{\s*--lane-bg:/);
+    expect(css).toMatch(/\.cal-day\.today\s*\{\s*--lane-bg:/);
+    expect(css).toMatch(/\.cal-day\.paced-short\s*\{\s*--lane-bg:/);
+    expect(css).toMatch(/\.cal-day-col\s*\{[^}]*background-color:\s*var\(--lane-bg\)/);
+  });
+  test("lane keeps only bottom rounding; sticky cutter re-rounds the visible bottom", async () => {
+    const css = await Bun.file("site/static/style.css").text();
+    const lane = css.match(/\.cal-day-col\s*\{[^}]*\}/);
+    expect(lane).not.toBeNull();
+    expect(lane![0]).toMatch(/border-radius:\s*0 0 var\(--md-sys-shape-corner-medium\) var\(--md-sys-shape-corner-medium\)/);
+    const cutter = css.match(/\.cal-day-col::after\s*\{[^}]*\}/);
+    expect(cutter).not.toBeNull();
+    expect(cutter![0]).toMatch(/position:\s*sticky/);
+    expect(cutter![0]).toMatch(/bottom:\s*0/);
+    expect(cutter![0]).toMatch(/margin-top:\s*auto/);
+    expect(cutter![0]).toMatch(/pointer-events:\s*none/);
+    expect(cutter![0]).toMatch(/mask:/);
+  });
+});
