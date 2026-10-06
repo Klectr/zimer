@@ -5,7 +5,7 @@
 
 import { join, normalize, sep } from "node:path";
 import type { Database, Statement } from "bun:sqlite";
-import { addDays, csvCell, entryIsLocked, esc, isPaymentTermsKey, round2, termsDescription, termsDays, termsKey, todayStr } from "../lib/format.ts";
+import { addDays, csvCell, entryIsLocked, esc, isPaymentTermsKey, round2, termsDays, termsKey, todayStr } from "../lib/format.ts";
 import type { Entry, Invoice, InvoiceItem } from "../lib/types.ts";
 import type { ClientSel } from "../views/manage.ts"; /* #367 */
 import type { PdfInvoice } from "../pdf.ts";
