@@ -734,16 +734,30 @@ describe("calendar slot theme color (#841)", () => {
   });
 });
 
-/** #845: day columns keep rounded top/bottom corners at every scroll position.
- *  The rounding lives on the sticky header (top) and a sticky bottom cutter
- *  (bottom) instead of the lane's own ends, which scroll out of view. */
-describe("calendar column rounding (#845)", () => {
-  test("sticky day header carries the column's rounded top in the lane tone", async () => {
+/** #845/#847: day columns keep rounded top/bottom corners at every scroll
+ *  position. #845 put the rounded top on the sticky header itself, but the
+ *  lane's purple night band scrolled underneath and peeked through the
+ *  header's rounded corner cutouts (#847). Now the sticky header is opaque
+ *  page-bg and square (nothing can peek through it); a ::before top cutter
+ *  pinned under the header re-rounds the lane's visible top edge, and the
+ *  ::after bottom cutter re-rounds the visible bottom edge. */
+describe("calendar column rounding (#845, #847)", () => {
+  test("sticky day header is opaque page-bg and square — no corner cutouts to peek through", async () => {
     const css = await Bun.file("site/static/style.css").text();
-    const head = css.match(/body\.app-fixed \.cal-day-head\s*\{[^}]*\}/);
+    const head = css.match(/body\.app-fixed \.cal-day-head,\s*body\.app-fixed \.cal-gutter-spacer\s*\{[^}]*\}/);
     expect(head).not.toBeNull();
-    expect(head![0]).toMatch(/border-radius:\s*var\(--md-sys-shape-corner-medium\) var\(--md-sys-shape-corner-medium\) 0 0/);
-    expect(head![0]).toMatch(/background:\s*var\(--lane-bg\)/);
+    expect(head![0]).toMatch(/background:\s*var\(--md-sys-color-surface\)/);
+    expect(head![0]).not.toMatch(/border-radius/);
+  });
+  test("top cutter re-rounds the lane's visible top edge directly under the header", async () => {
+    const css = await Bun.file("site/static/style.css").text();
+    const cutter = css.match(/body\.app-fixed \.cal-day-head::before\s*\{[^}]*\}/);
+    expect(cutter).not.toBeNull();
+    expect(cutter![0]).toMatch(/position:\s*absolute/);
+    expect(cutter![0]).toMatch(/top:\s*100%/);
+    expect(cutter![0]).toMatch(/background:\s*var\(--md-sys-color-surface\)/);
+    expect(cutter![0]).toMatch(/pointer-events:\s*none/);
+    expect(cutter![0]).toMatch(/mask:/);
   });
   test("lane tone is a shared variable across day states", async () => {
     const css = await Bun.file("site/static/style.css").text();
@@ -752,11 +766,11 @@ describe("calendar column rounding (#845)", () => {
     expect(css).toMatch(/\.cal-day\.paced-short\s*\{\s*--lane-bg:/);
     expect(css).toMatch(/\.cal-day-col\s*\{[^}]*background-color:\s*var\(--lane-bg\)/);
   });
-  test("lane keeps only bottom rounding; sticky cutter re-rounds the visible bottom", async () => {
+  test("lane keeps full rounding; sticky cutter re-rounds the visible bottom", async () => {
     const css = await Bun.file("site/static/style.css").text();
     const lane = css.match(/\.cal-day-col\s*\{[^}]*\}/);
     expect(lane).not.toBeNull();
-    expect(lane![0]).toMatch(/border-radius:\s*0 0 var\(--md-sys-shape-corner-medium\) var\(--md-sys-shape-corner-medium\)/);
+    expect(lane![0]).toMatch(/border-radius:\s*var\(--md-sys-shape-corner-medium\)/);
     const cutter = css.match(/\.cal-day-col::after\s*\{[^}]*\}/);
     expect(cutter).not.toBeNull();
     expect(cutter![0]).toMatch(/position:\s*sticky/);

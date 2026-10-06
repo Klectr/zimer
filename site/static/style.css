@@ -948,14 +948,25 @@ body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
 body.app-fixed .cal-day-head,
 body.app-fixed .cal-gutter-spacer {
   position: sticky; top: 0; z-index: 5;
+  background: var(--md-sys-color-surface);
 }
-body.app-fixed .cal-gutter-spacer { background: var(--md-sys-color-surface); }
-/* #845: the sticky day header carries the column's rounded top in the lane
-   tone — it is the visible top of the column at every scroll position, so the
-   columns always read rounded on top. */
-body.app-fixed .cal-day-head {
-  background: var(--lane-bg);
-  border-radius: var(--md-sys-shape-corner-medium) var(--md-sys-shape-corner-medium) 0 0;
+/* #847: the sticky header is opaque page-bg and square. #845 gave it the lane
+   tone + rounded top, but the lane's purple night band slides underneath while
+   scrolling and peeked through the header's rounded corner cutouts. Square and
+   opaque, nothing can ever peek through it. The lane's visible top edge is
+   re-rounded below it by the ::before cutter, so columns still read rounded
+   on top at every scroll position. (::after is the day-stats tooltip.) */
+body.app-fixed .cal-day-head::before {
+  content: ""; position: absolute; top: 100%; left: 0; right: 0;
+  height: var(--md-sys-shape-corner-medium);
+  background: var(--md-sys-color-surface);
+  -webkit-mask:
+    radial-gradient(circle var(--md-sys-shape-corner-medium) at 100% 100%, transparent calc(var(--md-sys-shape-corner-medium) - 1px), #000 var(--md-sys-shape-corner-medium)) left top / var(--md-sys-shape-corner-medium) var(--md-sys-shape-corner-medium) no-repeat,
+    radial-gradient(circle var(--md-sys-shape-corner-medium) at 0 100%, transparent calc(var(--md-sys-shape-corner-medium) - 1px), #000 var(--md-sys-shape-corner-medium)) right top / var(--md-sys-shape-corner-medium) var(--md-sys-shape-corner-medium) no-repeat;
+  mask:
+    radial-gradient(circle var(--md-sys-shape-corner-medium) at 100% 100%, transparent calc(var(--md-sys-shape-corner-medium) - 1px), #000 var(--md-sys-shape-corner-medium)) left top / var(--md-sys-shape-corner-medium) var(--md-sys-shape-corner-medium) no-repeat,
+    radial-gradient(circle var(--md-sys-shape-corner-medium) at 0 100%, transparent calc(var(--md-sys-shape-corner-medium) - 1px), #000 var(--md-sys-shape-corner-medium)) right top / var(--md-sys-shape-corner-medium) var(--md-sys-shape-corner-medium) no-repeat;
+  pointer-events: none;
 }
 /* ---------------- calendar: tonal day lanes, no hard dividers ----------------
  * Separation comes from spacing (8px gutters) + tone (lane surfaces). */
@@ -1018,8 +1029,10 @@ body.app-fixed .cal-day-head {
   /* #69: today is marked with the primary color, not a filled badge */
   color: var(--md-sys-color-primary); font-weight: 700;
 }
-/* #845: per-day lane tone, shared by the lane and its sticky header so the
-   two read as one capsule with a permanently rounded top. */
+/* #845: per-day lane tone. #847: the sticky header no longer shares it — it is
+   opaque page-bg so the scrolling purple night band can never peek through
+   rounded corner cutouts; the ::before top cutter re-rounds the lane's
+   visible top edge instead. */
 .cal-day { --lane-bg: var(--md-sys-color-surface-container-low); }
 .cal-day.today { --lane-bg: color-mix(in srgb, var(--md-sys-color-primary) 10%, var(--md-sys-color-surface-container-low)); }
 /* Past days under 8h get a subtle one-step tonal lift; today and future
@@ -1029,7 +1042,7 @@ body.app-fixed .cal-day-head {
   position: relative; height: calc(var(--cal-hour) * 24); flex: none;
   display: flex; flex-direction: column;
   background-color: var(--lane-bg);
-  border-radius: 0 0 var(--md-sys-shape-corner-medium) var(--md-sys-shape-corner-medium);
+  border-radius: var(--md-sys-shape-corner-medium);
   background-image: repeating-linear-gradient(to bottom,
     transparent 0, transparent calc(var(--cal-hour) - 1px),
     color-mix(in srgb, var(--md-sys-color-outline-variant) 30%, transparent) calc(var(--cal-hour) - 1px),
