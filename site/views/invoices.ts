@@ -401,12 +401,17 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
        same inline rendering via .inv-date-sep margins. */
     const sep = `<span class="inv-date-sep" aria-hidden="true">·</span>`;
     const datesLine = `<div class="inv-dates-line muted"><span class="inv-date">Issued ${esc(shortYmd(inv.issue_date))}</span>${inv.due_date && termsKey_ !== "pay_when_paid" ? `${sep}<span class="inv-date"><strong>Due ${esc(shortYmd(inv.due_date))}</strong></span>` : ""}${period ? `${sep}<span class="inv-date">Billing period: ${esc(period)}</span>` : ""}</div>`;
+    /* #831: the detail badge agrees with the list's status pill — a draft was
+       never sent, so it reads "Draft" in the neutral tonal treatment instead
+       of the amber "Unpaid" reserved for sent invoices awaiting payment. */
+    const badgeCls = inv.status === "paid" ? " paid" : inv.status === "draft" ? " draft" : "";
+    const badgeLabel = inv.status === "paid" ? "Paid" : inv.status === "draft" ? "Draft" : "Unpaid";
     const head = `
         <div class="inv-modern-band">
           <div class="inv-modern-title">Zinvoice</div>
           <div class="inv-modern-right">
             <div class="inv-modern-number">${esc(inv.number)}</div>
-            <span class="inv-modern-badge${inv.status === "paid" ? " paid" : ""}">${inv.status === "paid" ? "Paid" : "Unpaid"}</span>${paidChip}
+            <span class="inv-modern-badge${badgeCls}">${badgeLabel}</span>${paidChip}
           </div>
         </div>
         <div class="inv-modern-parties">

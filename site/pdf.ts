@@ -259,11 +259,17 @@ function capsWidth(s: string, size: number): number {
   return (w * size) / 1000;
 }
 
-function statusBadge(doc: PdfDoc, rightX: number, yy: number, paid: boolean) {
-  const label = paid ? "PAID" : "UNPAID";
+/* #831: the PDF badge agrees with the list's status pill — a draft was never
+   sent, so it reads DRAFT on a neutral gray instead of the amber UNPAID
+   reserved for sent invoices awaiting payment. */
+const DRAFT_GRAY: [number, number, number] = [0.62, 0.63, 0.65];
+function statusBadge(doc: PdfDoc, rightX: number, yy: number, status: string) {
+  const paid = status === "paid";
+  const draft = status === "draft";
+  const label = paid ? "PAID" : draft ? "DRAFT" : "UNPAID";
   const pw = label.length * 6.4 + 20, ph = 20;
   const x = rightX - pw;
-  doc.fill(x, yy - 6, pw, ph, paid ? [0.16, 0.55, 0.28] : PUMPKIN);
+  doc.fill(x, yy - 6, pw, ph, paid ? [0.16, 0.55, 0.28] : draft ? DRAFT_GRAY : PUMPKIN);
   doc.text(x + 10, yy, 9, label, true, false, paid ? WHITE : INK);
 }
 
@@ -278,7 +284,7 @@ function drawModern(inv: PdfInvoice, doc: PdfDoc) {
   doc.text(titleX, PAGE_H - 62, 30, "ZINVOICE", true, false, WHITE);
   doc.fill(titleX, PAGE_H - 74, 72, 3.5, PUMPKIN);
   doc.rtext(RIGHT, PAGE_H - 52, 15, inv.number, true, WHITE);
-  statusBadge(doc, RIGHT, PAGE_H - 74, inv.status === "paid");
+  statusBadge(doc, RIGHT, PAGE_H - 74, inv.status);
   doc.y = PAGE_H - bandH - 36;
 
   /* ---- bill-to (left) / from (right) ---- */
