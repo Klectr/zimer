@@ -793,3 +793,84 @@ describe("calendar column rounding (#845, #847, #849)", () => {
     expect(cutter![0]).toMatch(/mask:/);
   });
 });
+
+/** #853: the AM night band's top corners showed tiny dark notches — the
+ *  translucent band lets the ::before top cutter's page-bg crescents read
+ *  through it. The band's top corner zone (12px) now has an opaque lane-bg
+ *  backing with the purple composited over it, so the corners render cleanly
+ *  while the rest of the band stays translucent (hour lines show through).
+ *  Plus cal-edge-top: entries starting at 00:00 touch the lane's top edge and
+ *  paint above the z-0 cutter, so they get the lane's medium radius on their
+ *  top corners — mirrors #851's cal-edge-bottom. */
+describe("calendar top-edge rounding (#853)", () => {
+  test("night band's top corner zone has an opaque lane-bg backing under the purple", async () => {
+    const css = await Bun.file("site/static/style.css").text();
+    const band = css.match(/\.cal-night-am\s*\{[^}]*\}/);
+    expect(band).not.toBeNull();
+    /* band keeps the lane's medium radius on its top corners … */
+    expect(band![0]).toMatch(/border-radius:\s*var\(--md-sys-shape-corner-medium\)\s+var\(--md-sys-shape-corner-medium\)\s+0\s+0/);
+    /* … and layers purple over an opaque lane-bg backing for exactly the
+       top corner zone, with the translucent purple below it. */
+    expect(band![0]).toMatch(/linear-gradient\(var\(--lane-bg\),\s*var\(--lane-bg\)\)\s+left top\s*\/\s*100%\s*var\(--md-sys-shape-corner-medium\)/);
+  });
+  test("cal-edge-top gives midnight-start entries the lane's medium top radius (compact pills excluded)", async () => {
+    const css = await Bun.file("site/static/style.css").text();
+    const rule = css.match(/\.cal-entry\.cal-edge-top:not\(\.cal-compact\)\s*\{[^}]*\}/);
+    expect(rule).not.toBeNull();
+    expect(rule![0]).toMatch(/border-top-left-radius:\s*var\(--md-sys-shape-corner-medium\)/);
+    expect(rule![0]).toMatch(/border-top-right-radius:\s*var\(--md-sys-shape-corner-medium\)/);
+  });
+
+  const stubQuery = () => ({
+    get: (..._a: unknown[]) => ({ n: 1 }),
+    all: (..._a: unknown[]) => [],
+  });
+  /* 2026-09-21 is CDT (UTC-5): 05:00Z is local midnight. */
+  const midnightEntry = {
+    id: 31, description: "midnight start", project_id: null, project_name: null,
+    client_name: null, client_color: null, invoice_id: null,
+    invoice_number: null, invoice_status: null,
+    start_time: "2026-09-21T05:00:00.000Z", end_time: "2026-09-21T06:30:00.000Z",
+  };
+  const middayEntry = {
+    id: 32, description: "midday", project_id: null, project_name: null,
+    client_name: null, client_color: null, invoice_id: null,
+    invoice_number: null, invoice_status: null,
+    start_time: "2026-09-21T15:00:00.000Z", end_time: "2026-09-21T16:00:00.000Z",
+  };
+  const compactMidnight = {
+    id: 33, description: "compact midnight", project_id: null, project_name: null,
+    client_name: null, client_color: null, invoice_id: null,
+    invoice_number: null, invoice_status: null,
+    start_time: "2026-09-21T05:00:00.000Z", end_time: "2026-09-21T05:15:00.000Z",
+  };
+  function weekInnerHtml(entries: unknown[]) {
+    const db = {
+      query: (_sql: string) => ({ get: () => ({ n: 1 }), all: () => entries }),
+    } as unknown as Database;
+    const views = createCalendarViews({
+      db,
+      qOne: stubQuery(),
+      qRange: stubQuery(),
+      entrySelect: "SELECT",
+      layout: (_t: string, b: string) => b,
+      projectOptions: () => "",
+      weekTargetBar: () => "",
+      calHourPx: 64,
+    } as any);
+    return views.weekInner("2026-09-20", "America/Chicago");
+  }
+  function classesFor(html: string, id: number): string {
+    const m = html.match(new RegExp(`data-id="${id}"[^>]*class="([^"]*)"|class="([^"]*)"[^>]*data-id="${id}"`));
+    if (!m) throw new Error(`no cal-entry with data-id=${id}`);
+    return (m[1] ?? m[2] ?? "");
+  }
+  test("entry starting at 00:00 is flagged cal-edge-top; others are not", () => {
+    const html = weekInnerHtml([midnightEntry, middayEntry, compactMidnight]);
+    expect(classesFor(html, 31)).toContain("cal-edge-top");
+    expect(classesFor(html, 32)).not.toContain("cal-edge-top");
+    /* compact pills keep their 999px rounding — never flagged. */
+    expect(classesFor(html, 33)).not.toContain("cal-edge-top");
+    expect(classesFor(html, 33)).toContain("cal-compact");
+  });
+});

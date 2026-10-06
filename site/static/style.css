@@ -1096,7 +1096,18 @@ body.app-fixed .cal-gutter-spacer {
 .cal-wave-am { bottom: -10px; }
 .cal-wave-pm { top: -10px; }
 .cal-night-am { top: 0; height: calc(var(--cal-hour) * 6);
-  border-radius: var(--md-sys-shape-corner-medium) var(--md-sys-shape-corner-medium) 0 0; }
+  border-radius: var(--md-sys-shape-corner-medium) var(--md-sys-shape-corner-medium) 0 0;
+  /* #853: the ::before top cutter's page-bg crescents sit directly under this
+     translucent band and read as dark notches through it at the rounded top
+     corners (the band already carries the lane's medium radius, matching the
+     cutter's crescent exactly). The top 12px gets an opaque lane-bg backing
+     (purple composited over it) so the corners render cleanly; below that the
+     band stays translucent so the hour lines show through. All layers are
+     clipped to the band's own border-radius. */
+  background:
+    linear-gradient(color-mix(in srgb, #4a2b8f 48%, transparent), color-mix(in srgb, #4a2b8f 48%, transparent)) left top / 100% var(--md-sys-shape-corner-medium) no-repeat,
+    linear-gradient(var(--lane-bg), var(--lane-bg)) left top / 100% var(--md-sys-shape-corner-medium) no-repeat,
+    color-mix(in srgb, #4a2b8f 48%, transparent); }
 .cal-night-pm { top: calc(var(--cal-hour) * 19); height: calc(var(--cal-hour) * 5);
   border-radius: 0 0 var(--md-sys-shape-corner-medium) var(--md-sys-shape-corner-medium); }
 .cal-star {
@@ -1143,6 +1154,15 @@ body.app-fixed .cal-gutter-spacer {
 .cal-entry.cal-edge-bottom:not(.cal-compact) {
   border-bottom-left-radius: var(--md-sys-shape-corner-medium);
   border-bottom-right-radius: var(--md-sys-shape-corner-medium);
+}
+/* #853: an entry starting at midnight touches the lane's top edge
+   (server-flagged cal-edge-top) gets the lane's medium corner radius on its
+   top corners. Mirrors cal-edge-bottom (#851): entries paint above the z-0
+   top cutter, so without this their small corners would cover the cutter's
+   rounding and read as sharp. Compact pills keep their 999px. */
+.cal-entry.cal-edge-top:not(.cal-compact) {
+  border-top-left-radius: var(--md-sys-shape-corner-medium);
+  border-top-right-radius: var(--md-sys-shape-corner-medium);
 }
 /* In-place week refresh (#65): load-entrance animations are suppressed while
    the #week section is swapped, so saving an entry never replays the page. */
