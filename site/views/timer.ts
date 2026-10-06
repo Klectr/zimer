@@ -131,7 +131,8 @@ export function createTimerViews(deps: TimerViewDeps) {
              the card ticked. Same 1s interval, no extra timers. */
           function fmtDurRow(d){var t=Math.floor(d/1000),
             h=Math.floor(t/3600),m=Math.floor(t%3600/60),sec=t%60;
-            if(h>0)return h+'h '+String(m).padStart(2,'0')+'m';
+            /* #821: mirror of fmtDur — whole hours drop the 00m (#817). */
+            if(h>0)return m>0?h+'h '+String(m).padStart(2,'0')+'m':h+'h';
             /* #596: mirror of fmtDur — whole minutes drop the 00s. */
             if(m>0)return m+'m'+(sec>0?' '+String(sec).padStart(2,'0')+'s':'');
             return sec+'s';}
