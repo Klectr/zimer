@@ -2,17 +2,16 @@
  *
  * Tokens follow md.sys / md.comp naming from the M3 spec:
  * ref -> sys (these roles) -> comp (the classes below).
- * Seed: pumpkin (#fb923c family) — #712 October theme; revert to gold after
- * October. Dark scheme, tonal spot (no shadows).
+ * Seed: gold (#f2c14e family). Dark scheme, tonal spot (no shadows).
  */
 
 /* ---------------- sys tokens: color (dark) ---------------- */
 :root {
   color-scheme: dark;
-  --md-sys-color-primary: #fb923c;
-  --md-sys-color-on-primary: #442100;
-  --md-sys-color-primary-container: #713d00;
-  --md-sys-color-on-primary-container: #ffdcc2;
+  --md-sys-color-primary: #f2c14e;
+  --md-sys-color-on-primary: #3a2a00;
+  --md-sys-color-primary-container: #6b4e12;
+  --md-sys-color-on-primary-container: #ffe9bd;
   --md-sys-color-secondary-container: #454654;
   --md-sys-color-on-secondary-container: #e4e1f2;
   --md-sys-color-error: #ffb4ab;
@@ -1344,16 +1343,6 @@ body.app-fixed .cal-gutter-spacer {
 .empty-state h3 { margin: 16px 0 8px; }
 .empty-state p { margin: 0 0 20px; }
 .empty-state .row { display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap; }
-/* #712: October theme placements (temporary — revert after October). Pumpkins
-   take the pumpkin primary; sizes are per placement. */
-.oct-pumpkin { color: var(--md-sys-color-primary); }
-.empty-state > svg.oct-pumpkin { width: 56px; height: 56px; }
-.oct-h3 { display: flex; align-items: center; justify-content: center; gap: 10px; }
-.oct-h3 .oct-pumpkin { width: 30px; height: 30px; flex: none; }
-.oct-nothing { display: flex; align-items: center; gap: 10px; }
-.oct-nothing .oct-pumpkin { width: 30px; height: 30px; flex: none; }
-.oct-login.oct-pumpkin { width: 26px; height: 26px; }
-.cal-day-num .oct-pumpkin { width: 20px; height: 20px; vertical-align: -3px; margin-left: 6px; }
 /* #300: first-run hint inside the calendar supporting pane. */
 .cal-first-run { margin-top: 12px; padding: 12px 14px; border-radius: 12px;
   background: var(--md-sys-color-surface-container); }
@@ -1692,12 +1681,12 @@ body.app-fixed .cal-gutter-spacer {
 .m3-progress-track { flex: 1; min-width: 120px; height: 14px; display: flex; align-items: center; gap: 4px; }
 .m3-progress-fill-wrap { height: 100%; overflow: hidden; border-radius: 999px; transition: width 300ms;
   animation: m3-progress-fill var(--motion-duration-medium4) var(--motion-easing-emphasized-decelerate) var(--motion-duration-short2) backwards; }
-.m3-progress-fill-wave { height: 100%; width: 100%; background: #fb923c;
+.m3-progress-fill-wave { height: 100%; width: 100%; background: #f2c14e;
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 14'%3E%3Cpath d='M0 7 Q10 2 20 7 T40 7' fill='none' stroke='white' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E") 0 50% / 40px 100% repeat-x;
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 14'%3E%3Cpath d='M0 7 Q10 2 20 7 T40 7' fill='none' stroke='white' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E") 0 50% / 40px 100% repeat-x; }
 .m3-progress-remainder { height: 4px; flex: 1; min-width: 0; border-radius: 999px;
   background: var(--md-sys-color-surface-container-highest); }
-.m3-progress-dot { height: 4px; width: 4px; flex: none; border-radius: 999px; background: #fb923c; }
+.m3-progress-dot { height: 4px; width: 4px; flex: none; border-radius: 999px; background: #f2c14e; }
 @media (prefers-reduced-motion: no-preference) {
   .m3-progress-fill-wave { animation: m3-progress-wave-slide 1.6s linear infinite; }
 }
@@ -1707,7 +1696,7 @@ body.app-fixed .cal-gutter-spacer {
 }
 .m3-progress-track.complete { height: 4px; display: block; overflow: hidden; border-radius: 999px;
   background: var(--md-sys-color-surface-container-highest); }
-.m3-progress-track.complete .m3-progress-fill { height: 100%; border-radius: inherit; background: #fb923c;
+.m3-progress-track.complete .m3-progress-fill { height: 100%; border-radius: inherit; background: #f2c14e;
   position: relative; overflow: hidden;
   animation: m3-progress-fill var(--motion-duration-medium4) var(--motion-easing-emphasized-decelerate) var(--motion-duration-short2) backwards; }
 .m3-progress-track.complete .m3-progress-fill::after { content: ""; position: absolute; inset: 0; width: 28%;
@@ -1775,7 +1764,7 @@ body.app-fixed .cal-gutter-spacer {
    with the body content below. */
 .inv-modern-title { font-size: 1.875rem; line-height: 34px; font-weight: 700; letter-spacing: -0.5px; }
 .inv-modern-title::after { content: ""; display: block; width: 56px; height: 4px; border-radius: 2px;
-  background: #fb923c; margin-top: 10px; }
+  background: #f2c14e; margin-top: 10px; }
 .inv-modern-right { text-align: right; }
 .inv-modern-number { font-size: 1.0625rem; font-weight: 700; }
 .inv-modern-right .inv-modern-badge { margin-top: 12px; }
@@ -1787,7 +1776,7 @@ body.app-fixed .cal-gutter-spacer {
 .inv-dates-line .inv-date-sep { margin: 0 0.25em; }
 /* #612: Bill to left, From right. */
 .inv-from { margin-left: auto; text-align: right; }
-.inv-modern-badge { display: inline-block; background: #fb923c; color: #1c1c1f; font-size: 0.6875rem; font-weight: 700;
+.inv-modern-badge { display: inline-block; background: #f2c14e; color: #1c1c1f; font-size: 0.6875rem; font-weight: 700;
   letter-spacing: 1px; text-transform: uppercase; padding: 6px 14px; border-radius: 4px; }
 .inv-modern-badge.paid { background: #2e9e4f; color: #fff; }
 /* #831: draft badge mirrors .pill-draft — a draft was never sent, so it gets

@@ -46,16 +46,10 @@ export const ICONS: Record<string, string> = {
      outlined 24px, matching the set. */
   table: `<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9.3h18M3 14.6h18M9 9.3V20"/>`,
   database: `<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>`,
-  /* #712: jack-o-lantern for the October theme (temporary — revert after
-     October). Doodle pumpkin in the same hand as the set, wearing a doodle
-     witch hat. Face filled, body outlined. */
-  jack_o_lantern: `<path d="M 8.6 6.4 C 10.6 5.7 13.4 5.7 15.4 6.4"/><path d="M 10.8 6 C 11.2 4.2 11.8 2.8 12.8 1.6"/><path d="M 13.8 5.9 C 13.4 4.2 13 2.8 12.8 1.6"/><path d="M 12.8 1.6 C 12.2 0.7 11 0.5 10.3 1.1"/><path d="M 12 9 C 7.2 9 4.3 11.8 4.3 15.2 C 4.3 18.9 7.6 21.5 12 21.5 C 16.4 21.5 19.7 18.9 19.7 15.2 C 19.7 11.8 16.8 9 12 9 Z"/><path d="M 8.6 9.8 C 8 12.6 8 17.6 9 20.6"/><path d="M 15.4 9.8 C 16 12.6 16 17.6 15 20.6"/><path d="M 12 9 C 12 7.6 12.6 6.6 13.8 6"/><path d="M 8.4 13.2 L 10.2 13.2 L 9.3 15 Z" fill="currentColor" stroke="none"/><path d="M 13.8 13.2 L 15.6 13.2 L 14.7 15 Z" fill="currentColor" stroke="none"/><path d="M 8 16.8 L 9.6 18.6 L 11.2 17 L 12.8 18.6 L 14.4 17 L 16 17.6"/>`,
 };
 
-export function icon(name: keyof typeof ICONS, cls = ""): string {
-  /* #712: optional class for themed placements (October pumpkin sizing). */
-  const c = cls ? ` class="${cls}"` : "";
-  return `<svg${c} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]}</svg>`;
+export function icon(name: keyof typeof ICONS): string {
+  return `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]}</svg>`;
 }
 
 /** Brand mark: a hand-drawn hand keeping a wobbly clock. Drawn on a 64-grid
