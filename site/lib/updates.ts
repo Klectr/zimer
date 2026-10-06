@@ -160,7 +160,7 @@ export function updateSectionHtml(): string {
       <h2 class="md-headline-small">Updates</h2>
       <div id="update-status"><div class="status-row">${icon("info")}<div class="status-row-text">
         <p class="status-row-headline">Zimer v${esc(appVersion())}</p>
-        <p class="status-row-supporting">Press the button below to check for new releases.</p>
+        <p class="status-row-supporting">Press the button to check for new releases.</p>
       </div></div></div>
       <div class="manage-form-row">
         <span class="manage-form-spacer"></span>
