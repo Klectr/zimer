@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { fmtDur, shortDateRange, shortDateRangeYear, shortYmd } from "./format.ts";
+import { fmtDur, schemeColor, shortDateRange, shortDateRangeYear, shortYmd } from "./format.ts";
 
 /* #582: the invoice detail billing period is year-aware so it matches the
    PDF and is never ambiguous across year boundaries. */
@@ -51,5 +51,22 @@ describe("fmtDur", () => {
   test("nonzero seconds stay", () => {
     expect(fmtDur(204)).toBe("3m 24s");
     expect(fmtDur(45)).toBe("45s");
+  });
+});
+
+/* #841: rows stored under the legacy gold default track the theme primary. */
+describe("schemeColor", () => {
+  test("legacy gold maps to the theme primary variable", () => {
+    expect(schemeColor("#f2c14e")).toBe("var(--md-sys-color-primary)");
+    expect(schemeColor("#F2C14E")).toBe("var(--md-sys-color-primary)");
+  });
+  test("explicitly chosen colors pass through untouched", () => {
+    expect(schemeColor("#9050f2")).toBe("#9050f2");
+    expect(schemeColor("#fb923c")).toBe("#fb923c");
+    expect(schemeColor("#9aa0a6")).toBe("#9aa0a6");
+  });
+  test("nullish colors pass through for call-site fallbacks", () => {
+    expect(schemeColor(null)).toBeNull();
+    expect(schemeColor(undefined)).toBeUndefined();
   });
 });

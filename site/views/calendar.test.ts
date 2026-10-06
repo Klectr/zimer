@@ -687,3 +687,49 @@ describe("calendar pane hint (#766)", () => {
     );
   });
 });
+
+/** #841: slots stored under the legacy gold default render with the theme
+ *  primary variable, so a scheme change needs no data migration. */
+describe("calendar slot theme color (#841)", () => {
+  const stubQuery = () => ({
+    get: (..._a: unknown[]) => ({ n: 1 }),
+    all: (..._a: unknown[]) => [],
+  });
+  const goldEntry = {
+    id: 30, description: "legacy gold client", project_id: null, project_name: null,
+    client_name: "Acme", client_color: "#f2c14e", invoice_id: null,
+    invoice_number: null, invoice_status: null,
+    start_time: "2026-09-21T15:00:00.000Z", end_time: "2026-09-21T16:00:00.000Z",
+  };
+  const blueEntry = { ...goldEntry, id: 31, client_color: "#7cc4ff" };
+  function weekInnerHtml(entries: unknown[]) {
+    const db = {
+      query: (_sql: string) => ({ get: () => ({ n: 1 }), all: () => entries }),
+    } as unknown as Database;
+    const views = createCalendarViews({
+      db,
+      qOne: stubQuery(),
+      qRange: stubQuery(),
+      entrySelect: "SELECT",
+      layout: (_t: string, b: string) => b,
+      projectOptions: () => "",
+      weekTargetBar: () => "",
+      calHourPx: 64,
+    } as any);
+    return views.weekInner("2026-09-20", "America/Chicago");
+  }
+  function cardTag(html: string, id: number): string {
+    const m = html.match(new RegExp(`<div class="cal-entry[^>]*data-id="${id}"[^>]*>`));
+    if (!m) throw new Error(`no cal-entry card with data-id=${id}`);
+    return m[0];
+  }
+  test("legacy gold client color renders the theme primary variable", () => {
+    const tag = cardTag(weekInnerHtml([goldEntry]), 30);
+    expect(tag).toContain("--c:var(--md-sys-color-primary)");
+    expect(tag).not.toContain("#f2c14e");
+  });
+  test("explicit client colors pass through untouched", () => {
+    const tag = cardTag(weekInnerHtml([blueEntry]), 31);
+    expect(tag).toContain("--c:#7cc4ff");
+  });
+});

@@ -5,7 +5,7 @@
  *  slices, so every call site keeps working unchanged. */
 
 import type { Database, Statement } from "bun:sqlite";
-import { dayBounds, durationSeconds, entryInvoiceMark, entryIsLocked, esc, fmtDur, money, todayStr } from "../lib/format.ts";
+import { dayBounds, durationSeconds, entryInvoiceMark, entryIsLocked, esc, fmtDur, money, schemeColor, todayStr } from "../lib/format.ts";
 import { icon } from "../lib/icons.ts";
 import type { Entry } from "../lib/types.ts";
 
@@ -54,7 +54,7 @@ export function createTimerViews(deps: TimerViewDeps) {
     const startTs = `<time data-ts="${esc(e.start_time)}"></time>`;
     const endTs = e.end_time ? `<time data-ts="${esc(e.end_time)}"></time>` : "now";
     const chip = e.project_name
-      ? `<span class="md-chip">${e.client_color ? `<span class="dot" style="background:${esc(e.client_color)}"></span>` : ""}${esc(e.project_name)}</span>`
+      ? `<span class="md-chip">${e.client_color ? `<span class="dot" style="background:${esc(schemeColor(e.client_color))}"></span>` : ""}${esc(e.project_name)}</span>`
       : "";
     const desc = e.description ? esc(e.description) : "<em>No description</em>";
     /* #330: mark time that's already on an invoice (sent/paid) or in a draft. */
@@ -318,7 +318,7 @@ export function createTimerViews(deps: TimerViewDeps) {
         : "";
       return `
       <li class="md-list-item">
-        <span class="rev-dot" style="background:${esc(c.color || "#fb923c")}"></span>
+        <span class="rev-dot" style="background:${esc(schemeColor(c.color) || "#fb923c")}"></span>
         <div class="md-list-item-content">
           <div class="md-list-item-headline">${esc(c.name)}</div>
           <div class="md-list-item-supporting">${money(c.paid)} paid · ${money(c.outstanding)} outstanding</div>

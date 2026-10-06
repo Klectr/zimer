@@ -4,6 +4,7 @@ What's new in Zimer, newest first.
 
 ## 2026-10-06
 
+- **One place to change the color scheme.** The theme colors now live as CSS variables (`--primary`, `--on-primary`, `--primary-container`, `--on-primary-container`) defined once in `:root` — no more hardcoded hexes scattered across the stylesheet. Calendar time slots stored under the old gold default now follow the theme too.
 - **Pumpkin is the primary color now.** The October theme's decorations are gone, but the pumpkin orange (#fb923c) stays as the permanent primary color — buttons, badges, the logo, and invoice accents.
 - **Whole-hour durations read cleaner.** A one-hour entry now shows "1h" instead of "1h 00m" — in the Today list, on the calendar, and everywhere durations render.
 - **One gold action on the demo banner.** The "Zinvoice the sample week" link in the timer page's demo banner is a text button now, so Start stays the screen's only emphasized action.

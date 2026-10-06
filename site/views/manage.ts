@@ -4,7 +4,7 @@
  *  and deletion. */
 
 import type { Database } from "bun:sqlite";
-import { esc, PAYMENT_TERMS, termsDays, termsDescription, termsKey } from "../lib/format.ts";
+import { esc, PAYMENT_TERMS, schemeColor, termsDays, termsDescription, termsKey } from "../lib/format.ts";
 import type { PaymentTermsKey } from "../lib/format.ts";
 import { icon } from "../lib/icons.ts";
 import { getMeta } from "../db.ts";
@@ -83,7 +83,7 @@ export function createManageViews(deps: ManageViewDeps) {
       </li>`;
     const rows = clients.map(c => {
       const n = (byClient.get(c.id) || []).length;
-      return row(`/manage?client=${c.id}`, dot(c.color || "#fb923c"), c.name,
+      return row(`/manage?client=${c.id}`, dot(schemeColor(c.color) || "#fb923c"), c.name,
         `${n} project${n === 1 ? "" : "s"}${c.rate ? ` · $${c.rate}/hr` : ""}`,
         sk === c.id, `Manage client ${c.name}`);
     }).join("");
