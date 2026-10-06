@@ -248,7 +248,13 @@ export function createCalendarViews(deps: CalendarViewDeps) {
          cutter sits below entries (z-0, no fringe) and edge entries fell back
          to their small corners, reading as sharp. */
       const edgeBottom = b >= 1439 && !compact;
-      return `<div class="cal-entry${running ? " running" : ""}${overlap ? " overlap" : ""}${compact ? " cal-compact" : ""}${mark ? " invoiced" : ""}${edgeBottom ? " cal-edge-bottom" : ""}"
+      /* #853: an entry starting at midnight touches the lane's top edge — flag
+         it so its top corners get the lane's medium radius. Mirrors #851's
+         cal-edge-bottom: entries paint above the z-0 top cutter, so without
+         this their small corners would cover the cutter's rounding and read
+         as sharp. */
+      const edgeTop = a <= 0 && !compact;
+      return `<div class="cal-entry${running ? " running" : ""}${overlap ? " overlap" : ""}${compact ? " cal-compact" : ""}${mark ? " invoiced" : ""}${edgeBottom ? " cal-edge-bottom" : ""}${edgeTop ? " cal-edge-top" : ""}"
           style="top:${(top + 2).toFixed(1)}px;height:${(h - 4).toFixed(1)}px;--c:${esc(color)}"
           data-id="${e.id}" data-desc="${esc(e.description)}" data-project-id="${e.project_id ?? ""}"
           data-date="${day}" data-start="${toHM(a)}" data-end="${running ? "" : toHM(Math.min(b, 1439))}"
