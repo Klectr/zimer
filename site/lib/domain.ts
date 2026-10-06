@@ -5,7 +5,7 @@
 
 import { randomBytes } from "node:crypto";
 import type { Database, Statement } from "bun:sqlite";
-import { addDays, durationSeconds, esc, fmtDur, money, round2 } from "./format.ts";
+import { addDays, durationSeconds, esc, fmtDur, round2 } from "./format.ts";
 import type { Entry, Invoice, InvoiceItem } from "./types.ts";
 import { createPaymentLink, stripeConfigured } from "../stripe.ts";
 
