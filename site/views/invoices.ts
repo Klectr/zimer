@@ -421,6 +421,8 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
             ${bizEmail ? `<div class="muted">${esc(bizEmail)}</div>` : ""}</div>` : ""}
         </div>
         ${datesLine}`;
+    /* #859: only a sent zinvoice has something due — a draft was never sent,
+       so the sheet's grand-total row reads "Total" like a paid one. */
     return `<div class="md-card invoice-sheet template-modern" id="invoice-sheet">
         ${head}
         <div class="table-wrap"><table class="md-table">
@@ -429,7 +431,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
           <tfoot>
             <tr><td colspan="4">Subtotal</td><td class="num">${money(t.subtotal)}</td></tr>
             ${inv.tax_rate ? `<tr><td colspan="4">Tax (${inv.tax_rate}%)</td><td class="num">${money(t.tax)}</td></tr>` : ""}
-            <tr class="grand"><td colspan="4">${inv.status === "paid" ? "Total" : "Total due"}</td><td class="num">${money(t.total)}</td></tr>
+            <tr class="grand"><td colspan="4">${inv.status === "sent" ? "Total due" : "Total"}</td><td class="num">${money(t.total)}</td></tr>
           </tfoot>
         </table></div>
         <p class="inv-terms">${esc(terms)}</p>

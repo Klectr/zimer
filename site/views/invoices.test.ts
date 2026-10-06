@@ -510,10 +510,17 @@ describe("#668: manual line items on step 2", () => {
 });
 
 /** #687: the grand-total row on a paid invoice must not claim an amount is
- * "due" — it reads "Total" once paid, "Total due" while draft/sent. */
-describe("#687: invoice sheet grand-total label", () => {
+ * "due" — it reads "Total" once paid. #859: same for drafts — a draft was
+ * never sent, so only a sent invoice reads "Total due". */
+describe("#687/#859: invoice sheet grand-total label", () => {
   test("paid invoice sheet reads Total, not Total due", () => {
     const html = views([]).invoiceDoc(detailInv("paid", "2026-09-21") as any);
+    expect(html).toContain('<tr class="grand"><td colspan="4">Total</td>');
+    expect(html).not.toContain("Total due");
+  });
+
+  test("draft invoice sheet reads Total, not Total due", () => {
+    const html = views([]).invoiceDoc(detailInv("draft", null) as any);
     expect(html).toContain('<tr class="grand"><td colspan="4">Total</td>');
     expect(html).not.toContain("Total due");
   });
