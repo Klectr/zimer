@@ -148,3 +148,22 @@ describe("theme scheme single source of truth (#841)", () => {
     expect(outsideRoot).not.toMatch(/#f2c14e/i);
   });
 });
+
+/** #871: the label type scale is complete — large (14sp/20sp/0.1 tracking),
+ *  medium (12sp/16sp/0.5), small (11sp/16sp/0.5), all weight 500. The small
+ *  rule was referenced by the calendar agenda but never defined. */
+describe("label type scale (#871)", () => {
+  test("all three label rules exist with M3 spec values", () => {
+    for (const [selector, size, lh, tracking] of [
+      [".md-label-large", "0.875rem", "20px", "0.1px"],
+      [".md-label-medium", "0.75rem", "16px", "0.5px"],
+      [".md-label-small", "0.6875rem", "16px", "0.5px"],
+    ]) {
+      const rule = declarations(ruleBlock(selector));
+      expect(rule.get("font-size")).toBe(size);
+      expect(rule.get("line-height")).toBe(lh);
+      expect(rule.get("font-weight")).toBe("500");
+      expect(rule.get("letter-spacing")).toBe(tracking);
+    }
+  });
+});

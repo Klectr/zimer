@@ -160,6 +160,10 @@ body {
 .md-body-medium { font-size: 0.875rem; line-height: 20px; letter-spacing: 0.25px; }
 .md-label-large { font-size: 0.875rem; line-height: 20px; font-weight: 500; letter-spacing: 0.1px; }
 .md-label-medium { font-size: 0.75rem; line-height: 16px; font-weight: 500; letter-spacing: 0.5px; }
+/* #871: calendar.ts's agenda time range referenced .md-label-small but no rule
+   existed — it fell back to inherited body size next to the defined
+   .md-label-medium duration. M3 Label Small: 11sp/16sp, 500, 0.5 tracking. */
+.md-label-small { font-size: 0.6875rem; line-height: 16px; font-weight: 500; letter-spacing: 0.5px; }
 
 .muted { color: var(--md-sys-color-on-surface-variant); }
 .tiny { font-size: 0.75rem; }
