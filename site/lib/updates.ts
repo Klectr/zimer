@@ -14,7 +14,6 @@
 import { appVersion, appMajor } from "./version.ts";
 import { esc } from "./format.ts";
 import { icon, logo } from "./icons.ts";
-import { licenseBuyUrl, licensePrice } from "./license.ts";
 
 const DEFAULT_FEED_URL = "https://invoices.tristonarmstrong.com/releases/feed.json";
 
@@ -37,7 +36,6 @@ export type UpdateStatus =
   | { kind: "up-to-date"; version: string }
   | { kind: "no-releases" }
   | { kind: "update-available"; current: string; latest: ReleaseInfo }
-  | { kind: "major-available"; current: string; latest: ReleaseInfo }
   | { kind: "unreachable" }
   | { kind: "dev" };
 
@@ -86,8 +84,8 @@ export function updateStatusFromFeed(feed: unknown, current: string, major: numb
     typeof (r as { version?: unknown }).version === "string" &&
     typeof (r as { url?: unknown }).url === "string" &&
     typeof (r as { sha256?: unknown }).sha256 === "string";
-  /* A newer major than this install's key covers: the v1 key won't validate
-     on v2, so say so plainly and point at the buy flow. */
+  /* #883: a newer major is just an update now — the per-major license
+     key is gone, so it renders like any other available update. */
   const newerMajors = Object.keys(releases)
     .map(Number)
     .filter(n => Number.isInteger(n) && n > major)
@@ -95,7 +93,7 @@ export function updateStatusFromFeed(feed: unknown, current: string, major: numb
   if (newerMajors.length > 0) {
     const latest = releases[String(newerMajors[newerMajors.length - 1])];
     if (!isRelease(latest)) return { kind: "unreachable" };
-    return { kind: "major-available", current, latest };
+    return { kind: "update-available", current, latest };
   }
   const same = releases[String(major)];
   if (same === undefined) return { kind: "no-releases" };
@@ -128,17 +126,6 @@ export function updateStatusHtml(s: UpdateStatus): string {
         <p class="muted">Your data, token, and settings are preserved:</p>
         <p><code class="update-cmd">${esc(cmd)}</code></p>`;
     }
-    case "major-available": {
-      const buyUrl = licenseBuyUrl();
-      const buy = buyUrl
-        ? `<p><a class="md-filled-button" href="${esc(buyUrl)}" target="_blank" rel="noopener">${icon("card")}<span>Buy a v${esc(String(s.latest.version).split(".")[0])} license — ${esc(licensePrice())}</span></a></p>`
-        : "";
-      return `<div class="status-row status-row-primary">${icon("download")}<div class="status-row-text">
-        <p class="status-row-headline">v${esc(s.latest.version)} is available</p>
-        <p class="status-row-supporting">It's a new major version, so it needs a new license key — your current key keeps working on v${esc(s.current.split(".")[0])}.x forever.</p>
-      </div></div>
-        ${buy}`;
-    }
     case "unreachable":
       return `<div class="status-row status-row-error" role="alert">${icon("alert")}<div class="status-row-text">
         <p class="status-row-headline">Couldn't reach the update server</p>
@@ -152,9 +139,7 @@ export function updateStatusHtml(s: UpdateStatus): string {
   }
 }
 
-/* #340: Updates section in the Settings modal. Shown in beta and to licensed
-   users in launch mode; hidden when unpaid in launch mode (#345). The check
-   itself is manual. */
+/* #340: Updates section in the Settings modal. The check itself is manual. */
 export function updateSectionHtml(): string {
   return `<section id="update-section">
       <h2 class="md-headline-small">Updates</h2>

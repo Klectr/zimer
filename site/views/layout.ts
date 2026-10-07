@@ -7,7 +7,7 @@ import type { Statement } from "bun:sqlite";
 import { esc } from "../lib/format.ts";
 import { ICONS, icon, logo } from "../lib/icons.ts";
 
-export function createLayoutViews(qRunning: Statement, bannerHtml?: () => string) {
+export function createLayoutViews(qRunning: Statement) {
   /* #354: M3 navigation per window size class. The four destinations live in
      a bottom navigation bar on compact (<600px) or a collapsed leading
      navigation rail on medium+ (600px+), never both. The app bar keeps the
@@ -57,9 +57,6 @@ export function createLayoutViews(qRunning: Statement, bannerHtml?: () => string
       ${dests.map(d => dest(d, "md-rail-item")).join("")}
     </nav>
     <div class="app-sheet">
-      ${/* #304: license honesty-box banner (launch mode only, unlicensed only).
-           Rendered here so it appears on every app page; publicShell() pages
-           (client invoice links) never see it. */ bannerHtml ? bannerHtml() : ""}
       <main id="main" tabindex="-1"${active ? ` class="page-${active}"` : ""}>${body}</main>
     </div>
   </div>
@@ -203,9 +200,7 @@ function settingsDialog(): string {
     function open(){
       open_=true;
       scrim.hidden=false; void scrim.offsetWidth; scrim.classList.add('open');
-      /* Fresh form on every open — the profile may have changed elsewhere.
-         #304: /settings returns the business profile plus the License
-         section in launch mode (profile only in beta). */
+      /* Fresh form on every open — the profile may have changed elsewhere. */
       focusOnSwap=true;
       htmx.ajax('GET','/settings','#settings-body');
       document.addEventListener('keydown',onKey,true);

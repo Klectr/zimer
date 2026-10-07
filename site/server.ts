@@ -21,7 +21,6 @@ import { createTenantStore } from "./lib/tenants.ts"; /* #733 */
 import { backupAll, backupFreshness } from "./lib/backups.ts"; /* #730 part 2 */
 import { createDb, getMeta, type DbBundle } from "./db.ts";
 import { resourcePath } from "./lib/paths.ts"; /* #519 */
-import { isLicensed, licenseBannerHtml } from "./lib/license.ts"; /* #304 */
 import { createRevenue } from "./lib/revenue.ts";
 import { workspaceEmpty, demoIds, seedDemoData, removeDemoData, demoBanner } from "./lib/demo.ts";
 import { createDomain, CAL_HOUR_PX, DAY_TARGET_SECS } from "./lib/domain.ts";
@@ -69,12 +68,7 @@ function buildTenantTree(bundle: DbBundle, dbPath: string): WebTenant & ApiTenan
   } = bundle;
   const { revenueTotals, revenueMonthly, revenueByClient, isOverdue, revenueOverdue } =
     createRevenue(qRevenueRows, () => getMeta(db, "business_payment_terms"));
-  const { layout, notFoundPage, errorPage } =
-    /* #304: the license banner closure runs per request inside layout(), so
-       every app page shows it in launch mode until a valid key is stored.
-       #733: hosted tenants bill through Stripe, not license keys — the dead
-       $59-key banner stays a self-host concept. */
-    createLayoutViews(qRunning, HOSTED ? undefined : () => licenseBannerHtml(isLicensed(db)));
+  const { layout, notFoundPage, errorPage } = createLayoutViews(qRunning);
 
   const {
     getInvoice, invoiceTotals, nextInvoiceNumber, stripeLinkFor,

@@ -54,11 +54,11 @@ describe("updateStatusFromFeed — well-formed input", () => {
     expect(s.kind).toBe("update-available");
     if (s.kind === "update-available") expect(s.latest.version).toBe("1.1.0");
   });
-  test("major-available", () => {
+  test("newer major renders as a plain update (no license key)", () => {
     const s = updateStatusFromFeed(
       { releases: { "1": good("1.0.0"), "2": good("2.0.0") } }, CURRENT, MAJOR);
-    expect(s.kind).toBe("major-available");
-    if (s.kind === "major-available") expect(s.latest.version).toBe("2.0.0");
+    expect(s.kind).toBe("update-available");
+    if (s.kind === "update-available") expect(s.latest.version).toBe("2.0.0");
   });
 });
 
