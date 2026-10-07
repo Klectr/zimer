@@ -318,7 +318,7 @@ export function createTimerViews(deps: TimerViewDeps) {
         : "";
       return `
       <li class="md-list-item">
-        <span class="rev-dot" style="background:${esc(schemeColor(c.color) || "#fb923c")}"></span>
+        <span class="rev-dot" style="background:${esc(schemeColor(c.color) || "var(--md-sys-color-primary)")}"></span>
         <div class="md-list-item-content">
           <div class="md-list-item-headline">${esc(c.name)}</div>
           <div class="md-list-item-supporting">${money(c.paid)} paid · ${money(c.outstanding)} outstanding</div>
