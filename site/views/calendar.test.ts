@@ -794,6 +794,22 @@ describe("calendar column rounding (#845, #847, #849)", () => {
     expect(entry).not.toBeNull();
     expect(entry![0]).toMatch(/z-index:\s*2/);
   });
+  test("#879: now-dot sits inside the lane so it hides under the sticky header with the line", async () => {
+    const css = await Bun.file("site/static/style.css").text();
+    const dot = css.match(/\.cal-now::before\s*\{[^}]*\}/);
+    expect(dot).not.toBeNull();
+    // the dot must not protrude into the 8px inter-lane gutter (which the
+    // per-lane sticky headers don't cover) — a negative left left a stray dot
+    // visible after scrolling past the now-line
+    expect(dot![0]).toMatch(/left:\s*0/);
+    expect(dot![0]).not.toMatch(/left:\s*-/);
+    // the line itself stays full lane width, above entries
+    const line = css.match(/\.cal-now\s*\{[^}]*\}/);
+    expect(line).not.toBeNull();
+    expect(line![0]).toMatch(/left:\s*0/);
+    expect(line![0]).toMatch(/right:\s*0/);
+    expect(line![0]).toMatch(/z-index:\s*4/);
+  });
   test("lane tone is a shared variable across day states", async () => {
     const css = await Bun.file("site/static/style.css").text();
     expect(css).toMatch(/\.cal-day\s*\{\s*--lane-bg:/);

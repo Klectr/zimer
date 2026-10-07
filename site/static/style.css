@@ -1204,7 +1204,7 @@ body.app-fixed .cal-gutter-spacer {
 .cal-entry-dur { opacity: 0.75; white-space: nowrap; }
 .cal-now { position: absolute; left: 0; right: 0; height: 2px; background: var(--md-sys-color-error); z-index: 4; pointer-events: none; }
 .cal-now::before {
-  content: ""; position: absolute; left: -5px; top: -4px;
+  content: ""; position: absolute; left: 0; top: -4px;
   width: 10px; height: 10px; border-radius: var(--md-sys-shape-corner-full);
   background: var(--md-sys-color-error);
 }
