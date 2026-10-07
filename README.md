@@ -103,7 +103,7 @@ Chrome / Edge / Brave:
 ## Layout
 
 ```
-timekeep/
+zimer/
 ├── AGENTS.md            # the always-known rules: Bun-only, M3 dark, workflows
 ├── PLAN.md              # the plan: architecture, API contract, milestones
 ├── CHANGELOG.md         # what's new, newest first
@@ -117,7 +117,7 @@ timekeep/
 │   ├── stripe.ts        # optional Stripe payment link on invoices
 │   ├── routes/          # web.ts (HTMX pages), api.ts (JSON API)
 │   ├── views/           # timer, calendar, invoices, manage, public pages
-│   ├── lib/             # auth, license, revenue, icons, updates, ...
+│   ├── lib/             # auth, revenue, icons, updates, ...
 │   └── static/          # style.css, dialog.js, shortcut.js, ...
 └── extension/           # Manifest V3, no build step: manifest.json, popup.html, popup.js, bg.js
 ```
