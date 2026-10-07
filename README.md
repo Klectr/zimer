@@ -39,7 +39,6 @@ Self-hostable time tracker — timer → invoice. One Bun server, one SQLite fil
 - **Public invoice links** — read-only shareable page per invoice (optional Stripe payment link).
 - **Browser extension** — start/stop timers from the Chrome / Edge / Brave toolbar, no build step.
 - **Check for updates** — in-app, from the signed release feed.
-- **Offline license** — free and full-featured through beta; post-beta takes a one-time key checked entirely offline against an embedded public key. No network call, no telemetry.
 - Your data is one SQLite file. Back it up, move it, done.
 
 ## Screenshots
@@ -95,10 +94,6 @@ Chrome / Edge / Brave:
 | `HOST`                         | `127.0.0.1`    | bind address                                  |
 | `DATA_DIR`                     | `site/data`    | SQLite file + token live here                 |
 | `TIMEKEEP_TOKEN`               | auto-generated | shared secret for API + login                 |
-| `TIMEKEEP_BETA`                | `1` (beta)     | set to `0` to arm post-beta license mode      |
-| `TIMEKEEP_LICENSE_KEY`         | _(none)_       | license key for this install (or set in Settings) |
-| `TIMEKEEP_LICENSE_PUBLIC_KEY`  | _(embedded)_   | override for the license public key (hex)     |
-| `TIMEKEEP_LICENSE_PRICE`       | `$59`          | one-time price shown in the license banner    |
 
 ## Notes
 

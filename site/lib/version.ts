@@ -1,7 +1,7 @@
 /** #340: app version. Read once from the VERSION file at the repo root
  *  (baked into release tarballs). Working copies without one report
  *  0.0.0-dev, which never matches the release feed. node:fs (sync) because
- *  license validation needs the major version synchronously.
+ *  updateStatusHtml needs the major version synchronously.
  *  #519: in a compiled binary the file ships in the exe-relative
  *  resources dir instead. */
 

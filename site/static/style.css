@@ -1409,31 +1409,13 @@ body.app-fixed .cal-gutter-spacer {
   .demo-banner { animation: banner-in .45s cubic-bezier(0.05, 0.7, 0.1, 1); }
 }
 @keyframes banner-in { from { opacity: 0; transform: translateY(-8px); } }
-/* #304: license honesty-box banner — same treatment as the demo banner, but
-   in the primary container so it reads as app chrome rather than demo data. */
-.license-banner {
-  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
-  margin: 12px 16px 0; padding: 12px 16px; border-radius: 16px;
-  background: var(--md-sys-color-primary-container, #3a2a00);
-  color: var(--md-sys-color-on-primary-container, #ffe9bd);
-}
-.license-banner svg { flex: none; width: 24px; height: 24px; }
-.license-banner span { flex: 1; }
-.license-banner .md-text-button { color: inherit; }
-.license-banner .md-icon-button { color: inherit; }
-@media (prefers-reduced-motion: no-preference) {
-  .license-banner { animation: banner-in .45s cubic-bezier(0.05, 0.7, 0.1, 1); }
-}
-/* #304: settings License section states. */
-/* #402: status rows (settings License + Updates sections) — proper M3
+/* #402: status rows (settings Updates section) — proper M3
    two-line list-item anatomy: leading icon + headline + supporting text.
    The icon top-aligns with the first line, and wrapped supporting text keeps
    its hanging indent because the text lives in its own flex child. */
 .status-row { display: flex; align-items: flex-start; gap: 16px; margin: 0; }
 .status-row > svg { flex: none; width: 24px; height: 24px; margin-top: 2px;
   color: var(--md-sys-color-on-surface-variant); }
-/* Licensed is an active state — the pumpkin check stays per the design doc. */
-.status-row-licensed > svg { color: var(--md-sys-color-primary); }
 /* #404: per-status update icons — an available update prompts a primary
    action, so it takes primary; unreachable is an error state. */
 .status-row-primary > svg { color: var(--md-sys-color-primary); }
@@ -1445,7 +1427,6 @@ body.app-fixed .cal-gutter-spacer {
 .status-row-supporting { margin: 2px 0 0; font-size: 0.875rem; line-height: 20px;
   letter-spacing: 0.25px; color: var(--md-sys-color-on-surface-variant); }
 .status-row-supporting code { font-size: 0.8125rem; }
-.license-error { color: var(--md-sys-color-error, #ffb4ab); margin: 4px 0 0; }
 /* #340: update command shown by the update check — tonal, monospace, wraps. */
 .update-cmd { display: block; font-family: ui-monospace, monospace; font-size: 0.8125rem;
   background: var(--md-sys-color-surface-container-highest, #2b2b2b);

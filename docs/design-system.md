@@ -68,15 +68,13 @@ per-page:
 - **Status pills:** invoice `draft / sent / paid` render as tonal pills
   (see `statusPill` in `site/server.ts`).
 - **Status rows:** `.status-row` — M3 two-line list-item anatomy for
-  icon + status text (settings License and Updates sections): leading icon,
+  icon + status text (settings Updates section): leading icon,
   headline (body-large), supporting text (body-medium,
   on-surface-variant). The icon top-aligns with the first line; wrapped
-  supporting text keeps its hanging indent. The license row adds
-  `.status-row-licensed` for the pumpkin check — licensed is an active state,
-  which is where the design doc allows pumpkin. Update statuses each get their
+  supporting text keeps its hanging indent. Update statuses each get their
   own leading icon (#404): up-to-date → check (on-surface-variant); an
   available update → download in primary (`.status-row-primary`) — it prompts
-  a primary action (re-run the installer / buy a new major); unreachable →
+  a primary action (re-run the installer); unreachable →
   the `alert` warning-triangle in error (`.status-row-error`); no-releases,
   dev, and the idle pre-check state → info (on-surface-variant), neutral and
   informational.
