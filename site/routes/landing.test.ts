@@ -81,4 +81,10 @@ describe("#731: landing page view", () => {
     expect(page).toContain('content="noindex"');
     expect(page).toContain("/static/style.css");
   });
+
+  test("#888: self-host plan links the GitHub repo", () => {
+    const { landingPage } = createLandingViews();
+    const page = landingPage("https://example.com");
+    expect(page).toContain('href="https://github.com/tristonarmstrong/zimer"');
+  });
 });
