@@ -9,7 +9,10 @@ export interface LandingDeps {
   hosted: boolean;
   /** Logged-in visitor in hosted mode (session), self-host cookie token. */
   visitorAuthed: (req: Request) => boolean;
-  landingPage: () => string;
+  /** Same absolute-origin helper invoice share links use (#301) — unfurlers
+   *  ignore relative og:image/twitter:image URLs. #865 */
+  shareOrigin: (req: Request) => string;
+  landingPage: (origin: string) => string;
   html: (body: string, status?: number, headers?: HeadersInit) => Response;
 }
 
@@ -25,7 +28,7 @@ export function createLandingRouter(deps: LandingDeps) {
     if (path !== "/" || method !== "GET") return null;
     if (!hosted) return null;
     if (visitorAuthed(req)) return null;
-    return html(landingPage());
+    return html(landingPage(deps.shareOrigin(req))); /* #865 */
   }
 
   return { handleLanding };

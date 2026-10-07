@@ -12,6 +12,7 @@ function setup(hosted: boolean, authed: boolean) {
   const { handleLanding } = createLandingRouter({
     hosted,
     visitorAuthed: () => authed,
+    shareOrigin: () => "https://example.com", /* #865 */
     landingPage,
     html,
   });
@@ -38,6 +39,20 @@ describe("#731: landing page router", () => {
     expect(body).toContain("support@klectr.dev");
   });
 
+  test("#865: share meta tags use absolute URLs from shareOrigin", async () => {
+    const { res, body } = await get(true, false, "/");
+    expect(res!.status).toBe(200);
+    expect(body).toContain(
+      '<meta property="og:image" content="https://example.com/static/og-image.png">'
+    );
+    expect(body).toContain(
+      '<meta property="og:url" content="https://example.com/">'
+    );
+    expect(body).toContain(
+      '<meta name="twitter:image" content="https://example.com/static/og-image.png">'
+    );
+  });
+
   test("hosted authed visitor falls through (null) — / keeps serving the app", async () => {
     const { res, body } = await get(true, true, "/");
     expect(res).toBeNull();
@@ -60,7 +75,7 @@ describe("#731: landing page router", () => {
 describe("#731: landing page view", () => {
   test("no em-dashes, no emoji, minimal public chrome", () => {
     const { landingPage } = createLandingViews();
-    const page = landingPage();
+    const page = landingPage("https://example.com");
     expect(page).not.toContain("—");
     expect(page).not.toContain("–");
     expect(page).toContain('content="noindex"');
