@@ -96,3 +96,19 @@ describe("#831: PDF status badge reads DRAFT for drafts", () => {
     expect(text).toContain("PAID");
   });
 });
+
+/** #875: paid invoices have nothing due — the PDF drops the PAYMENT TERMS
+ *  block, like the pay-online link (#639). */
+describe("#875: PDF drops the payment-terms block when paid", () => {
+  const terms = "Payment is due within 30 days of the zinvoice date.";
+
+  test("sent PDF keeps the terms block", () => {
+    const text = pdfText({ ...base, terms });
+    expect(text).toContain(terms);
+  });
+
+  test("paid PDF drops the terms block", () => {
+    const text = pdfText({ ...base, status: "paid", terms });
+    expect(text).not.toContain(terms);
+  });
+});
