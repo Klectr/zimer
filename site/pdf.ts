@@ -372,7 +372,9 @@ function drawModern(inv: PdfInvoice, doc: PdfDoc) {
   totalRow("Subtotal", money(inv.subtotal));
   if (inv.taxRate) totalRow(`Tax (${inv.taxRate}%)`, money(inv.tax));
   doc.y -= 4;
-  totalRow(inv.status === "paid" ? "TOTAL" : "TOTAL DUE", money(inv.total), true, 14, true);
+  /* #859: only a sent zinvoice has something due — a draft's total reads
+     TOTAL like a paid one's. */
+  totalRow(inv.status === "sent" ? "TOTAL DUE" : "TOTAL", money(inv.total), true, 14, true);
 
   /* ---- payment (#243): online payment link + plain-language terms ---- */
   if (inv.payUrl) {

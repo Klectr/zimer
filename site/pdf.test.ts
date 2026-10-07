@@ -55,10 +55,17 @@ describe("#637: PDF From block prints email below the address", () => {
 });
 
 /** #687: paid invoices have nothing left due — the grand-total row reads
- * TOTAL instead of TOTAL DUE. */
-describe("#687: PDF grand-total label drops DUE for paid invoices", () => {
+ * TOTAL instead of TOTAL DUE. #859: same for drafts — a draft was never
+ * sent, so only a sent invoice reads TOTAL DUE. */
+describe("#687/#859: PDF grand-total label drops DUE unless sent", () => {
   test("paid invoice prints TOTAL, not TOTAL DUE", () => {
     const text = pdfText({ ...base, status: "paid", total: 2880 });
+    expect(text).toContain("TOTAL");
+    expect(text).not.toContain("TOTAL DUE");
+  });
+
+  test("draft invoice prints TOTAL, not TOTAL DUE", () => {
+    const text = pdfText({ ...base, status: "draft", total: 150 });
     expect(text).toContain("TOTAL");
     expect(text).not.toContain("TOTAL DUE");
   });
