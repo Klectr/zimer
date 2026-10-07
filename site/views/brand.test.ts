@@ -42,10 +42,10 @@ function invoiceViews() {
 describe("#753: mascot placements", () => {
   test("landing hero shows the mascot, OG tags, and PNG favicon", () => {
     const { landingPage } = createLandingViews();
-    const html = landingPage();
+    const html = landingPage("https://example.com"); /* #865 */
     expect(html).toContain('class="landing-mascot"');
     expect(html).toContain('src="/static/mascot.png"');
-    expect(html).toContain('property="og:image" content="/static/og-image.png"');
+    expect(html).toContain('property="og:image" content="https://example.com/static/og-image.png"');
     expect(html).toContain('name="twitter:card" content="summary_large_image"');
     expect(html).toContain('href="/static/favicon-32.png"');
     expect(html).toContain('rel="apple-touch-icon" href="/static/alien-180.png"');

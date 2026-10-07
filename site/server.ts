@@ -192,7 +192,7 @@ const { handleApi } = createApiRouter({
 const { landingPage } = createLandingViews(); /* #731 */
 const visitorAuthed = (req: Request): boolean =>
   HOSTED ? accounts!.sessionUserFromRequest(req) !== null : authedPage(req, TOKEN);
-const { handleLanding } = createLandingRouter({ hosted: HOSTED, visitorAuthed, landingPage, html }); /* #731 */
+const { handleLanding } = createLandingRouter({ hosted: HOSTED, visitorAuthed, landingPage, shareOrigin: (req: Request) => PUBLIC_BASE_URL || publicOrigin(req, PORT), /* #865 */ html }); /* #731 */
 const { handleWeb } = createWebRouter({
   getTenant,
   STATIC_DIR, TOKEN, authedPage, tokensEqual, html, json, csvResponse, isHtmx,

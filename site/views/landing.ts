@@ -10,7 +10,7 @@
 import { icon, logo } from "../lib/icons.ts";
 
 export function createLandingViews() {
-  function landingPage(): string {
+  function landingPage(origin: string): string {
     return `<!DOCTYPE html>
   <html lang="en">
   <head>
@@ -24,10 +24,11 @@ export function createLandingViews() {
   <link rel="apple-touch-icon" href="/static/alien-180.png">
   <meta property="og:title" content="Zimer: your Zimer is your Zinvoice">
   <meta property="og:description" content="Track your time, hit one button, send the Zinvoice. $12/month with a 14-day free trial.">
-  <meta property="og:image" content="/static/og-image.png">
+  <meta property="og:image" content="${origin}/static/og-image.png">
+  <meta property="og:url" content="${origin}/">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:image" content="/static/og-image.png">
+  <meta name="twitter:image" content="${origin}/static/og-image.png">
   <script src="/static/motion.js" defer></script>
   </head>
   <body>
