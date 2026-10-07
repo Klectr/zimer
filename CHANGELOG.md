@@ -2,6 +2,10 @@
 
 What's new in Zimer, newest first.
 
+## 2026-10-07
+
+- **Changelog renders inline code.** Backticked names (like `--primary`) used to show the literal backticks on the changelog page — they render as code spans now.
+
 ## 2026-10-06
 
 - **One place to change the color scheme.** The theme colors now live as CSS variables (`--primary`, `--on-primary`, `--primary-container`, `--on-primary-container`) defined once in `:root` — no more hardcoded hexes scattered across the stylesheet. Calendar time slots stored under the old gold default now follow the theme too.

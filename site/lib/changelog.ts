@@ -14,9 +14,13 @@ export interface ChangelogEntry {
 
 let cache: ChangelogEntry[] | null = null;
 
-function inlineMd(s: string): string {
-  /* **bold** -> <strong>. Escape first, then restore the strong tags. */
-  return esc(s).replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+export function inlineMd(s: string): string {
+  /* #867: `code` -> <code> alongside **bold** -> <strong>. Escape first,
+     then restore the markup tags. Code runs before bold so bold wrapping
+     a code span nests cleanly. */
+  return esc(s)
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
 }
 
 export async function loadChangelog(): Promise<ChangelogEntry[]> {
