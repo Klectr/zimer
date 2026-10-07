@@ -3,7 +3,7 @@
  *  invoiceSheet is also returned so the public-views factory can reuse it. */
 
 import type { Database, Statement } from "bun:sqlite";
-import { addDays, daysBetween, esc, fmtDur, money, round2, shortDateRange, shortDateRangeYear, shortYmd, termsDays, termsDescription, termsKey, todayStr } from "../lib/format.ts";
+import { addDays, daysBetween, durationSeconds, esc, fmtDur, money, round2, shortDateRange, shortDateRangeYear, shortYmd, termsDays, termsDescription, termsKey, todayStr } from "../lib/format.ts";
 import { icon } from "../lib/icons.ts";
 import { getMeta } from "../db.ts";
 import { workspaceEmpty } from "../lib/demo.ts"; /* #300: empty-state CTA */
@@ -351,6 +351,67 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       </div>`;
   }
 
+  /** #899: per-day tracked hours behind the invoice — the time-breakdown
+      chart's data. Each entry rounds UP to 5 minutes like invoicing (#199),
+      so the chart totals agree with the tracked lines. Empty when no
+      time entries are linked to the invoice. */
+  function timeBreakdown(inv: { id: number }): { date: string; hours: number }[] {
+    const rows = db.query(
+      `SELECT substr(start_time, 1, 10) AS day, start_time, end_time
+       FROM time_entries WHERE invoice_id = ? AND end_time IS NOT NULL`
+    ).all(inv.id) as any[];
+    const byDay = new Map<string, number>();
+    for (const r of rows) {
+      const h = Math.ceil(durationSeconds(String(r.start_time), String(r.end_time)) / 300) * 300 / 3600;
+      if (h > 0) byDay.set(r.day, round2((byDay.get(r.day) ?? 0) + h));
+    }
+    return [...byDay.entries()]
+      .map(([date, hours]) => ({ date, hours }))
+      .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  }
+
+  /** #899: hand-rolled SVG bar chart of tracked time per day (weekly
+      buckets when the range is long, so bars stay readable). Mirrors the
+      revenue chart's markup. */
+  function breakdownChart(days: { date: string; hours: number }[]): string {
+    type Bucket = { label: string; hours: number };
+    let buckets: Bucket[], per: string;
+    if (days.length > 40) {
+      const wk = new Map<string, number>();
+      const mondayOf = (ymd: string) => {
+        const d = new Date(ymd + "T12:00:00");
+        d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+        return d.toISOString().slice(0, 10);
+      };
+      for (const d of days) {
+        const wk0 = mondayOf(d.date);
+        wk.set(wk0, round2((wk.get(wk0) ?? 0) + d.hours));
+      }
+      buckets = [...wk.entries()].sort().map(([date, hours]) => ({ label: "Wk of " + shortYmd(date), hours }));
+      per = "week";
+    } else {
+      buckets = days.map(d => ({ label: shortYmd(d.date), hours: d.hours }));
+      per = "day";
+    }
+    const max = Math.max(1, ...buckets.map(b => b.hours));
+    const W = 600, baseline = 150, areaH = 120, n = buckets.length;
+    const slot = W / n, bw = Math.min(34, slot * 0.62);
+    const bars = buckets.map((b, i) => {
+      const h = Math.max(3, Math.round(b.hours / max * areaH));
+      const x = (i * slot + (slot - bw) / 2).toFixed(1);
+      const cx = (i * slot + slot / 2).toFixed(1);
+      return `<g><title>${esc(`${b.label}: ${b.hours} hrs tracked`)}</title>` +
+        `<rect x="${x}" y="${baseline - h}" width="${bw.toFixed(1)}" height="${h}" rx="4" class="tb-bar"/>` +
+        `<text x="${cx}" y="${baseline + 18}" text-anchor="middle">${esc(b.label)}</text></g>`;
+    }).join("");
+    const total = round2(buckets.reduce((a, b) => a + b.hours, 0));
+    return `<section class="inv-breakdown" aria-label="Time breakdown">` +
+      `<div class="md-title-medium">Time breakdown</div>` +
+      `<p class="muted inv-breakdown-sub">Tracked time per ${per} — ${total} hrs total</p>` +
+      `<svg class="tb-chart" viewBox="0 0 ${W} 180" role="img" aria-label="Tracked time per ${per}">${bars}</svg>` +
+      `</section>`;
+  }
+
   /** /invoices/:id — printable detail with status actions. */
   function invoiceSheet(inv: Invoice & { items: InvoiceItem[] }): string {
     const t = invoiceTotals(inv.items, inv.tax_rate);
@@ -438,6 +499,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
              the Total-not-Total-due row and the dropped pay-online link. */
           inv.status === "paid" ? "" : `<p class="inv-terms">${esc(terms)}</p>`}
         ${inv.notes ? `<p class="inv-notes">${esc(inv.notes)}</p>` : ""}
+        ${(() => { const bd = timeBreakdown(inv); return bd.length ? breakdownChart(bd) : ""; })()}
       </div>`;
   }
 
@@ -480,6 +542,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       })),
       subtotal: t.subtotal, tax: t.tax, taxRate: inv.tax_rate, total: t.total,
       notes: inv.notes,
+      timeBreakdown: timeBreakdown(inv), /* #899: per-day tracked hours → PDF page-2 chart */
       fromName: getMeta(db, "business_name") || undefined,
       fromEmail: getMeta(db, "business_email") || undefined,
       fromAddress: getMeta(db, "business_address") || undefined,

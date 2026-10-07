@@ -16,9 +16,9 @@ const stubQuery = () => ({
 });
 const stubDb = { query: (_sql: string) => stubQuery() } as unknown as Database;
 
-function views(rows: any[], opts: { publicToken?: string | null } = {}) {
+function views(rows: any[], opts: { publicToken?: string | null; db?: Database } = {}) {
   return createInvoiceViews({
-    db: stubDb,
+    db: opts.db ?? stubDb,
     qInvoices: { all: () => rows } as unknown as Statement,
     layout: (_t: string, b: string) => b,
     clientOptions: () => "",
@@ -639,5 +639,49 @@ describe("#875: paid invoices hide the payment-terms line", () => {
   test("paid sheet drops the terms line", () => {
     const html = views([]).invoiceSheet({ ...detailInv("paid", "2026-09-21"), items: [] } as any);
     expect(html).not.toContain("inv-terms");
+  });
+});
+
+/** #899: the zinvoices sheet shows a per-day time-breakdown chart when the
+ *  invoice has linked time entries — the same 5-minute rounding as
+ *  invoicing, so the chart total matches the tracked hours. */
+describe("#899: time breakdown chart on the zinvoices sheet", () => {
+  const entryRows = [
+    { day: "2026-09-08", start_time: "2026-09-08T09:00:00", end_time: "2026-09-08T12:30:00" }, // 3.5h
+    { day: "2026-09-08", start_time: "2026-09-08T13:30:00", end_time: "2026-09-08T17:00:00" }, // 3.5h
+    { day: "2026-09-09", start_time: "2026-09-09T09:07:00", end_time: "2026-09-09T10:00:00" }, // 53m rounds up to 0.92h
+  ];
+  const entriesDb = {
+    query: (sql: string) =>
+      sql.includes("time_entries")
+        ? { get: () => null, all: () => entryRows, run: () => ({}) }
+        : stubQuery(),
+  } as unknown as Database;
+
+  test("sheet shows a per-day chart with the rounded entry hours", () => {
+    const html = views([], { db: entriesDb }).invoiceSheet(detailInv("sent", null) as any);
+    expect(html).toContain("Time breakdown");
+    expect(html).toContain("tb-chart");
+    expect(html).toContain("Sep 8");
+    expect(html).toContain("Sep 9");
+    // 3.5 + 3.5 + 0.92 (rounded up) = 7.92 hrs total
+    expect(html).toContain("7.92 hrs total");
+  });
+
+  test("sheet shows no chart when no time entries are linked", () => {
+    const html = views([]).invoiceSheet(detailInv("sent", null) as any);
+    expect(html).not.toContain("Time breakdown");
+    expect(html).not.toContain("tb-chart");
+  });
+
+  test("invoicePdfInput carries the per-day breakdown for the PDF", () => {
+    const input = views([], { db: entriesDb }).invoicePdfInput(
+      { ...detailInv("sent", null), client_payment_terms: null, public_token: null } as any,
+      "http://x",
+    );
+    expect(input.timeBreakdown).toEqual([
+      { date: "2026-09-08", hours: 7 },
+      { date: "2026-09-09", hours: 0.92 },
+    ]);
   });
 });
