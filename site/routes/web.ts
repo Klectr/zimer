@@ -16,6 +16,7 @@ import { loadChangelog } from "../lib/changelog.ts"; /* #303 */
 import { licenseTerms } from "../lib/license-terms.ts"; /* #341 */
 import { appVersion } from "../lib/version.ts"; /* #730 */
 import { updateSectionHtml, checkForUpdates, updateStatusHtml } from "../lib/updates.ts"; /* #340 */
+import { THEMES, themeCss, themeKey } from "../lib/theme.ts"; /* #884 */
 import type { AccountsDb } from "../lib/accounts.ts"; /* #732 */
 import { findTenantByPublicToken } from "../lib/tenants.ts"; /* #741 */
 
@@ -47,6 +48,7 @@ export interface WebTenant {
   bizProfileSection: () => string;
   clientSettingsForm: (c: any) => string; /* #630 */
   settingsPage: (body: string) => string; /* #693 */
+  themeSectionHtml: () => string; /* #884 */
   invoicesPage: (selected: (Invoice & { items: InvoiceItem[] }) | null, origin: string) => string;
   invoiceNewPage: (p: any, preview?: any) => string;
   defaultNewInvParams: () => any;
@@ -351,7 +353,7 @@ export function createWebRouter(deps: WebDeps) {
             db, dbPath, qRunning, qOne, qRange, qInvoice, qInvoices,
             notFoundPage, errorPage,
             dashboardPage, timerPartial, todayPartial, weekInner, weekStrip,
-            calendarPage, editPage, managePage, clientSelection, clientDetailBody, clientListOob, bizProfileSection, clientSettingsForm, settingsPage, invoicesPage, invoiceNewPage,
+            calendarPage, editPage, managePage, clientSelection, clientDetailBody, clientListOob, bizProfileSection, clientSettingsForm, settingsPage, themeSectionHtml, invoicesPage, invoiceNewPage,
             defaultNewInvParams, invoiceStep2, invoiceDetailBody, invoiceListOob, invoiceDoc, publicInvoicePage,
             getInvoice, invoiceTotals,
             nextInvoiceNumber, stripeLinkFor, unbilledEntries,
@@ -581,16 +583,29 @@ export function createWebRouter(deps: WebDeps) {
           if (isHtmx(req)) return html(bizProfileSection());
           return new Response(null, { status: 302, headers: { Location: "/manage" } });
         }
-        /* #883: settings modal body — business profile, Updates section,
-           support channel. The License section left with the retired $59 key. */
+        /* #883: settings modal body — business profile, theme, Updates
+           section, support channel. The License section left with the
+           retired $59 key. */
         if (path === "/settings" && method === "GET") {
           const updates = updateSectionHtml();
           const support = `<p class="muted tiny" style="margin-top:24px">Need help? <a href="mailto:support@klectr.dev">support@klectr.dev</a></p>`;
-          const body = bizProfileSection() + updates + support;
+          const body = bizProfileSection() + themeSectionHtml() + updates + support;
           if (isHtmx(req)) return html(body);
           /* #693: direct visits get the full app layout — the bare fragment
              renders unstyled. */
           return html(settingsPage(body));
+        }
+        /* #884: accent theme. Unknown keys are rejected — the dots only ever
+           post known keys, so this guards hand-built requests. The OOB
+           <style> swaps the layout's theme override live behind the modal. */
+        if (path === "/settings/theme" && method === "POST") {
+          const form = await req.formData();
+          const key = String(form.get("theme") || "").trim().toLowerCase();
+          if (!THEMES.some((t) => t.key === key)) return new Response("Unknown theme.", { status: 400 });
+          setMeta(db, "theme", key);
+          if (isHtmx(req)) return html(themeSectionHtml() +
+            `<style id="theme-style" hx-swap-oob="true">${themeCss(key)}</style>`);
+          return new Response(null, { status: 302, headers: { Location: "/settings" } });
         }
         /* #340: manual update check — fetches the release feed server-side
            and swaps the result into the Updates section. Authed like the

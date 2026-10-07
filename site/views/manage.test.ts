@@ -190,3 +190,27 @@ describe("manage labels (#827)", () => {
     }
   });
 });
+
+describe("theme section (#884)", () => {
+  function themeHtml(): string {
+    const { db } = testDb();
+    return createManageViews({ db, layout: (_t: string, b: string) => b }).themeSectionHtml();
+  }
+  test("renders the section with all five dots", () => {
+    const html = themeHtml();
+    expect(html).toContain('id="theme-section"');
+    expect(html).toContain("<h2");
+    expect(html).toContain("Theme");
+    for (const name of ["Pumpkin", "Crimson", "Blue", "Green", "Yellow"])
+      expect(html).toContain(`aria-label="${name} theme"`);
+    expect(html.match(/theme-dot/g)!.length).toBeGreaterThanOrEqual(5);
+  });
+  test("pumpkin is selected by default; the stored theme wins", () => {
+    expect(themeHtml()).toContain('aria-label="Pumpkin theme" aria-pressed="true"');
+    const { db } = testDb();
+    db.query("INSERT INTO meta (key, value) VALUES ('theme', 'blue')").run();
+    const html = createManageViews({ db, layout: (_t: string, b: string) => b }).themeSectionHtml();
+    expect(html).toContain('aria-label="Blue theme" aria-pressed="true"');
+    expect(html).not.toContain('aria-label="Pumpkin theme" aria-pressed="true"');
+  });
+});

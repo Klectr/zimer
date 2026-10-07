@@ -22,6 +22,7 @@ import { backupAll, backupFreshness } from "./lib/backups.ts"; /* #730 part 2 */
 import { createDb, getMeta, type DbBundle } from "./db.ts";
 import { resourcePath } from "./lib/paths.ts"; /* #519 */
 import { createRevenue } from "./lib/revenue.ts";
+import { themeCss, themeKey } from "./lib/theme.ts"; /* #884 */
 import { workspaceEmpty, demoIds, seedDemoData, removeDemoData, demoBanner } from "./lib/demo.ts";
 import { createDomain, CAL_HOUR_PX, DAY_TARGET_SECS } from "./lib/domain.ts";
 import { createLayoutViews } from "./views/layout.ts";
@@ -68,7 +69,9 @@ function buildTenantTree(bundle: DbBundle, dbPath: string): WebTenant & ApiTenan
   } = bundle;
   const { revenueTotals, revenueMonthly, revenueByClient, isOverdue, revenueOverdue } =
     createRevenue(qRevenueRows, () => getMeta(db, "business_payment_terms"));
-  const { layout, notFoundPage, errorPage } = createLayoutViews(qRunning);
+  const { layout, notFoundPage, errorPage } = createLayoutViews(qRunning,
+    /* #884: per-database accent theme; the tenant db owns the meta table. */
+    () => themeCss(themeKey(getMeta(db, "theme"))));
 
   const {
     getInvoice, invoiceTotals, nextInvoiceNumber, stripeLinkFor,
@@ -86,7 +89,7 @@ function buildTenantTree(bundle: DbBundle, dbPath: string): WebTenant & ApiTenan
     db, qOne, qRange, entrySelect: ENTRY_SELECT, layout, projectOptions, weekTargetBar,
     calHourPx: CAL_HOUR_PX,
   });
-  const { managePage, clientSelection, clientDetailBody, clientListOob, clientOptions, bizProfileSection, clientSettingsForm, settingsPage } =
+  const { managePage, clientSelection, clientDetailBody, clientListOob, clientOptions, bizProfileSection, clientSettingsForm, settingsPage, themeSectionHtml } =
     createManageViews({ db, layout });
   const {
     invoicesPage, defaultNewInvParams, invoiceNewPage, invoiceStep2, invoiceSheet,
@@ -116,7 +119,7 @@ function buildTenantTree(bundle: DbBundle, dbPath: string): WebTenant & ApiTenan
     notFoundPage, errorPage,
     dashboardPage, timerPartial, todayPartial, weekInner, weekStrip,
     calendarPage, editPage,
-    managePage, clientSelection, clientDetailBody, clientListOob, bizProfileSection, clientSettingsForm, settingsPage,
+    managePage, clientSelection, clientDetailBody, clientListOob, bizProfileSection, clientSettingsForm, settingsPage, themeSectionHtml,
     invoicesPage, invoiceNewPage, defaultNewInvParams, invoiceStep2, invoiceDetailBody, invoiceListOob, invoiceDoc, publicInvoicePage,
     getInvoice, invoiceTotals,
     nextInvoiceNumber, stripeLinkFor, unbilledEntries,
