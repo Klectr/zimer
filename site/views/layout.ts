@@ -7,7 +7,11 @@ import type { Statement } from "bun:sqlite";
 import { esc } from "../lib/format.ts";
 import { ICONS, icon, logo } from "../lib/icons.ts";
 
-export function createLayoutViews(qRunning: Statement) {
+export function createLayoutViews(qRunning: Statement, themeCss?: () => string) {
+  /* #884: per-user accent theme — the override lands after style.css so it
+     wins over the :root defaults. Always rendered (with the default theme's
+     values when unset) so a theme POST can live-swap it via OOB by id. */
+  const themeStyle = () => `<style id="theme-style">${themeCss ? themeCss() : ""}</style>`;
   /* #354: M3 navigation per window size class. The four destinations live in
      a bottom navigation bar on compact (<600px) or a collapsed leading
      navigation rail on medium+ (600px+), never both. The app bar keeps the
@@ -35,6 +39,7 @@ export function createLayoutViews(qRunning: Statement) {
   <title>${esc(title)} · Zimer</title>
   <script src="https://unpkg.com/htmx.org@2.0.4"></script>
   <link rel="stylesheet" href="/static/style.css">
+  ${themeStyle()}
   <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32.png">
   <link rel="apple-touch-icon" href="/static/alien-180.png">
   <script src="/static/motion.js" defer></script>
