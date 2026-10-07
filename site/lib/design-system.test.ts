@@ -167,3 +167,14 @@ describe("label type scale (#871)", () => {
     }
   });
 });
+
+/** #873: changelog code spans never split mid-identifier — a hyphen-minus is
+ *  a legal line-break point, so --var names in release notes could wrap after
+ *  the dashes ("--" then "primary,"). The spans are short identifiers, so
+ *  nowrap carries no overflow risk. */
+describe("changelog code spans (#873)", () => {
+  test("code spans are nowrap so identifiers stay on one line", () => {
+    const rule = declarations(ruleBlock(".page-changelog code"));
+    expect(rule.get("white-space")).toBe("nowrap");
+  });
+});
