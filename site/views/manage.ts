@@ -83,7 +83,7 @@ export function createManageViews(deps: ManageViewDeps) {
       </li>`;
     const rows = clients.map(c => {
       const n = (byClient.get(c.id) || []).length;
-      return row(`/manage?client=${c.id}`, dot(schemeColor(c.color) || "#fb923c"), c.name,
+      return row(`/manage?client=${c.id}`, dot(schemeColor(c.color) || "var(--md-sys-color-primary)"), c.name,
         `${n} project${n === 1 ? "" : "s"}${c.rate ? ` · $${c.rate}/hr` : ""}`,
         sk === c.id, `Manage client ${c.name}`);
     }).join("");
