@@ -965,14 +965,19 @@ body.app-fixed .cal-gutter-spacer {
    on top at every scroll position. (::after is the day-stats tooltip.) */
 /* #849: the top cutter lives on the lane itself (not the header) so it paints
    BELOW entries. First flex child, sticky just under the sticky header; the
-   negative margin collapses its layout footprint. Entries (z-1) cover it, so
+   negative margin collapses its layout footprint. Entries (z-2) cover it, so
    it can never bite an entry's top corners the way the old header-anchored
-   cutter did. Same crescent mask as the ::after bottom cutter, mirrored. */
+   cutter did. Same crescent mask as the ::after bottom cutter, mirrored.
+   #877: z-1, above the translucent night bands (z-auto) — at scroll-top the
+   band's opaque top-12px backing covered the cutter, but scrolled past 12px
+   the band's translucent region slid over the cutter's dark crescents and
+   they read through as notches. Above the band, the crescents are clean
+   dark cuts at every scroll offset; opaque entries still paint over it. */
 .cal-day-col::before {
   content: ""; display: block; flex: none; width: 100%;
   height: var(--md-sys-shape-corner-medium);
   margin-bottom: calc(-1 * var(--md-sys-shape-corner-medium));
-  position: sticky; top: var(--cal-head-h); z-index: 0;
+  position: sticky; top: var(--cal-head-h); z-index: 1;
   background: var(--md-sys-color-surface);
   -webkit-mask:
     radial-gradient(circle var(--md-sys-shape-corner-medium) at 100% 100%, transparent calc(var(--md-sys-shape-corner-medium) - 1px), #000 var(--md-sys-shape-corner-medium)) left top / var(--md-sys-shape-corner-medium) var(--md-sys-shape-corner-medium) no-repeat,
@@ -1130,9 +1135,11 @@ body.app-fixed .cal-gutter-spacer {
   padding: 4px 8px; overflow: hidden; cursor: pointer;
   font-size: 0.75rem; line-height: 1.35;
   min-width: 0;
-  /* #849: above the lane's ::before/::after corner cutters (z-0) so they can
-     never bite an entry's corners; still below the sticky header (z-5). */
-  z-index: 1;
+  /* #849: above the lane's ::before/::after corner cutters (z-1) so they can
+     never bite an entry's corners; still below the sticky header (z-5).
+     #877: the top cutter moved to z-1 (above the translucent night bands),
+     so entries move to z-2 to stay above the cutters. */
+  z-index: 2;
 }
 /* #275: sub-30-minute entries render at the 22px floor — tighter padding,
    smaller single-line text, and no duration line (no room for two lines).
