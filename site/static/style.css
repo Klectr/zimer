@@ -957,6 +957,18 @@ body.app-fixed .cal-gutter-spacer {
   position: sticky; top: 0; z-index: 5;
   background: var(--md-sys-color-surface);
 }
+/* #881: the sticky day headers are per-lane, so the 8px inter-lane gutters
+   broke the header band — the now-line dot (which correctly straddles the
+   lane edge at left:-5px) stayed visible through the gap after scrolling
+   past the now-line. Each head overlaps 4px into the gutters on both sides
+   (4+4 covers the 8px gap, so the header band is continuous and the dot's
+   gutter half hides under it with the line). Symmetric, so centered day
+   names/numbers don't shift. Sunday's right margin is zeroed: nothing may
+   overhang the grid's right edge. Lane gaps BELOW the header band stay 8px
+   page-bg — only the header band closes. (#880 moved the dot inside the
+   lane instead; reverted — the straddle is the correct design.) */
+.cal-grid > .cal-day .cal-day-head { margin-left: -4px; margin-right: -4px; }
+.cal-grid > .cal-day:nth-child(8) .cal-day-head { margin-right: 0; }
 /* #847: the sticky header is opaque page-bg and square. #845 gave it the lane
    tone + rounded top, but the lane's purple night band slides underneath while
    scrolling and peeked through the header's rounded corner cutouts. Square and
@@ -1204,7 +1216,7 @@ body.app-fixed .cal-gutter-spacer {
 .cal-entry-dur { opacity: 0.75; white-space: nowrap; }
 .cal-now { position: absolute; left: 0; right: 0; height: 2px; background: var(--md-sys-color-error); z-index: 4; pointer-events: none; }
 .cal-now::before {
-  content: ""; position: absolute; left: 0; top: -4px;
+  content: ""; position: absolute; left: -5px; top: -4px;
   width: 10px; height: 10px; border-radius: var(--md-sys-shape-corner-full);
   background: var(--md-sys-color-error);
 }
