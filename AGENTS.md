@@ -33,7 +33,7 @@ This is the most violated thing by new agents, so it's up front, not linked:
   primary actions and active states only.
 - **Tonal, borderless fields.** Soft shadows, M3 shape scale (4/8/12/16/28px).
 - **Icons, never emoji/glyphs.** Actions use the `icon(name)` system in
-  `site/server.ts` (inline SVG, M3 outlined 24px, no icon font). Never use
+  `site/lib/icons.ts` (inline SVG, M3 outlined 24px, no icon font). Never use
   emoji or text glyphs (🗑️, ✎, ▶, ←) as action icons.
 - **Text-field affixes.** Units and currency go in prefix/suffix affixes
   (`$` … `/hr`), never crammed into the floating label.
