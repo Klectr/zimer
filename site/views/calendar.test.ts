@@ -746,7 +746,12 @@ describe("calendar slot theme color (#841)", () => {
  *  cutter re-rounds the visible bottom edge. #849: the top cutter moved from
  *  the header to the lane so it paints below entries (z-0 vs entries z-1) —
  *  the header-anchored cutter bit dark specks out of entries touching the
- *  lane top. */
+ *  lane top. #877: the top cutter moved to z-1, above the translucent night
+ *  bands (z-auto) — at scroll-top the band's opaque top-12px backing covered
+ *  the z-0 cutter, but scrolled past 12px the band's translucent region slid
+ *  over the cutter's dark crescents and they read through as notches; above
+ *  the band the crescents are clean dark cuts at every scroll offset. Entries
+ *  moved to z-2 to stay above the cutters. */
 describe("calendar column rounding (#845, #847, #849)", () => {
   test("sticky day header is opaque page-bg and square — no corner cutouts to peek through", async () => {
     const css = await Bun.file("site/static/style.css").text();
@@ -761,7 +766,7 @@ describe("calendar column rounding (#845, #847, #849)", () => {
     expect(cutter).not.toBeNull();
     expect(cutter![0]).toMatch(/position:\s*sticky/);
     expect(cutter![0]).toMatch(/top:\s*var\(--cal-head-h\)/);
-    expect(cutter![0]).toMatch(/z-index:\s*0/);
+    expect(cutter![0]).toMatch(/z-index:\s*1/);
     expect(cutter![0]).toMatch(/background:\s*var\(--md-sys-color-surface\)/);
     expect(cutter![0]).toMatch(/pointer-events:\s*none/);
     expect(cutter![0]).toMatch(/mask:/);
@@ -770,10 +775,24 @@ describe("calendar column rounding (#845, #847, #849)", () => {
     const css = await Bun.file("site/static/style.css").text();
     const entry = css.match(/\.cal-entry\s*\{[^}]*\}/);
     expect(entry).not.toBeNull();
-    expect(entry![0]).toMatch(/z-index:\s*1/);
+    expect(entry![0]).toMatch(/z-index:\s*2/);
     const bottomCutter = css.match(/\.cal-day-col::after\s*\{[^}]*\}/);
     expect(bottomCutter).not.toBeNull();
     expect(bottomCutter![0]).toMatch(/z-index:\s*0/);
+  });
+  test("#877: top cutter paints above the translucent night band so its dark crescents can't show through it", async () => {
+    const css = await Bun.file("site/static/style.css").text();
+    const cutter = css.match(/\.cal-day-col::before\s*\{[^}]*\}/);
+    expect(cutter).not.toBeNull();
+    expect(cutter![0]).toMatch(/z-index:\s*1/);
+    // night band stays z-auto (below the z-1 cutter, above the lane bg)
+    const band = css.match(/\.cal-night\s*\{[^}]*\}/);
+    expect(band).not.toBeNull();
+    expect(band![0]).not.toMatch(/z-index/);
+    // entries stay above the cutter (the #849 fringe fix, now at z-2)
+    const entry = css.match(/\.cal-entry\s*\{[^}]*\}/);
+    expect(entry).not.toBeNull();
+    expect(entry![0]).toMatch(/z-index:\s*2/);
   });
   test("lane tone is a shared variable across day states", async () => {
     const css = await Bun.file("site/static/style.css").text();
