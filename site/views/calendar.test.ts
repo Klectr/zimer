@@ -794,15 +794,25 @@ describe("calendar column rounding (#845, #847, #849)", () => {
     expect(entry).not.toBeNull();
     expect(entry![0]).toMatch(/z-index:\s*2/);
   });
-  test("#879: now-dot sits inside the lane so it hides under the sticky header with the line", async () => {
+  test("#881: now-dot straddles the lane edge; sticky headers overlap the gutters so the dot hides with the line", async () => {
     const css = await Bun.file("site/static/style.css").text();
+    // the dot straddling the lane edge (left:-5px) is the correct design —
+    // #880 tucked it inside the lane instead; reverted
     const dot = css.match(/\.cal-now::before\s*\{[^}]*\}/);
     expect(dot).not.toBeNull();
-    // the dot must not protrude into the 8px inter-lane gutter (which the
-    // per-lane sticky headers don't cover) — a negative left left a stray dot
-    // visible after scrolling past the now-line
-    expect(dot![0]).toMatch(/left:\s*0/);
-    expect(dot![0]).not.toMatch(/left:\s*-/);
+    expect(dot![0]).toMatch(/left:\s*-5px/);
+    expect(dot![0]).toMatch(/top:\s*-4px/);
+    // each day head overlaps 4px into the gutters on both sides, closing the
+    // 8px inter-lane gaps in the header band (the dot's gutter half then
+    // hides under the opaque sticky header with the line)
+    const head = css.match(/\.cal-grid\s*>\s*\.cal-day\s+\.cal-day-head\s*\{[^}]*\}/);
+    expect(head).not.toBeNull();
+    expect(head![0]).toMatch(/margin-left:\s*-4px/);
+    expect(head![0]).toMatch(/margin-right:\s*-4px/);
+    // Sunday is the last grid child — its head must not overhang the grid edge
+    const sun = css.match(/\.cal-grid\s*>\s*\.cal-day:nth-child\(8\)\s+\.cal-day-head\s*\{[^}]*\}/);
+    expect(sun).not.toBeNull();
+    expect(sun![0]).toMatch(/margin-right:\s*0/);
     // the line itself stays full lane width, above entries
     const line = css.match(/\.cal-now\s*\{[^}]*\}/);
     expect(line).not.toBeNull();
