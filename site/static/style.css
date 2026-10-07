@@ -1276,9 +1276,10 @@ body.app-fixed .cal-gutter-spacer {
 .settings-dialog-head h2 { margin: 0; }
 #settings-body p { margin: 0; }
 #biz-profile h2 { margin: 0 0 4px; }
-/* #884: theme dots — accent swatches in the settings modal. A ring in the
-   dot's own color marks the active theme; the check is dark-on-light for
-   every palette. Focus uses the global :focus-visible ring. */
+/* #884: theme dots — accent swatches in the settings modal. #895: the active
+   theme gets a white border/ring so the selection is obvious; each dot is a
+   true circle in its own theme color. The check is dark-on-light for every
+   palette. Focus uses the global :focus-visible ring. */
 #theme-section h2 { margin: 0 0 4px; }
 .theme-dots { display: flex; flex-wrap: wrap; gap: 12px; margin: 4px 0 8px; }
 .theme-dot {
@@ -1289,7 +1290,7 @@ body.app-fixed .cal-gutter-spacer {
   transition: transform 120ms ease;
 }
 .theme-dot:hover { transform: scale(1.08); }
-.theme-dot.selected { box-shadow: 0 0 0 2px var(--md-sys-color-surface), 0 0 0 4px var(--dot); }
+.theme-dot.selected { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--dot); }
 .theme-dot svg { width: 20px; height: 20px; color: rgba(0, 0, 0, 0.75); }
 /* #355: the calendar dialog gets the same title/close header row as the
    settings dialog; the close button is compact-only (600px+ keeps the
