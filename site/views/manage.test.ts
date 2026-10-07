@@ -213,4 +213,13 @@ describe("theme section (#884)", () => {
     expect(html).toContain('aria-label="Blue theme" aria-pressed="true"');
     expect(html).not.toContain('aria-label="Pumpkin theme" aria-pressed="true"');
   });
+  test("every dot exposes its pressed state (#897)", () => {
+    const html = themeHtml();
+    const pressedTrue = html.match(/aria-pressed="true"/g) || [];
+    const pressedFalse = html.match(/aria-pressed="false"/g) || [];
+    const buttons = html.match(/<button[^>]*theme-dot[^>]*>/g) || [];
+    expect(pressedTrue.length).toBe(1);
+    expect(pressedFalse.length).toBe(buttons.length - 1);
+    for (const b of buttons) expect(b).toMatch(/aria-pressed="(true|false)"/);
+  });
 });

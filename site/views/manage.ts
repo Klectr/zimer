@@ -400,7 +400,7 @@ export function createManageViews(deps: ManageViewDeps) {
       return `<button type="button" class="theme-dot${selected ? " selected" : ""}"
           style="--dot:${t.primary}" hx-post="/settings/theme" hx-vals='{"theme":"${t.key}"}'
           hx-target="#theme-section" hx-swap="outerHTML"
-          aria-label="${t.name} theme"${selected ? ' aria-pressed="true"' : ""}>${selected ? icon("check") : ""}</button>`;
+          aria-label="${t.name} theme" aria-pressed="${selected}">${selected ? icon("check") : ""}</button>`;
     }).join("");
     return `<section id="theme-section">
           <h2 class="md-headline-small">Theme</h2>
