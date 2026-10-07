@@ -54,6 +54,21 @@ describe("manage tooltips (#486)", () => {
   });
 });
 
+/* #863: the manage page's document title follows the H1, the nav label, and
+   the layout.ts one-word naming note — "Clients", not "Clients & Projects". */
+describe("manage document title (#863)", () => {
+  test("title is the page heading (Clients), not Clients & Projects", () => {
+    const { db, client } = testDb();
+    let captured = "";
+    const views = createManageViews({
+      db,
+      layout: (t: string, b: string) => { captured = t; return b; },
+    });
+    views.managePage({ kind: "client", client });
+    expect(captured).toBe("Clients");
+  });
+});
+
 describe("client settings modal (#630)", () => {
   test("detail pane drops the inline name form for a header cog", () => {
     const html = detailHtml();

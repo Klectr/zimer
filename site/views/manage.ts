@@ -251,7 +251,7 @@ export function createManageViews(deps: ManageViewDeps) {
        plays once per page load and never replays on swaps.
        #245: the business profile section moved into the settings modal
        behind the account menu button; the Manage page is clients & projects only. */
-    return layout("Clients & Projects", `
+    return layout("Clients", `
       <div class="client-list-detail${sel && !isDefault ? " has-selection" : ""}" data-enter="2">
         <section class="client-list-pane" aria-label="Client list">
           <h1 class="md-headline-small">Clients</h1>
