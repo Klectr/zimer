@@ -384,7 +384,9 @@ function drawModern(inv: PdfInvoice, doc: PdfDoc) {
     doc.text(M, doc.y, 10, inv.payUrl);
     doc.y -= 14;
   }
-  if (inv.terms?.trim()) {
+  /* #875: paid invoices have nothing due — drop the terms block, like the
+     pay-online link (#639). */
+  if (inv.status !== "paid" && inv.terms?.trim()) {
     doc.y -= 8;
     doc.text(M, doc.y, 8.5, "P A Y M E N T   T E R M S", true, true);
     doc.y -= 15;

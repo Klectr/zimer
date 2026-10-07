@@ -434,7 +434,9 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
             <tr class="grand"><td colspan="4">${inv.status === "sent" ? "Total due" : "Total"}</td><td class="num">${money(t.total)}</td></tr>
           </tfoot>
         </table></div>
-        <p class="inv-terms">${esc(terms)}</p>
+        ${/* #875: paid invoices have nothing due — drop the terms line, like
+             the Total-not-Total-due row and the dropped pay-online link. */
+          inv.status === "paid" ? "" : `<p class="inv-terms">${esc(terms)}</p>`}
         ${inv.notes ? `<p class="inv-notes">${esc(inv.notes)}</p>` : ""}
       </div>`;
   }

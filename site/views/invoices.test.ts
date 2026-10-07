@@ -620,3 +620,24 @@ describe("#831: detail badge labels drafts Draft, not Unpaid", () => {
     expect(html).toContain('<span class="inv-modern-badge paid">Paid</span>');
   });
 });
+
+/** #875: paid invoices have nothing due — the sheet drops the payment-terms
+ *  line, like the Total-not-Total-due row (#859) and the pay-online link
+ *  (#639). Drafts keep it: the draft sheet is Triston's own preview of what
+ *  the client will see once sent. */
+describe("#875: paid invoices hide the payment-terms line", () => {
+  test("sent sheet keeps the terms line", () => {
+    const html = views([]).invoiceSheet({ ...detailInv("sent", null), items: [] } as any);
+    expect(html).toContain("inv-terms");
+  });
+
+  test("draft sheet keeps the terms line", () => {
+    const html = views([]).invoiceSheet({ ...detailInv("draft", null), items: [] } as any);
+    expect(html).toContain("inv-terms");
+  });
+
+  test("paid sheet drops the terms line", () => {
+    const html = views([]).invoiceSheet({ ...detailInv("paid", "2026-09-21"), items: [] } as any);
+    expect(html).not.toContain("inv-terms");
+  });
+});
