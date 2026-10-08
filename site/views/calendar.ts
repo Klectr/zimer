@@ -1062,15 +1062,21 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       (data-iso) — the server can't know the client's zone on a full page load.
       On submit, the offset is appended via hidden inputs (a raw ±HH:MM suffix
       is not a valid datetime-local value and would be sanitized to ""). */
-  function editPage(id: number): string | null {
-    const e = qOne.get(id) as Entry | null;
-    if (!e) return null;
+  /** #903: the edit-entry form shared by the full page and the timer modal.
+      modal=true posts via htmx (the save answer is a 204 + HX-Trigger; the
+      dialog closes in place), and Cancel closes the dialog instead of
+      navigating away. The datetime-local prefill/offset script is scoped to
+      this form so a lazily-loaded modal can't touch page inputs. */
+  function entryEditForm(e: Entry, modal = false): string {
     const locked = entryIsLocked(e); /* #334: sent/paid time opens read-only */
     const dis = locked ? " disabled" : "";
-    return layout(locked ? "Entry" : "Edit entry", `
-      <h2 class="md-headline-small" data-enter="2">${locked ? "Entry" : "Edit entry"}</h2>
-      ${locked ? `<p class="muted md-body-medium">Zinvoiced on ${esc(e.invoice_number || "")} — this time can\u2019t be edited.</p>` : ""}
-      <form method="post" action="/entries/${e.id}" class="form" id="edit-entry-form">
+    const formAttrs = modal
+      ? `hx-post="/entries/${e.id}" hx-swap="none"`
+      : `method="post" action="/entries/${e.id}"`;
+    const cancel = modal
+      ? `<button class="md-text-button" type="button" data-entry-edit-cancel>Cancel</button>`
+      : `<a class="md-text-button" href="/calendar">${locked ? "Back" : "Cancel"}</a>`;
+    return `<form ${formAttrs} class="form" id="edit-entry-form">
         <div class="md-text-field">
           <input type="text" id="ee-desc" name="description" value="${esc(e.description)}" placeholder=" "${dis}>
           <label for="ee-desc">Description</label>
@@ -1089,16 +1095,16 @@ export function createCalendarViews(deps: CalendarViewDeps) {
         </div>
         <div class="row">
           ${locked ? "" : `<button class="md-filled-button" type="submit">Save</button>`}
-          <a class="md-text-button" href="/calendar">${locked ? "Back" : "Cancel"}</a>
+          ${cancel}
         </div>
       </form>
       <script>(function(){
         var p2=function(n){return String(n).padStart(2,"0");};
         function toLocalInput(iso){var d=new Date(iso);
           return d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate())+"T"+p2(d.getHours())+":"+p2(d.getMinutes());}
-        var els=document.querySelectorAll('input[type=datetime-local][data-iso]');
+        var form=document.getElementById("edit-entry-form");if(!form)return;
+        var els=form.querySelectorAll('input[type=datetime-local][data-iso]');
         for(var i=0;i<els.length;i++){var iso=els[i].getAttribute("data-iso");if(iso)els[i].value=toLocalInput(iso);}
-        var form=document.getElementById("edit-entry-form");
         form.addEventListener("submit",function(ev){
           ev.preventDefault();
           var o=-new Date().getTimezoneOffset(),s=o<0?"-":"+",a=Math.abs(o);
@@ -1108,8 +1114,27 @@ export function createCalendarViews(deps: CalendarViewDeps) {
             form.appendChild(h);els[j].disabled=true;}}
           form.submit();
         });
-      })();</script>`);
+      })();</script>`;
   }
 
-  return { weekInner, weekStrip, weekGrid, calendarPage, editPage };
+  function editPage(id: number): string | null {
+    const e = qOne.get(id) as Entry | null;
+    if (!e) return null;
+    const locked = entryIsLocked(e); /* #334: sent/paid time opens read-only */
+    return layout(locked ? "Entry" : "Edit entry", `
+      <h2 class="md-headline-small" data-enter="2">${locked ? "Entry" : "Edit entry"}</h2>
+      ${locked ? `<p class="muted md-body-medium">Zinvoiced on ${esc(e.invoice_number || "")} — this time can\u2019t be edited.</p>` : ""}
+      ${entryEditForm(e)}`);
+  }
+
+  /** #903: the edit-entry form as a dialog fragment for the timer page's
+      lazy-loaded modal. Null for missing or locked entries — the route answers
+      those with 404/403. */
+  function entryEditModal(id: number): string | null {
+    const e = qOne.get(id) as Entry | null;
+    if (!e || entryIsLocked(e)) return null;
+    return entryEditForm(e, true);
+  }
+
+  return { weekInner, weekStrip, weekGrid, calendarPage, editPage, entryEditModal };
 }

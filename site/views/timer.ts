@@ -75,8 +75,10 @@ export function createTimerViews(deps: TimerViewDeps) {
       </div>
       <div class="md-list-item-trailing">
         ${durSpan}
-        ${entryIsLocked(e) ? "" : `
-        <a class="md-icon-button" href="/entries/${e.id}/edit" aria-label="Edit entry" data-tip="Edit">${icon("edit")}</a>
+        ${/* #903: edit opens a modal on the timer page (direct visits to
+             /entries/:id/edit keep the full page). Locked entries show no
+             edit button — see entryIsLocked. */ entryIsLocked(e) ? "" : `
+        <button class="md-icon-button entry-edit-open" type="button" data-entry-id="${e.id}" aria-label="Edit entry" data-tip="Edit" aria-haspopup="dialog">${icon("edit")}</button>
         ${/* #462: the timer card owns the running entry — deleting it from the
              list orphaned the card (ghost TRACKING + tab-title count). Stop
              there first; delete lands on the finished row. */ !e.end_time ? "" : `
@@ -186,6 +188,22 @@ export function createTimerViews(deps: TimerViewDeps) {
       <ul class="md-list">${entries.map((e, i) => entryRow(e, i, canRepeat)).join("")}</ul>`;
   }
 
+  /* #903: entry edit modal — same scrim/dialog pattern as the #630 client
+     settings modal (scrim fade + dialog scale/fade, Escape/scrim/close,
+     focus trap, lazy-loaded body). Rendered once per timer page, outside
+     every HTMX-swapped region (#today-list refreshes underneath it). */
+  function entryEditDialog(): string {
+    return `<div class="cal-scrim" id="entry-edit-scrim" hidden>
+      <div class="settings-dialog" role="dialog" aria-modal="true" aria-labelledby="entry-edit-title">
+        <div class="settings-dialog-head">
+          <h2 class="md-headline-small" id="entry-edit-title">Edit entry</h2>
+          <button class="md-icon-button" id="entry-edit-close" type="button" aria-label="Close edit dialog">${icon("close")}</button>
+        </div>
+        <div id="entry-edit-body"><p class="muted md-body-medium">Loading…</p></div>
+      </div>
+    </div>`;
+  }
+
   function dashboardPage(): string {
     return layout("Today", `
       ${demoBanner(db)}
@@ -233,7 +251,67 @@ export function createTimerViews(deps: TimerViewDeps) {
             ${revenueSection()}
           </div>
         </aside>
-      </div>`, "timer", true);
+      </div>
+      ${entryEditDialog()}
+      <script>(function(){
+        /* #903: entry edit modal wiring, mirrors the #630 client settings
+           modal. The row buttons live inside HTMX-swapped HTML, so open is
+           delegated; the form lazy-loads into the dialog body. A successful
+           save (POST /entries/:id, answered 204 + HX-Trigger) closes the
+           modal while the timer-updated trigger refreshes #today-list. */
+        var scrim=document.getElementById("entry-edit-scrim");
+        var body=document.getElementById("entry-edit-body");
+        var closeBtn=document.getElementById("entry-edit-close");
+        var opener=null;
+        function openEdit(id,btn){
+          if(!scrim||!body||!window.htmx)return;
+          opener=btn||null;
+          scrim.hidden=false;void scrim.offsetWidth;scrim.classList.add("open");
+          window.htmx.ajax("GET","/entries/"+id+"/edit-modal",
+            {target:"#entry-edit-body",swap:"innerHTML"});
+          document.addEventListener("keydown",onEditKey,true);
+        }
+        function closeEdit(refocus){
+          if(!scrim||scrim.hidden)return;
+          scrim.classList.remove("open");
+          document.removeEventListener("keydown",onEditKey,true);
+          var done=false,finish=function(){if(done)return;done=true;scrim.hidden=true;};
+          var onEnd=function(e){if(e.target===scrim&&e.propertyName==="opacity"){scrim.removeEventListener("transitionend",onEnd);finish();}};
+          scrim.addEventListener("transitionend",onEnd);setTimeout(finish,300);
+          if(refocus&&opener&&opener.isConnected)opener.focus();opener=null;
+        }
+        function onEditKey(e){
+          if(e.key==="Escape"){e.preventDefault();closeEdit(true);}
+          else if(e.key==="Tab"&&window.tkTrapTab){window.tkTrapTab(scrim,e);}
+        }
+        if(scrim){
+          scrim.addEventListener("pointerdown",function(e){if(e.target===scrim)closeEdit(false);});
+          if(closeBtn)closeBtn.addEventListener("click",function(){closeEdit(true);});
+          scrim.addEventListener("click",function(e){
+            if(e.target.closest&&e.target.closest("[data-entry-edit-cancel]"))closeEdit(true);
+          });
+          body.addEventListener("htmx:afterSwap",function(){
+            var f=body.querySelector("input");if(f)f.focus();
+          });
+        }
+        var pane=document.querySelector(".pane-focus");
+        if(pane)pane.addEventListener("click",function(ev){
+          var b=ev.target.closest?ev.target.closest(".entry-edit-open"):null;
+          if(b)openEdit(b.getAttribute("data-entry-id"),b);
+        });
+        document.body.addEventListener("htmx:afterRequest",function(e){
+          /* #630's lesson: match the entry SAVE (POST) only — htmx 2.x reports
+             the swap container as detail.elt, and the modal's own GET load must
+             not trigger the save flow. */
+          var cfg=e.detail.requestConfig||{};
+          var pi=e.detail.pathInfo||{};
+          var m=(pi.requestPath||"").match(/\\/entries\\/(\\d+)$/);
+          if(m&&e.detail.successful&&(cfg.verb||"").toLowerCase()==="post"){
+            if(window.tkSnackbar)window.tkSnackbar("Entry saved");
+            closeEdit(false);
+          }
+        });
+      })();</script>`, "timer", true);
   }
 
 

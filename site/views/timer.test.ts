@@ -137,12 +137,18 @@ describe("running entry row delete guard (#462)", () => {
   }
   test("running entry keeps Edit but hides Delete (the card owns it)", () => {
     const html = row(runningEntry);
-    expect(html).toContain("/entries/1/edit");
+    /* #903: edit is a modal-open button now, not a link to the edit page. */
+    expect(html).toContain('class="md-icon-button entry-edit-open"');
+    expect(html).toContain('data-entry-id="1"');
+    expect(html).not.toContain("/entries/1/edit");
     expect(html).not.toContain("hx-delete");
   });
   test("finished entry keeps both Edit and Delete", () => {
     const html = row(stoppedEntry);
-    expect(html).toContain("/entries/1/edit");
+    expect(html).toContain('class="md-icon-button entry-edit-open"');
+    expect(html).toContain('data-entry-id="1"');
+    expect(html).toContain('aria-haspopup="dialog"');
+    expect(html).not.toContain("/entries/1/edit");
     expect(html).toContain("hx-delete");
   });
 });
@@ -203,7 +209,7 @@ describe("repeat entry (#473)", () => {
     const html = row(finished, false);
     expect(html).not.toContain('hx-post="/timer/start"');
     // edit + delete stay put
-    expect(html).toContain("/entries/2/edit");
+    expect(html).toContain('data-entry-id="2"');
     expect(html).toContain("hx-delete");
   });
   test("locked (invoiced) entries offer no repeat", () => {

@@ -41,6 +41,7 @@ export interface WebTenant {
   weekStrip: (weekStr?: string, tz?: string) => string;
   calendarPage: (week?: string) => string;
   editPage: (id: number) => string | null;
+  entryEditModal: (id: number) => string | null; /* #903 */
   managePage: (selected: ClientSel | null) => string; /* #367 */
   clientSelection: (raw: string | null) => ClientSel | null; /* #367 */
   clientDetailBody: (sel: ClientSel) => string; /* #367 */
@@ -353,7 +354,7 @@ export function createWebRouter(deps: WebDeps) {
             db, dbPath, qRunning, qOne, qRange, qInvoice, qInvoices,
             notFoundPage, errorPage,
             dashboardPage, timerPartial, todayPartial, weekInner, weekStrip,
-            calendarPage, editPage, managePage, clientSelection, clientDetailBody, clientListOob, bizProfileSection, clientSettingsForm, settingsPage, themeSectionHtml, invoicesPage, invoiceNewPage,
+            calendarPage, editPage, entryEditModal, managePage, clientSelection, clientDetailBody, clientListOob, bizProfileSection, clientSettingsForm, settingsPage, themeSectionHtml, invoicesPage, invoiceNewPage,
             defaultNewInvParams, invoiceStep2, invoiceDetailBody, invoiceListOob, invoiceDoc, publicInvoicePage,
             getInvoice, invoiceTotals,
             nextInvoiceNumber, stripeLinkFor, unbilledEntries,
@@ -438,6 +439,18 @@ export function createWebRouter(deps: WebDeps) {
             const page = editPage(Number(m[1]));
             return page ? html(page) : html(notFoundPage(authedPage(req, TOKEN)), 404);
           }
+          /* #903: edit-entry dialog fragment for the timer page modal. Direct
+             visits to /entries/:id/edit keep the full page above. */
+          m = path.match(/^\/entries\/(\d+)\/edit-modal$/);
+          if (m && method === "GET") {
+            const id = Number(m[1]);
+            const cur = qOne.get(id) as Entry | null;
+            if (!cur) return html(notFoundPage(authedPage(req, TOKEN)), 404);
+            if (entryIsLocked(cur))
+              return new Response("This time is invoiced and can't be edited.", { status: 403 });
+            const modal = entryEditModal(id);
+            return modal ? html(modal) : html(notFoundPage(authedPage(req, TOKEN)), 404);
+          }
         m = path.match(/^\/entries\/(\d+)$/);
         if (m && method === "POST") {
           const id = Number(m[1]);
@@ -456,6 +469,11 @@ export function createWebRouter(deps: WebDeps) {
               new Date(String(form.get("start_time"))).toISOString(),
               endRaw ? new Date(endRaw).toISOString() : null,
               id);
+          /* #903: the timer modal posts via htmx — answer 204 + HX-Trigger so
+             the dialog closes and #today-list refreshes in place. Plain form
+             posts (the full edit page) keep the 302. */
+          if (isHtmx(req))
+            return new Response(null, { status: 204, headers: { "HX-Trigger": "timer-updated" } });
           return new Response(null, { status: 302, headers: { Location: "/calendar" } });
         }
         if (m && method === "DELETE") {

@@ -85,7 +85,7 @@ function buildTenantTree(bundle: DbBundle, dbPath: string): WebTenant & ApiTenan
     revenueTotals, revenueMonthly, revenueByClient, revenueOverdue, m3ProgressBar,
     dayTargetSecs: DAY_TARGET_SECS,
   });
-  const { weekInner, weekStrip, weekGrid, calendarPage, editPage } = createCalendarViews({
+  const { weekInner, weekStrip, weekGrid, calendarPage, editPage, entryEditModal } = createCalendarViews({
     db, qOne, qRange, entrySelect: ENTRY_SELECT, layout, projectOptions, weekTargetBar,
     calHourPx: CAL_HOUR_PX,
   });
@@ -118,7 +118,7 @@ function buildTenantTree(bundle: DbBundle, dbPath: string): WebTenant & ApiTenan
     qRunning, qOne, qRange, qInvoice, qInvoices,
     notFoundPage, errorPage,
     dashboardPage, timerPartial, todayPartial, weekInner, weekStrip,
-    calendarPage, editPage,
+    calendarPage, editPage, entryEditModal,
     managePage, clientSelection, clientDetailBody, clientListOob, bizProfileSection, clientSettingsForm, settingsPage, themeSectionHtml,
     invoicesPage, invoiceNewPage, defaultNewInvParams, invoiceStep2, invoiceDetailBody, invoiceListOob, invoiceDoc, publicInvoicePage,
     getInvoice, invoiceTotals,
