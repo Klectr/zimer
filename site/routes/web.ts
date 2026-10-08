@@ -10,7 +10,7 @@ import type { Entry, Invoice, InvoiceItem } from "../lib/types.ts";
 import type { ClientSel } from "../views/manage.ts"; /* #367 */
 import type { PdfInvoice } from "../pdf.ts";
 import { getMeta, setMeta } from "../db.ts";
-import { clientIp } from "../lib/http.ts";
+import { clientIp, secureCookieAttr } from "../lib/http.ts";
 import { createRateLimiter } from "../lib/ratelimit.ts";
 import { loadChangelog } from "../lib/changelog.ts"; /* #303 */
 import { licenseTerms } from "../lib/license-terms.ts"; /* #341 */
@@ -190,7 +190,7 @@ export function createWebRouter(deps: WebDeps) {
               if (token) {
                 return new Response(null, {
                   status: 302,
-                  headers: { Location: "/", "Set-Cookie": accounts!.sessionCookie(token) },
+                  headers: { Location: "/", "Set-Cookie": accounts!.sessionCookie(req, token) },
                 });
               }
               return html(hostedLoginPage(error), 401);
@@ -200,7 +200,7 @@ export function createWebRouter(deps: WebDeps) {
                 status: 302,
                 headers: {
                   Location: "/",
-                  "Set-Cookie": `tk=${encodeURIComponent(TOKEN)}; HttpOnly; Path=/; SameSite=Lax; Max-Age=31536000`,
+                  "Set-Cookie": `tk=${encodeURIComponent(TOKEN)}; HttpOnly; Path=/; SameSite=Lax; Max-Age=31536000${secureCookieAttr(req)}`,
                 },
               });
             }
@@ -227,7 +227,7 @@ export function createWebRouter(deps: WebDeps) {
             );
             if (user) {
               const token = accounts!.createSession(user.id);
-              const cookie = accounts!.sessionCookie(token);
+              const cookie = accounts!.sessionCookie(req, token);
               /* #791: no card up front — the 14-day trial starts the moment
                  the account exists (local trial grant + billing wall at
                  expiry). Signup drops straight into the app; Stripe only
@@ -248,12 +248,12 @@ export function createWebRouter(deps: WebDeps) {
             if (t) accounts!.destroySession(t);
             return new Response(null, {
               status: 302,
-              headers: { Location: "/login", "Set-Cookie": accounts!.clearSessionCookie },
+              headers: { Location: "/login", "Set-Cookie": accounts!.clearSessionCookie(req) },
             });
           }
           return new Response(null, {
             status: 302,
-            headers: { Location: "/login", "Set-Cookie": "tk=; HttpOnly; Path=/; Max-Age=0" },
+            headers: { Location: "/login", "Set-Cookie": `tk=; HttpOnly; Path=/; Max-Age=0${secureCookieAttr(req)}` },
           });
         }
 
