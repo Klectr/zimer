@@ -4,7 +4,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createAccountsDb } from "./accounts.ts";
-import { createBilling, TRIAL_DAYS, PAST_DUE_GRACE_DAYS } from "./billing.ts";
+import { createBilling, TRIAL_DAYS, PAST_DUE_GRACE_DAYS, trialDaysLeft } from "./billing.ts";
 
 function mkBilling() {
   const accounts = createAccountsDb(mkdtempSync(join(tmpdir(), "tk-bill-")));
@@ -278,5 +278,47 @@ describe("#736: billingActive — gate entitlement incl. pre-checkout trial", ()
     const { billing } = mkBilling();
     expect(billing.billingActive(4242, null)).toBe(false);
     expect(billing.billingActive(4242, NaN)).toBe(false);
+  });
+});
+
+describe("#923: trialDaysLeft — pre-checkout trial remaining, whole days", () => {
+  const DAY = 86400000;
+  const daysAgoMs = (d: number) => Date.now() - d * DAY;
+
+  test("fresh signup -> 14", async () => {
+    const { billing } = mkBilling();
+    expect(trialDaysLeft(billing, 4242, daysAgoMs(0))).toBe(14);
+  });
+
+  test("11/12/13 days in -> 3/2/1", async () => {
+    const { billing } = mkBilling();
+    expect(trialDaysLeft(billing, 4242, daysAgoMs(11))).toBe(3);
+    expect(trialDaysLeft(billing, 4242, daysAgoMs(12))).toBe(2);
+    expect(trialDaysLeft(billing, 4242, daysAgoMs(13))).toBe(1);
+  });
+
+  test("ceiling: partial final day rounds up", async () => {
+    const { billing } = mkBilling();
+    expect(trialDaysLeft(billing, 4242, daysAgoMs(13.9))).toBe(1);
+    expect(trialDaysLeft(billing, 4242, daysAgoMs(11.1))).toBe(3);
+  });
+
+  test("window elapsed -> null", async () => {
+    const { billing } = mkBilling();
+    expect(trialDaysLeft(billing, 4242, daysAgoMs(14))).toBeNull();
+    expect(trialDaysLeft(billing, 4242, daysAgoMs(30))).toBeNull();
+  });
+
+  test("unknown created_at -> null", async () => {
+    const { billing } = mkBilling();
+    expect(trialDaysLeft(billing, 4242, null)).toBeNull();
+    expect(trialDaysLeft(billing, 4242, NaN)).toBeNull();
+  });
+
+  test("subscription row exists -> null (checked out, not pre-checkout)", async () => {
+    const { accounts, billing } = mkBilling();
+    const uid = await userId(accounts);
+    billing.upsertFromStripeEvent(subEvent(uid)); /* trialing via Stripe */
+    expect(trialDaysLeft(billing, uid, daysAgoMs(2))).toBeNull();
   });
 });

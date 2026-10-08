@@ -9,7 +9,7 @@
  */
 
 import { mkdirSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { basename, join, resolve } from "node:path";
 import type { Statement } from "bun:sqlite";
 import { invoicePdf } from "./pdf.ts";
 import { stripeConfigured, verifyWebhookSignature } from "./stripe.ts";
@@ -25,7 +25,7 @@ import { createRevenue } from "./lib/revenue.ts";
 import { themeCss, themeKey } from "./lib/theme.ts"; /* #884 */
 import { workspaceEmpty, demoIds, seedDemoData, removeDemoData, demoBanner } from "./lib/demo.ts";
 import { createDomain, CAL_HOUR_PX, dayTargetSecs } from "./lib/domain.ts";
-import { createLayoutViews } from "./views/layout.ts";
+import { createLayoutViews, trialBannerHtml } from "./views/layout.ts";
 import { createPublicViews } from "./views/public.ts";
 import { createLandingViews } from "./views/landing.ts"; /* #731 */
 import { createTimerViews } from "./views/timer.ts";
@@ -71,7 +71,28 @@ function buildTenantTree(bundle: DbBundle, dbPath: string): WebTenant & ApiTenan
     createRevenue(qRevenueRows, () => getMeta(db, "business_payment_terms"));
   const { layout, notFoundPage, errorPage } = createLayoutViews(qRunning,
     /* #884: per-database accent theme; the tenant db owns the meta table. */
-    () => themeCss(themeKey(getMeta(db, "theme"))));
+    () => themeCss(themeKey(getMeta(db, "theme"))),
+    /* #923: trial-expiry nudge thunk — evaluated lazily at render time.
+       Hosted tenants are per-user (dbPath is <userId>.db per tenants.ts),
+       so the banner resolves its own user from the accounts db; the
+       self-host tree's dbPath isn't numeric and self-host never shows it.
+       createBillingRouter runs after this definition, but the thunk only
+       executes on requests, so `billing` is initialized by then. */
+    () => {
+      if (!HOSTED || !accounts || !billing) return "";
+      const tenantUserId = Number(basename(dbPath, ".db"));
+      if (!Number.isFinite(tenantUserId)) return "";
+      const row = accounts.db
+        .query("SELECT created_at FROM users WHERE id = ?")
+        .get(tenantUserId) as { created_at: string } | null;
+      const createdMs = row ? Date.parse(row.created_at) : NaN;
+      return trialBannerHtml({
+        hosted: HOSTED,
+        billing,
+        userId: tenantUserId,
+        userCreatedAtMs: Number.isFinite(createdMs) ? createdMs : null,
+      });
+    });
 
   const {
     getInvoice, invoiceTotals, nextInvoiceNumber, stripeLinkFor,

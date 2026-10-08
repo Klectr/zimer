@@ -6,8 +6,52 @@
 import type { Statement } from "bun:sqlite";
 import { esc } from "../lib/format.ts";
 import { ICONS, icon, logo } from "../lib/icons.ts";
+import { TRIAL_NUDGE_DAYS, trialDaysLeft, type Billing } from "../lib/billing.ts";
 
-export function createLayoutViews(qRunning: Statement, themeCss?: () => string) {
+/** #923: trial-expiry nudge for the app layout — hosted pre-checkout trials
+ *  with ≤3 days left. Dismissible (localStorage; the trial ends in days
+ *  anyway, so the dismissal only needs to outlive the window). The
+ *  Subscribe CTA posts straight to /billing/checkout: GET /billing 302s
+ *  entitled users back to the app, so the wall can't be the link target.
+ *  Pure function of its inputs — the per-tenant thunk in server.ts supplies
+ *  the user. Returns "" when the banner must not show. */
+export function trialBannerHtml(opts: {
+  hosted: boolean;
+  billing: Billing;
+  userId: number;
+  userCreatedAtMs: number | null;
+  nowMs?: number;
+}): string {
+  if (!opts.hosted) return "";
+  const daysLeft = trialDaysLeft(
+    opts.billing,
+    opts.userId,
+    opts.userCreatedAtMs,
+    opts.nowMs
+  );
+  if (daysLeft === null || daysLeft > TRIAL_NUDGE_DAYS) return "";
+  const when = daysLeft === 1 ? "tomorrow" : `in ${daysLeft} days`;
+  return `<div class="trial-banner" id="trial-banner" role="region" aria-label="Trial expiring soon">
+    <p class="md-body-medium trial-banner-text">Your trial ends ${when} — subscribe to keep Zimer running.</p>
+    <form class="trial-banner-cta" method="POST" action="/billing/checkout">
+      <button class="md-filled-button" type="submit">Subscribe · $12/month</button>
+    </form>
+    <button class="md-icon-button" type="button" data-trial-banner-close aria-label="Dismiss trial reminder">${icon("close")}</button>
+  </div>
+  <script>(function(){
+    var KEY="zimer-trial-banner-dismissed", el=document.getElementById("trial-banner");
+    if(!el) return;
+    try { if(localStorage.getItem(KEY)==="1") { el.remove(); return; } } catch(e){}
+    el.addEventListener("click", function(e){
+      var t = e.target && e.target.closest ? e.target.closest("[data-trial-banner-close]") : null;
+      if(!t) return;
+      try { localStorage.setItem(KEY,"1"); } catch(e){}
+      el.remove();
+    });
+  })();</script>`;
+}
+
+export function createLayoutViews(qRunning: Statement, themeCss?: () => string, trialBanner?: () => string) {
   /* #884: per-user accent theme — the override lands after style.css so it
      wins over the :root defaults. Always rendered (with the default theme's
      values when unset) so a theme POST can live-swap it via OOB by id. */
@@ -57,6 +101,8 @@ export function createLayoutViews(qRunning: Statement, themeCss?: () => string) 
     <span class="md-top-app-bar-spacer"></span>
     ${appBarActions()}
   </header>
+  ${/* #923: trial-expiry nudge — full-width strip between the app bar and
+       the page chrome; the thunk resolves the hosted trial state per user. */ trialBanner ? trialBanner() : ""}
   <div class="app-chrome">
     <nav class="md-nav-rail" aria-label="Primary">
       ${dests.map(d => dest(d, "md-rail-item")).join("")}

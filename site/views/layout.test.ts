@@ -3,7 +3,8 @@
 import { describe, expect, test } from "bun:test";
 import type { Statement } from "bun:sqlite";
 import { themeCss, themeKey } from "../lib/theme.ts";
-import { createLayoutViews } from "./layout.ts";
+import { createLayoutViews, trialBannerHtml } from "./layout.ts";
+import type { Billing } from "../lib/billing.ts";
 
 const noRunning = { get: () => null } as unknown as Statement;
 
@@ -36,5 +37,85 @@ describe("layout entry edit dialog (#903)", () => {
     expect(body).toContain('id="entry-scrim"');
     expect(body).toContain('id="entry-dialog-body"');
     expect(body).toContain('aria-labelledby="entry-dialog-title"');
+  });
+});
+
+/** #923: trial-expiry nudge banner — pure view logic + layout wiring. */
+
+const DAY = 86400000;
+const stubBilling = (overrides: Partial<Billing> = {}) =>
+  ({
+    getSubscriptionStatus: () => null,
+    billingActive: () => true,
+    ...overrides,
+  } as unknown as Billing);
+const baseOpts = (createdDaysAgo: number) => ({
+  hosted: true,
+  billing: stubBilling(),
+  userId: 7,
+  userCreatedAtMs: Date.now() - createdDaysAgo * DAY,
+});
+
+describe("trialBannerHtml", () => {
+  test("self-host never shows it", () => {
+    expect(trialBannerHtml({ ...baseOpts(12), hosted: false })).toBe("");
+  });
+
+  test("more than 3 days left -> hidden", () => {
+    expect(trialBannerHtml(baseOpts(10))).toBe(""); /* 4 days left */
+  });
+
+  test("3/2/1 days left -> 'in 3 days' / 'in 2 days' / 'tomorrow'", () => {
+    expect(trialBannerHtml(baseOpts(11))).toContain("Your trial ends in 3 days");
+    expect(trialBannerHtml(baseOpts(12))).toContain("Your trial ends in 2 days");
+    expect(trialBannerHtml(baseOpts(13))).toContain("Your trial ends tomorrow");
+  });
+
+  test("CTA posts to /billing/checkout with the pumpkin filled button", () => {
+    const html = trialBannerHtml(baseOpts(12));
+    expect(html).toContain('method="POST" action="/billing/checkout"');
+    expect(html).toContain('class="md-filled-button"');
+    expect(html).toContain("Subscribe · $12/month");
+  });
+
+  test("dismiss button is labeled and client-side", () => {
+    const html = trialBannerHtml(baseOpts(12));
+    expect(html).toContain('aria-label="Dismiss trial reminder"');
+    expect(html).toContain("zimer-trial-banner-dismissed");
+  });
+
+  test("subscription row exists -> hidden (not a pre-checkout trial)", () => {
+    const billing = stubBilling({
+      getSubscriptionStatus: () => ({ user_id: 7 }) as any,
+    });
+    expect(
+      trialBannerHtml({ hosted: true, billing, userId: 7, userCreatedAtMs: Date.now() - 12 * DAY })
+    ).toBe("");
+  });
+
+  test("trial window elapsed -> hidden", () => {
+    const billing = stubBilling({ billingActive: () => false });
+    expect(
+      trialBannerHtml({ hosted: true, billing, userId: 7, userCreatedAtMs: Date.now() - 20 * DAY })
+    ).toBe("");
+  });
+});
+
+describe("createLayoutViews trialBanner thunk", () => {
+  const banner = "<div>TRIAL-BANNER</div>";
+  test("renders the banner between the app bar and the chrome when provided", () => {
+    const { layout } = createLayoutViews(noRunning, undefined, () => banner);
+    const html = layout("Today", "<p>body</p>", "timer", true);
+    expect(html).toContain(banner);
+    const headerIdx = html.indexOf("</header>");
+    const chromeIdx = html.indexOf('<div class="app-chrome">');
+    const bannerIdx = html.indexOf(banner);
+    expect(bannerIdx).toBeGreaterThan(headerIdx);
+    expect(bannerIdx).toBeLessThan(chromeIdx);
+  });
+
+  test("no banner markup when the thunk is omitted", () => {
+    const { layout } = createLayoutViews(noRunning);
+    expect(layout("Today", "<p>body</p>", "timer", true)).not.toContain("trial-banner");
   });
 });
