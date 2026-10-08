@@ -50,14 +50,14 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
 say "Downloading Zimer v$VERSION ..."
-curl -fsSL -o "$TMP/timekeep.tgz" "$TARBALL_URL"
-ACTUAL_SHA="$(sha256sum "$TMP/timekeep.tgz" | cut -d' ' -f1)"
+curl -fsSL -o "$TMP/zimer.tgz" "$TARBALL_URL"
+ACTUAL_SHA="$(sha256sum "$TMP/zimer.tgz" | cut -d' ' -f1)"
 [ "$ACTUAL_SHA" = "$EXPECT_SHA" ] || die "checksum mismatch — the download may be corrupted, refusing to install."
 
 mkdir -p "$TMP/new"
 # The release tarball is flat (site/, VERSION, ... at its root) — extract
 # straight into the staging dir.
-tar xzf "$TMP/timekeep.tgz" -C "$TMP/new"
+tar xzf "$TMP/zimer.tgz" -C "$TMP/new"
 [ -f "$TMP/new/site/server.ts" ] || die "the tarball doesn't look like a Zimer release."
 
 # Stop a previous server. Primary: the .pid file written by start.sh.
