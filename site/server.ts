@@ -21,8 +21,8 @@ import { createTenantStore } from "./lib/tenants.ts"; /* #733 */
 import { backupAll, backupFreshness } from "./lib/backups.ts"; /* #730 part 2 */
 import { createDb, getMeta, type DbBundle } from "./db.ts";
 import { resourcePath } from "./lib/paths.ts"; /* #519 */
-import { isLicensed, licenseBannerHtml } from "./lib/license.ts"; /* #304 */
 import { createRevenue } from "./lib/revenue.ts";
+import { themeCss, themeKey } from "./lib/theme.ts"; /* #884 */
 import { workspaceEmpty, demoIds, seedDemoData, removeDemoData, demoBanner } from "./lib/demo.ts";
 import { createDomain, CAL_HOUR_PX, dayTargetSecs } from "./lib/domain.ts";
 import { createLayoutViews } from "./views/layout.ts";
@@ -69,12 +69,9 @@ function buildTenantTree(bundle: DbBundle, dbPath: string): WebTenant & ApiTenan
   } = bundle;
   const { revenueTotals, revenueMonthly, revenueByClient, isOverdue, revenueOverdue } =
     createRevenue(qRevenueRows, () => getMeta(db, "business_payment_terms"));
-  const { layout, notFoundPage, errorPage } =
-    /* #304: the license banner closure runs per request inside layout(), so
-       every app page shows it in launch mode until a valid key is stored.
-       #733: hosted tenants bill through Stripe, not license keys — the dead
-       $59-key banner stays a self-host concept. */
-    createLayoutViews(qRunning, HOSTED ? undefined : () => licenseBannerHtml(isLicensed(db)));
+  const { layout, notFoundPage, errorPage } = createLayoutViews(qRunning,
+    /* #884: per-database accent theme; the tenant db owns the meta table. */
+    () => themeCss(themeKey(getMeta(db, "theme"))));
 
   const {
     getInvoice, invoiceTotals, nextInvoiceNumber, stripeLinkFor,
@@ -88,11 +85,11 @@ function buildTenantTree(bundle: DbBundle, dbPath: string): WebTenant & ApiTenan
     revenueTotals, revenueMonthly, revenueByClient, revenueOverdue, m3ProgressBar,
     dayTargetSecs: () => dayTargetSecs(db), /* #908: per-request read of the user's setting */
   });
-  const { weekInner, weekStrip, weekGrid, calendarPage, editPage } = createCalendarViews({
+  const { weekInner, weekStrip, weekGrid, calendarPage, editPage, editEntryDialog } = createCalendarViews({
     db, qOne, qRange, entrySelect: ENTRY_SELECT, layout, projectOptions, weekTargetBar,
     calHourPx: CAL_HOUR_PX,
   });
-  const { managePage, clientSelection, clientDetailBody, clientListOob, clientOptions, bizProfileSection, dailyTargetSection, clientSettingsForm, settingsPage } =
+  const { managePage, clientSelection, clientDetailBody, clientListOob, clientOptions, bizProfileSection, dailyTargetSection, clientSettingsForm, settingsPage, themeSectionHtml } =
     createManageViews({ db, layout });
   const {
     invoicesPage, defaultNewInvParams, invoiceNewPage, invoiceStep2, invoiceSheet,
@@ -121,8 +118,8 @@ function buildTenantTree(bundle: DbBundle, dbPath: string): WebTenant & ApiTenan
     qRunning, qOne, qRange, qInvoice, qInvoices,
     notFoundPage, errorPage,
     dashboardPage, timerPartial, todayPartial, weekInner, weekStrip,
-    calendarPage, editPage,
-    managePage, clientSelection, clientDetailBody, clientListOob, bizProfileSection, dailyTargetSection, clientSettingsForm, settingsPage,
+    calendarPage, editPage, editEntryDialog,
+    managePage, clientSelection, clientDetailBody, clientListOob, bizProfileSection, dailyTargetSection, clientSettingsForm, settingsPage, themeSectionHtml,
     invoicesPage, invoiceNewPage, defaultNewInvParams, invoiceStep2, invoiceDetailBody, invoiceListOob, invoiceDoc, publicInvoicePage,
     getInvoice, invoiceTotals,
     nextInvoiceNumber, stripeLinkFor, unbilledEntries,
@@ -192,7 +189,7 @@ const { handleApi } = createApiRouter({
 const { landingPage } = createLandingViews(); /* #731 */
 const visitorAuthed = (req: Request): boolean =>
   HOSTED ? accounts!.sessionUserFromRequest(req) !== null : authedPage(req, TOKEN);
-const { handleLanding } = createLandingRouter({ hosted: HOSTED, visitorAuthed, landingPage, html }); /* #731 */
+const { handleLanding } = createLandingRouter({ hosted: HOSTED, visitorAuthed, landingPage, shareOrigin: (req: Request) => PUBLIC_BASE_URL || publicOrigin(req, PORT), /* #865 */ html }); /* #731 */
 const { handleWeb } = createWebRouter({
   getTenant,
   STATIC_DIR, TOKEN, authedPage, tokensEqual, html, json, csvResponse, isHtmx,

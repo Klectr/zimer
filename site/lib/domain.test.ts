@@ -11,7 +11,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createDomain, dayTargetSecs, DAY_TARGET_SECS } from "./domain.ts";
-import { createDb, setMeta, getMeta } from "../db.ts";
+import { createDb, getMeta, setMeta } from "../db.ts";
 
 function setup() {
   const db = new BunDatabase(":memory:");

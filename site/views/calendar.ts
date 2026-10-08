@@ -1060,19 +1060,10 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     return layout("Calendar", weekGrid(week), "calendar", true);
   }
 
-  /** #256: datetime-local inputs are prefilled client-side from the ISO instant
-      (data-iso) — the server can't know the client's zone on a full page load.
-      On submit, the offset is appended via hidden inputs (a raw ±HH:MM suffix
-      is not a valid datetime-local value and would be sanitized to ""). */
-  function editPage(id: number): string | null {
-    const e = qOne.get(id) as Entry | null;
-    if (!e) return null;
-    const locked = entryIsLocked(e); /* #334: sent/paid time opens read-only */
-    const dis = locked ? " disabled" : "";
-    return layout(locked ? "Entry" : "Edit entry", `
-      <h2 class="md-headline-small" data-enter="2">${locked ? "Entry" : "Edit entry"}</h2>
-      ${locked ? `<p class="muted md-body-medium">Zinvoiced on ${esc(e.invoice_number || "")} — this time can\u2019t be edited.</p>` : ""}
-      <form method="post" action="/entries/${e.id}" class="form" id="edit-entry-form">
+  /** #903: entry edit form fields — shared by the full edit page and the
+      timer-page edit dialog, so both stay in sync (#709 label wiring). */
+  function editEntryFields(e: Entry, dis: string): string {
+    return `
         <div class="md-text-field">
           <input type="text" id="ee-desc" name="description" value="${esc(e.description)}" placeholder=" "${dis}>
           <label for="ee-desc">Description</label>
@@ -1088,7 +1079,23 @@ export function createCalendarViews(deps: CalendarViewDeps) {
         <div class="md-text-field filled">
           <input type="datetime-local" id="ee-end" name="end_time" data-iso="${esc(e.end_time || "")}" placeholder=" "${dis}>
           <label for="ee-end">End (blank = still running)</label>
-        </div>
+        </div>`;
+  }
+
+  /** #256: datetime-local inputs are prefilled client-side from the ISO instant
+      (data-iso) — the server can't know the client's zone on a full page load.
+      On submit, the offset is appended via hidden inputs (a raw ±HH:MM suffix
+      is not a valid datetime-local value and would be sanitized to ""). */
+  function editPage(id: number): string | null {
+    const e = qOne.get(id) as Entry | null;
+    if (!e) return null;
+    const locked = entryIsLocked(e); /* #334: sent/paid time opens read-only */
+    const dis = locked ? " disabled" : "";
+    return layout(locked ? "Entry" : "Edit entry", `
+      <h2 class="md-headline-small" data-enter="2">${locked ? "Entry" : "Edit entry"}</h2>
+      ${locked ? `<p class="muted md-body-medium">Zinvoiced on ${esc(e.invoice_number || "")} — this time can\u2019t be edited.</p>` : ""}
+      <form method="post" action="/entries/${e.id}" class="form" id="edit-entry-form">
+        ${editEntryFields(e, dis)}
         <div class="row">
           ${locked ? "" : `<button class="md-filled-button" type="submit">Save</button>`}
           <a class="md-text-button" href="/calendar">${locked ? "Back" : "Cancel"}</a>
@@ -1113,5 +1120,46 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       })();</script>`);
   }
 
-  return { weekInner, weekStrip, weekGrid, calendarPage, editPage };
+  /** #903: entry edit dialog fragment for the timer page — served to htmx
+      GET /entries/:id/edit and swapped into #entry-dialog-body. The form posts
+      via htmx; the server answers HX-Trigger so #today-list refreshes in
+      place and the dialog script closes the modal. */
+  function editEntryDialog(id: number): string | null {
+    const e = qOne.get(id) as Entry | null;
+    if (!e) return null;
+    const locked = entryIsLocked(e); /* #334: sent/paid time opens read-only */
+    const dis = locked ? " disabled" : "";
+    return `
+      <div class="cal-dialog-head">
+        <h2 class="md-headline-small" id="entry-dialog-title">${locked ? "Entry" : "Edit entry"}</h2>
+        <button class="md-icon-button" data-close-entry type="button" aria-label="Close dialog">${icon("close")}</button>
+      </div>
+      ${locked ? `<p class="muted md-body-medium">Zinvoiced on ${esc(e.invoice_number || "")} — this time can\u2019t be edited.</p>` : ""}
+      <form method="post" action="/entries/${e.id}" hx-post="/entries/${e.id}" hx-swap="none" class="form" id="edit-entry-form">
+        ${editEntryFields(e, dis)}
+        <div class="cal-dialog-actions">
+          <span class="cal-spacer"></span>
+          <button class="md-text-button" type="button" data-close-entry>${locked ? "Back" : "Cancel"}</button>
+          ${locked ? "" : `<button class="md-filled-button" type="submit">Save</button>`}
+        </div>
+      </form>
+      <script>(function(){
+        var p2=function(n){return String(n).padStart(2,"0");};
+        function toLocalInput(iso){var d=new Date(iso);
+          return d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate())+"T"+p2(d.getHours())+":"+p2(d.getMinutes());}
+        var form=document.getElementById("edit-entry-form");
+        var els=form.querySelectorAll('input[type=datetime-local][data-iso]');
+        for(var i=0;i<els.length;i++){var iso=els[i].getAttribute("data-iso");if(iso)els[i].value=toLocalInput(iso);}
+        /* htmx posts the form — rewrite the datetime params with the client
+           tz offset before htmx gathers them (same suffix rule as the page). */
+        form.addEventListener("htmx:configRequest",function(ev){
+          var o=-new Date().getTimezoneOffset(),s=o<0?"-":"+",a=Math.abs(o);
+          var suf=s+p2(Math.floor(a/60))+":"+p2(a%60);
+          for(var j=0;j<els.length;j++){if(els[j].value&&els[j].name in ev.detail.parameters){
+            ev.detail.parameters[els[j].name]=els[j].value+suf;}}
+        });
+      })();</script>`;
+  }
+
+  return { weekInner, weekStrip, weekGrid, calendarPage, editPage, editEntryDialog };
 }

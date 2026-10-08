@@ -16,7 +16,7 @@ import { loadChangelog } from "../lib/changelog.ts"; /* #303 */
 import { licenseTerms } from "../lib/license-terms.ts"; /* #341 */
 import { appVersion } from "../lib/version.ts"; /* #730 */
 import { updateSectionHtml, checkForUpdates, updateStatusHtml } from "../lib/updates.ts"; /* #340 */
-import { isLaunchMode, isLicensed, licenseSectionHtml, storeLicenseKey } from "../lib/license.ts"; /* #304 */
+import { THEMES, themeCss, themeKey } from "../lib/theme.ts"; /* #884 */
 import type { AccountsDb } from "../lib/accounts.ts"; /* #732 */
 import { findTenantByPublicToken } from "../lib/tenants.ts"; /* #741 */
 
@@ -41,6 +41,7 @@ export interface WebTenant {
   weekStrip: (weekStr?: string, tz?: string) => string;
   calendarPage: (week?: string) => string;
   editPage: (id: number) => string | null;
+  editEntryDialog: (id: number) => string | null; /* #903 */
   managePage: (selected: ClientSel | null) => string; /* #367 */
   clientSelection: (raw: string | null) => ClientSel | null; /* #367 */
   clientDetailBody: (sel: ClientSel) => string; /* #367 */
@@ -49,6 +50,7 @@ export interface WebTenant {
   dailyTargetSection: () => string; /* #908 */
   clientSettingsForm: (c: any) => string; /* #630 */
   settingsPage: (body: string) => string; /* #693 */
+  themeSectionHtml: () => string; /* #884 */
   invoicesPage: (selected: (Invoice & { items: InvoiceItem[] }) | null, origin: string) => string;
   invoiceNewPage: (p: any, preview?: any) => string;
   defaultNewInvParams: () => any;
@@ -269,8 +271,8 @@ export function createWebRouter(deps: WebDeps) {
           });
         }
 
-        /* #341: public license terms — no auth, same rate limit as the public
-           invoice surface. Linked from Settings → License. */
+        /* #341: public terms page — no auth, same rate limit as the public
+           invoice surface. */
         if (path === "/terms" && method === "GET") {
           const rl = invoiceLimiter.check(clientIp(req));
           if (!rl.allowed) {
@@ -353,7 +355,7 @@ export function createWebRouter(deps: WebDeps) {
             db, dbPath, qRunning, qOne, qRange, qInvoice, qInvoices,
             notFoundPage, errorPage,
             dashboardPage, timerPartial, todayPartial, weekInner, weekStrip,
-            calendarPage, editPage, managePage, clientSelection, clientDetailBody, clientListOob, bizProfileSection, dailyTargetSection, clientSettingsForm, settingsPage, invoicesPage, invoiceNewPage,
+            calendarPage, editPage, editEntryDialog, managePage, clientSelection, clientDetailBody, clientListOob, bizProfileSection, dailyTargetSection, clientSettingsForm, settingsPage, themeSectionHtml, invoicesPage, invoiceNewPage,
             defaultNewInvParams, invoiceStep2, invoiceDetailBody, invoiceListOob, invoiceDoc, publicInvoicePage,
             getInvoice, invoiceTotals,
             nextInvoiceNumber, stripeLinkFor, unbilledEntries,
@@ -435,6 +437,12 @@ export function createWebRouter(deps: WebDeps) {
 
           let m = path.match(/^\/entries\/(\d+)\/edit$/);
           if (m && method === "GET") {
+            /* #903: htmx gets the dialog fragment for the timer-page modal;
+               direct visits keep the full edit page. */
+            if (isHtmx(req)) {
+              const frag = editEntryDialog(Number(m[1]));
+              return frag ? html(frag) : new Response("Not found", { status: 404 });
+            }
             const page = editPage(Number(m[1]));
             return page ? html(page) : html(notFoundPage(authedPage(req, TOKEN)), 404);
           }
@@ -456,7 +464,11 @@ export function createWebRouter(deps: WebDeps) {
               new Date(String(form.get("start_time"))).toISOString(),
               endRaw ? new Date(endRaw).toISOString() : null,
               id);
-          return new Response(null, { status: 302, headers: { Location: "/calendar" } });
+          return isHtmx(req)
+            /* #903: the timer edit dialog posts via htmx — answer HX-Trigger
+               so #today-list refreshes in place; no-JS keeps the 302. */
+            ? new Response(null, { status: 200, headers: { "HX-Trigger": "timer-updated" } })
+            : new Response(null, { status: 302, headers: { Location: "/calendar" } });
         }
         if (m && method === "DELETE") {
           const cur = qOne.get(Number(m[1])) as Entry | null; /* #334 */
@@ -595,42 +607,35 @@ export function createWebRouter(deps: WebDeps) {
           if (isHtmx(req)) return html(dailyTargetSection());
           return new Response(null, { status: 302, headers: { Location: "/settings" } });
         }
-        /* #304: settings modal body — business profile plus the License
-           section in launch mode; profile only in beta (no licensing UI).
-           #340: Updates section for paid users — hidden when unpaid in
-           launch mode (#345); beta keeps it (no licensing concept there).
-           #730: support channel — one mailto link at the end, no new UI. */
+        /* #883: settings modal body — business profile, theme, Updates
+           section, support channel. The License section left with the
+           retired $59 key. */
         if (path === "/settings" && method === "GET") {
-          const licensed = isLicensed(db);
-          /* #733: hosted tenants bill through Stripe, not license keys — the
-             dead $59-key licensing UI stays a self-host concept. */
-          const launch = isLaunchMode() && !HOSTED;
-          const updates = (!launch || licensed) ? updateSectionHtml() : "";
+          const updates = updateSectionHtml();
           const support = `<p class="muted tiny" style="margin-top:24px">Need help? <a href="mailto:support@klectr.dev">support@klectr.dev</a></p>`;
-          const body = bizProfileSection() + dailyTargetSection() + (launch ? licenseSectionHtml(db, licensed) : "") + updates + support;
+          const body = bizProfileSection() + dailyTargetSection() + themeSectionHtml() + updates + support;
           if (isHtmx(req)) return html(body);
           /* #693: direct visits get the full app layout — the bare fragment
              renders unstyled. */
           return html(settingsPage(body));
         }
+        /* #884: accent theme. Unknown keys are rejected — the dots only ever
+           post known keys, so this guards hand-built requests. The OOB
+           <style> swaps the layout's theme override live behind the modal. */
+        if (path === "/settings/theme" && method === "POST") {
+          const form = await req.formData();
+          const key = String(form.get("theme") || "").trim().toLowerCase();
+          if (!THEMES.some((t) => t.key === key)) return new Response("Unknown theme.", { status: 400 });
+          setMeta(db, "theme", key);
+          if (isHtmx(req)) return html(themeSectionHtml() +
+            `<style id="theme-style" hx-swap-oob="true">${themeCss(key)}</style>`);
+          return new Response(null, { status: 302, headers: { Location: "/settings" } });
+        }
         /* #340: manual update check — fetches the release feed server-side
            and swaps the result into the Updates section. Authed like the
-           rest of settings; never called automatically. #345: unpaid users
-           in launch mode get no update checks. */
+           rest of settings; never called automatically. */
         if (path === "/check-updates" && method === "POST") {
-          if (isLaunchMode() && !HOSTED && !isLicensed(db)) return new Response("License required.", { status: 403 });
           return html(updateStatusHtml(await checkForUpdates()));
-        }
-        /* #304: license key entry. Invalid keys are rejected with a specific
-           message and the stored key is left untouched. No licensing routes
-           exist at all in beta. */
-        if (path === "/license" && method === "POST") {
-          if (!isLaunchMode() || HOSTED) return new Response("Not found", { status: 404 }); /* #733: no license keys in hosted mode */
-          const form = await req.formData();
-          const key = String(form.get("license_key") || "");
-          if (!storeLicenseKey(db, key))
-            return html(licenseSectionHtml(db, isLicensed(db), "That key isn't valid — not a valid Zimer key."), 422);
-          return html(licenseSectionHtml(db, true));
         }
         if (path === "/clients" && method === "POST") {
           const form = await req.formData();

@@ -7,7 +7,11 @@ import type { Statement } from "bun:sqlite";
 import { esc } from "../lib/format.ts";
 import { ICONS, icon, logo } from "../lib/icons.ts";
 
-export function createLayoutViews(qRunning: Statement, bannerHtml?: () => string) {
+export function createLayoutViews(qRunning: Statement, themeCss?: () => string) {
+  /* #884: per-user accent theme — the override lands after style.css so it
+     wins over the :root defaults. Always rendered (with the default theme's
+     values when unset) so a theme POST can live-swap it via OOB by id. */
+  const themeStyle = () => `<style id="theme-style">${themeCss ? themeCss() : ""}</style>`;
   /* #354: M3 navigation per window size class. The four destinations live in
      a bottom navigation bar on compact (<600px) or a collapsed leading
      navigation rail on medium+ (600px+), never both. The app bar keeps the
@@ -35,6 +39,7 @@ export function createLayoutViews(qRunning: Statement, bannerHtml?: () => string
   <title>${esc(title)} · Zimer</title>
   <script src="https://unpkg.com/htmx.org@2.0.4"></script>
   <link rel="stylesheet" href="/static/style.css">
+  ${themeStyle()}
   <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32.png">
   <link rel="apple-touch-icon" href="/static/alien-180.png">
   <script src="/static/motion.js" defer></script>
@@ -57,9 +62,6 @@ export function createLayoutViews(qRunning: Statement, bannerHtml?: () => string
       ${dests.map(d => dest(d, "md-rail-item")).join("")}
     </nav>
     <div class="app-sheet">
-      ${/* #304: license honesty-box banner (launch mode only, unlicensed only).
-           Rendered here so it appears on every app page; publicShell() pages
-           (client invoice links) never see it. */ bannerHtml ? bannerHtml() : ""}
       <main id="main" tabindex="-1"${active ? ` class="page-${active}"` : ""}>${body}</main>
     </div>
   </div>
@@ -68,7 +70,8 @@ export function createLayoutViews(qRunning: Statement, bannerHtml?: () => string
   </nav>
   ${/* #355: the settings scrim is a direct body child — inside the app bar it
        would be trapped in the header's stacking context and paint below the
-       bottom navigation bar. */ settingsDialog()}
+       bottom navigation bar. The entry edit scrim rides along for the same
+       reason (#903). */ settingsDialog()}${entryDialog()}
   </body>
   </html>`;
   }
@@ -203,9 +206,7 @@ function settingsDialog(): string {
     function open(){
       open_=true;
       scrim.hidden=false; void scrim.offsetWidth; scrim.classList.add('open');
-      /* Fresh form on every open — the profile may have changed elsewhere.
-         #304: /settings returns the business profile plus the License
-         section in launch mode (profile only in beta). */
+      /* Fresh form on every open — the profile may have changed elsewhere. */
       focusOnSwap=true;
       htmx.ajax('GET','/settings','#settings-body');
       document.addEventListener('keydown',onKey,true);
@@ -241,6 +242,62 @@ function settingsDialog(): string {
       if(!elt||!e.detail.successful||!window.tkSnackbar) return;
       if(elt.id==='biz-profile-form') window.tkSnackbar('Business profile saved');
       else if(elt.id==='daily-target-form') window.tkSnackbar('Daily target saved'); /* #908 */
+    });
+  })();</script>`;
+}
+
+/** #903: entry edit dialog for the timer page. Same .cal-scrim pattern as the
+    settings dialog above: the shell is a direct body child, the form
+    lazy-loads via htmx on open, Escape/scrim-click close it, Tab is trapped
+    via the shared tkTrapTab, and focus returns to the edit button. */
+function entryDialog(): string {
+  return `<div class="cal-scrim" id="entry-scrim" hidden>
+    <div class="cal-dialog" role="dialog" aria-modal="true" aria-labelledby="entry-dialog-title">
+      <div id="entry-dialog-body"><p class="muted md-body-medium">Loading…</p></div>
+    </div>
+  </div>
+  <script>(function(){
+    var scrim=document.getElementById('entry-scrim');
+    var body=document.getElementById('entry-dialog-body');
+    if(!scrim||!body) return;
+    var open_=false, opener=null;
+    function open(id){
+      open_=true; opener=document.activeElement;
+      scrim.hidden=false; void scrim.offsetWidth; scrim.classList.add('open');
+      htmx.ajax('GET','/entries/'+id+'/edit','#entry-dialog-body');
+      document.addEventListener('keydown',onKey,true);
+    }
+    function closeDialog(refocus){
+      if(!open_) return; open_=false;
+      scrim.classList.remove('open');
+      document.removeEventListener('keydown',onKey,true);
+      var done=false, finish=function(){ if(done) return; done=true; scrim.hidden=true; };
+      var onEnd=function(e){ if(e.target===scrim&&e.propertyName==='opacity'){ scrim.removeEventListener('transitionend',onEnd); finish(); } };
+      scrim.addEventListener('transitionend',onEnd); setTimeout(finish,300);
+      if(refocus&&opener&&document.contains(opener)) opener.focus();
+    }
+    /* #456: trap Tab inside the modal while it's open. onKey only runs
+       while open (attached on open, detached on close). */
+    function onKey(e){ if(e.key==='Escape'){ e.preventDefault(); closeDialog(true); }
+      else if(e.key==='Tab'&&window.tkTrapTab){ window.tkTrapTab(scrim,e); } }
+    /* focus the first field once the form lands */
+    body.addEventListener('htmx:afterSwap',function(){
+      var f=body.querySelector('input:not([disabled]),select:not([disabled])'); if(f) f.focus();
+    });
+    scrim.addEventListener('pointerdown',function(e){ if(e.target===scrim) closeDialog(false); });
+    /* edit buttons + the dialog's own close/cancel — delegated so today-list
+       re-renders keep working without rebinding */
+    document.addEventListener('click',function(e){
+      var t=e.target&&e.target.closest?e.target.closest('[data-edit-entry],[data-close-entry]'):null;
+      if(!t) return;
+      if(t.hasAttribute('data-edit-entry')) open(t.getAttribute('data-edit-entry'));
+      else closeDialog(true);
+    });
+    /* the dialog form posts via htmx — a successful save closes the modal;
+       the server's HX-Trigger refreshes #today-list behind it */
+    document.body.addEventListener('htmx:afterRequest',function(e){
+      var elt=e.detail.elt;
+      if(elt&&elt.id==='edit-entry-form'&&e.detail.successful) closeDialog(false);
     });
   })();</script>`;
 }

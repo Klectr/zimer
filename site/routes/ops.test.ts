@@ -37,6 +37,7 @@ function setup(authed = true) {
     clientDetailBody: noop, clientListOob: noop,
     bizProfileSection: () => "<section>profile</section>",
     dailyTargetSection: () => "<section>target</section>", /* #908 */
+    themeSectionHtml: () => "<section>theme</section>", /* #884 */
     clientSettingsForm: noop, settingsPage: (b: string) => b,
     invoicesPage: noop, invoiceNewPage: noop,
     defaultNewInvParams: () => ({}), invoiceStep2: noop,

@@ -7,6 +7,7 @@ import type { Database } from "bun:sqlite";
 import { esc, PAYMENT_TERMS, schemeColor, termsDays, termsDescription, termsKey } from "../lib/format.ts";
 import type { PaymentTermsKey } from "../lib/format.ts";
 import { icon } from "../lib/icons.ts";
+import { THEMES, themeKey } from "../lib/theme.ts"; /* #884 */
 import { getMeta } from "../db.ts";
 import { dayTargetSecs } from "../lib/domain.ts"; /* #908: daily target setting */
 
@@ -252,7 +253,7 @@ export function createManageViews(deps: ManageViewDeps) {
        plays once per page load and never replays on swaps.
        #245: the business profile section moved into the settings modal
        behind the account menu button; the Manage page is clients & projects only. */
-    return layout("Clients & Projects", `
+    return layout("Clients", `
       <div class="client-list-detail${sel && !isDefault ? " has-selection" : ""}" data-enter="2">
         <section class="client-list-pane" aria-label="Client list">
           <h1 class="md-headline-small">Clients</h1>
@@ -412,6 +413,26 @@ export function createManageViews(deps: ManageViewDeps) {
         </section>`;
   }
 
+  /* #884: theme section — a row of color dots that re-theme the app's
+     accent. Each dot posts its key; the response re-renders this section
+     and live-swaps the <style id="theme-style"> override via OOB, so the
+     page behind the modal changes instantly. Pumpkin is the default. */
+  function themeSectionHtml(): string {
+    const current = themeKey(getMeta(db, "theme"));
+    const dots = THEMES.map((t) => {
+      const selected = t.key === current;
+      return `<button type="button" class="theme-dot${selected ? " selected" : ""}"
+          style="--dot:${t.primary}" hx-post="/settings/theme" hx-vals='{"theme":"${t.key}"}'
+          hx-target="#theme-section" hx-swap="outerHTML"
+          aria-label="${t.name} theme" aria-pressed="${selected}">${selected ? icon("check") : ""}</button>`;
+    }).join("");
+    return `<section id="theme-section">
+          <h2 class="md-headline-small">Theme</h2>
+          <p class="muted" style="margin:0 0 12px">Pumpkin is the default. Pick any accent.</p>
+          <div class="theme-dots" role="group" aria-label="Accent theme">${dots}</div>
+        </section>`;
+  }
+
   /* #693: full-page fallback for direct (non-htmx) visits to /settings.
      The modal fragment alone renders unstyled without the app layout. */
   function settingsPage(settingsBody: string): string {
@@ -424,5 +445,5 @@ export function createManageViews(deps: ManageViewDeps) {
       </div>`);
   }
 
-  return { managePage, clientSelection, clientDetailBody, clientListOob, clientOptions, bizProfileSection, dailyTargetSection, clientSettingsForm, settingsPage };
+  return { managePage, clientSelection, clientDetailBody, clientListOob, clientOptions, bizProfileSection, dailyTargetSection, clientSettingsForm, settingsPage, themeSectionHtml };
 }

@@ -78,7 +78,7 @@ export function createTimerViews(deps: TimerViewDeps) {
       <div class="md-list-item-trailing">
         ${durSpan}
         ${entryIsLocked(e) ? "" : `
-        <a class="md-icon-button" href="/entries/${e.id}/edit" aria-label="Edit entry" data-tip="Edit">${icon("edit")}</a>
+        <button class="md-icon-button" type="button" data-edit-entry="${e.id}" aria-label="Edit entry" data-tip="Edit">${icon("edit")}</button>
         ${/* #462: the timer card owns the running entry — deleting it from the
              list orphaned the card (ghost TRACKING + tab-title count). Stop
              there first; delete lands on the finished row. */ !e.end_time ? "" : `
@@ -320,7 +320,7 @@ export function createTimerViews(deps: TimerViewDeps) {
         : "";
       return `
       <li class="md-list-item">
-        <span class="rev-dot" style="background:${esc(schemeColor(c.color) || "var(--md-sys-color-primary)")}">"></span>
+        <span class="rev-dot" style="background:${esc(schemeColor(c.color) || "var(--md-sys-color-primary)")}"></span>
         <div class="md-list-item-content">
           <div class="md-list-item-headline">${esc(c.name)}</div>
           <div class="md-list-item-supporting">${money(c.paid)} paid · ${money(c.outstanding)} outstanding</div>

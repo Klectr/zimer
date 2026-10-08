@@ -29,6 +29,7 @@ function setup() {
     managePage: views.managePage, clientSelection: views.clientSelection,
     clientDetailBody: views.clientDetailBody, clientListOob: views.clientListOob,
     bizProfileSection: views.bizProfileSection, dailyTargetSection: views.dailyTargetSection, clientSettingsForm: views.clientSettingsForm,
+    themeSectionHtml: views.themeSectionHtml,
     settingsPage: views.settingsPage, invoicesPage: noop, invoiceNewPage: noop,
     defaultNewInvParams: () => ({}), invoiceStep2: noop,
     invoiceDetailBody: noop, invoiceListOob: noop, invoiceDoc: noop, publicInvoicePage: noop,

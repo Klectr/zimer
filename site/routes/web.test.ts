@@ -30,7 +30,7 @@ function setup() {
     calendarPage: noop, editPage: () => null,
     managePage: views.managePage, clientSelection: views.clientSelection,
     clientDetailBody: views.clientDetailBody, clientListOob: views.clientListOob,
-    bizProfileSection: noop, dailyTargetSection: views.dailyTargetSection, clientSettingsForm: views.clientSettingsForm, settingsPage: noop,
+    bizProfileSection: noop, dailyTargetSection: views.dailyTargetSection, clientSettingsForm: views.clientSettingsForm, themeSectionHtml: views.themeSectionHtml, settingsPage: noop,
     invoicesPage: noop, invoiceNewPage: noop,
     defaultNewInvParams: () => ({}), invoiceStep2: noop,
     invoiceDetailBody: noop, invoiceListOob: noop, invoiceDoc: noop, publicInvoicePage: noop,
@@ -279,7 +279,7 @@ describe("/manage default selection (#835)", () => {
       calendarPage: noop, editPage: () => null,
       managePage: views.managePage, clientSelection: views.clientSelection,
       clientDetailBody: views.clientDetailBody, clientListOob: views.clientListOob,
-      bizProfileSection: noop, dailyTargetSection: views.dailyTargetSection, clientSettingsForm: views.clientSettingsForm, settingsPage: noop,
+      bizProfileSection: noop, dailyTargetSection: views.dailyTargetSection, clientSettingsForm: views.clientSettingsForm, themeSectionHtml: views.themeSectionHtml, settingsPage: noop,
       invoicesPage: noop, invoiceNewPage: noop,
       defaultNewInvParams: () => ({}), invoiceStep2: noop,
       invoiceDetailBody: noop, invoiceListOob: noop, invoiceDoc: noop, publicInvoicePage: noop,
@@ -339,6 +339,69 @@ describe("/manage default selection (#835)", () => {
     expect(body).not.toContain("Select a client to manage");
     expect(body).not.toContain("has-selection");
     expect(body).toContain("client-row selected");
+  });
+});
+
+describe("accent theme (#884)", () => {
+  function getSettingsBody(handleWeb: any, htmx = true) {
+    const headers: Record<string, string> = {};
+    if (htmx) headers["HX-Request"] = "true";
+    const req = new Request("http://x/settings", { headers });
+    return handleWeb(req, new URL(req.url), "/settings", "GET");
+  }
+  function postTheme(handleWeb: any, theme: string, htmx = true) {
+    const form = new FormData();
+    form.append("theme", theme);
+    const headers: Record<string, string> = {};
+    if (htmx) headers["HX-Request"] = "true";
+    const req = new Request("http://x/settings/theme", { method: "POST", body: form, headers });
+    return handleWeb(req, new URL(req.url), "/settings/theme", "POST");
+  }
+
+  test("settings body has the Theme section with all five dots, pumpkin selected", async () => {
+    const { handleWeb } = setup();
+    const res = await getSettingsBody(handleWeb);
+    expect(res.status).toBe(200);
+    const body = await res.text();
+    expect(body).toContain('id="theme-section"');
+    for (const name of ["Pumpkin", "Crimson", "Blue", "Green", "Yellow"])
+      expect(body).toContain(`aria-label="${name} theme"`);
+    expect(body).toContain('aria-label="Pumpkin theme" aria-pressed="true"');
+    expect(body).not.toContain('aria-label="Blue theme" aria-pressed="true"');
+  });
+
+  test("picking a theme stores it and returns the live-swapped style", async () => {
+    const { db, handleWeb } = setup();
+    const res = await postTheme(handleWeb, "crimson");
+    expect(res.status).toBe(200);
+    const body = await res.text();
+    expect(db.query("SELECT value FROM meta WHERE key = 'theme'").get()).toMatchObject({ value: "crimson" });
+    expect(body).toContain('id="theme-section"');
+    expect(body).toContain('hx-swap-oob="true"');
+    expect(body).toContain("--primary:#ffb4a8");
+    expect(body).toContain('aria-label="Crimson theme" aria-pressed="true"');
+  });
+
+  test("unknown theme is rejected and nothing is stored", async () => {
+    const { db, handleWeb } = setup();
+    const res = await postTheme(handleWeb, "hotpink");
+    expect(res.status).toBe(400);
+    expect(db.query("SELECT value FROM meta WHERE key = 'theme'").get()).toBeNull();
+  });
+
+  test("non-htmx post redirects to /settings", async () => {
+    const { handleWeb } = setup();
+    const res = await postTheme(handleWeb, "blue", false);
+    expect(res.status).toBe(302);
+    expect(res.headers.get("Location")).toBe("/settings");
+  });
+
+  test("the chosen theme persists and marks the new dot", async () => {
+    const { handleWeb } = setup();
+    await postTheme(handleWeb, "green");
+    const body = await (await getSettingsBody(handleWeb)).text();
+    expect(body).toContain('aria-label="Green theme" aria-pressed="true"');
+    expect(body).not.toContain('aria-label="Pumpkin theme" aria-pressed="true"');
   });
 });
 
