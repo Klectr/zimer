@@ -11,6 +11,52 @@ export const html = (body: string, status = 200, extra: Record<string, string> =
    HTMX sends HX-Request: true; no-JS clients keep the 302 fallback. */
 export const isHtmx = (req: Request) => req.headers.get("hx-request") === "true";
 
+/* #910: baseline security headers for every response. Attached at the server
+   fetch boundary (server.ts) so HTML, JSON, static assets, PDFs, CSVs, and
+   redirects are all covered in one place. The CSP allows the app's inline
+   scripts ('unsafe-inline' — several views render <script> blocks) and htmx
+   from the unpkg CDN; everything else is same-origin. Nonce-based tightening
+   is a possible follow-up once inline scripts are refactored out. */
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' https://unpkg.com",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data:",
+  "font-src 'self'",
+  "connect-src 'self'",
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "object-src 'none'",
+].join("; ");
+
+const STATIC_SECURITY_HEADERS: Record<string, string> = {
+  "Content-Security-Policy": CSP,
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+  "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+};
+
+/** True when the request arrived over HTTPS (directly or via the proxy). */
+export function isHttps(req: Request): boolean {
+  const proto = req.headers.get("x-forwarded-proto")?.trim().toLowerCase()
+    || new URL(req.url).protocol.replace(/:$/, "");
+  return proto === "https";
+}
+
+/** Stamp the #910 security headers onto a response (headers are set, never
+ *  appended, so re-wrapping is idempotent). HSTS only goes out over HTTPS —
+ *  sending it on plain-HTTP origins (local dev, Tailscale) would tell the
+ *  browser to refuse plain HTTP for that host for a year. */
+export function secureResponse(res: Response, req?: Request): Response {
+  for (const [k, v] of Object.entries(STATIC_SECURITY_HEADERS)) res.headers.set(k, v);
+  if (req && isHttps(req)) {
+    res.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  }
+  return res;
+}
+
 /** Best-effort public origin for share links (honors reverse-proxy headers).
  *  Without proxy headers, trust the request's actual protocol (#225) — never
  *  guess from the host (a Tailscale IP is not localhost, but it is plain HTTP). */

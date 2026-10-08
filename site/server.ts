@@ -14,7 +14,7 @@ import type { Statement } from "bun:sqlite";
 import { invoicePdf } from "./pdf.ts";
 import { stripeConfigured, verifyWebhookSignature } from "./stripe.ts";
 import { entryToJson, csvResponse, statusPill } from "./lib/format.ts";
-import { json, html, isHtmx, publicOrigin } from "./lib/http.ts";
+import { json, html, isHtmx, publicOrigin, secureResponse } from "./lib/http.ts";
 import { getToken, tokensEqual, authedApi, authedPage } from "./lib/auth.ts";
 import { createAccountsDb } from "./lib/accounts.ts"; /* #732 */
 import { createTenantStore } from "./lib/tenants.ts"; /* #733 */
@@ -210,12 +210,13 @@ Bun.serve({
     const url = new URL(req.url);
     const path = url.pathname;
     const method = req.method;
-    return await handleApi(req, url, path, method)
+    const res = await handleApi(req, url, path, method)
       ?? await handleBilling(req, url, path, method) /* #728 */
       ?? await handleLanding(req, url, path, method) /* #731 */
       ?? await handleWeb(req, url, path, method)
       /* #733: tenant's app-layout 404 when there is one, else public chrome. */
       ?? html((getTenant(req)?.notFoundPage ?? publicNotFound)(authedPage(req, TOKEN)), 404);
+    return secureResponse(res, req); /* #910: security headers on every response */
   },
 });
 
