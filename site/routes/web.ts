@@ -58,7 +58,7 @@ export interface WebTenant {
   invoiceDetailBody: (inv: Invoice & { items: InvoiceItem[] }, origin: string) => string;
   invoiceListOob: (selectedId: number) => string; /* #364 */
   invoiceDoc: (inv: Invoice & { items: InvoiceItem[] }) => string;
-  publicInvoicePage: (inv: Invoice & { items: InvoiceItem[] }) => string;
+  publicInvoicePage: (inv: Invoice & { items: InvoiceItem[] }, origin: string, tokenPath: string) => string;
   getInvoice: (id: number) => (Invoice & { items: InvoiceItem[] }) | null;
   invoiceTotals: (items: InvoiceItem[], taxRate: number) => { subtotal: number; tax: number; total: number };
   nextInvoiceNumber: () => string;
@@ -106,7 +106,7 @@ export interface WebDeps {
   HOSTED: boolean; /* #732 */
   accounts: AccountsDb | null; /* #732 */
   backupHealth: (() => { accounts: string | null; tenants: number }) | null; /* #730 part 2 */
-  changelogPage: (entries: import("../lib/changelog.ts").ChangelogEntry[]) => string;
+  changelogPage: (entries: import("../lib/changelog.ts").ChangelogEntry[], origin: string) => string;
   termsPage: (sections: import("../lib/license-terms.ts").TermsSection[]) => string; /* #341 */
   privacyPage: () => string; /* #730 */
   noSuchInvoicePage: () => string;
@@ -324,7 +324,7 @@ export function createWebRouter(deps: WebDeps) {
           if (!rl.allowed) {
             return html(rateLimitPage(), 429, { "Retry-After": String(rl.retryAfterSec) });
           }
-          return html(changelogPage(await loadChangelog()));
+          return html(changelogPage(await loadChangelog(), shareOrigin(req)));
         }
 
         /* Public client invoice page: no auth, read-only. The token is a
@@ -349,7 +349,7 @@ export function createWebRouter(deps: WebDeps) {
           if (!t) return html(noSuchInvoicePage(), 404);
           const idRow = t.db.query("SELECT id FROM invoices WHERE public_token = ?").get(pub[1]) as { id: number } | null;
           const inv = idRow ? t.getInvoice(idRow.id) : null;
-          return inv ? html(t.publicInvoicePage(inv)) : html(noSuchInvoicePage(), 404);
+          return inv ? html(t.publicInvoicePage(inv, shareOrigin(req), `/i/${pub[1]}`)) : html(noSuchInvoicePage(), 404);
         }
         /* Malformed /i/ paths (too short, bad chars): same dead-end. */
         if (method === "GET" && (path === "/i" || path === "/i/" || path.startsWith("/i/"))) {
