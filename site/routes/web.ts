@@ -41,6 +41,7 @@ export interface WebTenant {
   weekStrip: (weekStr?: string, tz?: string) => string;
   calendarPage: (week?: string) => string;
   editPage: (id: number) => string | null;
+  editEntryDialog: (id: number) => string | null; /* #903 */
   managePage: (selected: ClientSel | null) => string; /* #367 */
   clientSelection: (raw: string | null) => ClientSel | null; /* #367 */
   clientDetailBody: (sel: ClientSel) => string; /* #367 */
@@ -353,7 +354,7 @@ export function createWebRouter(deps: WebDeps) {
             db, dbPath, qRunning, qOne, qRange, qInvoice, qInvoices,
             notFoundPage, errorPage,
             dashboardPage, timerPartial, todayPartial, weekInner, weekStrip,
-            calendarPage, editPage, managePage, clientSelection, clientDetailBody, clientListOob, bizProfileSection, clientSettingsForm, settingsPage, themeSectionHtml, invoicesPage, invoiceNewPage,
+            calendarPage, editPage, editEntryDialog, managePage, clientSelection, clientDetailBody, clientListOob, bizProfileSection, clientSettingsForm, settingsPage, themeSectionHtml, invoicesPage, invoiceNewPage,
             defaultNewInvParams, invoiceStep2, invoiceDetailBody, invoiceListOob, invoiceDoc, publicInvoicePage,
             getInvoice, invoiceTotals,
             nextInvoiceNumber, stripeLinkFor, unbilledEntries,
@@ -435,6 +436,12 @@ export function createWebRouter(deps: WebDeps) {
 
           let m = path.match(/^\/entries\/(\d+)\/edit$/);
           if (m && method === "GET") {
+            /* #903: htmx gets the dialog fragment for the timer-page modal;
+               direct visits keep the full edit page. */
+            if (isHtmx(req)) {
+              const frag = editEntryDialog(Number(m[1]));
+              return frag ? html(frag) : new Response("Not found", { status: 404 });
+            }
             const page = editPage(Number(m[1]));
             return page ? html(page) : html(notFoundPage(authedPage(req, TOKEN)), 404);
           }
@@ -456,7 +463,11 @@ export function createWebRouter(deps: WebDeps) {
               new Date(String(form.get("start_time"))).toISOString(),
               endRaw ? new Date(endRaw).toISOString() : null,
               id);
-          return new Response(null, { status: 302, headers: { Location: "/calendar" } });
+          return isHtmx(req)
+            /* #903: the timer edit dialog posts via htmx — answer HX-Trigger
+               so #today-list refreshes in place; no-JS keeps the 302. */
+            ? new Response(null, { status: 200, headers: { "HX-Trigger": "timer-updated" } })
+            : new Response(null, { status: 302, headers: { Location: "/calendar" } });
         }
         if (m && method === "DELETE") {
           const cur = qOne.get(Number(m[1])) as Entry | null; /* #334 */

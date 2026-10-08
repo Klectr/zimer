@@ -76,7 +76,7 @@ export function createTimerViews(deps: TimerViewDeps) {
       <div class="md-list-item-trailing">
         ${durSpan}
         ${entryIsLocked(e) ? "" : `
-        <a class="md-icon-button" href="/entries/${e.id}/edit" aria-label="Edit entry" data-tip="Edit">${icon("edit")}</a>
+        <button class="md-icon-button" type="button" data-edit-entry="${e.id}" aria-label="Edit entry" data-tip="Edit">${icon("edit")}</button>
         ${/* #462: the timer card owns the running entry — deleting it from the
              list orphaned the card (ghost TRACKING + tab-title count). Stop
              there first; delete lands on the finished row. */ !e.end_time ? "" : `
