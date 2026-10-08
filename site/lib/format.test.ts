@@ -1,5 +1,28 @@
 import { describe, expect, test } from "bun:test";
-import { fmtDur, schemeColor, shortDateRange, shortDateRangeYear, shortYmd } from "./format.ts";
+import { csvCell, fmtDur, schemeColor, shortDateRange, shortDateRangeYear, shortYmd } from "./format.ts";
+
+/* #914: CSV formula injection — cells starting with =, +, - or @ (after
+   leading whitespace) get a single-quote prefix so Excel/Sheets open them
+   as text instead of executing them as formulas. */
+describe("csvCell", () => {
+  test("neutralizes formula prefixes", () => {
+    expect(csvCell("=1+1")).toBe("'=1+1");
+    expect(csvCell("+123")).toBe("'+123");
+    expect(csvCell("-5")).toBe("'-5");
+    expect(csvCell("@handle")).toBe("'@handle");
+    expect(csvCell(" =cmd|' /c calc'!A0")).toBe("' =cmd|' /c calc'!A0");
+  });
+  test("prefix survives quote escaping", () => {
+    expect(csvCell("=1+1,\"x\"")).toBe("\"'=1+1,\"\"x\"\"\"");
+  });
+  test("ordinary cells keep existing quoting behavior", () => {
+    expect(csvCell("plain")).toBe("plain");
+    expect(csvCell("a,b")).toBe("\"a,b\"");
+    expect(csvCell("he said \"hi\"")).toBe("\"he said \"\"hi\"\"\"");
+    expect(csvCell("x\ny")).toBe("\"x\ny\"");
+    expect(csvCell("no trigger at start: = sign")).toBe("no trigger at start: = sign");
+  });
+});
 
 /* #582: the invoice detail billing period is year-aware so it matches the
    PDF and is never ambiguous across year boundaries. */
