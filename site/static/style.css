@@ -211,6 +211,23 @@ body {
 }
 .md-top-app-bar-spacer { flex: 1; }
 
+/* ---------------- trial-expiry nudge banner (#923) ----------------
+ * Full-width tonal strip between the app bar and the page chrome: one
+ * line of copy, a pumpkin Subscribe CTA, and a dismiss button. Dismissal
+ * is client-side (localStorage) — no route, no DB. Wraps on narrow
+ * screens; never scrolls horizontally. */
+.trial-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px 16px;
+  flex-wrap: wrap;
+  padding: 10px 16px 10px var(--layout-body-margin);
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
+}
+.trial-banner-text { margin: 0; flex: 1 1 240px; }
+.trial-banner-cta { margin: 0; display: flex; }
+
 /* ---------------- slim top app bar: brand mark + account actions only ----------------
  * #354: primary navigation moved out of the app bar into the bottom bar / rail
  * below, per M3. The app bar holds the title and essential actions only. */

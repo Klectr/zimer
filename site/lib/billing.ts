@@ -29,6 +29,9 @@ import type { AccountsDb } from "./accounts.ts";
 
 export const TRIAL_DAYS = 14;
 export const PAST_DUE_GRACE_DAYS = 7;
+/** #923: the trial-expiry nudge banner appears while this many whole days
+ *  (or fewer) of the pre-checkout trial remain. */
+export const TRIAL_NUDGE_DAYS = 3;
 
 export interface Subscription {
   user_id: number;
@@ -330,6 +333,24 @@ CREATE INDEX IF NOT EXISTS idx_subscriptions_subscription ON subscriptions(strip
     upsertFromSubscription,
     upsertFromStripeEvent,
   };
+}
+
+/** #923: whole days of the pre-checkout trial remaining (ceiling), or null
+ *  when there is no pre-checkout trial in progress: a subscription row
+ *  exists (the user checked out, or did and lapsed — the nudge is only for
+ *  never-checked-out trials), the 14-day window elapsed, or created_at is
+ *  unknown. billingActive() already encodes the window; the row check
+ *  restricts this to the pre-checkout case the nudge is about. */
+export function trialDaysLeft(
+  billing: Billing,
+  userId: number,
+  userCreatedAtMs: number | null,
+  nowMs: number = Date.now()
+): number | null {
+  if (billing.getSubscriptionStatus(userId)) return null;
+  if (!billing.billingActive(userId, userCreatedAtMs, new Date(nowMs))) return null;
+  const trialEndMs = (userCreatedAtMs as number) + TRIAL_DAYS * 24 * 3600 * 1000;
+  return Math.ceil((trialEndMs - nowMs) / (24 * 3600 * 1000));
 }
 
 export type Billing = ReturnType<typeof createBilling>;
