@@ -2009,6 +2009,13 @@ body.app-fixed .cal-gutter-spacer {
 }
 @keyframes bar-grow { from { transform: scaleY(0); } }
 .rev-chart text { fill: var(--md-sys-color-on-surface-variant); font-size: 0.625rem; }
+/* #899: time-breakdown chart on the zinvoices sheet — same bar treatment
+   as the revenue chart, single-series (no animation: it prints). */
+.inv-breakdown { margin-top: 20px; }
+.inv-breakdown-sub { margin: 2px 0 8px; }
+.tb-chart { width: 100%; height: auto; display: block; }
+.tb-chart .tb-bar { fill: var(--md-sys-color-primary); }
+.tb-chart text { fill: var(--md-sys-color-on-surface-variant); font-size: 0.625rem; }
 .rev-legend { display: flex; align-items: center; gap: 8px; margin-top: 8px;
   color: var(--md-sys-color-on-surface-variant); font-size: 0.75rem; }
 .rev-swatch { width: 12px; height: 12px; border-radius: 4px; display: inline-block; }

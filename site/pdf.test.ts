@@ -112,3 +112,35 @@ describe("#875: PDF drops the payment-terms block when paid", () => {
     expect(text).not.toContain(terms);
   });
 });
+
+/** #899: the invoice PDF grows a second page — a bar chart of the tracked
+ *  time behind the invoice, per day. No breakdown data, no second page. */
+describe("#899: PDF second page shows the time-breakdown chart", () => {
+  const days = [
+    { date: "2026-09-08", hours: 7 },
+    { date: "2026-09-09", hours: 2.75 },
+    { date: "2026-09-10", hours: 6.75 },
+  ];
+
+  test("chart page renders when per-day breakdown data is present", () => {
+    const text = pdfText({ ...base, timeBreakdown: days });
+    expect(text).toContain("/Count 2");
+    expect(text).toContain("Page 2 of 2");
+    expect(text).toContain("T I M E   B R E A K D O W N");
+    expect(text).toContain("Tracked time by day");
+    expect(text).toContain("Sep 8");
+  });
+
+  test("no second page without breakdown data", () => {
+    const text = pdfText(base);
+    expect(text).toContain("/Count 1");
+    expect(text).toContain("Page 1 of 1");
+    expect(text).not.toContain("TIME BREAKDOWN");
+  });
+
+  test("empty breakdown renders no second page", () => {
+    const text = pdfText({ ...base, timeBreakdown: [] });
+    expect(text).toContain("/Count 1");
+    expect(text).not.toContain("TIME BREAKDOWN");
+  });
+});
