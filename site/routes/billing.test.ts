@@ -235,6 +235,32 @@ describe("#728: billing routes", () => {
     expect(res.status).toBe(401);
   });
 
+  test("#912: checkout with a mismatched Origin is rejected with 403", async () => {
+    const { accounts, handleBilling } = setup();
+    const { cookie } = await authedCookie(accounts);
+    const req = new Request("http://localhost/billing/checkout", {
+      method: "POST",
+      headers: { cookie, Origin: "http://evil.com", host: "localhost" },
+    });
+    const res = (await handleBilling(req, new URL(req.url), "/billing/checkout", "POST"))!;
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual({ error: "cross-site request blocked" });
+    expect(lastStripeCall).toBeNull(); /* never reached Stripe */
+  });
+
+  test("#912: checkout with a matching Origin passes the guard", async () => {
+    const { accounts, handleBilling } = setup();
+    const { cookie } = await authedCookie(accounts);
+    const req = new Request("http://localhost/billing/checkout", {
+      method: "POST",
+      headers: { cookie, Origin: "http://localhost", host: "localhost" },
+    });
+    const res = (await handleBilling(req, new URL(req.url), "/billing/checkout", "POST"))!;
+    /* Guard let it through — the mocked Stripe session is created and we 303 to it. */
+    expect(res.status).toBe(303);
+    expect(res.headers.get("location")).toBe("https://checkout.stripe.com/pay/cs_1");
+  });
+
   test("checkout creates a subscription Checkout Session with the trial anchored to signup, then 303s", async () => {
     const { accounts, handleBilling } = setup();
     const { user, cookie } = await authedCookie(accounts);

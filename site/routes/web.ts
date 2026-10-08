@@ -10,7 +10,7 @@ import type { Entry, Invoice, InvoiceItem } from "../lib/types.ts";
 import type { ClientSel } from "../views/manage.ts"; /* #367 */
 import type { PdfInvoice } from "../pdf.ts";
 import { getMeta, setMeta } from "../db.ts";
-import { clientIp, secureCookieAttr } from "../lib/http.ts";
+import { clientIp, originMatches, secureCookieAttr } from "../lib/http.ts";
 import { createRateLimiter } from "../lib/ratelimit.ts";
 import { loadChangelog } from "../lib/changelog.ts"; /* #303 */
 import { licenseTerms } from "../lib/license-terms.ts"; /* #341 */
@@ -71,6 +71,19 @@ export interface WebTenant {
   mintPublicToken: (id: number) => string;
   invoicePdfInput: (inv: Invoice & { items: InvoiceItem[] }, origin: string) => PdfInvoice; /* #301 */
   freezeInvoiceSnapshots: (id: number, origin: string) => void; /* #301 */
+}
+
+/** #912: the CSRF rejection page — minimal public chrome, no app nav leaked. */
+function csrfBlockedPage(): string {
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Request blocked · Zimer</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="icon" type="image/svg+xml" href="/static/logo.svg"></head>
+  <body><main class="login">
+  <div class="md-card" style="border-radius:28px;padding:28px;max-width:420px">
+  <h1 class="md-headline-small" style="margin-top:0">Request blocked</h1>
+  <p class="muted">This action was refused because it didn't come from the app itself. If you reached this page from inside Zimer, please try again.</p>
+  </div></main></body></html>`;
 }
 
 export interface WebDeps {
@@ -144,6 +157,14 @@ export function createWebRouter(deps: WebDeps) {
 
   /** Serve a web request, or null when the path is not a web route. */
   async function handleWeb(req: Request, url: URL, path: string, method: string): Promise<Response | null> {
+        /* #912: CSRF — mutating web routes are same-origin only. The request's
+           Origin (or Referer) must name this host; a forged cross-site request
+           carries the attacker's origin and is rejected before anything else
+           runs. /api/* and /billing/* are dispatched before handleWeb and are
+           exempt here (Bearer tokens / Stripe signatures aren't forgeable). */
+        if (method !== "GET" && method !== "HEAD" && method !== "OPTIONS" && !originMatches(req)) {
+          return html(csrfBlockedPage(), 403);
+        }
         /* #733: resolve this request's tenant up front. Null = hosted mode
            with no session — only the public paths below may run. Self-host
            always resolves the single global tree. */
@@ -241,7 +262,9 @@ export function createWebRouter(deps: WebDeps) {
             return html(signupPage(error), 400);
           }
         }
-        if (path === "/logout") {
+        /* #912: logout is POST-only — a GET logout is CSRF-able via an <img>
+           tag, and a forged click logs the victim out of their own app. */
+        if (path === "/logout" && method === "POST") {
           if (HOSTED) {
             /* #732 */
             const t = accounts!.sessionTokenFromRequest(req);
@@ -255,6 +278,9 @@ export function createWebRouter(deps: WebDeps) {
             status: 302,
             headers: { Location: "/login", "Set-Cookie": `tk=; HttpOnly; Path=/; Max-Age=0${secureCookieAttr(req)}` },
           });
+        }
+        if (path === "/logout") {
+          return new Response(null, { status: 405, headers: { Allow: "POST" } });
         }
 
         /* #730: health check for external uptime monitoring. No auth, no rate

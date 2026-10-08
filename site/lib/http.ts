@@ -101,3 +101,35 @@ export function clientIp(req: Request): string {
   }
   return "unknown";
 }
+
+/** #912: CSRF guard for cookie-authenticated mutating routes. The app is
+ *  same-origin — every form POST and htmx/fetch POST the UI makes carries an
+ *  Origin (falling back to Referer) naming this host, while a cross-site
+ *  forgery carries the attacker's origin (or a suppressed one). A present-
+ *  but-mismatched origin is rejected; an absent one is allowed (curl, and
+ *  proxies that strip the header) — SameSite=Lax cookies still cover the
+ *  modern-browser POST path on top of this. The host is read through the same
+ *  validated forwarded-host path publicOrigin() uses, so the check holds
+ *  behind the nginx proxy. /api/* stays exempt: Bearer tokens aren't ambient
+ *  credentials, so there's nothing to forge, and the extension calls it
+ *  cross-origin. */
+export function originMatches(req: Request): boolean {
+  const origin = req.headers.get("origin")?.trim() || req.headers.get("referer")?.trim();
+  if (!origin) return true; /* nothing to judge */
+  let o: URL, h: URL;
+  try {
+    o = new URL(origin);
+    const host = forwardedHost(req) || req.headers.get("host")?.trim();
+    if (!host) return false;
+    /* Rebuild the request's own origin from the validated host and the
+       request scheme (direct or x-forwarded-proto) — comparing origins, not
+       bare hostnames, so ports and default-port normalization are handled by
+       the URL parser itself. */
+    const proto = forwardedProto(req) || new URL(req.url).protocol.replace(/:$/, "");
+    h = new URL(`${proto}://${host}`);
+  } catch {
+    return false; /* unparsable origin or host — fail closed */
+  }
+  const portOf = (u: URL) => u.port || (u.protocol === "https:" ? "443" : "80");
+  return o.hostname.toLowerCase() === h.hostname.toLowerCase() && portOf(o) === portOf(h);
+}

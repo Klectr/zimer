@@ -461,3 +461,53 @@ describe("daily target (#908)", () => {
     expect(body).toContain("Daily hours target");
   });
 });
+
+describe("logout and CSRF guard (#912)", () => {
+  /* Bun's Request constructor doesn't populate the Host header from the URL,
+     so set it explicitly — a real server connection always carries it. */
+  const logoutReq = (method: string, headers: Record<string, string> = {}) => {
+    const req = new Request("http://x/logout", { method, headers: { ...headers, host: "x" } });
+    return { req, url: new URL(req.url) };
+  };
+
+  test("GET /logout is 405 with Allow: POST (no more CSRF-able logout links)", async () => {
+    const { handleWeb } = setup();
+    const { req, url } = logoutReq("GET");
+    const res = (await handleWeb(req, url, "/logout", "GET"))!;
+    expect(res.status).toBe(405);
+    expect(res.headers.get("Allow")).toBe("POST");
+  });
+
+  test("POST /logout still clears the cookie and redirects to /login", async () => {
+    const { handleWeb } = setup();
+    const { req, url } = logoutReq("POST");
+    const res = (await handleWeb(req, url, "/logout", "POST"))!;
+    expect(res.status).toBe(302);
+    expect(res.headers.get("Location")).toBe("/login");
+    expect(res.headers.get("Set-Cookie")).toContain("tk=;");
+    expect(res.headers.get("Set-Cookie")).toContain("Max-Age=0");
+  });
+
+  test("POST /logout with a matching Origin is allowed", async () => {
+    const { handleWeb } = setup();
+    const { req, url } = logoutReq("POST", { Origin: "http://x" });
+    const res = (await handleWeb(req, url, "/logout", "POST"))!;
+    expect(res.status).toBe(302);
+  });
+
+  test("mutating web route with a mismatched Origin is rejected with 403", async () => {
+    const { handleWeb } = setup();
+    const { req, url } = logoutReq("POST", { Origin: "http://evil.com" });
+    const res = (await handleWeb(req, url, "/logout", "POST"))!;
+    expect(res.status).toBe(403);
+    const body = await res.text();
+    expect(body).toContain("Request blocked");
+  });
+
+  test("POST with a mismatched Referer and no Origin is rejected too", async () => {
+    const { handleWeb } = setup();
+    const { req, url } = logoutReq("POST", { Referer: "http://evil.com/page" });
+    const res = (await handleWeb(req, url, "/logout", "POST"))!;
+    expect(res.status).toBe(403);
+  });
+});
