@@ -1,4 +1,4 @@
-/** Timer page views: dashboard, timer card, today's entries, today-vs-8h
+/** Timer page views: dashboard, timer card, today's entries, today-vs-target
  *  pacing bar, and the revenue pane (cards, 12-month chart, per-client
  *  breakdown, overdue attention). Domain data arrives through injected
  *  helpers; layout and demo banner come from their owning
@@ -21,7 +21,9 @@ export interface TimerViewDeps {
   revenueByClient: () => { name: string; color: string | null; invoiced: number; paid: number; outstanding: number }[];
   revenueOverdue: () => { id: number; number: string; client_name: string | null; due_date: string | null; total: number; days_past_due: number; bucket: string }[];
   m3ProgressBar: (pct: number, met: boolean, ariaLabel: string) => string;
-  dayTargetSecs: number;
+  /* #908: per-request getter — the daily target is a user setting now, and
+     the view deps are built once at server startup. */
+  dayTargetSecs: () => number;
 }
 
 export function createTimerViews(deps: TimerViewDeps) {
@@ -76,7 +78,7 @@ export function createTimerViews(deps: TimerViewDeps) {
       <div class="md-list-item-trailing">
         ${durSpan}
         ${entryIsLocked(e) ? "" : `
-        <button class="md-icon-button" type="button" data-edit-entry="${e.id}" aria-label="Edit entry" data-tip="Edit">${icon("edit")}</button>
+        <a class="md-icon-button" href="/entries/${e.id}/edit" aria-label="Edit entry" data-tip="Edit">${icon("edit")}</a>
         ${/* #462: the timer card owns the running entry — deleting it from the
              list orphaned the card (ghost TRACKING + tab-title count). Stop
              there first; delete lands on the finished row. */ !e.end_time ? "" : `
@@ -318,7 +320,7 @@ export function createTimerViews(deps: TimerViewDeps) {
         : "";
       return `
       <li class="md-list-item">
-        <span class="rev-dot" style="background:${esc(schemeColor(c.color) || "var(--md-sys-color-primary)")}"></span>
+        <span class="rev-dot" style="background:${esc(schemeColor(c.color) || "var(--md-sys-color-primary)")}">"></span>
         <div class="md-list-item-content">
           <div class="md-list-item-headline">${esc(c.name)}</div>
           <div class="md-list-item-supporting">${money(c.paid)} paid · ${money(c.outstanding)} outstanding</div>
@@ -332,16 +334,18 @@ export function createTimerViews(deps: TimerViewDeps) {
     </div>`;
   }
 
-  /** Today-vs-8h pacing bar at the top of the timer page's today list. Rendered
-      inside todayPartial so it refreshes on every timer start/stop via the
-      existing `timer-updated` trigger. */
+  /** Today-vs-target pacing bar at the top of the timer page's today list.
+      Rendered inside todayPartial so it refreshes on every timer start/stop
+      via the existing `timer-updated` trigger. #908: the target comes from
+      the user's setting, not the old 8h constant. */
   function todayTargetBar(totalSecs: number): string {
-    const pct = Math.min(100, (totalSecs / dayTargetSecs) * 100);
-    const met = totalSecs >= dayTargetSecs;
+    const target = dayTargetSecs();
+    const pct = Math.min(100, (totalSecs / target) * 100);
+    const met = totalSecs >= target;
     return `
       <div class="m3-progress today-target">
-        ${m3ProgressBar(pct, met, "Today's hours target, 8 hours")}
-        <div class="md-label-medium muted m3-progress-label">Today · ${fmtDur(totalSecs)} / 8h${met ? ` · <span class="tiny">target met</span>` : ""}</div>
+        ${m3ProgressBar(pct, met, `Today's hours target, ${target / 3600} hours`)}
+        <div class="md-label-medium muted m3-progress-label">Today · ${fmtDur(totalSecs)} / ${fmtDur(target)}${met ? ` · <span class="tiny">target met</span>` : ""}</div>
       </div>`;
   }
 

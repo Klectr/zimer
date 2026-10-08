@@ -8,6 +8,7 @@ import type { Database, Statement } from "bun:sqlite";
 import { addDays, durationSeconds, esc, fmtDur, round2 } from "./format.ts";
 import type { Entry, Invoice, InvoiceItem } from "./types.ts";
 import { createPaymentLink, stripeConfigured } from "../stripe.ts";
+import { getMeta } from "../db.ts";
 
 export interface DomainDeps {
   db: Database;
@@ -20,11 +21,23 @@ export interface DomainDeps {
 export const CAL_HOUR_PX = 80;
 
 /** Weekly hours target: 40h matches the ~80h biweekly invoicing pace.
-    Kept as a constant in this slice; a configurable target is a follow-up. */
+    Kept as the default; #908 made the target configurable via Settings —
+    the week bar uses five days at the user's daily target. */
 export const WEEK_TARGET_SECS = 40 * 3600;
 
-/** Daily hours target: 8h, matching the calendar's under-8h-day pacing (#22). */
+/** Daily hours target: 8h, matching the calendar's under-8h-day pacing (#22).
+    The default only — #908 reads the user's setting from the meta table. */
 export const DAY_TARGET_SECS = 8 * 3600;
+
+/** #908: user-configurable daily hours target, stored as `day_target_hours`
+    in the meta table (no migration needed). Missing, non-numeric, or
+    out-of-range values fall back to the 8h default. The 1–24h range keeps
+    the pacing bars meaningful; halves are allowed. */
+export function dayTargetSecs(db: Database): number {
+  const h = Number(getMeta(db, "day_target_hours").trim());
+  if (!Number.isFinite(h) || h < 1 || h > 24) return DAY_TARGET_SECS;
+  return Math.round(h * 3600);
+}
 
 export function createDomain(deps: DomainDeps) {
   const { db, qInvoice, qInvoiceItems, TOKEN } = deps;
@@ -217,14 +230,16 @@ export function createDomain(deps: DomainDeps) {
         aria-valuemin="0" aria-valuemax="100" aria-label="${ariaLabel}">${bar}</div>`;
   }
 
-  /** Slim pacing bar under the week header: tracked hours vs the 40h target. */
+  /** Slim pacing bar under the week header: tracked hours vs the week target
+      (five days at the user's daily target, #908). */
   function weekTargetBar(weekTotalSecs: number): string {
-    const pct = Math.min(100, (weekTotalSecs / WEEK_TARGET_SECS) * 100);
-    const over = weekTotalSecs >= WEEK_TARGET_SECS;
+    const target = 5 * dayTargetSecs(db);
+    const pct = Math.min(100, (weekTotalSecs / target) * 100);
+    const over = weekTotalSecs >= target;
     return `
       <div class="m3-progress week-target">
-        ${m3ProgressBar(pct, over, "Weekly hours target, 40 hours")}
-        <div class="md-label-medium muted m3-progress-label">${fmtDur(weekTotalSecs)} / 40h${over ? ` · <span class="tiny">over target</span>` : ""}</div>
+        ${m3ProgressBar(pct, over, `Weekly hours target, ${target / 3600} hours`)}
+        <div class="md-label-medium muted m3-progress-label">${fmtDur(weekTotalSecs)} / ${fmtDur(target)}${over ? ` · <span class="tiny">over target</span>` : ""}</div>
       </div>`;
   }
 

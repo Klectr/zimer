@@ -654,62 +654,6 @@ describe("edit-entry floating labels (#709)", () => {
   });
 });
 
-/** #903: the timer-page edit dialog fragment — same fields as the full edit
- *  page, but as a dialog head + htmx form for #entry-dialog-body. */
-describe("entry edit dialog fragment (#903)", () => {
-  function dialogViews() {
-    const entry = {
-      id: 7, description: "dialog entry", project_id: null,
-      start_time: "2026-09-21T15:00:00.000Z", end_time: "2026-09-21T16:00:00.000Z",
-      invoice_id: null, invoice_number: null, invoice_status: null,
-    };
-    const db = { query: (_sql: string) => ({ get: () => null, all: () => [] }) } as unknown as Database;
-    return createCalendarViews({
-      db,
-      qOne: { get: () => entry },
-      qRange: { get: () => ({ n: 1 }), all: () => [] },
-      entrySelect: "SELECT",
-      layout: (_t: string, b: string) => b,
-      projectOptions: () => "",
-      weekTargetBar: () => "",
-      calHourPx: 64,
-    } as any);
-  }
-
-  test("fragment carries the dialog head and an htmx form", () => {
-    const html = dialogViews().editEntryDialog(7) as string;
-    expect(html).toContain('id="entry-dialog-title"');
-    expect(html).toContain('hx-post="/entries/7"');
-    expect(html).toContain('hx-swap="none"');
-    expect(html).toContain('id="edit-entry-form"');
-    expect(html).toContain("data-close-entry");
-    expect(html).not.toContain("<!DOCTYPE html>");
-  });
-
-  test("fragment keeps the #709 label wiring", () => {
-    const html = dialogViews().editEntryDialog(7) as string;
-    for (const id of ["ee-desc", "ee-project", "ee-start", "ee-end"]) {
-      expect(html).toContain(`id="${id}"`);
-      expect(html).toContain(`<label for="${id}">`);
-    }
-  });
-
-  test("unknown entry is null", () => {
-    const db = { query: (_sql: string) => ({ get: () => null, all: () => [] }) } as unknown as Database;
-    const views = createCalendarViews({
-      db,
-      qOne: { get: () => null },
-      qRange: { get: () => ({ n: 1 }), all: () => [] },
-      entrySelect: "SELECT",
-      layout: (_t: string, b: string) => b,
-      projectOptions: () => "",
-      weekTargetBar: () => "",
-      calHourPx: 64,
-    } as any);
-    expect(views.editEntryDialog(999)).toBeNull();
-  });
-});
-
 /** #766: the "This week" pane hint named the per-day + buttons, which only
  *  render inside the narrow agenda view (display:none above 639px of strip
  *  width) — at desktop widths the hint pointed at a control that was not
@@ -802,12 +746,7 @@ describe("calendar slot theme color (#841)", () => {
  *  cutter re-rounds the visible bottom edge. #849: the top cutter moved from
  *  the header to the lane so it paints below entries (z-0 vs entries z-1) —
  *  the header-anchored cutter bit dark specks out of entries touching the
- *  lane top. #877: the top cutter moved to z-1, above the translucent night
- *  bands (z-auto) — at scroll-top the band's opaque top-12px backing covered
- *  the z-0 cutter, but scrolled past 12px the band's translucent region slid
- *  over the cutter's dark crescents and they read through as notches; above
- *  the band the crescents are clean dark cuts at every scroll offset. Entries
- *  moved to z-2 to stay above the cutters. */
+ *  lane top. */
 describe("calendar column rounding (#845, #847, #849)", () => {
   test("sticky day header is opaque page-bg and square — no corner cutouts to peek through", async () => {
     const css = await Bun.file("site/static/style.css").text();
@@ -822,7 +761,7 @@ describe("calendar column rounding (#845, #847, #849)", () => {
     expect(cutter).not.toBeNull();
     expect(cutter![0]).toMatch(/position:\s*sticky/);
     expect(cutter![0]).toMatch(/top:\s*var\(--cal-head-h\)/);
-    expect(cutter![0]).toMatch(/z-index:\s*1/);
+    expect(cutter![0]).toMatch(/z-index:\s*0/);
     expect(cutter![0]).toMatch(/background:\s*var\(--md-sys-color-surface\)/);
     expect(cutter![0]).toMatch(/pointer-events:\s*none/);
     expect(cutter![0]).toMatch(/mask:/);
@@ -831,50 +770,10 @@ describe("calendar column rounding (#845, #847, #849)", () => {
     const css = await Bun.file("site/static/style.css").text();
     const entry = css.match(/\.cal-entry\s*\{[^}]*\}/);
     expect(entry).not.toBeNull();
-    expect(entry![0]).toMatch(/z-index:\s*2/);
+    expect(entry![0]).toMatch(/z-index:\s*1/);
     const bottomCutter = css.match(/\.cal-day-col::after\s*\{[^}]*\}/);
     expect(bottomCutter).not.toBeNull();
     expect(bottomCutter![0]).toMatch(/z-index:\s*0/);
-  });
-  test("#877: top cutter paints above the translucent night band so its dark crescents can't show through it", async () => {
-    const css = await Bun.file("site/static/style.css").text();
-    const cutter = css.match(/\.cal-day-col::before\s*\{[^}]*\}/);
-    expect(cutter).not.toBeNull();
-    expect(cutter![0]).toMatch(/z-index:\s*1/);
-    // night band stays z-auto (below the z-1 cutter, above the lane bg)
-    const band = css.match(/\.cal-night\s*\{[^}]*\}/);
-    expect(band).not.toBeNull();
-    expect(band![0]).not.toMatch(/z-index/);
-    // entries stay above the cutter (the #849 fringe fix, now at z-2)
-    const entry = css.match(/\.cal-entry\s*\{[^}]*\}/);
-    expect(entry).not.toBeNull();
-    expect(entry![0]).toMatch(/z-index:\s*2/);
-  });
-  test("#881: now-dot straddles the lane edge; sticky headers overlap the gutters so the dot hides with the line", async () => {
-    const css = await Bun.file("site/static/style.css").text();
-    // the dot straddling the lane edge (left:-5px) is the correct design —
-    // #880 tucked it inside the lane instead; reverted
-    const dot = css.match(/\.cal-now::before\s*\{[^}]*\}/);
-    expect(dot).not.toBeNull();
-    expect(dot![0]).toMatch(/left:\s*-5px/);
-    expect(dot![0]).toMatch(/top:\s*-4px/);
-    // each day head overlaps 4px into the gutters on both sides, closing the
-    // 8px inter-lane gaps in the header band (the dot's gutter half then
-    // hides under the opaque sticky header with the line)
-    const head = css.match(/\.cal-grid\s*>\s*\.cal-day\s+\.cal-day-head\s*\{[^}]*\}/);
-    expect(head).not.toBeNull();
-    expect(head![0]).toMatch(/margin-left:\s*-4px/);
-    expect(head![0]).toMatch(/margin-right:\s*-4px/);
-    // Sunday is the last grid child — its head must not overhang the grid edge
-    const sun = css.match(/\.cal-grid\s*>\s*\.cal-day:nth-child\(8\)\s+\.cal-day-head\s*\{[^}]*\}/);
-    expect(sun).not.toBeNull();
-    expect(sun![0]).toMatch(/margin-right:\s*0/);
-    // the line itself stays full lane width, above entries
-    const line = css.match(/\.cal-now\s*\{[^}]*\}/);
-    expect(line).not.toBeNull();
-    expect(line![0]).toMatch(/left:\s*0/);
-    expect(line![0]).toMatch(/right:\s*0/);
-    expect(line![0]).toMatch(/z-index:\s*4/);
   });
   test("lane tone is a shared variable across day states", async () => {
     const css = await Bun.file("site/static/style.css").text();

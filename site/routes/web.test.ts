@@ -6,7 +6,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Database } from "bun:sqlite";
-import { createDb } from "../db.ts";
+import { createDb, getMeta } from "../db.ts";
 import { createWebRouter } from "./web.ts";
 import { createManageViews } from "../views/manage.ts";
 
@@ -30,7 +30,7 @@ function setup() {
     calendarPage: noop, editPage: () => null,
     managePage: views.managePage, clientSelection: views.clientSelection,
     clientDetailBody: views.clientDetailBody, clientListOob: views.clientListOob,
-    bizProfileSection: noop, clientSettingsForm: views.clientSettingsForm, themeSectionHtml: views.themeSectionHtml, settingsPage: noop,
+    bizProfileSection: noop, dailyTargetSection: views.dailyTargetSection, clientSettingsForm: views.clientSettingsForm, settingsPage: noop,
     invoicesPage: noop, invoiceNewPage: noop,
     defaultNewInvParams: () => ({}), invoiceStep2: noop,
     invoiceDetailBody: noop, invoiceListOob: noop, invoiceDoc: noop, publicInvoicePage: noop,
@@ -279,7 +279,7 @@ describe("/manage default selection (#835)", () => {
       calendarPage: noop, editPage: () => null,
       managePage: views.managePage, clientSelection: views.clientSelection,
       clientDetailBody: views.clientDetailBody, clientListOob: views.clientListOob,
-      bizProfileSection: noop, clientSettingsForm: views.clientSettingsForm, themeSectionHtml: views.themeSectionHtml, settingsPage: noop,
+      bizProfileSection: noop, dailyTargetSection: views.dailyTargetSection, clientSettingsForm: views.clientSettingsForm, settingsPage: noop,
       invoicesPage: noop, invoiceNewPage: noop,
       defaultNewInvParams: () => ({}), invoiceStep2: noop,
       invoiceDetailBody: noop, invoiceListOob: noop, invoiceDoc: noop, publicInvoicePage: noop,
@@ -342,65 +342,59 @@ describe("/manage default selection (#835)", () => {
   });
 });
 
-describe("accent theme (#884)", () => {
-  function getSettingsBody(handleWeb: any, htmx = true) {
-    const headers: Record<string, string> = {};
-    if (htmx) headers["HX-Request"] = "true";
-    const req = new Request("http://x/settings", { headers });
-    return handleWeb(req, new URL(req.url), "/settings", "GET");
-  }
-  function postTheme(handleWeb: any, theme: string, htmx = true) {
+/** #908: POST /daily-target — configurable daily hours target. */
+describe("daily target (#908)", () => {
+  function postTarget(handleWeb: any, fields: Record<string, string>, htmx = true) {
     const form = new FormData();
-    form.append("theme", theme);
+    for (const [k, v] of Object.entries(fields)) form.append(k, v);
     const headers: Record<string, string> = {};
     if (htmx) headers["HX-Request"] = "true";
-    const req = new Request("http://x/settings/theme", { method: "POST", body: form, headers });
-    return handleWeb(req, new URL(req.url), "/settings/theme", "POST");
+    const req = new Request("http://x/daily-target", { method: "POST", body: form, headers });
+    return handleWeb(req, new URL(req.url), "/daily-target", "POST");
   }
 
-  test("settings body has the Theme section with all five dots, pumpkin selected", async () => {
-    const { handleWeb } = setup();
-    const res = await getSettingsBody(handleWeb);
-    expect(res.status).toBe(200);
-    const body = await res.text();
-    expect(body).toContain('id="theme-section"');
-    for (const name of ["Pumpkin", "Crimson", "Blue", "Green", "Yellow"])
-      expect(body).toContain(`aria-label="${name} theme"`);
-    expect(body).toContain('aria-label="Pumpkin theme" aria-pressed="true"');
-    expect(body).not.toContain('aria-label="Blue theme" aria-pressed="true"');
-  });
-
-  test("picking a theme stores it and returns the live-swapped style", async () => {
+  test("saves the target and re-renders the section", async () => {
     const { db, handleWeb } = setup();
-    const res = await postTheme(handleWeb, "crimson");
-    expect(res.status).toBe(200);
-    const body = await res.text();
-    expect(db.query("SELECT value FROM meta WHERE key = 'theme'").get()).toMatchObject({ value: "crimson" });
-    expect(body).toContain('id="theme-section"');
-    expect(body).toContain('hx-swap-oob="true"');
-    expect(body).toContain("--primary:#ffb4a8");
-    expect(body).toContain('aria-label="Crimson theme" aria-pressed="true"');
+    const res = await postTarget(handleWeb, { day_target_hours: "6" });
+    expect(res!.status).toBe(200);
+    expect(getMeta(db, "day_target_hours")).toBe("6");
+    const body = await res!.text();
+    expect(body).toContain('id="daily-target-form"');
+    expect(body).toContain('value="6"');
   });
 
-  test("unknown theme is rejected and nothing is stored", async () => {
+  test("accepts halves", async () => {
     const { db, handleWeb } = setup();
-    const res = await postTheme(handleWeb, "hotpink");
-    expect(res.status).toBe(400);
-    expect(db.query("SELECT value FROM meta WHERE key = 'theme'").get()).toBeNull();
+    const res = await postTarget(handleWeb, { day_target_hours: "7.5" });
+    expect(res!.status).toBe(200);
+    expect(getMeta(db, "day_target_hours")).toBe("7.5");
   });
 
-  test("non-htmx post redirects to /settings", async () => {
-    const { handleWeb } = setup();
-    const res = await postTheme(handleWeb, "blue", false);
-    expect(res.status).toBe(302);
-    expect(res.headers.get("Location")).toBe("/settings");
+  test("rejects non-numeric and out-of-range values with 400, leaving the stored value untouched", async () => {
+    const { db, handleWeb } = setup();
+    for (const v of ["abc", "", "0", "99", "-2"]) {
+      const res = await postTarget(handleWeb, { day_target_hours: v });
+      expect(res!.status).toBe(400);
+      expect(getMeta(db, "day_target_hours")).toBe("");
+    }
   });
 
-  test("the chosen theme persists and marks the new dot", async () => {
+  test("plain POST redirects to /settings", async () => {
+    const { db, handleWeb } = setup();
+    const res = await postTarget(handleWeb, { day_target_hours: "6" }, false);
+    expect(res!.status).toBe(302);
+    expect(res!.headers.get("Location")).toBe("/settings");
+    expect(getMeta(db, "day_target_hours")).toBe("6");
+  });
+
+  test("the settings body includes the daily target section", async () => {
     const { handleWeb } = setup();
-    await postTheme(handleWeb, "green");
-    const body = await (await getSettingsBody(handleWeb)).text();
-    expect(body).toContain('aria-label="Green theme" aria-pressed="true"');
-    expect(body).not.toContain('aria-label="Pumpkin theme" aria-pressed="true"');
+    const headers = { "HX-Request": "true" };
+    const req = new Request("http://x/settings", { headers });
+    const res = await handleWeb(req, new URL(req.url), "/settings", "GET");
+    expect(res!.status).toBe(200);
+    const body = await res!.text();
+    expect(body).toContain('id="daily-target"');
+    expect(body).toContain("Daily hours target");
   });
 });

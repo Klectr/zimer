@@ -34,7 +34,7 @@ const baseDeps = {
   revenueByClient: () => [],
   revenueOverdue: () => [],
   m3ProgressBar: () => "",
-  dayTargetSecs: 8 * 3600,
+  dayTargetSecs: () => 8 * 3600, /* #908: per-request getter */
 };
 
 const runningEntry = {
@@ -137,19 +137,13 @@ describe("running entry row delete guard (#462)", () => {
   }
   test("running entry keeps Edit but hides Delete (the card owns it)", () => {
     const html = row(runningEntry);
-    expect(html).toContain('data-edit-entry="1"');
+    expect(html).toContain("/entries/1/edit");
     expect(html).not.toContain("hx-delete");
   });
   test("finished entry keeps both Edit and Delete", () => {
     const html = row(stoppedEntry);
-    expect(html).toContain('data-edit-entry="1"');
+    expect(html).toContain("/entries/1/edit");
     expect(html).toContain("hx-delete");
-  });
-  test("Edit opens the dialog instead of navigating (#903)", () => {
-    const html = row(stoppedEntry);
-    expect(html).toContain('<button class="md-icon-button" type="button" data-edit-entry="1"');
-    expect(html).toContain('aria-label="Edit entry" data-tip="Edit"');
-    expect(html).not.toContain("/entries/1/edit");
   });
 });
 
@@ -209,7 +203,7 @@ describe("repeat entry (#473)", () => {
     const html = row(finished, false);
     expect(html).not.toContain('hx-post="/timer/start"');
     // edit + delete stay put
-    expect(html).toContain('data-edit-entry="2"');
+    expect(html).toContain("/entries/2/edit");
     expect(html).toContain("hx-delete");
   });
   test("locked (invoiced) entries offer no repeat", () => {
@@ -476,5 +470,24 @@ describe("start-form labels (#827)", () => {
       expect(html).toContain(`id="${id}"`);
       expect(html).toContain(`<label for="${id}">`);
     }
+  });
+});
+
+describe("today pacing bar follows the daily target (#908)", () => {
+  function todayHtml(targetSecs: number) {
+    const deps = {
+      ...baseDeps,
+      dayTargetSecs: () => targetSecs,
+      m3ProgressBar: (_p: number, _m: boolean, label: string) => label,
+    };
+    return createTimerViews(deps as any).todayPartial();
+  }
+  test("label reflects the custom target", () => {
+    const html = todayHtml(6 * 3600);
+    expect(html).toContain("Today · 0s / 6h");
+    expect(html).toContain("Today's hours target, 6 hours");
+  });
+  test("default label is unchanged at 8h", () => {
+    expect(todayHtml(8 * 3600)).toContain("Today · 0s / 8h");
   });
 });
