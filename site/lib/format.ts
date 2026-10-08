@@ -40,9 +40,13 @@ export function entryIsLocked(e: { invoice_status: string | null }): boolean {
   return e.invoice_status === "sent" || e.invoice_status === "paid";
 }
 
-/** Milestone 10: quote a CSV cell when it contains a comma, quote, or newline. */
+/** Milestone 10: quote a CSV cell when it contains a comma, quote, or newline.
+ * #914: a cell whose first non-whitespace char is =, +, - or @ executes as a
+ * formula when the CSV is opened in Excel/Sheets. Prefix it with a single
+ * quote so spreadsheet apps treat the whole cell as text. */
 export function csvCell(v: string): string {
-  return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+  const safe = /^[=+\-@]/.test(v.trimStart()) ? "'" + v : v;
+  return /[",\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
 }
 
 export function csvResponse(body: string, filename: string): Response {
