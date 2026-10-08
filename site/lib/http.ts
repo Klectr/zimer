@@ -16,19 +16,25 @@ export const isHtmx = (req: Request) => req.headers.get("hx-request") === "true"
    redirects are all covered in one place. The CSP allows the app's inline
    scripts ('unsafe-inline' — several views render <script> blocks) and htmx
    from the unpkg CDN; everything else is same-origin. Nonce-based tightening
-   is a possible follow-up once inline scripts are refactored out. */
-const CSP = [
-  "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' https://unpkg.com",
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data:",
-  "font-src 'self'",
-  "connect-src 'self'",
-  "frame-ancestors 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-  "object-src 'none'",
-].join("; ");
+   is a possible follow-up once inline scripts are refactored out.
+   #928: when POSTHOG_KEY is set, the PostHog snippet loads from their CDN
+   and sends events to their ingestion host — allow both. The key is a
+   server env var, so the CSP is fixed at startup. */
+export function buildCsp(posthogEnabled: boolean): string {
+  return [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' https://unpkg.com" + (posthogEnabled ? " https://*.posthog.com" : ""),
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data:",
+    "font-src 'self'",
+    "connect-src 'self'" + (posthogEnabled ? " https://*.posthog.com" : ""),
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "object-src 'none'",
+  ].join("; ");
+}
+const CSP = buildCsp(!!process.env.POSTHOG_KEY);
 
 const STATIC_SECURITY_HEADERS: Record<string, string> = {
   "Content-Security-Policy": CSP,

@@ -8,6 +8,28 @@ import { esc } from "../lib/format.ts";
 import { ICONS, icon, logo } from "../lib/icons.ts";
 import { TRIAL_NUDGE_DAYS, trialDaysLeft, type Billing } from "../lib/billing.ts";
 
+/** #928: PostHog product analytics snippet. Rendered in <head> only when
+ *  POSTHOG_KEY is set (self-hosters opt in by configuring it; the hosted
+ *  instance sets it in start.sh). Autocapture and pageviews are off — we
+ *  only send the explicit timer → invoice funnel events from analytics.js.
+ *  The user is identified by stable account ID (never email); posthog.reset()
+ *  fires on logout so the next browser user doesn't inherit the identity. */
+export function posthogSnippet(key: string, host: string, userId: number | null): string {
+  /* JSON.stringify alone doesn't neutralize </script> inside the key — escape
+     angle brackets so a malicious key can't break out of the script block. */
+  const jsStr = (s: string) => JSON.stringify(s).replace(/</g, "\\u003c").replace(/>/g, "\\u003e");
+  return `<script>
+!function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init capture register register_once register_for_session unregister unregister_for_session getFeatureFlag getFeatureFlagPrompt getFeatureFlags getFeatureFlagResult isFeatureEnabled reloadFeatureFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey canRenderSurveyAsync getNextSurveyStep identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException loadToolbar get_property getSessionProperty createPersonProfile opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing clear_opt_in_out_capturing debug".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+posthog.init(${jsStr(key)}, {
+  api_host: ${jsStr(host)},
+  defaults: "2026-05-30",
+  autocapture: false,
+  capture_pageview: false,
+  loaded: function(ph) { ${userId !== null ? `ph.identify(${jsStr(String(userId))});` : ""} },
+});
+</script>`;
+}
+
 /** #923: trial-expiry nudge for the app layout — hosted pre-checkout trials
  *  with ≤3 days left. Dismissible (localStorage; the trial ends in days
  *  anyway, so the dismissal only needs to outlive the window). The
@@ -51,7 +73,7 @@ export function trialBannerHtml(opts: {
   })();</script>`;
 }
 
-export function createLayoutViews(qRunning: Statement, themeCss?: () => string, trialBanner?: () => string) {
+export function createLayoutViews(qRunning: Statement, themeCss?: () => string, trialBanner?: () => string, posthogHead?: () => string) {
   /* #884: per-user accent theme — the override lands after style.css so it
      wins over the :root defaults. Always rendered (with the default theme's
      values when unset) so a theme POST can live-swap it via OOB by id. */
@@ -75,6 +97,9 @@ export function createLayoutViews(qRunning: Statement, themeCss?: () => string, 
     const dest = (d: (typeof dests)[number], cls: string) =>
       `<a href="${d.href}" class="${cls}${active === d.key ? " active" : ""}"${active === d.key ? ` aria-current="page"` : ""}>` +
       `<span class="nav-pill">${icon(d.ic as keyof typeof ICONS)}</span><span class="nav-label">${d.label}</span></a>`;
+    /* #928: render the PostHog snippet once; the analytics.js helper only
+       loads when the snippet is present. */
+    const phHead = posthogHead ? posthogHead() : "";
     return `<!DOCTYPE html>
   <html lang="en">
   <head>
@@ -82,6 +107,7 @@ export function createLayoutViews(qRunning: Statement, themeCss?: () => string, 
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${esc(title)} · Zimer</title>
   <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+  ${phHead}
   <link rel="stylesheet" href="/static/style.css">
   ${themeStyle()}
   <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32.png">
@@ -90,6 +116,7 @@ export function createLayoutViews(qRunning: Statement, themeCss?: () => string, 
   <script src="/static/shortcut.js" defer></script>
   <script src="/static/terms.js" defer></script>
   <script src="/static/dialog.js" defer></script>
+  ${phHead ? `<script src="/static/analytics.js" defer></script>` : ""}
   </head>
   <body class="app${fixed ? " app-fixed" : ""}" data-timer-running="${running ? 1 : 0}"${startAttr}>
   <!-- #511: skip link — keyboard users jump past the app bar and nav straight to content. -->

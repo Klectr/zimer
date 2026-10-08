@@ -58,6 +58,9 @@
          header; this raw-fetch path never did, so the today list kept showing
          stale data after a t toggle. Fire the same event for parity. */
       if (window.htmx) htmx.trigger(document.body, "timer-updated");
+      /* #928: the raw-fetch path bypasses the server's HX-Trigger, so fire
+         the analytics event directly. */
+      if (window.zimerTrack) window.zimerTrack(running ? "timer_stopped" : "timer_started");
       snackbar(running ? "Zimer stopped" : "Zimer started — press t to stop");
     } catch (e) {
       snackbar("Couldn't toggle the timer");

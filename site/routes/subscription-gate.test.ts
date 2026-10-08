@@ -171,7 +171,8 @@ describe("#736: page gating", () => {
     /* #912: logout is POST-only now — the POST must still work while gated. */
     const logout = await webPost(handleWeb, "/logout", cookie);
     expect(logout.status).toBe(302);
-    expect(logout.headers.get("location")).toBe("/login");
+    /* #928: logged_out=1 tells analytics.js to reset the PostHog identity. */
+    expect(logout.headers.get("location")).toBe("/login?logged_out=1");
   });
 
   test("unauthenticated visitors still 302 to /login, not /billing", async () => {

@@ -3,7 +3,7 @@
 import { describe, expect, test } from "bun:test";
 import type { Statement } from "bun:sqlite";
 import { themeCss, themeKey } from "../lib/theme.ts";
-import { createLayoutViews, trialBannerHtml } from "./layout.ts";
+import { createLayoutViews, trialBannerHtml, posthogSnippet } from "./layout.ts";
 import type { Billing } from "../lib/billing.ts";
 
 const noRunning = { get: () => null } as unknown as Statement;
@@ -117,5 +117,42 @@ describe("createLayoutViews trialBanner thunk", () => {
   test("no banner markup when the thunk is omitted", () => {
     const { layout } = createLayoutViews(noRunning);
     expect(layout("Today", "<p>body</p>", "timer", true)).not.toContain("trial-banner");
+  });
+});
+
+describe("PostHog snippet (#928)", () => {
+  test("no snippet when the thunk is omitted", () => {
+    const { layout } = createLayoutViews(noRunning);
+    const html = layout("T", "body");
+    expect(html).not.toContain("posthog");
+    expect(html).not.toContain("/static/analytics.js");
+  });
+
+  test("snippet renders with key, host, and user identify", () => {
+    const { layout } = createLayoutViews(
+      noRunning,
+      undefined,
+      undefined,
+      () => posthogSnippet("phc_test123", "https://us.i.posthog.com", 42)
+    );
+    const html = layout("T", "body");
+    expect(html).toContain("phc_test123");
+    expect(html).toContain("https://us.i.posthog.com");
+    expect(html).toContain('ph.identify("42")');
+    expect(html).toContain("autocapture: false");
+    expect(html).toContain("capture_pageview: false");
+    expect(html).toContain("/static/analytics.js");
+  });
+
+  test("snippet omits identify when userId is null", () => {
+    const html = posthogSnippet("phc_test123", "https://us.i.posthog.com", null);
+    expect(html).not.toContain("ph.identify");
+  });
+
+  test("key is JSON-escaped, not interpolated raw", () => {
+    const html = posthogSnippet('phc_"><script>alert(1)</script>', "https://us.i.posthog.com", 1);
+    expect(html).not.toContain('"><script>alert(1)</script>');
+    expect(html).not.toContain("</script><script>");
+    expect(html).toContain("phc_");
   });
 });

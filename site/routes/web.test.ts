@@ -483,7 +483,8 @@ describe("logout and CSRF guard (#912)", () => {
     const { req, url } = logoutReq("POST");
     const res = (await handleWeb(req, url, "/logout", "POST"))!;
     expect(res.status).toBe(302);
-    expect(res.headers.get("Location")).toBe("/login");
+    /* #928: logged_out=1 tells analytics.js to reset the PostHog identity. */
+    expect(res.headers.get("Location")).toBe("/login?logged_out=1");
     expect(res.headers.get("Set-Cookie")).toContain("tk=;");
     expect(res.headers.get("Set-Cookie")).toContain("Max-Age=0");
   });
