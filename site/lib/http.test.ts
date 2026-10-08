@@ -1,6 +1,6 @@
 /** #910: security headers on every response. */
 import { describe, expect, test } from "bun:test";
-import { secureResponse, isHttps, html } from "./http.ts";
+import { secureResponse, isHttps, html, publicOrigin } from "./http.ts";
 
 describe("secureResponse", () => {
   test("adds the baseline headers to a bare response", () => {
@@ -47,5 +47,44 @@ describe("isHttps", () => {
     expect(isHttps(new Request("https://x/"))).toBe(true);
     expect(isHttps(new Request("http://127.0.0.1:8080/"))).toBe(false);
     expect(isHttps(new Request("http://x/", { headers: { "x-forwarded-proto": "http" } }))).toBe(false);
+  });
+
+  test("#916: ignores non-http(s) forwarded protos", () => {
+    expect(isHttps(new Request("http://x/", { headers: { "x-forwarded-proto": "javascript" } }))).toBe(false);
+    expect(isHttps(new Request("http://x/", { headers: { "x-forwarded-proto": "HTTPS" } }))).toBe(true);
+  });
+});
+
+describe("publicOrigin", () => {
+  test("honors valid forwarded headers", () => {
+    const req = new Request("http://127.0.0.1:8080/", {
+      headers: { "x-forwarded-host": "zimer.example.com", "x-forwarded-proto": "https" },
+    });
+    expect(publicOrigin(req, 8080)).toBe("https://zimer.example.com");
+  });
+
+  test("#916: rejects non-http(s) forwarded protos", () => {
+    const req = new Request("http://127.0.0.1:8080/", {
+      headers: { "x-forwarded-proto": "javascript" },
+    });
+    expect(publicOrigin(req, 8080)).toBe("http://localhost:8080"); /* synthetic Request has no Host header */
+  });
+
+  test("#916: rejects malformed forwarded hosts, falls back to Host header", () => {
+    for (const bad of ["evil.com@victim.com", "evil.com/path", "evil .com", "evil.com?q=1", ""]) {
+      const req = new Request("http://127.0.0.1:8080/", {
+        headers: { "host": "real.example.com", "x-forwarded-host": bad },
+      });
+      expect(publicOrigin(req, 8080)).toBe("http://real.example.com");
+    }
+  });
+
+  test("#916: accepts host with port and bracketed IPv6", () => {
+    const req = new Request("http://127.0.0.1:8080/", {
+      headers: { "x-forwarded-host": "example.com:8443", "x-forwarded-proto": "HTTPS" },
+    });
+    expect(publicOrigin(req, 8080)).toBe("https://example.com:8443");
+    const v6 = new Request("http://[::1]:8080/", { headers: { "x-forwarded-host": "[::1]:8080" } });
+    expect(publicOrigin(v6, 8080)).toBe("http://[::1]:8080");
   });
 });
