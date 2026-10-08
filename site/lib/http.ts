@@ -40,9 +40,7 @@ const STATIC_SECURITY_HEADERS: Record<string, string> = {
 
 /** True when the request arrived over HTTPS (directly or via the proxy). */
 export function isHttps(req: Request): boolean {
-  const proto = req.headers.get("x-forwarded-proto")?.trim().toLowerCase()
-    || new URL(req.url).protocol.replace(/:$/, "");
-  return proto === "https";
+  return (forwardedProto(req) || new URL(req.url).protocol.replace(/:$/, "")) === "https";
 }
 
 /* #911: the Secure cookie attribute, gated on HTTPS. Set-Cookie strings
@@ -64,12 +62,28 @@ export function secureResponse(res: Response, req?: Request): Response {
   return res;
 }
 
+/* #916: X-Forwarded-Host/Proto are attacker-controlled input. Only values that
+   can form a sane URL are honored — a syntactically valid host (no
+   whitespace, @, /, ?, #) and http/https only. Anything else falls back to
+   the direct Host header and the request's own scheme. */
+const FORWARDED_HOST_RE = /^(\[[0-9a-f:.]+\]|[a-z0-9]([a-z0-9.-]*[a-z0-9])?)(:\d+)?$/i;
+
+function forwardedHost(req: Request): string | null {
+  const h = (req.headers.get("x-forwarded-host") || "").trim();
+  return FORWARDED_HOST_RE.test(h) ? h : null;
+}
+
+function forwardedProto(req: Request): string | null {
+  const p = (req.headers.get("x-forwarded-proto") || "").trim().toLowerCase();
+  return p === "http" || p === "https" ? p : null;
+}
+
 /** Best-effort public origin for share links (honors reverse-proxy headers).
  *  Without proxy headers, trust the request's actual protocol (#225) — never
  *  guess from the host (a Tailscale IP is not localhost, but it is plain HTTP). */
 export function publicOrigin(req: Request, port: number): string {
-  const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || `localhost:${port}`;
-  const proto = req.headers.get("x-forwarded-proto") || new URL(req.url).protocol.replace(/:$/, "");
+  const host = forwardedHost(req) || req.headers.get("host")?.trim() || `localhost:${port}`;
+  const proto = forwardedProto(req) || new URL(req.url).protocol.replace(/:$/, "");
   return `${proto}://${host}`;
 }
 
