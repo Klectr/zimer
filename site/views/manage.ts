@@ -9,6 +9,7 @@ import type { PaymentTermsKey } from "../lib/format.ts";
 import { icon } from "../lib/icons.ts";
 import { THEMES, themeKey } from "../lib/theme.ts"; /* #884 */
 import { getMeta } from "../db.ts";
+import { dayTargetSecs } from "../lib/domain.ts"; /* #908: daily target setting */
 
 /* #367: the detail-pane selection. "none" is the pseudo-client holding
    projects with no client assigned. */
@@ -389,6 +390,29 @@ export function createManageViews(deps: ManageViewDeps) {
         </section>`;
   }
 
+  /* #908: daily hours target — the pacing bars on the timer page (Today)
+     and calendar (week = five days at this rate), plus the calendar's
+     short-day tint, all follow this instead of the old 8h constant. Stored
+     in meta; no migration. */
+  function dailyTargetSection(): string {
+    const hours = dayTargetSecs(db) / 3600;
+    return `<section id="daily-target">
+          <h2 class="md-headline-small">Daily hours target</h2>
+          <p class="muted" style="margin:0 0 12px">Drives the pacing bars on the timer and calendar pages — the week target is five days at this rate.</p>
+          <form method="post" action="/daily-target" id="daily-target-form" class="manage-form" hx-post="/daily-target" hx-target="#daily-target" hx-swap="outerHTML">
+            <div class="md-text-field has-suffix">
+              <input type="number" id="dt-hours" name="day_target_hours" value="${hours}" min="1" max="24" step="0.5" placeholder=" " aria-label="Daily hours target" inputmode="decimal">
+              <label for="dt-hours">Daily hours target</label>
+              <span class="affix suffix" aria-hidden="true">hr</span>
+            </div>
+            <div class="manage-form-row">
+              <span class="manage-form-spacer"></span>
+              <button class="md-filled-button" type="submit">${icon("save")}Save</button>
+            </div>
+          </form>
+        </section>`;
+  }
+
   /* #884: theme section — a row of color dots that re-theme the app's
      accent. Each dot posts its key; the response re-renders this section
      and live-swaps the <style id="theme-style"> override via OOB, so the
@@ -421,5 +445,5 @@ export function createManageViews(deps: ManageViewDeps) {
       </div>`);
   }
 
-  return { managePage, clientSelection, clientDetailBody, clientListOob, clientOptions, bizProfileSection, clientSettingsForm, settingsPage, themeSectionHtml };
+  return { managePage, clientSelection, clientDetailBody, clientListOob, clientOptions, bizProfileSection, dailyTargetSection, clientSettingsForm, settingsPage, themeSectionHtml };
 }

@@ -7,7 +7,11 @@
  */
 import { describe, expect, test } from "bun:test";
 import { Database as BunDatabase } from "bun:sqlite";
-import { createDomain } from "./domain.ts";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { createDomain, dayTargetSecs, DAY_TARGET_SECS } from "./domain.ts";
+import { createDb, getMeta, setMeta } from "../db.ts";
 
 function setup() {
   const db = new BunDatabase(":memory:");
@@ -43,5 +47,53 @@ describe("unbilledEntries end-date inclusivity", () => {
     const { unbilledEntries } = setup();
     const rows = unbilledEntries(1, "2026-09-14", "2026-09-24");
     expect(rows.map((r: any) => r.description)).toEqual(["start day", "end day"]);
+  });
+});
+
+/** #908: configurable daily hours target (meta-backed, no migration). */
+describe("dayTargetSecs", () => {
+  const setup = () => createDb(mkdtempSync(join(tmpdir(), "tk-target-"))).db;
+
+  test("defaults to 8h when unset", () => {
+    expect(dayTargetSecs(setup())).toBe(8 * 3600);
+  });
+
+  test("reads the stored setting", () => {
+    const db = setup();
+    setMeta(db, "day_target_hours", "6");
+    expect(dayTargetSecs(db)).toBe(6 * 3600);
+    expect(getMeta(db, "day_target_hours")).toBe("6");
+  });
+
+  test("accepts halves", () => {
+    const db = setup();
+    setMeta(db, "day_target_hours", "6.5");
+    expect(dayTargetSecs(db)).toBe(Math.round(6.5 * 3600));
+  });
+
+  test("falls back to 8h on missing, non-numeric, or out-of-range values", () => {
+    for (const v of ["", "abc", "0", "99", "-3", "NaN", "Infinity"]) {
+      const db = setup();
+      setMeta(db, "day_target_hours", v);
+      expect(dayTargetSecs(db)).toBe(DAY_TARGET_SECS);
+    }
+  });
+});
+
+describe("weekTargetBar follows the daily target", () => {
+  test("week target is five days at the user's daily target", () => {
+    const db = createDb(mkdtempSync(join(tmpdir(), "tk-target-"))).db;
+    setMeta(db, "day_target_hours", "6");
+    const { weekTargetBar } = createDomain({ db, qInvoice: null, qInvoiceItems: null, TOKEN: "t" } as any);
+    const html = weekTargetBar(0);
+    expect(html).toContain("/ 30h");
+    expect(html).toContain("Weekly hours target, 30 hours");
+  });
+
+  test("default week bar is still 40h", () => {
+    const db = createDb(mkdtempSync(join(tmpdir(), "tk-target-"))).db;
+    const { weekTargetBar } = createDomain({ db, qInvoice: null, qInvoiceItems: null, TOKEN: "t" } as any);
+    const html = weekTargetBar(0);
+    expect(html).toContain("/ 40h");
   });
 });

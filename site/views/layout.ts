@@ -239,9 +239,9 @@ function settingsDialog(): string {
        survives the #biz-profile outerHTML swap. */
     document.body.addEventListener('htmx:afterRequest',function(e){
       var elt=e.detail.elt;
-      if(elt&&elt.id==='biz-profile-form'&&e.detail.successful&&window.tkSnackbar){
-        window.tkSnackbar('Business profile saved');
-      }
+      if(!elt||!e.detail.successful||!window.tkSnackbar) return;
+      if(elt.id==='biz-profile-form') window.tkSnackbar('Business profile saved');
+      else if(elt.id==='daily-target-form') window.tkSnackbar('Daily target saved'); /* #908 */
     });
   })();</script>`;
 }

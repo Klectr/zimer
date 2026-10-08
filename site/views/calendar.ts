@@ -6,6 +6,7 @@
 import type { Database, Statement } from "bun:sqlite";
 import { addDays, durationSeconds, entryInvoiceMark, entryIsLocked, esc, fmtDur, schemeColor } from "../lib/format.ts";
 import { icon } from "../lib/icons.ts";
+import { dayTargetSecs } from "../lib/domain.ts"; /* #908: short-day tint follows the user's daily target */
 import { workspaceEmpty } from "../lib/demo.ts"; /* #300: first-run hint */
 import type { Entry } from "../lib/types.ts";
 
@@ -179,8 +180,9 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     const billable = entries.reduce(
       (a, e) => a + (e.project_id != null ? durationSeconds(e.start_time, e.end_time) : 0), 0);
     const isToday = day === today;
-    /* Subtle tint for past days under 8h; never tint today or future days. */
-    const pastShort = day < today && total < 8 * 3600;
+    /* Subtle tint for past days under the daily target; never tint today or
+       future days. #908: follows the user's setting, not the old 8h. */
+    const pastShort = day < today && total < dayTargetSecs(db);
 
     // Entries render full-width; an entry involved in an overlap gets a top
     // drop shadow so it reads as elevated above the entry beneath it.

@@ -24,7 +24,7 @@ import { resourcePath } from "./lib/paths.ts"; /* #519 */
 import { createRevenue } from "./lib/revenue.ts";
 import { themeCss, themeKey } from "./lib/theme.ts"; /* #884 */
 import { workspaceEmpty, demoIds, seedDemoData, removeDemoData, demoBanner } from "./lib/demo.ts";
-import { createDomain, CAL_HOUR_PX, DAY_TARGET_SECS } from "./lib/domain.ts";
+import { createDomain, CAL_HOUR_PX, dayTargetSecs } from "./lib/domain.ts";
 import { createLayoutViews } from "./views/layout.ts";
 import { createPublicViews } from "./views/public.ts";
 import { createLandingViews } from "./views/landing.ts"; /* #731 */
@@ -83,13 +83,13 @@ function buildTenantTree(bundle: DbBundle, dbPath: string): WebTenant & ApiTenan
   const { timerPartial, todayPartial, dashboardPage } = createTimerViews({
     db, qRunning, qRange, layout, demoBanner, projectOptions,
     revenueTotals, revenueMonthly, revenueByClient, revenueOverdue, m3ProgressBar,
-    dayTargetSecs: DAY_TARGET_SECS,
+    dayTargetSecs: () => dayTargetSecs(db), /* #908: per-request read of the user's setting */
   });
   const { weekInner, weekStrip, weekGrid, calendarPage, editPage, editEntryDialog } = createCalendarViews({
     db, qOne, qRange, entrySelect: ENTRY_SELECT, layout, projectOptions, weekTargetBar,
     calHourPx: CAL_HOUR_PX,
   });
-  const { managePage, clientSelection, clientDetailBody, clientListOob, clientOptions, bizProfileSection, clientSettingsForm, settingsPage, themeSectionHtml } =
+  const { managePage, clientSelection, clientDetailBody, clientListOob, clientOptions, bizProfileSection, dailyTargetSection, clientSettingsForm, settingsPage, themeSectionHtml } =
     createManageViews({ db, layout });
   const {
     invoicesPage, defaultNewInvParams, invoiceNewPage, invoiceStep2, invoiceSheet,
@@ -119,7 +119,7 @@ function buildTenantTree(bundle: DbBundle, dbPath: string): WebTenant & ApiTenan
     notFoundPage, errorPage,
     dashboardPage, timerPartial, todayPartial, weekInner, weekStrip,
     calendarPage, editPage, editEntryDialog,
-    managePage, clientSelection, clientDetailBody, clientListOob, bizProfileSection, clientSettingsForm, settingsPage, themeSectionHtml,
+    managePage, clientSelection, clientDetailBody, clientListOob, bizProfileSection, dailyTargetSection, clientSettingsForm, settingsPage, themeSectionHtml,
     invoicesPage, invoiceNewPage, defaultNewInvParams, invoiceStep2, invoiceDetailBody, invoiceListOob, invoiceDoc, publicInvoicePage,
     getInvoice, invoiceTotals,
     nextInvoiceNumber, stripeLinkFor, unbilledEntries,

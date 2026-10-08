@@ -34,7 +34,7 @@ const baseDeps = {
   revenueByClient: () => [],
   revenueOverdue: () => [],
   m3ProgressBar: () => "",
-  dayTargetSecs: 8 * 3600,
+  dayTargetSecs: () => 8 * 3600, /* #908: per-request getter */
 };
 
 const runningEntry = {
@@ -476,5 +476,24 @@ describe("start-form labels (#827)", () => {
       expect(html).toContain(`id="${id}"`);
       expect(html).toContain(`<label for="${id}">`);
     }
+  });
+});
+
+describe("today pacing bar follows the daily target (#908)", () => {
+  function todayHtml(targetSecs: number) {
+    const deps = {
+      ...baseDeps,
+      dayTargetSecs: () => targetSecs,
+      m3ProgressBar: (_p: number, _m: boolean, label: string) => label,
+    };
+    return createTimerViews(deps as any).todayPartial();
+  }
+  test("label reflects the custom target", () => {
+    const html = todayHtml(6 * 3600);
+    expect(html).toContain("Today · 0s / 6h");
+    expect(html).toContain("Today's hours target, 6 hours");
+  });
+  test("default label is unchanged at 8h", () => {
+    expect(todayHtml(8 * 3600)).toContain("Today · 0s / 8h");
   });
 });

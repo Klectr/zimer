@@ -47,6 +47,7 @@ export interface WebTenant {
   clientDetailBody: (sel: ClientSel) => string; /* #367 */
   clientListOob: (sel: ClientSel | null) => string; /* #367 */
   bizProfileSection: () => string;
+  dailyTargetSection: () => string; /* #908 */
   clientSettingsForm: (c: any) => string; /* #630 */
   settingsPage: (body: string) => string; /* #693 */
   themeSectionHtml: () => string; /* #884 */
@@ -354,7 +355,7 @@ export function createWebRouter(deps: WebDeps) {
             db, dbPath, qRunning, qOne, qRange, qInvoice, qInvoices,
             notFoundPage, errorPage,
             dashboardPage, timerPartial, todayPartial, weekInner, weekStrip,
-            calendarPage, editPage, editEntryDialog, managePage, clientSelection, clientDetailBody, clientListOob, bizProfileSection, clientSettingsForm, settingsPage, themeSectionHtml, invoicesPage, invoiceNewPage,
+            calendarPage, editPage, editEntryDialog, managePage, clientSelection, clientDetailBody, clientListOob, bizProfileSection, dailyTargetSection, clientSettingsForm, settingsPage, themeSectionHtml, invoicesPage, invoiceNewPage,
             defaultNewInvParams, invoiceStep2, invoiceDetailBody, invoiceListOob, invoiceDoc, publicInvoicePage,
             getInvoice, invoiceTotals,
             nextInvoiceNumber, stripeLinkFor, unbilledEntries,
@@ -594,13 +595,25 @@ export function createWebRouter(deps: WebDeps) {
           if (isHtmx(req)) return html(bizProfileSection());
           return new Response(null, { status: 302, headers: { Location: "/manage" } });
         }
+        /* #908: daily hours target — pacing bars + calendar short-day tint.
+           Validates to 1–24h (halves allowed); rejects anything else with
+           400 and leaves the stored value untouched. */
+        if (path === "/daily-target" && method === "POST") {
+          const form = await req.formData();
+          const hours = Number(String(form.get("day_target_hours") || "").trim());
+          if (!Number.isFinite(hours) || hours < 1 || hours > 24)
+            return new Response("Enter a daily target between 1 and 24 hours.", { status: 400 });
+          setMeta(db, "day_target_hours", String(hours));
+          if (isHtmx(req)) return html(dailyTargetSection());
+          return new Response(null, { status: 302, headers: { Location: "/settings" } });
+        }
         /* #883: settings modal body — business profile, theme, Updates
            section, support channel. The License section left with the
            retired $59 key. */
         if (path === "/settings" && method === "GET") {
           const updates = updateSectionHtml();
           const support = `<p class="muted tiny" style="margin-top:24px">Need help? <a href="mailto:support@klectr.dev">support@klectr.dev</a></p>`;
-          const body = bizProfileSection() + themeSectionHtml() + updates + support;
+          const body = bizProfileSection() + dailyTargetSection() + themeSectionHtml() + updates + support;
           if (isHtmx(req)) return html(body);
           /* #693: direct visits get the full app layout — the bare fragment
              renders unstyled. */
