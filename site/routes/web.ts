@@ -451,13 +451,21 @@ export function createWebRouter(deps: WebDeps) {
           if (path === "/entries" && method === "POST") {
             const form = await req.formData();
             const endRaw = String(form.get("end_time") || "");
-            const pid = form.get("project_id");
+            const pid = form.get("project_id") ? Number(form.get("project_id")) : null;
+            const desc = String(form.get("description") || "");
+            const startIso = new Date(String(form.get("start_time"))).toISOString();
+            const endIso = endRaw ? new Date(endRaw).toISOString() : null;
+            /* #930: idempotent against rapid re-submits (double-tap on save) —
+               an identical entry created seconds ago is returned, not duplicated. */
+            const dupe = db.query(
+              `SELECT id FROM time_entries
+               WHERE project_id IS ? AND description = ? AND start_time = ?
+                 AND end_time IS ?
+                 AND created_at >= strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-10 seconds')`
+            ).get(pid, desc, startIso, endIso) as { id: number } | null;
+            if (dupe) return json({ ok: true, id: dupe.id }, 200);
             const ins = db.query("INSERT INTO time_entries (project_id, description, start_time, end_time) VALUES (?, ?, ?, ?)")
-              .run(
-                pid ? Number(pid) : null,
-                String(form.get("description") || ""),
-                new Date(String(form.get("start_time"))).toISOString(),
-                endRaw ? new Date(endRaw).toISOString() : null);
+              .run(pid, desc, startIso, endIso);
             return json({ ok: true, id: Number(ins.lastInsertRowid) }, 201);
           }
 

@@ -639,6 +639,8 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     var delBtn=document.getElementById('cal-delete');
     var saveBtn=document.getElementById('cal-save');
     var mode='create', editId=null, dayStr='', opener=null;
+    var saving=false; /* #930: one in-flight save at a time — double-tap on
+      Save used to multi-submit and create duplicate entries. */
     /* grid owns the scroll: land near the current time when today is in view */
     var scroller=document.querySelector('.cal-scroll'), nowEl=document.querySelector('[data-now]');
     if(scroller&&nowEl){var r=nowEl.getBoundingClientRect(),s=scroller.getBoundingClientRect();
@@ -651,6 +653,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     startI.addEventListener('input',updDur); endI.addEventListener('input',updDur);
     function openCreate(date,a,b){
       mode='create'; editId=null; dayStr=date; opener=null; /* drag — no keyboard trigger */
+      saving=false; saveBtn.disabled=false; /* #930 */
       title.textContent='New entry'; delBtn.hidden=true; err.hidden=true;
       var d=new Date(date+'T12:00:00');
       dateLine.textContent=d.toLocaleDateString([],{weekday:'long',month:'long',day:'numeric'});
@@ -663,6 +666,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     }
     function openEdit(el){
       mode='edit'; editId=el.dataset.id; dayStr=el.dataset.date; opener=el;
+      saving=false; saveBtn.disabled=false; /* #930 */
       var locked=el.dataset.locked||''; /* #334: sent/paid time opens read-only */
       var running=el.classList.contains('running'); /* #462: the timer card owns
         the running entry — deleting it here orphaned the card. */
@@ -818,8 +822,10 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     }
 
     document.getElementById('cal-save').addEventListener('click',function(){
+      if(saving) return; /* #930: swallow repeat taps while a save is in flight */
       var s=toMin(startI.value),e=toMin(endI.value);
       if(!(e>s)) return fail('End time must be after start time.');
+      saving=true; saveBtn.disabled=true; /* #930: block further submits */
       var fd=new URLSearchParams();
       fd.set('description',desc.value);
       fd.set('project_id',project.value);
@@ -834,7 +840,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
         if(mode==='create'&&data&&data.id) hid=data.id;
         close();
         refreshWeek(hid);
-      }).catch(function(ex){ fail(ex.message); });
+      }).catch(function(ex){ saving=false; saveBtn.disabled=false; fail(ex.message); });
     });
     delBtn.addEventListener('click',function(){
       /* #464: native confirm() replaced by the shared M3 confirm dialog. */
