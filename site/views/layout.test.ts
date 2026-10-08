@@ -26,3 +26,15 @@ describe("layout theme override (#884)", () => {
     expect(layout("T", "body")).toContain('<style id="theme-style"></style>');
   });
 });
+
+/** #903: the entry edit dialog shell rides in the layout next to the
+ *  settings dialog, so the timer page's edit buttons have a modal target. */
+describe("layout entry edit dialog (#903)", () => {
+  test("layout carries the hidden entry dialog scrim", () => {
+    const { layout } = createLayoutViews(noRunning);
+    const body = layout("T", "body");
+    expect(body).toContain('id="entry-scrim"');
+    expect(body).toContain('id="entry-dialog-body"');
+    expect(body).toContain('aria-labelledby="entry-dialog-title"');
+  });
+});

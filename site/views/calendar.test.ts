@@ -654,6 +654,62 @@ describe("edit-entry floating labels (#709)", () => {
   });
 });
 
+/** #903: the timer-page edit dialog fragment — same fields as the full edit
+ *  page, but as a dialog head + htmx form for #entry-dialog-body. */
+describe("entry edit dialog fragment (#903)", () => {
+  function dialogViews() {
+    const entry = {
+      id: 7, description: "dialog entry", project_id: null,
+      start_time: "2026-09-21T15:00:00.000Z", end_time: "2026-09-21T16:00:00.000Z",
+      invoice_id: null, invoice_number: null, invoice_status: null,
+    };
+    const db = { query: (_sql: string) => ({ get: () => null, all: () => [] }) } as unknown as Database;
+    return createCalendarViews({
+      db,
+      qOne: { get: () => entry },
+      qRange: { get: () => ({ n: 1 }), all: () => [] },
+      entrySelect: "SELECT",
+      layout: (_t: string, b: string) => b,
+      projectOptions: () => "",
+      weekTargetBar: () => "",
+      calHourPx: 64,
+    } as any);
+  }
+
+  test("fragment carries the dialog head and an htmx form", () => {
+    const html = dialogViews().editEntryDialog(7) as string;
+    expect(html).toContain('id="entry-dialog-title"');
+    expect(html).toContain('hx-post="/entries/7"');
+    expect(html).toContain('hx-swap="none"');
+    expect(html).toContain('id="edit-entry-form"');
+    expect(html).toContain("data-close-entry");
+    expect(html).not.toContain("<!DOCTYPE html>");
+  });
+
+  test("fragment keeps the #709 label wiring", () => {
+    const html = dialogViews().editEntryDialog(7) as string;
+    for (const id of ["ee-desc", "ee-project", "ee-start", "ee-end"]) {
+      expect(html).toContain(`id="${id}"`);
+      expect(html).toContain(`<label for="${id}">`);
+    }
+  });
+
+  test("unknown entry is null", () => {
+    const db = { query: (_sql: string) => ({ get: () => null, all: () => [] }) } as unknown as Database;
+    const views = createCalendarViews({
+      db,
+      qOne: { get: () => null },
+      qRange: { get: () => ({ n: 1 }), all: () => [] },
+      entrySelect: "SELECT",
+      layout: (_t: string, b: string) => b,
+      projectOptions: () => "",
+      weekTargetBar: () => "",
+      calHourPx: 64,
+    } as any);
+    expect(views.editEntryDialog(999)).toBeNull();
+  });
+});
+
 /** #766: the "This week" pane hint named the per-day + buttons, which only
  *  render inside the narrow agenda view (display:none above 639px of strip
  *  width) — at desktop widths the hint pointed at a control that was not

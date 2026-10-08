@@ -70,7 +70,8 @@ export function createLayoutViews(qRunning: Statement, themeCss?: () => string) 
   </nav>
   ${/* #355: the settings scrim is a direct body child — inside the app bar it
        would be trapped in the header's stacking context and paint below the
-       bottom navigation bar. */ settingsDialog()}
+       bottom navigation bar. The entry edit scrim rides along for the same
+       reason (#903). */ settingsDialog()}${entryDialog()}
   </body>
   </html>`;
   }
@@ -241,6 +242,62 @@ function settingsDialog(): string {
       if(elt&&elt.id==='biz-profile-form'&&e.detail.successful&&window.tkSnackbar){
         window.tkSnackbar('Business profile saved');
       }
+    });
+  })();</script>`;
+}
+
+/** #903: entry edit dialog for the timer page. Same .cal-scrim pattern as the
+    settings dialog above: the shell is a direct body child, the form
+    lazy-loads via htmx on open, Escape/scrim-click close it, Tab is trapped
+    via the shared tkTrapTab, and focus returns to the edit button. */
+function entryDialog(): string {
+  return `<div class="cal-scrim" id="entry-scrim" hidden>
+    <div class="cal-dialog" role="dialog" aria-modal="true" aria-labelledby="entry-dialog-title">
+      <div id="entry-dialog-body"><p class="muted md-body-medium">Loading…</p></div>
+    </div>
+  </div>
+  <script>(function(){
+    var scrim=document.getElementById('entry-scrim');
+    var body=document.getElementById('entry-dialog-body');
+    if(!scrim||!body) return;
+    var open_=false, opener=null;
+    function open(id){
+      open_=true; opener=document.activeElement;
+      scrim.hidden=false; void scrim.offsetWidth; scrim.classList.add('open');
+      htmx.ajax('GET','/entries/'+id+'/edit','#entry-dialog-body');
+      document.addEventListener('keydown',onKey,true);
+    }
+    function closeDialog(refocus){
+      if(!open_) return; open_=false;
+      scrim.classList.remove('open');
+      document.removeEventListener('keydown',onKey,true);
+      var done=false, finish=function(){ if(done) return; done=true; scrim.hidden=true; };
+      var onEnd=function(e){ if(e.target===scrim&&e.propertyName==='opacity'){ scrim.removeEventListener('transitionend',onEnd); finish(); } };
+      scrim.addEventListener('transitionend',onEnd); setTimeout(finish,300);
+      if(refocus&&opener&&document.contains(opener)) opener.focus();
+    }
+    /* #456: trap Tab inside the modal while it's open. onKey only runs
+       while open (attached on open, detached on close). */
+    function onKey(e){ if(e.key==='Escape'){ e.preventDefault(); closeDialog(true); }
+      else if(e.key==='Tab'&&window.tkTrapTab){ window.tkTrapTab(scrim,e); } }
+    /* focus the first field once the form lands */
+    body.addEventListener('htmx:afterSwap',function(){
+      var f=body.querySelector('input:not([disabled]),select:not([disabled])'); if(f) f.focus();
+    });
+    scrim.addEventListener('pointerdown',function(e){ if(e.target===scrim) closeDialog(false); });
+    /* edit buttons + the dialog's own close/cancel — delegated so today-list
+       re-renders keep working without rebinding */
+    document.addEventListener('click',function(e){
+      var t=e.target&&e.target.closest?e.target.closest('[data-edit-entry],[data-close-entry]'):null;
+      if(!t) return;
+      if(t.hasAttribute('data-edit-entry')) open(t.getAttribute('data-edit-entry'));
+      else closeDialog(true);
+    });
+    /* the dialog form posts via htmx — a successful save closes the modal;
+       the server's HX-Trigger refreshes #today-list behind it */
+    document.body.addEventListener('htmx:afterRequest',function(e){
+      var elt=e.detail.elt;
+      if(elt&&elt.id==='edit-entry-form'&&e.detail.successful) closeDialog(false);
     });
   })();</script>`;
 }
