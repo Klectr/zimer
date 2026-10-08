@@ -33,3 +33,27 @@ describe("auth labels (#827)", () => {
     }
   });
 });
+
+/** #924: OG + Twitter card tags on public pages. */
+describe("social meta tags (#924)", () => {
+  const inv: any = {
+    id: 1, number: "INV-0001", tax_rate: 0, stripe_payment_link: "",
+    items: [], public_token: "abc123",
+  };
+  test("public invoice page has generic OG tags, no PII", () => {
+    const html = (views as any).publicInvoicePage(inv, "https://zimer.klectr.dev", "/i/abc123");
+    for (const tag of [
+      'property="og:title" content="Zinvoice · Zimer"',
+      'property="og:url" content="https://zimer.klectr.dev/i/abc123"',
+      'property="og:image" content="https://zimer.klectr.dev/static/og-image.png"',
+      'name="twitter:card" content="summary_large_image"',
+    ]) expect(html).toContain(tag);
+    expect(html).not.toContain("Acme"); // client names never leak
+  });
+  test("changelog page has OG tags", () => {
+    const html = (views as any).changelogPage([], "https://zimer.klectr.dev");
+    expect(html).toContain('property="og:title" content="Changelog · Zimer"');
+    expect(html).toContain('property="og:url" content="https://zimer.klectr.dev/changelog"');
+    expect(html).toContain('property="og:image" content="https://zimer.klectr.dev/static/og-image.png"');
+  });
+});

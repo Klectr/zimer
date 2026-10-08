@@ -19,8 +19,22 @@ export interface PublicViewDeps {
 export function createPublicViews(deps: PublicViewDeps) {
   const { getInvoice, invoiceTotals, invoiceDocumentHtml, ensurePublicToken } = deps;
 
+  /** #924: shared OG + Twitter card tags for public pages. Unfurlers ignore
+      relative URLs, so image and url are absolute. Keep invoice tags generic —
+      never client names or amounts. */
+  function ogTags(title: string, description: string, url: string, image: string): string {
+    return `
+  <meta property="og:title" content="${esc(title)}">
+  <meta property="og:description" content="${esc(description)}">
+  <meta property="og:image" content="${esc(image)}">
+  <meta property="og:url" content="${esc(url)}">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="${esc(image)}">`;
+  }
+
   /** Public client invoice page: no auth, read-only, no actions or navigation. */
-  function publicInvoicePage(inv: Invoice & { items: InvoiceItem[] }): string {
+  function publicInvoicePage(inv: Invoice & { items: InvoiceItem[] }, origin: string, tokenPath: string): string {
     const t = invoiceTotals(inv.items, inv.tax_rate);
     const pay = inv.stripe_payment_link ? `
       <div class="no-print public-pay">
@@ -32,7 +46,7 @@ export function createPublicViews(deps: PublicViewDeps) {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
-  <title>Invoice ${esc(inv.number)} · Zimer</title>
+  <title>Invoice ${esc(inv.number)} · Zimer</title>${ogTags("Zinvoice · Zimer", "View and pay your Zinvoice securely.", origin + tokenPath, origin + "/static/og-image.png")}
   <link rel="stylesheet" href="/static/style.css">
   <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
   <script src="/static/motion.js" defer></script>
@@ -95,7 +109,7 @@ export function createPublicViews(deps: PublicViewDeps) {
 
   /* #303: public changelog — same minimal public chrome as the invoice page:
      no auth, no app nav, noindex. */
-  function changelogPage(entries: ChangelogEntry[]): string {
+  function changelogPage(entries: ChangelogEntry[], origin: string): string {
     const body = entries.length ? entries.map(e => `
       <section class="changelog-release">
         <h2 class="md-title-large">${esc(e.date)}</h2>
@@ -108,7 +122,7 @@ export function createPublicViews(deps: PublicViewDeps) {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
-  <title>Changelog · Zimer</title>
+  <title>Changelog · Zimer</title>${ogTags("Changelog · Zimer", "What's new in Zimer.", origin + "/changelog", origin + "/static/og-image.png")}
   <link rel="stylesheet" href="/static/style.css">
   <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
   <script src="/static/motion.js" defer></script>
