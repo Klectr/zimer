@@ -23,6 +23,7 @@ import {
   type Billing,
   type Subscription,
 } from "../lib/billing.ts";
+import { originMatches } from "../lib/http.ts"; /* #912 */
 
 export interface BillingDeps {
   HOSTED: boolean;
@@ -92,7 +93,7 @@ function billingWallPage(sub: Subscription | null): string {
   <p>${copy}</p>
   <p class="muted">Nothing is deleted — your time entries, clients, and zinvoices are saved and waiting.</p>
   ${cta}
-  <p class="muted tiny" style="margin-top:20px"><a href="/logout">Log out</a></p>
+  <form method="POST" action="/logout" class="muted tiny" style="margin:20px 0 0"><button type="submit" class="md-text-button" style="padding:0;font-size:inherit">Log out</button></form>
   </div></main></body></html>`;
 }
 
@@ -153,6 +154,9 @@ export function createBillingRouter(deps: BillingDeps) {
     if (!user) return json({ error: "unauthorized" }, 401);
 
     if (path === "/billing/checkout" && method === "POST") {
+      /* #912: checkout mints a Stripe session against the victim's account —
+         a forged cross-site POST must not reach it. */
+      if (!originMatches(req)) return json({ error: "cross-site request blocked" }, 403);
       const existing = billing.getSubscriptionStatus(user.id);
       if (existing && billing.subscriptionActive(user.id)) {
         return json(

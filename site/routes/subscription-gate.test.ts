@@ -93,6 +93,15 @@ async function webGet(handleWeb: any, path: string, cookie?: string) {
   return (await handleWeb(req, new URL(req.url), path, "GET"))!;
 }
 
+/* #912: POST helper for the CSRF-guard era — no Origin header, which the
+   guard treats as allowed (same as curl and the existing test clients). */
+async function webPost(handleWeb: any, path: string, cookie?: string) {
+  const headers: Record<string, string> = {};
+  if (cookie) headers.cookie = cookie;
+  const req = new Request(`http://x${path}`, { method: "POST", headers });
+  return (await handleWeb(req, new URL(req.url), path, "POST"))!;
+}
+
 function apiSetup(accounts: ReturnType<typeof createAccountsDb>, gate: any) {
   const tenant = {
     db: null,
@@ -159,7 +168,8 @@ describe("#736: page gating", () => {
     expect((await webGet(handleWeb, "/terms", cookie)).status).toBe(200);
     expect((await webGet(handleWeb, "/privacy", cookie)).status).toBe(200);
     expect((await webGet(handleWeb, "/changelog", cookie)).status).toBe(200);
-    const logout = await webGet(handleWeb, "/logout", cookie);
+    /* #912: logout is POST-only now — the POST must still work while gated. */
+    const logout = await webPost(handleWeb, "/logout", cookie);
     expect(logout.status).toBe(302);
     expect(logout.headers.get("location")).toBe("/login");
   });

@@ -1,6 +1,6 @@
 /** #910: security headers on every response. */
 import { describe, expect, test } from "bun:test";
-import { secureResponse, isHttps, html, publicOrigin } from "./http.ts";
+import { secureResponse, isHttps, html, publicOrigin, originMatches } from "./http.ts";
 
 describe("secureResponse", () => {
   test("adds the baseline headers to a bare response", () => {
@@ -86,5 +86,70 @@ describe("publicOrigin", () => {
     expect(publicOrigin(req, 8080)).toBe("https://example.com:8443");
     const v6 = new Request("http://[::1]:8080/", { headers: { "x-forwarded-host": "[::1]:8080" } });
     expect(publicOrigin(v6, 8080)).toBe("http://[::1]:8080");
+  });
+});
+
+describe("originMatches (#912)", () => {
+  /* Bun's Request constructor doesn't populate the Host header from the URL,
+     so set it explicitly — a real server connection always carries it. */
+  const req = (url: string, headers: Record<string, string> = {}) => {
+    const host = headers.host ?? new URL(url).host;
+    return new Request(url, { method: "POST", headers: { ...headers, host } });
+  };
+
+  test("matching origin and host passes", () => {
+    expect(originMatches(req("http://x/logout", { origin: "http://x" }))).toBe(true);
+    expect(originMatches(req("http://127.0.0.1:8080/entries", { origin: "http://127.0.0.1:8080" }))).toBe(true);
+  });
+
+  test("mismatched origin is rejected", () => {
+    expect(originMatches(req("http://x/logout", { origin: "http://evil.com" }))).toBe(false);
+    expect(originMatches(req("http://x/logout", { origin: "http://x.evil.com" }))).toBe(false);
+    expect(originMatches(req("http://x/logout", { origin: "https://x" }))).toBe(false); /* scheme differs only in port */
+  });
+
+  test("absent origin and referer is allowed (curl, stripped headers)", () => {
+    expect(originMatches(req("http://x/logout"))).toBe(true);
+  });
+
+  test("referer is used when origin is absent", () => {
+    expect(originMatches(req("http://x/logout", { referer: "http://x/timer" }))).toBe(true);
+    expect(originMatches(req("http://x/logout", { referer: "http://evil.com/" }))).toBe(false);
+  });
+
+  test("unparsable origin fails closed", () => {
+    expect(originMatches(req("http://x/logout", { origin: "not a url" }))).toBe(false);
+  });
+
+  test("default ports are normalized", () => {
+    expect(originMatches(req("https://example.com/", { origin: "https://example.com", host: "example.com" }))).toBe(true);
+    expect(originMatches(req("http://example.com/", { origin: "http://example.com", host: "example.com:80" }))).toBe(true);
+  });
+
+  test("explicit non-default ports must match exactly", () => {
+    const r = (o: string, h: string) => req("http://example.com:8080/", { origin: o, host: h });
+    expect(originMatches(r("http://example.com:8080", "example.com:8080"))).toBe(true);
+    expect(originMatches(r("http://example.com:9090", "example.com:8080"))).toBe(false);
+    expect(originMatches(r("http://example.com", "example.com:8080"))).toBe(false);
+  });
+
+  test("host comparison is case-insensitive", () => {
+    expect(originMatches(req("http://x/logout", { origin: "http://X", host: "x" }))).toBe(true);
+  });
+
+  test("x-forwarded-host is honored behind the proxy", () => {
+    const r = new Request("http://127.0.0.1:8080/logout", {
+      method: "POST",
+      headers: { origin: "https://invoice.klectr.dev", "x-forwarded-host": "invoice.klectr.dev", "x-forwarded-proto": "https" },
+    });
+    expect(originMatches(r)).toBe(true);
+  });
+
+  test("malformed forwarded host fails closed", () => {
+    const r = new Request("http://127.0.0.1:8080/logout", {
+      method: "POST",
+      headers: { origin: "https://invoice.klectr.dev", "x-forwarded-host": "evil.com@invoice.klectr.dev" },
+    });
+    expect(originMatches(r)).toBe(false);
   });
 });

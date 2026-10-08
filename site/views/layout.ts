@@ -175,8 +175,10 @@ function appBarActions(): string {
       data-tip="Export entries CSV" aria-label="Export entries CSV">${icon("table")}</a>
     <a class="md-icon-button tip-right" href="/backup" download
       data-tip="Download backup" aria-label="Download backup">${icon("database")}</a>
-    <a class="md-icon-button tip-right" href="/logout"
-      data-tip="Log out" aria-label="Log out">${icon("logout")}</a>
+    <form method="POST" action="/logout" class="app-bar-logout">
+      <button class="md-icon-button tip-right" type="submit"
+        data-tip="Log out" aria-label="Log out">${icon("logout")}</button>
+    </form>
   </div>`;
 }
 

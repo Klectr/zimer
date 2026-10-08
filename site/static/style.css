@@ -1327,6 +1327,9 @@ body.app-fixed .cal-gutter-spacer {
    Settings, Export entries CSV, Download backup, Log out as .md-icon-buttons
    on the right side of the top app bar. The .m3-menu CSS went with it. */
 .app-bar-actions { display: inline-flex; align-items: center; gap: 4px; flex: none; }
+/* #912: logout is a POST form in the app bar — the form must not disturb the
+   icon row's layout. */
+.app-bar-logout { display: inline-flex; margin: 0; }
 
 /* ---------------- forms / manage ---------------- */
 .form { display: grid; gap: 16px; max-width: 480px; }
