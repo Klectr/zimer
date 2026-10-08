@@ -511,3 +511,52 @@ describe("logout and CSRF guard (#912)", () => {
     expect(res.status).toBe(403);
   });
 });
+
+/** #930: rapid re-submits of the same entry must not create duplicates —
+ * the calendar dialog guards in-flight saves client-side; the server
+ * backstops with a short idempotency window on POST /entries. */
+function postEntry(handleWeb: any, fields: Record<string, string>) {
+  const form = new FormData();
+  for (const [k, v] of Object.entries(fields)) form.append(k, v);
+  const req = new Request("http://x/entries", { method: "POST", body: form });
+  return handleWeb(req, new URL(req.url), "/entries", "POST");
+}
+
+describe("entry create idempotency (#930)", () => {
+  const fields = {
+    project_id: "", description: "",
+    start_time: "2026-10-08T09:00:00.000Z", end_time: "2026-10-08T10:00:00.000Z",
+  };
+
+  test("rapid identical POSTs create one entry and return the same id", async () => {
+    const { db, handleWeb } = setup();
+    const r1 = await postEntry(handleWeb, fields);
+    expect(r1!.status).toBe(201);
+    const d1 = await r1!.json();
+    expect(d1.ok).toBe(true);
+    const r2 = await postEntry(handleWeb, fields);
+    expect(r2!.status).toBe(200);
+    const d2 = await r2!.json();
+    expect(d2.id).toBe(d1.id);
+    const rows = db.query("SELECT COUNT(*) c FROM time_entries").get() as any;
+    expect(rows.c).toBe(1);
+  });
+
+  test("distinct entries still create separately", async () => {
+    const { db, handleWeb } = setup();
+    await postEntry(handleWeb, fields);
+    const r = await postEntry(handleWeb, { ...fields, description: "different" });
+    expect(r!.status).toBe(201);
+    const rows = db.query("SELECT COUNT(*) c FROM time_entries").get() as any;
+    expect(rows.c).toBe(2);
+  });
+
+  test("an identical entry created long ago is not swallowed by the dedupe window", async () => {
+    const { db, handleWeb } = setup();
+    db.query("INSERT INTO time_entries (description, start_time, end_time, created_at) VALUES ('', '2026-10-08T09:00:00.000Z', '2026-10-08T10:00:00.000Z', '2026-10-08T08:00:00.000Z')").run();
+    const r = await postEntry(handleWeb, fields);
+    expect(r!.status).toBe(201);
+    const rows = db.query("SELECT COUNT(*) c FROM time_entries").get() as any;
+    expect(rows.c).toBe(2);
+  });
+});
