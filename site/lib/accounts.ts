@@ -7,6 +7,7 @@
 import { Database } from "bun:sqlite";
 import { randomBytes } from "node:crypto";
 import { join } from "node:path";
+import { secureCookieAttr } from "./http.ts";
 
 export const SESSION_COOKIE = "tksession";
 export const SESSION_MAX_AGE_SEC = 30 * 24 * 3600; /* 30 days */
@@ -130,10 +131,13 @@ CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
     return t ? sessionUser(t) : null;
   }
 
-  const sessionCookie = (token: string): string =>
-    `tksession=${encodeURIComponent(token)}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${SESSION_MAX_AGE_SEC}`;
-  const clearSessionCookie =
-    "tksession=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0";
+  /* #911: Secure goes on the cookie when the request arrived over HTTPS
+     (hosted site behind the proxy). Omitted on plain-HTTP origins so
+     local-dev and Tailscale logins keep working. */
+  const sessionCookie = (req: Request, token: string): string =>
+    `tksession=${encodeURIComponent(token)}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${SESSION_MAX_AGE_SEC}${secureCookieAttr(req)}`;
+  const clearSessionCookie = (req: Request): string =>
+    `tksession=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0${secureCookieAttr(req)}`;
 
   return {
     db,

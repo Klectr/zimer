@@ -45,6 +45,13 @@ export function isHttps(req: Request): boolean {
   return proto === "https";
 }
 
+/* #911: the Secure cookie attribute, gated on HTTPS. Set-Cookie strings
+   append this so local-dev and Tailscale plain-HTTP logins keep working
+   while the HTTPS hosted site gets the protection. */
+export function secureCookieAttr(req: Request): string {
+  return isHttps(req) ? "; Secure" : "";
+}
+
 /** Stamp the #910 security headers onto a response (headers are set, never
  *  appended, so re-wrapping is idempotent). HSTS only goes out over HTTPS —
  *  sending it on plain-HTTP origins (local dev, Tailscale) would tell the

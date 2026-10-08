@@ -93,10 +93,22 @@ describe("hosted accounts (#732)", () => {
 
   test("session cookie is HttpOnly with a 30-day max age", () => {
     const a = accountsDb();
-    const c = a.sessionCookie("abc123");
+    const c = a.sessionCookie(new Request("http://x/"), "abc123");
     expect(c).toContain("HttpOnly");
     expect(c).toContain("Path=/");
     expect(c).toContain("SameSite=Lax");
     expect(c).toContain("Max-Age=2592000");
+  });
+
+  test("#911: session cookie is Secure on HTTPS, not on plain HTTP", () => {
+    const a = accountsDb();
+    const httpReq = new Request("http://x/");
+    expect(a.sessionCookie(httpReq, "abc123")).not.toContain("Secure");
+    expect(a.clearSessionCookie(httpReq)).not.toContain("Secure");
+    const httpsReq = new Request("http://x/", {
+      headers: { "x-forwarded-proto": "https" },
+    });
+    expect(a.sessionCookie(httpsReq, "abc123")).toContain("; Secure");
+    expect(a.clearSessionCookie(httpsReq)).toContain("; Secure");
   });
 });
