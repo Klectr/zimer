@@ -607,7 +607,10 @@ input[type="number"] {
 
 /* Entry row motion (#46): enter with fade+rise and per-row stagger
    (animation-delay rendered inline by entryRow); exit collapses during
-   the delete swap:220ms so siblings glide instead of jumping. */
+   the delete swap:220ms so siblings glide instead of jumping.
+   #901: the row is overflow:visible so icon-button tooltips (::before,
+   below the button) can overlay the next row; overflow:hidden lives only
+   on .htmx-swapping, where the collapse needs the clip. */
 #today-list .md-list-item {
   animation: row-enter var(--motion-duration-short4) var(--motion-easing-emphasized-decelerate) backwards;
   transition: opacity var(--motion-duration-short4) var(--motion-easing-standard),
@@ -616,7 +619,7 @@ input[type="number"] {
     padding-top var(--motion-duration-short4) var(--motion-easing-standard),
     padding-bottom var(--motion-duration-short4) var(--motion-easing-standard);
   max-height: 120px;
-  overflow: hidden;
+  overflow: visible;
 }
 @keyframes row-enter { from { opacity: 0; transform: translateY(12px); } }
 #today-list .md-list-item.htmx-swapping {
@@ -626,6 +629,7 @@ input[type="number"] {
   min-height: 0;
   padding-top: 0;
   padding-bottom: 0;
+  overflow: hidden;
 }
 .md-list-item-headline {
   font-size: 1rem;
