@@ -1029,6 +1029,15 @@ body.app-fixed .cal-gutter-spacer {
 @keyframes cal-day-enter { from { opacity: 0; transform: translateY(12px); } }
 /* #69: header is two lines (weekday + date) — per-day stats moved into an M3 plain tooltip */
 .cal-day-head { position: relative; text-align: center; padding: 10px 4px 8px; min-height: var(--cal-head-h); }
+/* #932: soft fade under the sticky day header — entries sliding underneath
+   dissolve instead of hard-slicing mid-card. Absolute, so it paints over
+   entries (header is z-5, entries z-2); pointer-events none so taps pass
+   through to the lane. */
+body.app-fixed .cal-day-head::after {
+  content: ""; position: absolute; top: 100%; left: 0; right: 0; height: 32px;
+  background: linear-gradient(to bottom, var(--md-sys-color-surface) 20%, transparent);
+  pointer-events: none;
+}
 .cal-day-head[data-tip] { cursor: default; }
 .cal-day-head[data-tip]::after {
   content: attr(data-tip);
