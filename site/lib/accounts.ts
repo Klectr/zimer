@@ -63,7 +63,8 @@ CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
     if (!validEmail(e)) return { error: "Enter a valid email address." };
     if (password.length < 8)
       return { error: "Password must be at least 8 characters." };
-    if (qUserByEmail.get(e)) return { error: "That email is already registered." };
+    /* #913: don't confirm registration — the page already offers "Log in instead". */
+    if (qUserByEmail.get(e)) return { error: "That email can't be used for a new account." };
     const password_hash = await Bun.password.hash(password);
     const user = db
       .query(

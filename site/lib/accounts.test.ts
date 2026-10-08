@@ -23,11 +23,13 @@ describe("hosted accounts (#732)", () => {
     expect(row.password_hash).not.toContain("correct-horse-8");
   });
 
-  test("duplicate email is rejected", async () => {
+  test("duplicate email is rejected with a generic error (#913)", async () => {
     const a = accountsDb();
     await a.signup("ada@example.com", "correct-horse-8");
     const r = await a.signup("ADA@example.com", "another-pass-9");
-    expect(r.error).toBe("That email is already registered.");
+    /* #913: must not reveal that the email is registered — the page already
+       offers "Log in instead", so the message stays generic. */
+    expect(r.error).toBe("That email can't be used for a new account.");
     expect(r.user).toBeUndefined();
   });
 
