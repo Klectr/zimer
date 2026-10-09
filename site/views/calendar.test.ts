@@ -1043,3 +1043,34 @@ describe("calendar midnight lane cap (#857)", () => {
     expect(placeNow).toContain("((1440-sm)/60)*HOUR");
   });
 });
+
+/** #946: on mobile, starting a scroll with the finger on a time entry opened
+ *  the entry editor instead of scrolling — the pointerdown handler called
+ *  openEdit immediately. The fix defers openEdit to pointerup behind a
+ *  movement threshold, so a real scroll cancels the pending tap. */
+describe("calendar entry tap-vs-scroll (#946)", () => {
+  function downHandler(src: string) {
+    return src.slice(
+      src.indexOf("document.addEventListener('pointerdown'"),
+      src.indexOf("/* #213: the server's clock")
+    );
+  }
+  test("pointerdown no longer opens the editor immediately", async () => {
+    const src = await Bun.file("site/views/calendar.ts").text();
+    expect(downHandler(src)).not.toContain("if(entryEl){ openEdit(entryEl); return; }");
+  });
+  test("editor opens on pointerup only when the pointer barely moved", async () => {
+    const src = await Bun.file("site/views/calendar.ts").text();
+    const h = downHandler(src);
+    expect(h).toContain("addEventListener('pointerup',tapUp)");
+    expect(h).toContain("tapCancel(); openEdit(tapEl);");
+    // drift past a small threshold cancels the pending tap
+    expect(h).toMatch(/Math\.abs\(ev\.clientX-tapX\)>10/);
+    expect(h).toMatch(/Math\.abs\(ev\.clientY-tapY\)>10/);
+  });
+  test("browser scroll takeover cancels the pending tap", async () => {
+    const src = await Bun.file("site/views/calendar.ts").text();
+    const h = downHandler(src);
+    expect(h).toContain("addEventListener('pointercancel',tapCancel)");
+  });
+});

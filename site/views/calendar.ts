@@ -917,7 +917,31 @@ export function createCalendarViews(deps: CalendarViewDeps) {
         return;
       }
       var entryEl=e.target.closest('.cal-entry,.cal-ag-row');
-      if(entryEl){ openEdit(entryEl); return; }
+      if(entryEl){
+        /* #946: on touch, starting a scroll with the finger on an entry opened
+           the editor — pointerdown fired before the browser knew it was a
+           scroll. Distinguish tap from scroll: only open the editor on
+           pointerup if the pointer barely moved; a drift past 10px or a
+           browser-takeover (pointercancel) cancels the pending tap. */
+        var tapX=e.clientX,tapY=e.clientY,tapId=e.pointerId,tapEl=entryEl;
+        function tapMove(ev){
+          if(ev.pointerId!==tapId) return;
+          if(Math.abs(ev.clientX-tapX)>10||Math.abs(ev.clientY-tapY)>10) tapCancel();
+        }
+        function tapUp(ev){
+          if(ev.pointerId!==tapId) return;
+          tapCancel(); openEdit(tapEl);
+        }
+        function tapCancel(){
+          window.removeEventListener('pointermove',tapMove);
+          window.removeEventListener('pointerup',tapUp);
+          window.removeEventListener('pointercancel',tapCancel);
+        }
+        window.addEventListener('pointermove',tapMove);
+        window.addEventListener('pointerup',tapUp);
+        window.addEventListener('pointercancel',tapCancel);
+        return;
+      }
       var col=e.target.closest('.cal-day-col');
       if(!col) return;
       e.preventDefault();
