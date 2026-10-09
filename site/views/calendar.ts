@@ -920,20 +920,25 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       if(entryEl){
         /* #946: don't open on pointerdown — on touch the finger may be
            starting a scroll. Wait for pointerup and only open when the
-           pointer stayed within a tap threshold. */
+           pointer stayed within a tap threshold. pointercancel means the
+           browser seized the gesture (scroll) — never open the editor then,
+           even if movement hasn't crossed the threshold yet. */
         var sx=e.clientX, sy=e.clientY, tMoved=false;
+        var pid=e.pointerId;
         function tmove(ev){
+          if(ev.pointerId!==pid) return;
           if(Math.abs(ev.clientX-sx)>10||Math.abs(ev.clientY-sy)>10) tMoved=true;
         }
         function tdone(){
           window.removeEventListener('pointermove',tmove);
           window.removeEventListener('pointerup',tup);
-          window.removeEventListener('pointercancel',tup);
+          window.removeEventListener('pointercancel',tcancel);
         }
-        function tup(){ tdone(); if(!tMoved) openEdit(entryEl); }
+        function tup(ev){ if(ev.pointerId!==pid) return; tdone(); if(!tMoved) openEdit(entryEl); }
+        function tcancel(ev){ if(ev.pointerId!==pid) return; tdone(); }
         window.addEventListener('pointermove',tmove);
         window.addEventListener('pointerup',tup);
-        window.addEventListener('pointercancel',tup);
+        window.addEventListener('pointercancel',tcancel);
         return;
       }
       var col=e.target.closest('.cal-day-col');
