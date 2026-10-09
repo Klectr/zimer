@@ -153,3 +153,19 @@ describe("originMatches (#912)", () => {
     expect(originMatches(r)).toBe(false);
   });
 });
+
+describe("buildCsp (#928)", () => {
+  test("without PostHog: no posthog.com sources", async () => {
+    const { buildCsp } = await import("./http.ts");
+    const csp = buildCsp(false);
+    expect(csp).not.toContain("posthog.com");
+    expect(csp).toContain("https://unpkg.com");
+  });
+
+  test("with PostHog: allows posthog.com script and connect", async () => {
+    const { buildCsp } = await import("./http.ts");
+    const csp = buildCsp(true);
+    expect(csp).toContain("script-src 'self' 'unsafe-inline' https://unpkg.com https://*.posthog.com");
+    expect(csp).toContain("connect-src 'self' https://*.posthog.com");
+  });
+});

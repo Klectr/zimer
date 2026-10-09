@@ -271,12 +271,12 @@ export function createWebRouter(deps: WebDeps) {
             if (t) accounts!.destroySession(t);
             return new Response(null, {
               status: 302,
-              headers: { Location: "/login", "Set-Cookie": accounts!.clearSessionCookie(req) },
+              headers: { Location: "/login?logged_out=1", "Set-Cookie": accounts!.clearSessionCookie(req) },
             });
           }
           return new Response(null, {
             status: 302,
-            headers: { Location: "/login", "Set-Cookie": `tk=; HttpOnly; Path=/; Max-Age=0${secureCookieAttr(req)}` },
+            headers: { Location: "/login?logged_out=1", "Set-Cookie": `tk=; HttpOnly; Path=/; Max-Age=0${secureCookieAttr(req)}` },
           });
         }
         if (path === "/logout") {
@@ -429,12 +429,12 @@ export function createWebRouter(deps: WebDeps) {
             const pid = form.get("project_id");
             db.query("INSERT INTO time_entries (project_id, description, start_time) VALUES (?, ?, ?)")
               .run(pid ? Number(pid) : null, String(form.get("description") || ""), new Date().toISOString());
-            return html(timerPartial(), 200, { "HX-Trigger": "timer-updated" });
+            return html(timerPartial(), 200, { "HX-Trigger": "timer-updated, timer-started" });
           }
           if (path === "/timer/stop" && method === "POST") {
             const running = qRunning.get() as Entry | null;
             if (running) db.query("UPDATE time_entries SET end_time = ? WHERE id = ?").run(new Date().toISOString(), running.id);
-            return html(timerPartial(), 200, { "HX-Trigger": "timer-updated" });
+            return html(timerPartial(), 200, { "HX-Trigger": "timer-updated, timer-stopped" });
           }
           if (path === "/calendar" && method === "GET") {
             /* #572: day mode is gone; old ?day= links redirect to the

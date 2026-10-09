@@ -25,7 +25,7 @@ import { createRevenue } from "./lib/revenue.ts";
 import { themeCss, themeKey } from "./lib/theme.ts"; /* #884 */
 import { workspaceEmpty, demoIds, seedDemoData, removeDemoData, demoBanner } from "./lib/demo.ts";
 import { createDomain, CAL_HOUR_PX, dayTargetSecs } from "./lib/domain.ts";
-import { createLayoutViews, trialBannerHtml } from "./views/layout.ts";
+import { createLayoutViews, trialBannerHtml, posthogSnippet } from "./views/layout.ts";
 import { createPublicViews } from "./views/public.ts";
 import { createLandingViews } from "./views/landing.ts"; /* #731 */
 import { createTimerViews } from "./views/timer.ts";
@@ -92,6 +92,17 @@ function buildTenantTree(bundle: DbBundle, dbPath: string): WebTenant & ApiTenan
         userId: tenantUserId,
         userCreatedAtMs: Number.isFinite(createdMs) ? createdMs : null,
       });
+    },
+    /* #928: PostHog snippet thunk — evaluated lazily at render time.
+       Only renders when POSTHOG_KEY is set (self-hosters opt in; hosted
+       sets it in start.sh). The user ID comes from the tenant dbPath,
+       same as the trial banner above. */
+    () => {
+      const key = (process.env.POSTHOG_KEY || "").trim();
+      if (!key) return "";
+      const host = (process.env.POSTHOG_HOST || "https://us.i.posthog.com").trim().replace(/\/+$/, "");
+      const tenantUserId = Number(basename(dbPath, ".db"));
+      return posthogSnippet(key, host, Number.isFinite(tenantUserId) ? tenantUserId : null);
     });
 
   const {
