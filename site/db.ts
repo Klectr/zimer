@@ -59,6 +59,20 @@ CREATE TABLE IF NOT EXISTS invoice_items (
   amount REAL NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_items_invoice ON invoice_items(invoice_id);
+/* Issue #956: proof-of-payment attachments — evidence backing an invoice's
+   paid status (bank screenshot, QuickBooks confirmation, ...). Stored as
+   BLOBs in the tenant DB like pdf_snapshot: tenant isolation and backups
+   come for free, no orphaned files on delete. */
+CREATE TABLE IF NOT EXISTS invoice_payment_proofs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  invoice_id INTEGER NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+  filename TEXT NOT NULL,
+  mime TEXT NOT NULL,
+  size INTEGER NOT NULL,
+  data BLOB NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+CREATE INDEX IF NOT EXISTS idx_proofs_invoice ON invoice_payment_proofs(invoice_id);
 `);
 /* Issue #243: per-line dates for best-practice invoice line items
    (Date | Description | Hours | Rate | Amount). Nullable so existing

@@ -9,6 +9,7 @@ import { getMeta } from "../db.ts";
 import { workspaceEmpty } from "../lib/demo.ts"; /* #300: empty-state CTA */
 import type { Invoice, InvoiceItem, NewInvParams } from "../lib/types.ts";
 import type { PdfInvoice } from "../pdf.ts";
+import { listProofs } from "../lib/payment_proofs.ts"; /* #956 */
 
 export interface InvoiceViewDeps {
   db: Database;
@@ -557,6 +558,53 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     };
   }
 
+  /* #956: proof-of-payment attachments — evidence backing paid status.
+     App surface only (never on the public invoice page or print). Upload is
+     optional; a nudge encourages attaching proof when a paid invoice has
+     none. */
+  function paymentProofSection(inv: Invoice): string {
+    if (inv.status !== "sent" && inv.status !== "paid") return "";
+    const proofs = listProofs(db, inv.id);
+    const fmtSize = (n: number) => n < 1024 ? `${n} B` : `${(n / 1024).toFixed(0)} KB`;
+    const rows = proofs.map(p => `
+      <div class="proof-row">
+        <a class="proof-name" href="/invoices/${inv.id}/payment-proof/${p.id}" target="_blank" rel="noopener">${esc(p.filename)}</a>
+        <span class="proof-meta muted">${fmtSize(p.size)} · ${esc(shortYmd(p.created_at.slice(0, 10)))}</span>
+        <span class="proof-icons">
+          <a class="md-icon-button" href="/invoices/${inv.id}/payment-proof/${p.id}" download="${esc(p.filename)}" data-tip="Download" aria-label="Download proof">${icon("download")}</a>
+          <form method="post" action="/invoices/${inv.id}/payment-proof/${p.id}/delete" class="inline">
+            <button class="md-icon-button danger" type="submit" data-tip="Delete proof" aria-label="Delete proof" data-confirm="Delete this proof of payment?">${icon("delete")}</button>
+          </form>
+        </span>
+      </div>`).join("");
+    const nudge = inv.status === "paid" && proofs.length === 0 ? `
+      <p class="proof-nudge muted">No proof attached — add the bank receipt or payment confirmation so this payment stays verifiable.</p>` : "";
+    return `<section class="payment-proof no-print" id="proof" aria-label="Proof of payment">
+      <div class="internal-notes-label">${icon("receipt")} Proof of payment</div>
+      ${rows}
+      ${nudge}
+      <form method="post" action="/invoices/${inv.id}/payment-proof" enctype="multipart/form-data" class="proof-upload">
+        <label class="proof-file-label" for="proof-file-${inv.id}">Choose file</label>
+        <input id="proof-file-${inv.id}" class="proof-file-input" type="file" name="proof" accept="image/png,image/jpeg,image/gif,image/webp,application/pdf" required>
+        <button class="md-tonal-button" type="submit">${icon("add")}<span>Attach proof</span></button>
+      </form>
+      <p class="proof-hint muted">PNG, JPEG, GIF, WebP or PDF, up to 10 MB. Optional — cash payments have no file.</p>
+      <script>(function(){
+        /* #956: show the chosen filename on the picker label. Guarded global
+           so htmx re-renders of the detail pane don't stack listeners. */
+        if (window.__proofPickerWired) return;
+        window.__proofPickerWired = true;
+        document.addEventListener("change", function(ev){
+          var t = ev.target;
+          if (!t || t.type !== "file" || !t.classList || !t.classList.contains("proof-file-input")) return;
+          var form = t.closest("form");
+          var label = form ? form.querySelector(".proof-file-label") : null;
+          if (label) label.textContent = (t.files && t.files[0]) ? t.files[0].name : "Choose file";
+        });
+      })();</script>
+    </section>`;
+  }
+
   /* #71: detail body as a fragment — status/Stripe/link actions swap
      #invoice-detail in place instead of reloading the page. */
   function invoiceDetailBody(inv: Invoice & { items: InvoiceItem[] }, origin: string): string {
@@ -681,6 +729,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       ${invoiceDoc(inv)}
       ${internalBlock}
       ${shareLines}
+      ${paymentProofSection(inv)}
       </div>`;
   }
 
