@@ -124,10 +124,10 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
   function invoicesPage(selected: (Invoice & { items: InvoiceItem[] }) | null, origin: string, isDefault = false): string {
     const rows = qInvoices.all() as any[];
     const head = `
-      <div class="page-head" data-enter="2">
+      <div class="page-head page-head-invoices" data-enter="2">
         <h1 class="md-headline-small">Zinvoices</h1>
         <div class="page-head-actions">
-          ${rows.length ? `<a class="md-text-button" href="/export/invoices.csv" download>${icon("download")}Export CSV</a>` : ""}
+          ${rows.length ? `<a class="md-text-button" href="/export/invoices.csv" download>${icon("download")}<span class="btn-label">Export CSV</span></a>` : ""}
           <a class="md-filled-button" href="/invoices/new">${icon("add")}New zinvoice</a>
         </div>
       </div>`;
