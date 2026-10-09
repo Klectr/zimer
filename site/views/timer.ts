@@ -91,7 +91,7 @@ export function createTimerViews(deps: TimerViewDeps) {
           <button class="md-icon-button" type="submit" aria-label="Repeat entry" data-tip="Repeat">${icon("repeat")}</button>
         </form>` : ""}
         <button class="md-icon-button danger" hx-delete="/entries/${e.id}"
-          hx-target="#entry-${e.id}" hx-swap="outerHTML swap:220ms" data-confirm="Delete this entry?"
+          hx-target="#entry-${e.id}" hx-swap="outerHTML swap:220ms" data-confirm="Delete this entry? This cannot be undone."
           aria-label="Delete entry" data-tip="Delete">${icon("delete")}</button>`}`}
       </div>
     </li>`;
