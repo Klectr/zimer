@@ -355,7 +355,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       ${/* #781: the create gesture differs per presentation — drag-to-create on
          the 24h grid, the per-day + button on the narrow agenda. Both variants
          render in place; the client picks by strip width (see syncCalHint). */ ""}
-      <p class="muted tiny cal-hint"><span class="cal-hint-grid">Drag across the calendar to log time. Click an entry to edit it.</span><span class="cal-hint-agenda">Tap + on a day to log time. Tap an entry to edit it.</span></p>
+      <p class="muted tiny cal-hint"><span class="cal-hint-grid">Drag across the calendar to log time. Click an entry to edit it.</span><span class="cal-hint-agenda">Tap + to log time, tap an entry to edit.</span></p>
       ${workspaceEmpty(db) ? `<div class="cal-first-run">
         ${icon("info")}
         <p class="md-label-large"><strong>New here?</strong> Load fictional sample data to explore the calendar.</p>

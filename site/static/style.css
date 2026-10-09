@@ -965,11 +965,13 @@ main.page-invoices { max-width: 760px; }
    area — compact it so the day list gets substantially more room. Desktop
    is untouched. */
 @media (max-width: 839px) {
-  .cal-supporting { gap: 8px; margin: 6px 0 8px; }
+  .cal-supporting { gap: 6px; margin: 4px 0 6px; }
   .cal-supporting .week-nav h1 { font-size: 1.25rem; line-height: 28px; }
   .cal-supporting .cal-summary .md-headline-small { font-size: 1.25rem; line-height: 28px; }
-  .cal-supporting .nudge-chip { padding: 6px 12px; }
-  .cal-supporting .cal-hint { display: none; }
+  .cal-supporting .nudge-chip { padding: 4px 10px; font-size: 0.8125rem; }
+  .cal-supporting .m3-progress { gap: 8px; }
+  .cal-supporting .week-clients { gap: 4px 12px; font-size: 0.8125rem; }
+  .cal-supporting .cal-hint { font-size: 0.6875rem; line-height: 16px; }
 }
 /* #542: the week-over-week delta's trend icon rides the muted label baseline
    at label size — the same 14px treatment the Stripe paid chip's icon gets. */
