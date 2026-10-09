@@ -586,7 +586,6 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       <form method="post" action="/invoices/${inv.id}/payment-proof" enctype="multipart/form-data" class="proof-upload">
         <label class="proof-file-label" for="proof-file-${inv.id}">Choose file</label>
         <input id="proof-file-${inv.id}" class="proof-file-input" type="file" name="proof" accept="image/png,image/jpeg,image/gif,image/webp,application/pdf" required>
-        <button class="md-tonal-button" type="submit">${icon("add")}<span>Attach proof</span></button>
       </form>
       <p class="proof-hint muted">PNG, JPEG, GIF, WebP or PDF, up to 10 MB. Optional — cash payments have no file.</p>
       <script>(function(){
@@ -598,8 +597,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
           var t = ev.target;
           if (!t || t.type !== "file" || !t.classList || !t.classList.contains("proof-file-input")) return;
           var form = t.closest("form");
-          var label = form ? form.querySelector(".proof-file-label") : null;
-          if (label) label.textContent = (t.files && t.files[0]) ? t.files[0].name : "Choose file";
+          if (t.files && t.files[0] && form) form.submit();
         });
       })();</script>
     </section>`;
