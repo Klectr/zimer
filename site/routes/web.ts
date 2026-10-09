@@ -19,6 +19,7 @@ import { updateSectionHtml, checkForUpdates, updateStatusHtml } from "../lib/upd
 import { THEMES, themeCss, themeKey } from "../lib/theme.ts"; /* #884 */
 import type { AccountsDb } from "../lib/accounts.ts"; /* #732 */
 import { findTenantByPublicToken } from "../lib/tenants.ts"; /* #741 */
+import { countProofs, deleteProof, getProof, insertProof, listProofs, sanitizeFilename, validateProofFile } from "../lib/payment_proofs.ts"; /* #956 */
 
 /* #733: everything derived from one tenant's SQLite bundle. Resolved per
    request from the session (session → user → tenant tree, cached by user
@@ -956,6 +957,43 @@ export function createWebRouter(deps: WebDeps) {
             return new Response(null, { status: 302, headers: { Location: `/invoices?invoice=${m[1]}` } });
           }
           return new Response(r.error || "Stripe error", { status: r.status || 500 });
+        }
+        /* #956: proof-of-payment attachments — evidence backing paid status.
+           Upload is a plain (non-htmx) multipart form; files are validated
+           server-side (type allowlist + magic bytes + size cap) and stored
+           as BLOBs in the tenant DB. */
+        m = path.match(/^\/invoices\/(\d+)\/payment-proof$/);
+        if (m && method === "POST") {
+          const inv = qInvoice.get(Number(m[1])) as Invoice | null;
+          if (!inv || (inv.status !== "sent" && inv.status !== "paid")) return new Response("Not found.", { status: 404 });
+          let form: FormData;
+          try { form = await req.formData(); } catch { return new Response("Bad upload.", { status: 400 }); }
+          const file = form.get("proof");
+          if (!(file instanceof File) || file.size === 0) return new Response("Choose a file first.", { status: 400 });
+          const bytes = new Uint8Array(await file.arrayBuffer());
+          const err = validateProofFile(bytes, file.type);
+          if (err) return new Response(err, { status: 400 });
+          insertProof(db, inv.id, sanitizeFilename(file.name), file.type, bytes);
+          return new Response(null, { status: 302, headers: { Location: `/invoices?invoice=${inv.id}#proof` } });
+        }
+        m = path.match(/^\/invoices\/(\d+)\/payment-proof\/(\d+)$/);
+        if (m && method === "GET") {
+          const proof = getProof(db, Number(m[1]), Number(m[2]));
+          if (!proof) return html(pages.notFoundPage(authedPage(req, TOKEN)), 404);
+          return new Response(proof.data as unknown as BodyInit, {
+            headers: {
+              "Content-Type": proof.mime,
+              "Content-Length": String(proof.size),
+              "Content-Disposition": `inline; filename="${proof.filename.replace(/"/g, "")}"`,
+              "Cache-Control": "private, max-age=3600",
+            },
+          });
+        }
+        m = path.match(/^\/invoices\/(\d+)\/payment-proof\/(\d+)\/delete$/);
+        if (m && method === "POST") {
+          const inv = qInvoice.get(Number(m[1])) as Invoice | null;
+          if (!inv || !deleteProof(db, inv.id, Number(m[2]))) return new Response("Not found.", { status: 404 });
+          return new Response(null, { status: 302, headers: { Location: `/invoices?invoice=${inv.id}#proof` } });
         }
         m = path.match(/^\/invoices\/(\d+)\/public-token\/regenerate$/);
         if (m && method === "POST") {
