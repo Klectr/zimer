@@ -917,7 +917,25 @@ export function createCalendarViews(deps: CalendarViewDeps) {
         return;
       }
       var entryEl=e.target.closest('.cal-entry,.cal-ag-row');
-      if(entryEl){ openEdit(entryEl); return; }
+      if(entryEl){
+        /* #946: don't open on pointerdown — on touch the finger may be
+           starting a scroll. Wait for pointerup and only open when the
+           pointer stayed within a tap threshold. */
+        var sx=e.clientX, sy=e.clientY, tMoved=false;
+        function tmove(ev){
+          if(Math.abs(ev.clientX-sx)>10||Math.abs(ev.clientY-sy)>10) tMoved=true;
+        }
+        function tdone(){
+          window.removeEventListener('pointermove',tmove);
+          window.removeEventListener('pointerup',tup);
+          window.removeEventListener('pointercancel',tup);
+        }
+        function tup(){ tdone(); if(!tMoved) openEdit(entryEl); }
+        window.addEventListener('pointermove',tmove);
+        window.addEventListener('pointerup',tup);
+        window.addEventListener('pointercancel',tup);
+        return;
+      }
       var col=e.target.closest('.cal-day-col');
       if(!col) return;
       e.preventDefault();
