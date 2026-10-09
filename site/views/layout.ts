@@ -112,6 +112,12 @@ export function createLayoutViews(qRunning: Statement, themeCss?: () => string, 
   ${themeStyle()}
   <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32.png">
   <link rel="apple-touch-icon" href="/static/alien-180.png">
+  <!-- #936: PWA — installable app shell. Manifest + theme color; the service
+       worker (scoped to /static/) makes static assets resilient and satisfies
+       the installability check. Registration is a no-op when unsupported. -->
+  <link rel="manifest" href="/static/manifest.webmanifest">
+  <meta name="theme-color" content="#131318">
+  <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("/static/sw.js").catch(function(){});}</script>
   <script src="/static/motion.js" defer></script>
   <script src="/static/shortcut.js" defer></script>
   <script src="/static/terms.js" defer></script>
