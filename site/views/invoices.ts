@@ -563,6 +563,9 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     const hxDetail = `hx-target="#invoice-detail" hx-swap="outerHTML"`;
     const next = inv.status === "draft" ? "sent" : inv.status === "sent" ? "paid" : null;
     const nextLabel = next === "sent" ? "Mark sent" : next === "paid" ? "Mark paid" : "";
+    const nextConfirm = next === "sent"
+      ? "Mark this zinvoice as sent? Sent zinvoices can't be edited."
+      : next === "paid" ? "Mark this zinvoice as paid?" : "";
     const t = invoiceTotals(inv.items, inv.tax_rate);
     const token = getPublicToken(inv.id);
     const clientLink = token ? `${origin}/i/${token}` : null;
@@ -617,7 +620,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
         <span class="share-url-wrap" data-tip="${esc(clientLink)}"><span class="share-url">${esc(clientLink)}</span></span>
         <span class="share-icons">
           ${copyBtn(clientLink)}
-          ${actBtn(`/invoices/${inv.id}/public-token/regenerate`, "refresh", "Regenerate link (invalidates the old one)", "", "", "Delete", "Regenerate link")}
+          ${actBtn(`/invoices/${inv.id}/public-token/regenerate`, "refresh", "Regenerate link (invalidates the old one)", "", "Regenerate the client link? The old URL will stop working.", "Regenerate", "Regenerate link")}
           ${actBtn(`/invoices/${inv.id}/public-token/revoke`, "delete", "Revoke link", "danger", "Revoke the client link? The current URL will stop working.", "Revoke")}
         </span>
       </div>` : `
@@ -668,7 +671,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
           <a class="md-icon-button tip-right" href="/invoices/${inv.id}.pdf" download data-tip="Download PDF" aria-label="Download PDF">${icon("download")}</a>
           ${next ? `<form method="post" action="/invoices/${inv.id}/status" class="inline" hx-post="/invoices/${inv.id}/status" ${hxDetail}>
             <input type="hidden" name="status" value="${next}">
-            <button class="md-icon-button tip-right" type="submit" data-tip="${nextLabel}" aria-label="${nextLabel}">${icon("check")}</button>
+            <button class="md-icon-button tip-right" type="submit" data-tip="${nextLabel}" aria-label="${nextLabel}" data-confirm="${nextConfirm}" data-confirm-label="${nextLabel}">${icon("check")}</button>
           </form>` : ""}
           ${inv.status === "draft" ? `<form method="post" action="/invoices/${inv.id}/delete" class="inline">
             <button class="md-icon-button danger tip-right" type="submit" data-tip="Delete draft" aria-label="Delete draft" data-confirm="Delete this draft zinvoice? Its entries become unbilled again.">${icon("delete")}</button>

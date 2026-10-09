@@ -203,6 +203,24 @@ describe("paid-on date", () => {
 /** #486: finish the data-tip sweep — the invoice share-section buttons
  *  (copy link, regenerate/revoke) used the OS-native title= tooltip while the
  *  detail header actions already show M3 plain tooltips. */
+describe("#947: destructive invoice actions carry data-confirm", () => {
+  test("Mark sent has a confirm (sent zinvoices can't be edited)", () => {
+    const html = views([]).invoiceDetailBody(detailInv("draft", null) as any, "http://x");
+    expect(html).toContain('data-confirm="Mark this zinvoice as sent? Sent zinvoices can\'t be edited."');
+    expect(html).toContain('data-confirm-label="Mark sent"');
+  });
+  test("Mark paid has a confirm", () => {
+    const html = views([]).invoiceDetailBody(detailInv("sent", null) as any, "http://x");
+    expect(html).toContain('data-confirm="Mark this zinvoice as paid?"');
+    expect(html).toContain('data-confirm-label="Mark paid"');
+  });
+  test("Regenerate link has a confirm (old URL stops working)", () => {
+    const html = views([], { publicToken: "tok_test" }).invoiceDetailBody(detailInv("draft", null) as any, "http://x");
+    expect(html).toContain('data-confirm="Regenerate the client link? The old URL will stop working."');
+    expect(html).toContain('data-confirm-label="Regenerate"');
+  });
+});
+
 describe("share-section tooltips (#486)", () => {
   const html = views([], { publicToken: "tok_test" }).invoiceDetailBody(detailInv("draft", null) as any, "http://x");
   test("copy link uses data-tip, not the native title", () => {
