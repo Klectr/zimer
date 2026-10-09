@@ -31,7 +31,8 @@ CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   email TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
-  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  deleted_at TEXT
 );
 CREATE TABLE IF NOT EXISTS sessions (
   token TEXT PRIMARY KEY,
@@ -42,12 +43,24 @@ CREATE TABLE IF NOT EXISTS sessions (
 CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
 `);
 
+  /* #940: soft-delete column for DBs created before it existed. */
+  const userCols = db.query("PRAGMA table_info(users)").all() as { name: string }[];
+  if (!userCols.some(c => c.name === "deleted_at")) {
+    db.exec("ALTER TABLE users ADD COLUMN deleted_at TEXT");
+  }
+
   const qUserByEmail = db.query(
     "SELECT id, email, created_at FROM users WHERE email = ?"
   );
-  const qHashByEmail = db.query("SELECT password_hash FROM users WHERE email = ?");
+  /* #940: login and session validation ignore soft-deleted users. The
+     unfiltered qUserByEmail stays for signup, so a deleted email can't be
+     re-registered. */
+  const qLiveUserByEmail = db.query(
+    "SELECT id, email, created_at FROM users WHERE email = ? AND deleted_at IS NULL"
+  );
+  const qHashByEmail = db.query("SELECT password_hash FROM users WHERE email = ? AND deleted_at IS NULL");
   const qSession = db.query("SELECT user_id, expires_at FROM sessions WHERE token = ?");
-  const qUserById = db.query("SELECT id, email, created_at FROM users WHERE id = ?");
+  const qUserById = db.query("SELECT id, email, created_at FROM users WHERE id = ? AND deleted_at IS NULL");
 
   const normEmail = (email: string): string => email.trim().toLowerCase();
   const validEmail = (email: string): boolean =>
@@ -84,7 +97,7 @@ CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
     const row = qHashByEmail.get(e) as { password_hash: string } | null;
     const ok = await Bun.password.verify(password, row ? row.password_hash : DUMMY_HASH);
     if (!row || !ok) return { error: "Wrong email or password." };
-    const user = qUserByEmail.get(e) as AccountUser;
+    const user = qLiveUserByEmail.get(e) as AccountUser;
     return { token: createSession(user.id) };
   }
 
