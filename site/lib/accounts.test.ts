@@ -113,4 +113,31 @@ describe("hosted accounts (#732)", () => {
     expect(a.sessionCookie(httpsReq, "abc123")).toContain("; Secure");
     expect(a.clearSessionCookie(httpsReq)).toContain("; Secure");
   });
+
+  test("#940: soft-deleted users cannot log in", async () => {
+    const a = accountsDb();
+    const { user } = await a.signup("gone@example.com", "correct-horse-8");
+    /* Simulate zimer-admin soft-delete. */
+    a.db.query("UPDATE users SET deleted_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?").run(user!.id);
+    const { token, error } = await a.login("gone@example.com", "correct-horse-8");
+    expect(token).toBeUndefined();
+    expect(error).toBe("Wrong email or password.");
+  });
+
+  test("#940: soft-deleted users fail session validation", async () => {
+    const a = accountsDb();
+    const { user } = await a.signup("sess@example.com", "correct-horse-8");
+    const { token } = await a.login("sess@example.com", "correct-horse-8");
+    expect(a.sessionUser(token!)).not.toBeNull();
+    a.db.query("UPDATE users SET deleted_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?").run(user!.id);
+    expect(a.sessionUser(token!)).toBeNull();
+  });
+
+  test("#940: deleted emails cannot be re-registered", async () => {
+    const a = accountsDb();
+    const { user } = await a.signup("taken@example.com", "correct-horse-8");
+    a.db.query("UPDATE users SET deleted_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?").run(user!.id);
+    const { error } = await a.signup("taken@example.com", "another-pass-9");
+    expect(error).toBe("That email can't be used for a new account.");
+  });
 });
