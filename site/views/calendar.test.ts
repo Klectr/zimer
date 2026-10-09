@@ -822,7 +822,7 @@ describe("calendar column rounding (#845, #847, #849)", () => {
     expect(cutter).not.toBeNull();
     expect(cutter![0]).toMatch(/position:\s*sticky/);
     expect(cutter![0]).toMatch(/top:\s*var\(--cal-head-h\)/);
-    expect(cutter![0]).toMatch(/z-index:\s*1/);
+    expect(cutter![0]).toMatch(/z-index:\s*3/);
     expect(cutter![0]).toMatch(/background:\s*var\(--md-sys-color-surface\)/);
     expect(cutter![0]).toMatch(/pointer-events:\s*none/);
     expect(cutter![0]).toMatch(/mask:/);
@@ -840,8 +840,8 @@ describe("calendar column rounding (#845, #847, #849)", () => {
     const css = await Bun.file("site/static/style.css").text();
     const cutter = css.match(/\.cal-day-col::before\s*\{[^}]*\}/);
     expect(cutter).not.toBeNull();
-    expect(cutter![0]).toMatch(/z-index:\s*1/);
-    // night band stays z-auto (below the z-1 cutter, above the lane bg)
+    expect(cutter![0]).toMatch(/z-index:\s*3/);
+    // night band stays z-auto (below the z-3 cutter, above the lane bg)
     const band = css.match(/\.cal-night\s*\{[^}]*\}/);
     expect(band).not.toBeNull();
     expect(band![0]).not.toMatch(/z-index/);

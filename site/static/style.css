@@ -1010,7 +1010,7 @@ body.app-fixed .cal-gutter-spacer {
   content: ""; display: block; flex: none; width: 100%;
   height: var(--md-sys-shape-corner-medium);
   margin-bottom: calc(-1 * var(--md-sys-shape-corner-medium));
-  position: sticky; top: var(--cal-head-h); z-index: 1;
+  position: sticky; top: var(--cal-head-h); z-index: 3;
   background: var(--md-sys-color-surface);
   -webkit-mask:
     radial-gradient(circle var(--md-sys-shape-corner-medium) at 100% 100%, transparent calc(var(--md-sys-shape-corner-medium) - 1px), #000 var(--md-sys-shape-corner-medium)) left top / var(--md-sys-shape-corner-medium) var(--md-sys-shape-corner-medium) no-repeat,
@@ -1046,15 +1046,6 @@ body.app-fixed .cal-gutter-spacer {
 @keyframes cal-day-enter { from { opacity: 0; transform: translateY(12px); } }
 /* #69: header is two lines (weekday + date) — per-day stats moved into an M3 plain tooltip */
 .cal-day-head { position: relative; text-align: center; padding: 10px 4px 8px; min-height: var(--cal-head-h); }
-/* #932: soft fade under the sticky day header — entries sliding underneath
-   dissolve instead of hard-slicing mid-card. Absolute, so it paints over
-   entries (header is z-5, entries z-2); pointer-events none so taps pass
-   through to the lane. */
-body.app-fixed .cal-day-head::after {
-  content: ""; position: absolute; top: 100%; left: 0; right: 0; height: 32px;
-  background: linear-gradient(to bottom, var(--md-sys-color-surface) 20%, transparent);
-  pointer-events: none;
-}
 .cal-day-head[data-tip] { cursor: default; }
 .cal-day-head[data-tip]::after {
   content: attr(data-tip);
