@@ -685,3 +685,20 @@ describe("#899: time breakdown chart on the zinvoices sheet", () => {
     ]);
   });
 });
+
+/** #948: mobile header compaction hooks — the list page-head carries a
+ *  dedicated class for the phone media query, and the Export CSV label is
+ *  wrapped so CSS can swap it for the short "CSV" label on narrow viewports
+ *  (never icon-only, per #949 review). */
+describe("#948: mobile zinvoices header", () => {
+  test("list page-head has the page-head-invoices scoping class", () => {
+    const html = views([{ ...baseRow, status: "sent", paid_at: null }]).invoicesPage(null, "http://x");
+    expect(html).toContain('class="page-head page-head-invoices"');
+  });
+  test("Export CSV label is wrapped in .btn-label with a short mobile label and aria-label", () => {
+    const html = views([{ ...baseRow, status: "sent", paid_at: null }]).invoicesPage(null, "http://x");
+    expect(html).toContain('<span class="btn-label">Export CSV</span>');
+    expect(html).toContain('<span class="btn-label-short">CSV</span>');
+    expect(html).toContain('aria-label="Export CSV"');
+  });
+});

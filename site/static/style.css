@@ -1497,6 +1497,21 @@ body.app-fixed .cal-gutter-spacer {
 .invoice-detail-head { display: flex; align-items: center; gap: 12px; }
 /* #328: "Unbilled time" section head on the invoices page. */
 .unbilled-head { margin: 16px 4px 4px; }
+/* #948: compact the zinvoices header on phones so the invoice list gets
+   more of the viewport: smaller title, short "CSV" label on Export (kept
+   readable per #949 — never icon-only), New zinvoice keeps its full label
+   as the primary action, tighter outstanding/unbilled. */
+.page-head-invoices .page-head-actions .btn-label-short { display: none; }
+@media (max-width: 599px) {
+  .page-head-invoices { margin-bottom: 4px; gap: 8px; }
+  .page-head-invoices h1.md-headline-small { font-size: 1.375rem; line-height: 1.75rem; }
+  .page-head-invoices .page-head-actions .btn-label { display: none; }
+  .page-head-invoices .page-head-actions .btn-label-short { display: inline; }
+  .page-head-invoices .page-head-actions .md-text-button { padding: 0 12px; min-width: 40px; }
+  .page-head-invoices .page-head-actions .md-filled-button { padding: 0 16px; }
+  #inv-outstanding { margin: 8px 0 4px; font-size: 0.875rem; }
+  .unbilled-head { margin: 8px 4px 4px; }
+}
 
 .pill { display: inline-block; padding: 2px 12px; border-radius: var(--md-sys-shape-corner-full);
   font-size: 0.75rem; font-weight: 500; letter-spacing: 0.4px; vertical-align: middle; }
