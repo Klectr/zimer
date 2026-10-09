@@ -1043,3 +1043,13 @@ describe("calendar midnight lane cap (#857)", () => {
     expect(placeNow).toContain("((1440-sm)/60)*HOUR");
   });
 });
+
+describe("mobile week-summary compaction (#945)", () => {
+  test("narrow viewports get a compacted summary so the day list has room", async () => {
+    const css = await Bun.file("site/static/style.css").text();
+    const block = css.match(/@media\s*\(max-width:\s*839px\)\s*\{[^}]*\.cal-supporting[^}]*\}/);
+    expect(block).not.toBeNull();
+    expect(css).toMatch(/@media\s*\(max-width:\s*839px\)[\s\S]*?\.cal-supporting\s*\{[^}]*gap:\s*8px/);
+    expect(css).toMatch(/@media\s*\(max-width:\s*839px\)[\s\S]*?\.cal-supporting\s+\.cal-hint\s*\{[^}]*display:\s*none/);
+  });
+});
