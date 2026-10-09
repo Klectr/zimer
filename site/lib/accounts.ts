@@ -41,13 +41,26 @@ CREATE TABLE IF NOT EXISTS sessions (
 );
 CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
 `);
+  /* Issue #940: zimer-admin soft-deletes users by setting deleted_at (emails
+     are kept for records). Idempotent — reruns on a DB that already has the
+     column are no-ops. */
+  try { db.exec("ALTER TABLE users ADD COLUMN deleted_at TEXT"); }
+  catch { /* column already exists */ }
 
+  /* #940: every lookup that gates access excludes soft-deleted users. */
   const qUserByEmail = db.query(
-    "SELECT id, email, created_at FROM users WHERE email = ?"
+    "SELECT id, email, created_at FROM users WHERE email = ? AND deleted_at IS NULL"
   );
-  const qHashByEmail = db.query("SELECT password_hash FROM users WHERE email = ?");
+  const qHashByEmail = db.query(
+    "SELECT password_hash FROM users WHERE email = ? AND deleted_at IS NULL"
+  );
   const qSession = db.query("SELECT user_id, expires_at FROM sessions WHERE token = ?");
-  const qUserById = db.query("SELECT id, email, created_at FROM users WHERE id = ?");
+  const qUserById = db.query(
+    "SELECT id, email, created_at FROM users WHERE id = ? AND deleted_at IS NULL"
+  );
+  /* Signup's duplicate check is intentionally unfiltered: deleted users'
+     emails stay reserved (UNIQUE on email), so the generic error applies. */
+  const qEmailTaken = db.query("SELECT 1 FROM users WHERE email = ?");
 
   const normEmail = (email: string): string => email.trim().toLowerCase();
   const validEmail = (email: string): boolean =>
@@ -64,7 +77,7 @@ CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
     if (password.length < 8)
       return { error: "Password must be at least 8 characters." };
     /* #913: don't confirm registration — the page already offers "Log in instead". */
-    if (qUserByEmail.get(e)) return { error: "That email can't be used for a new account." };
+    if (qEmailTaken.get(e)) return { error: "That email can't be used for a new account." };
     const password_hash = await Bun.password.hash(password);
     const user = db
       .query(
@@ -108,7 +121,13 @@ CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
       db.query("DELETE FROM sessions WHERE token = ?").run(token);
       return null;
     }
-    return (qUserById.get(s.user_id) as AccountUser | null) ?? null;
+    const user = (qUserById.get(s.user_id) as AccountUser | null) ?? null;
+    if (!user) {
+      /* #940: the user is gone or soft-deleted — drop the orphaned session
+         so it can never authenticate again. */
+      db.query("DELETE FROM sessions WHERE token = ?").run(token);
+    }
+    return user;
   }
 
   function destroySession(token: string): void {

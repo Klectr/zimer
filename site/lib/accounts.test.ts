@@ -81,6 +81,48 @@ describe("hosted accounts (#732)", () => {
     expect(left).toBeNull();
   });
 
+  test("#940: soft-deleted users cannot log in and their sessions die", async () => {
+    const a = accountsDb();
+    const { user } = await a.signup("ada@example.com", "correct-horse-8");
+    const token = a.createSession(user!.id);
+    expect(a.sessionUser(token)!.email).toBe("ada@example.com");
+    /* zimer-admin soft-deletes via deleted_at, keeping the email for records */
+    a.db
+      .query("UPDATE users SET deleted_at = ? WHERE id = ?")
+      .run(new Date().toISOString(), user!.id);
+    const login = await a.login("ada@example.com", "correct-horse-8");
+    expect(login.error).toBe("Wrong email or password.");
+    expect(login.token).toBeUndefined();
+    /* existing sessions stop validating — and the row is cleaned up */
+    expect(a.sessionUser(token)).toBeNull();
+    const left = a.db
+      .query("SELECT token FROM sessions WHERE token = ?")
+      .get(token);
+    expect(left).toBeNull();
+  });
+
+  test("#940: a deleted user's email stays reserved for signup", async () => {
+    const a = accountsDb();
+    const { user } = await a.signup("ada@example.com", "correct-horse-8");
+    a.db
+      .query("UPDATE users SET deleted_at = ? WHERE id = ?")
+      .run(new Date().toISOString(), user!.id);
+    const r = await a.signup("ada@example.com", "another-pass-9");
+    /* #913 generic error — never reveal whether the email is registered */
+    expect(r.error).toBe("That email can't be used for a new account.");
+    expect(r.user).toBeUndefined();
+  });
+
+  test("#940: deleted_at migration is idempotent on reopen", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "tk-acct-"));
+    const first = createAccountsDb(dir);
+    await first.signup("ada@example.com", "correct-horse-8");
+    const second = createAccountsDb(dir);
+    const login = await second.login("ada@example.com", "correct-horse-8");
+    expect(login.error).toBeUndefined();
+    expect(login.token!.length).toBe(64);
+  });
+
   test("sessionUserFromRequest parses the cookie", async () => {
     const a = accountsDb();
     const { user } = await a.signup("ada@example.com", "correct-horse-8");
