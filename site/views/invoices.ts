@@ -128,7 +128,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       <div class="page-head page-head-invoices" data-enter="2">
         <h1 class="md-headline-small">Zinvoices</h1>
         <div class="page-head-actions">
-          ${rows.length ? `<a class="md-text-button" href="/export/invoices.csv" download>${icon("download")}<span class="btn-label">Export CSV</span></a>` : ""}
+          ${rows.length ? `<a class="md-text-button" href="/export/invoices.csv" download aria-label="Export CSV">${icon("download")}<span class="btn-label">Export CSV</span><span class="btn-label-short">CSV</span></a>` : ""}
           <a class="md-filled-button" href="/invoices/new">${icon("add")}New zinvoice</a>
         </div>
       </div>`;
