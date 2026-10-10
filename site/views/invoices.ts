@@ -583,21 +583,37 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       <div class="internal-notes-label">${icon("receipt")} Proof of payment</div>
       ${rows}
       ${nudge}
-      <form method="post" action="/invoices/${inv.id}/payment-proof" enctype="multipart/form-data" class="proof-upload">
+      <form method="post" action="/invoices/${inv.id}/payment-proof" enctype="multipart/form-data" class="proof-upload" data-invoice-id="${inv.id}">
         <label class="proof-file-label" for="proof-file-${inv.id}">Choose file</label>
         <input id="proof-file-${inv.id}" class="proof-file-input" type="file" name="proof" accept="image/png,image/jpeg,image/gif,image/webp,application/pdf" required>
       </form>
       <p class="proof-hint muted">PNG, JPEG, GIF, WebP or PDF, up to 10 MB. Optional — cash payments have no file.</p>
       <script>(function(){
-        /* #956: show the chosen filename on the picker label. Guarded global
-           so htmx re-renders of the detail pane don't stack listeners. */
+        /* Upload proof without full page refresh. Guarded global so htmx
+           re-renders of the detail pane don't stack listeners. */
         if (window.__proofPickerWired) return;
         window.__proofPickerWired = true;
         document.addEventListener("change", function(ev){
           var t = ev.target;
           if (!t || t.type !== "file" || !t.classList || !t.classList.contains("proof-file-input")) return;
           var form = t.closest("form");
-          if (t.files && t.files[0] && form) form.submit();
+          if (!t.files || !t.files[0] || !form) return;
+          var fd = new FormData(form);
+          fetch(form.action, { method: "POST", body: fd, headers: { "X-Proof-Upload": "1" } })
+            .then(function(res){ if (!res.ok) throw new Error("upload failed"); return res.text(); })
+            .then(function(){
+              /* Re-fetch the invoice detail and swap just the proof section */
+              var invId = form.getAttribute("data-invoice-id");
+              return fetch("/invoices?invoice=" + invId, { headers: { "X-Proof-Refresh": "1" } });
+            })
+            .then(function(res){ return res.text(); })
+            .then(function(pageHtml){
+              var doc = new DOMParser().parseFromString(pageHtml, "text/html");
+              var fresh = doc.getElementById("proof");
+              var current = document.getElementById("proof");
+              if (fresh && current) current.outerHTML = fresh.outerHTML;
+            })
+            .catch(function(){ form.submit(); });
         });
       })();</script>
     </section>`;
