@@ -974,6 +974,10 @@ export function createWebRouter(deps: WebDeps) {
           const err = validateProofFile(bytes, file.type);
           if (err) return new Response(err, { status: 400 });
           insertProof(db, inv.id, sanitizeFilename(file.name), file.type, bytes);
+          /* Fetch upload (no-refresh): return 200, client swaps the proof section */
+          if (req.headers.get("X-Proof-Upload")) {
+            return new Response("ok", { status: 200 });
+          }
           return new Response(null, { status: 302, headers: { Location: `/invoices?invoice=${inv.id}#proof` } });
         }
         m = path.match(/^\/invoices\/(\d+)\/payment-proof\/(\d+)$/);
