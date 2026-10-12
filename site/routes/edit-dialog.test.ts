@@ -152,3 +152,40 @@ describe("entry edit dialog routes (#903)", () => {
     expect(row.description).toBe("Deeper work");
   });
 });
+
+/** #964: the edit dialog's form used to carry native method/action alongside
+ * hx-post, so a native-submit fallback posted bare datetimes the server
+ * parsed as UTC, silently shifting times. The form is htmx-only now, and the
+ * server rejects bare datetimes with 400 instead of corrupting them. */
+describe("bare datetimes are rejected (#964)", () => {
+  const BARE = {
+    description: "Deeper work",
+    project_id: "",
+    start_time: "2026-10-07T16:00",
+    end_time: "2026-10-07T17:30",
+  };
+
+  test("htmx POST with a bare start_time is 400 and saves nothing", async () => {
+    const { db, entry, handleWeb } = setup();
+    const res = await postEdit(handleWeb, entry.id, BARE, true);
+    expect(res!.status).toBe(400);
+    const row = db.query("SELECT description, start_time FROM time_entries WHERE id = ?").get(entry.id) as any;
+    expect(row.description).toBe("Deep work");
+    expect(row.start_time).toBe("2026-10-07T14:00:00.000Z");
+  });
+
+  test("non-htmx POST with a bare start_time is 400 too", async () => {
+    const { entry, handleWeb } = setup();
+    const res = await postEdit(handleWeb, entry.id, BARE, false);
+    expect(res!.status).toBe(400);
+  });
+
+  test("dialog form has no native method/action — htmx only", async () => {
+    const { entry, handleWeb } = setup();
+    const res = await getEdit(handleWeb, entry.id, true);
+    const body = await res!.text();
+    expect(body).toContain(`hx-post="/entries/${entry.id}"`);
+    expect(body).not.toContain('method="post"');
+    expect(body).not.toContain('action="/entries/');
+  });
+});

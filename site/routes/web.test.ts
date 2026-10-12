@@ -561,3 +561,27 @@ describe("entry create idempotency (#930)", () => {
     expect(rows.c).toBe(2);
   });
 });
+
+/** #964: bare datetimes parse as UTC — reject them loudly instead of
+ * silently corrupting the entry's times. */
+describe("bare datetime rejection (#964)", () => {
+  test("POST /entries with a bare start_time is 400 and creates nothing", async () => {
+    const { db, handleWeb } = setup();
+    const r = await postEntry(handleWeb, { project_id: "", description: "", start_time: "2026-10-08T09:00", end_time: "" });
+    expect(r!.status).toBe(400);
+    const rows = db.query("SELECT COUNT(*) c FROM time_entries").get() as any;
+    expect(rows.c).toBe(0);
+  });
+
+  test("POST /entries with a bare end_time is 400", async () => {
+    const { handleWeb } = setup();
+    const r = await postEntry(handleWeb, { project_id: "", description: "", start_time: "2026-10-08T09:00:00.000Z", end_time: "2026-10-08T10:00" });
+    expect(r!.status).toBe(400);
+  });
+
+  test("POST /entries with offset datetimes still works", async () => {
+    const { handleWeb } = setup();
+    const r = await postEntry(handleWeb, { project_id: "", description: "", start_time: "2026-10-08T09:00:00-05:00", end_time: "2026-10-08T10:00:00-05:00" });
+    expect(r!.status).toBe(201);
+  });
+});
