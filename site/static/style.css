@@ -1347,6 +1347,50 @@ body.app-fixed .cal-gutter-spacer {
 /* #912: logout is a POST form in the app bar — the form must not disturb the
    icon row's layout. */
 .app-bar-logout { display: inline-flex; margin: 0; }
+/* #949: the hamburger replaces the icon row on compact screens only — the
+   labeled navigation drawer below carries the four actions there. */
+.app-bar-menu-btn { display: none; }
+@media (max-width: 599px) {
+  .app-bar-actions { display: none; }
+  .app-bar-menu-btn { display: inline-flex; }
+}
+/* #949: M3 navigation drawer — scrim mirrors the .cal-scrim fade; the panel
+   slides from the leading edge. Rows are icon + text so every action is
+   self-describing on touch. */
+.nav-drawer-scrim {
+  position: fixed; inset: 0; z-index: 60;
+  background: rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transition: opacity var(--motion-duration-short4) var(--motion-easing-standard);
+}
+.nav-drawer-scrim[hidden] { display: none; }
+.nav-drawer-scrim.open { opacity: 1; }
+.nav-drawer {
+  position: absolute; top: 0; left: 0; bottom: 0;
+  width: min(280px, 85vw);
+  background: var(--md-sys-color-surface-container);
+  border-radius: 0 var(--md-sys-shape-corner-large) var(--md-sys-shape-corner-large) 0;
+  padding: 12px;
+  display: flex; flex-direction: column; gap: 4px;
+  transform: translateX(-100%);
+  transition: transform var(--motion-duration-short4) var(--motion-easing-standard);
+}
+.nav-drawer-scrim.open .nav-drawer { transform: translateX(0); }
+.nav-drawer-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 4px 4px 12px 12px;
+}
+.nav-drawer-row {
+  display: flex; align-items: center; gap: 12px;
+  min-height: 56px; padding: 0 16px 0 12px;
+  border: 0; border-radius: var(--md-sys-shape-corner-full);
+  background: transparent; color: var(--md-sys-color-on-surface);
+  font: inherit; font-size: 0.875rem; text-align: left;
+  text-decoration: none; cursor: pointer; width: 100%;
+}
+.nav-drawer-row:hover { background: var(--md-sys-color-secondary-container); }
+.nav-drawer-row svg { flex: none; }
+.nav-drawer-logout { margin: 0; }
 
 /* ---------------- forms / manage ---------------- */
 .form { display: grid; gap: 16px; max-width: 480px; }
@@ -1991,7 +2035,7 @@ body.app-fixed .cal-gutter-spacer {
 
 /* ---------------- print ---------------- */
 @media print {
-  .md-top-app-bar, .md-nav-rail, .md-bottom-nav, .no-print, .page-head { display: none !important; }
+  .md-top-app-bar, .md-nav-rail, .md-bottom-nav, .nav-drawer-scrim, .no-print, .page-head { display: none !important; }
   .invoice-list-pane { display: none !important; } /* #364: print only the invoice document */
   .invoice-list-detail { display: block; }
   .invoice-detail-pane { overflow: visible; }

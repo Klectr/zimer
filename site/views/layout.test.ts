@@ -156,3 +156,33 @@ describe("PostHog snippet (#928)", () => {
     expect(html).toContain("phc_");
   });
 });
+
+/** #949: on compact screens the icon-only app-bar actions are undiscoverable,
+ *  so a hamburger opens a labeled navigation drawer carrying the same four
+ *  actions as icon+text rows. Desktop keeps the #654 icon row. */
+describe("layout navigation drawer (#949)", () => {
+  test("app bar carries the hamburger and the desktop icon row", () => {
+    const { layout } = createLayoutViews(noRunning);
+    const body = layout("T", "body");
+    expect(body).toContain('id="appbar-menu-btn"');
+    expect(body).toContain('id="appbar-settings-btn"');
+  });
+
+  test("drawer carries all four actions as labeled rows", () => {
+    const { layout } = createLayoutViews(noRunning);
+    const body = layout("T", "body");
+    expect(body).toContain('id="nav-drawer-scrim"');
+    expect(body).toContain('id="drawer-settings-btn"');
+    expect(body).toContain("<span>Settings</span>");
+    expect(body).toContain("<span>Export entries CSV</span>");
+    expect(body).toContain("<span>Download backup</span>");
+    expect(body).toContain("<span>Log out</span>");
+  });
+
+  test("drawer logout is a POST form, like the app bar's", () => {
+    const { layout } = createLayoutViews(noRunning);
+    const body = layout("T", "body");
+    const drawer = body.slice(body.indexOf('id="nav-drawer-scrim"'));
+    expect(drawer).toContain('<form method="POST" action="/logout" class="nav-drawer-logout">');
+  });
+});

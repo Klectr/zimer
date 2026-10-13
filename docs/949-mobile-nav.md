@@ -72,3 +72,23 @@ own follow-up issue rather than in this investigation.
 
 1. Drawer for all four actions, or keep one (e.g. Settings) visible?
 2. Should the drawer also absorb anything else (theme picker lives in settings)?
+
+## Implementation (added to this PR 2026-10-12)
+
+Implemented as proposed, drawer for all four actions:
+
+- `site/lib/icons.ts`: new `menu` icon.
+- `site/views/layout.ts`: hamburger button (`#appbar-menu-btn`) in the app bar;
+  `navDrawer()` renders the drawer as a body child with labeled rows
+  (Settings / Export entries CSV / Download backup / Log out as a POST form).
+  The settings dialog gained the drawer row as a second opener; closing the
+  dialog returns focus to the hamburger when it was opened from the drawer.
+- `site/static/style.css`: below 600px the icon row hides and the hamburger
+  shows; drawer + scrim follow the `.cal-scrim` fade pattern, panel slides
+  from the leading edge; drawer hidden in print.
+- Tests: `site/views/layout.test.ts` covers the hamburger, the labeled rows,
+  and the drawer logout POST form. Full suite passes on this branch.
+- Screenshots in `docs/949-screenshots/` (before: `mobile-timer-topbar.png`,
+  `mobile-calendar-topbar.png`, `desktop-timer-topbar.png`; after:
+  `mobile-after-closed.png`, `mobile-after-drawer-open.png`,
+  `desktop-after.png`).

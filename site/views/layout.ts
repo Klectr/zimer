@@ -150,7 +150,7 @@ export function createLayoutViews(qRunning: Statement, themeCss?: () => string, 
   ${/* #355: the settings scrim is a direct body child — inside the app bar it
        would be trapped in the header's stacking context and paint below the
        bottom navigation bar. The entry edit scrim rides along for the same
-       reason (#903). */ settingsDialog()}${entryDialog()}
+       reason (#903), and so does the #949 navigation drawer. */ navDrawer()}${settingsDialog()}${entryDialog()}
   </body>
   </html>`;
   }
@@ -245,9 +245,14 @@ export function createLayoutViews(qRunning: Statement, themeCss?: () => string, 
     four global actions visible instead of two taps deep. Settings, Export
     entries CSV, Download backup, and Log out are now icon buttons on the
     right side of the top app bar on every page. Tooltips (data-tip) replace
-    the menu's text labels; the settings dialog still opens from the cog. */
+    the menu's text labels; the settings dialog still opens from the cog.
+    #949: on compact screens the icon row gives way to a hamburger that opens
+    the labeled navigation drawer (navDrawer below) — tooltips don't exist on
+    touch, so the four actions get text labels there instead. */
 function appBarActions(): string {
-  return `<div class="app-bar-actions">
+  return `<button class="md-icon-button app-bar-menu-btn" id="appbar-menu-btn" type="button"
+      aria-label="Open menu" aria-haspopup="dialog">${icon("menu")}</button>
+  <div class="app-bar-actions">
     <button class="md-icon-button tip-right" id="appbar-settings-btn" type="button"
       data-tip="Settings" aria-label="Settings">${icon("settings")}</button>
     <a class="md-icon-button tip-right" href="/export/entries.csv" download
@@ -259,6 +264,62 @@ function appBarActions(): string {
         data-tip="Log out" aria-label="Log out">${icon("logout")}</button>
     </form>
   </div>`;
+}
+
+/** #949: M3 navigation drawer for compact screens — the four app-bar actions
+    as labeled icon+text rows, since icon-only buttons are undiscoverable on
+    touch. Rendered as a direct body child (same stacking-context reason as
+    the settings scrim, #355). The Settings row carries its own id; the
+    settings dialog script wires it as a second opener. Desktop never shows
+    the hamburger, so the drawer is unreachable there. */
+function navDrawer(): string {
+  return `<div class="nav-drawer-scrim" id="nav-drawer-scrim" hidden>
+    <nav class="nav-drawer" role="dialog" aria-modal="true" aria-label="Menu">
+      <div class="nav-drawer-head">
+        <span class="md-top-app-bar-title">${logo(34)}</span>
+        <button class="md-icon-button" id="nav-drawer-close" type="button" aria-label="Close menu">${icon("close")}</button>
+      </div>
+      <button class="nav-drawer-row" id="drawer-settings-btn" type="button">${icon("settings")}<span>Settings</span></button>
+      <a class="nav-drawer-row" href="/export/entries.csv" download>${icon("table")}<span>Export entries CSV</span></a>
+      <a class="nav-drawer-row" href="/backup" download>${icon("database")}<span>Download backup</span></a>
+      <form method="POST" action="/logout" class="nav-drawer-logout">
+        <button class="nav-drawer-row" type="submit">${icon("logout")}<span>Log out</span></button>
+      </form>
+    </nav>
+  </div>
+  <script>(function(){
+    var scrim=document.getElementById('nav-drawer-scrim');
+    var btn=document.getElementById('appbar-menu-btn');
+    var closeBtn=document.getElementById('nav-drawer-close');
+    if(!scrim||!btn||!closeBtn) return;
+    var open_=false;
+    function open(){
+      open_=true;
+      scrim.hidden=false; void scrim.offsetWidth; scrim.classList.add('open');
+      document.addEventListener('keydown',onKey,true);
+      closeBtn.focus();
+    }
+    function close(refocus){
+      if(!open_) return; open_=false;
+      scrim.classList.remove('open');
+      document.removeEventListener('keydown',onKey,true);
+      var done=false, finish=function(){ if(done) return; done=true; scrim.hidden=true; };
+      var onEnd=function(e){ if(e.target===scrim&&e.propertyName==='opacity'){ scrim.removeEventListener('transitionend',onEnd); finish(); } };
+      scrim.addEventListener('transitionend',onEnd); setTimeout(finish,300);
+      if(refocus) btn.focus();
+    }
+    function onKey(e){ if(e.key==='Escape'){ e.preventDefault(); close(true); }
+      else if(e.key==='Tab'&&window.tkTrapTab){ window.tkTrapTab(scrim,e); } }
+    scrim.addEventListener('pointerdown',function(e){ if(e.target===scrim) close(false); });
+    closeBtn.addEventListener('click',function(){ close(true); });
+    btn.addEventListener('click',open);
+    /* Any row activation closes the drawer: downloads navigate away or stay
+       (download), logout submits, and Settings hands off to its dialog (its
+       own listener, registered later, opens it after this close runs). */
+    scrim.querySelectorAll('.nav-drawer-row').forEach(function(row){
+      row.addEventListener('click',function(){ close(false); });
+    });
+  })();</script>`;
 }
 
 /** Issue #245: settings modal reached through the account menu button. The shell
@@ -282,8 +343,12 @@ function settingsDialog(): string {
     var body=document.getElementById('settings-body');
     var closeBtn=document.getElementById('settings-close');
     var menuItem=document.getElementById('appbar-settings-btn');
+    /* #949: the drawer Settings row is a second opener; on close, focus goes
+       to the hamburger (the drawer row is hidden again by then). */
+    var drawerItem=document.getElementById('drawer-settings-btn');
+    var menuBtn=document.getElementById('appbar-menu-btn');
     if(!scrim||!body||!closeBtn||!menuItem) return;
-    var open_=false, focusOnSwap=false;
+    var open_=false, focusOnSwap=false, opener=menuItem;
     function open(){
       open_=true;
       scrim.hidden=false; void scrim.offsetWidth; scrim.classList.add('open');
@@ -299,7 +364,7 @@ function settingsDialog(): string {
       var done=false, finish=function(){ if(done) return; done=true; scrim.hidden=true; };
       var onEnd=function(e){ if(e.target===scrim&&e.propertyName==='opacity'){ scrim.removeEventListener('transitionend',onEnd); finish(); } };
       scrim.addEventListener('transitionend',onEnd); setTimeout(finish,300);
-      if(refocus&&menuItem) menuItem.focus();
+      if(refocus){ var t=(opener===drawerItem&&menuBtn)?menuBtn:opener; if(t) t.focus(); }
     }
     /* #456: trap Tab inside the modal while it's open. onKey only runs
        while open (attached on open, detached on close), so no extra open
@@ -313,6 +378,11 @@ function settingsDialog(): string {
     scrim.addEventListener('pointerdown',function(e){ if(e.target===scrim) close(false); });
     closeBtn.addEventListener('click',function(){ close(true); });
     menuItem.addEventListener('click',function(){
+      opener=menuItem;
+      open();
+    });
+    if(drawerItem) drawerItem.addEventListener('click',function(){
+      opener=drawerItem;
       open();
     });
     /* #247: visible save confirmation — the form re-renders silently, so
