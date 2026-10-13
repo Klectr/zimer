@@ -308,6 +308,26 @@ function navDrawer(): string {
       else if(e.key==='Tab'&&window.tkTrapTab){ window.tkTrapTab(scrim,e); } }
     scrim.addEventListener('pointerdown',function(e){ if(e.target===scrim) close(false); });
     btn.addEventListener('click',open);
+    /* The spec's primary touch dismissal: swipe the panel toward the leading
+       edge. The panel follows the pointer; releasing past a third of its
+       width closes, otherwise it springs back. A plain tap never moves it,
+       so row clicks are unaffected. */
+    var panel=scrim.querySelector('.nav-drawer');
+    var dragX=null, dragDx=0;
+    panel.addEventListener('pointerdown',function(e){
+      dragX=e.clientX; dragDx=0; panel.style.transition='none';
+    });
+    window.addEventListener('pointermove',function(e){
+      if(dragX===null) return;
+      dragDx=Math.min(0,e.clientX-dragX);
+      panel.style.transform='translateX('+dragDx+'px)';
+    });
+    window.addEventListener('pointerup',function(){
+      if(dragX===null) return;
+      var past=dragDx<-(panel.offsetWidth/3);
+      dragX=null; panel.style.transition=''; panel.style.transform='';
+      if(past) close(false);
+    });
     /* Any row activation closes the drawer: downloads navigate away or stay
        (download), logout submits, and Settings hands off to its dialog (its
        own listener, registered later, opens it after this close runs). */
