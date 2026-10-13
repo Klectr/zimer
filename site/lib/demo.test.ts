@@ -9,7 +9,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createDb } from "../db.ts";
-import { seedDemoData, demoIds } from "./demo.ts";
+import { seedDemoData, demoIds, demoDrawerRow } from "./demo.ts";
 import { addDays, DEFAULT_PAYMENT_TERMS, shortDateRange, termsDays } from "./format.ts";
 
 describe("demo paid invoice paid_at (#763)", () => {
@@ -33,6 +33,29 @@ function seededDb() {
   seedDemoData(db);
   return db;
 }
+
+/** #949: on compact screens the demo card moves into the navigation drawer —
+ *  demoDrawerRow mirrors the banner's two states. */
+describe("demo drawer row (#949)", () => {
+  test("empty workspace gets the Load demo data row", () => {
+    const db = createDb(mkdtempSync(join(tmpdir(), "tk-demo-"))).db;
+    const row = demoDrawerRow(db);
+    expect(row).toContain('action="/demo/load"');
+    expect(row).toContain("<span>Load demo data</span>");
+  });
+
+  test("seeded demo gets the Remove demo data row", () => {
+    const row = demoDrawerRow(seededDb());
+    expect(row).toContain('action="/demo/reset"');
+    expect(row).toContain("<span>Remove demo data</span>");
+  });
+
+  test("a real workspace gets no demo row", () => {
+    const db = createDb(mkdtempSync(join(tmpdir(), "tk-demo-"))).db;
+    db.query("INSERT INTO clients (name) VALUES ('Real Client')").run();
+    expect(demoDrawerRow(db)).toBe("");
+  });
+});
 
 /** #774: seeded demo due dates follow the default payment terms — the old
  *  hardcoded +15d contradicted the "due within 30 days" terms text the

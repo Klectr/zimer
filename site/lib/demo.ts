@@ -147,3 +147,17 @@ export function demoBanner(db: Database): string {
   </div>`;
   return "";
 }
+
+/** #949: on compact screens the demo card moves into the navigation drawer
+ *  (the in-content banners hide below 600px). Same two states as the banner:
+ *  load when the workspace is empty, remove while demo data is present.
+ *  Rendered as a drawer row by layout() via a thunk. */
+export function demoDrawerRow(db: Database): string {
+  if (demoIds(db)) return `<form method="POST" action="/demo/reset" class="nav-drawer-form nav-drawer-demo">
+    <button class="nav-drawer-row" type="submit">${icon("info")}<span>Remove demo data</span></button>
+  </form>`;
+  if (workspaceEmpty(db)) return `<form method="POST" action="/demo/load" class="nav-drawer-form nav-drawer-demo">
+    <button class="nav-drawer-row" type="submit">${icon("info")}<span>Load demo data</span></button>
+  </form>`;
+  return "";
+}

@@ -23,7 +23,7 @@ import { createDb, getMeta, type DbBundle } from "./db.ts";
 import { resourcePath } from "./lib/paths.ts"; /* #519 */
 import { createRevenue } from "./lib/revenue.ts";
 import { themeCss, themeKey } from "./lib/theme.ts"; /* #884 */
-import { workspaceEmpty, demoIds, seedDemoData, removeDemoData, demoBanner } from "./lib/demo.ts";
+import { workspaceEmpty, demoIds, seedDemoData, removeDemoData, demoBanner, demoDrawerRow } from "./lib/demo.ts";
 import { createDomain, CAL_HOUR_PX, dayTargetSecs } from "./lib/domain.ts";
 import { createLayoutViews, trialBannerHtml, posthogSnippet } from "./views/layout.ts";
 import { createPublicViews } from "./views/public.ts";
@@ -103,7 +103,10 @@ function buildTenantTree(bundle: DbBundle, dbPath: string): WebTenant & ApiTenan
       const host = (process.env.POSTHOG_HOST || "https://us.i.posthog.com").trim().replace(/\/+$/, "");
       const tenantUserId = Number(basename(dbPath, ".db"));
       return posthogSnippet(key, host, Number.isFinite(tenantUserId) ? tenantUserId : null);
-    });
+    },
+    /* #949: the demo card's drawer row — on compact screens the in-content
+       demo banners hide and the load/remove action lives in the drawer. */
+    () => demoDrawerRow(db));
 
   const {
     getInvoice, invoiceTotals, nextInvoiceNumber, stripeLinkFor,

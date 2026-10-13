@@ -1343,6 +1343,60 @@ body.app-fixed .cal-gutter-spacer {
 /* #912: logout is a POST form in the app bar — the form must not disturb the
    icon row's layout. */
 .app-bar-logout { display: inline-flex; margin: 0; }
+/* #949: the hamburger replaces the icon row on compact screens only — the
+   labeled navigation drawer below carries the four actions there. */
+.app-bar-menu-btn { display: none; }
+@media (max-width: 599px) {
+  .app-bar-actions { display: none; }
+  .app-bar-menu-btn { display: inline-flex; }
+}
+/* #949: M3 modal navigation drawer, per the official spec measurements:
+   360dp container on surface-container-low, 0/16/16/0 corners, 32% scrim,
+   56dp full-round rows (label-large, on-surface-variant; the indicator sits
+   12dp from the container edge and content 28dp). Dismissal is scrim tap or
+   Escape — the spec has no close button. */
+.nav-drawer-scrim {
+  position: fixed; inset: 0; z-index: 60;
+  background: rgba(0, 0, 0, 0.32);
+  opacity: 0;
+  transition: opacity var(--motion-duration-short4) var(--motion-easing-standard);
+}
+.nav-drawer-scrim[hidden] { display: none; }
+.nav-drawer-scrim.open { opacity: 1; }
+.nav-drawer {
+  position: absolute; top: 0; left: 0; bottom: 0;
+  touch-action: pan-y; /* horizontal drags reach the swipe-to-close handler */
+  width: min(360px, 100vw);
+  background: var(--md-sys-color-surface-container-low);
+  border-radius: 0 var(--md-sys-shape-corner-large) var(--md-sys-shape-corner-large) 0;
+  padding: 12px;
+  display: flex; flex-direction: column;
+  transform: translateX(-100%);
+  transition: transform var(--motion-duration-short4) var(--motion-easing-standard);
+}
+.nav-drawer-scrim.open .nav-drawer { transform: translateX(0); }
+.nav-drawer-head {
+  padding: 12px 16px 16px;
+  font-size: 0.875rem; font-weight: 500;
+  color: var(--md-sys-color-on-surface-variant);
+}
+.nav-drawer-row {
+  display: flex; align-items: center; gap: 12px;
+  min-height: 56px; padding: 0 16px;
+  border: 0; border-radius: var(--md-sys-shape-corner-full);
+  background: transparent; color: var(--md-sys-color-on-surface-variant);
+  font: inherit; font-size: 0.875rem; font-weight: 500; text-align: left;
+  text-decoration: none; cursor: pointer; width: 100%;
+}
+.nav-drawer-row:hover, .nav-drawer-row:focus-visible {
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+.nav-drawer-row svg { flex: none; }
+.nav-drawer-logout { margin: 0; }
+.nav-drawer-form { margin: 0; }
+/* #949: the demo row is a separate group — separated by space, not a divider. */
+.nav-drawer-demo { margin-top: 12px; }
 
 /* ---------------- forms / manage ---------------- */
 .form { display: grid; gap: 16px; max-width: 480px; }
@@ -1477,6 +1531,13 @@ body.app-fixed .cal-gutter-spacer {
 .cal-first-run { margin-top: 12px; padding: 12px 14px; border-radius: 12px;
   background: var(--md-sys-color-surface-container); }
 .cal-first-run p { margin: 8px 0; }
+/* #949: below 600px the in-content demo cards hide — the load/remove action
+   lives in the drawer instead (demoDrawerRow). Placed after the base rules
+   above so the display:none wins at equal specificity. */
+@media (max-width: 599px) {
+  .demo-banner, .cal-first-run { display: none; }
+  .empty-state form[action="/demo/load"] { display: none; }
+}
 
 /* #353: content-driven thresholds, not M3 window size classes. Main's extra
    bottom padding keeps the fixed snackbar from covering trailing content on
@@ -2003,7 +2064,7 @@ body.app-fixed .cal-gutter-spacer {
 
 /* ---------------- print ---------------- */
 @media print {
-  .md-top-app-bar, .md-nav-rail, .md-bottom-nav, .no-print, .page-head { display: none !important; }
+  .md-top-app-bar, .md-nav-rail, .md-bottom-nav, .nav-drawer-scrim, .no-print, .page-head { display: none !important; }
   .invoice-list-pane { display: none !important; } /* #364: print only the invoice document */
   .invoice-list-detail { display: block; }
   .invoice-detail-pane { overflow: visible; }
