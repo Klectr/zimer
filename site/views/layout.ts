@@ -73,7 +73,7 @@ export function trialBannerHtml(opts: {
   })();</script>`;
 }
 
-export function createLayoutViews(qRunning: Statement, themeCss?: () => string, trialBanner?: () => string, posthogHead?: () => string) {
+export function createLayoutViews(qRunning: Statement, themeCss?: () => string, trialBanner?: () => string, posthogHead?: () => string, demoRow?: () => string) {
   /* #884: per-user accent theme — the override lands after style.css so it
      wins over the :root defaults. Always rendered (with the default theme's
      values when unset) so a theme POST can live-swap it via OOB by id. */
@@ -150,7 +150,7 @@ export function createLayoutViews(qRunning: Statement, themeCss?: () => string, 
   ${/* #355: the settings scrim is a direct body child — inside the app bar it
        would be trapped in the header's stacking context and paint below the
        bottom navigation bar. The entry edit scrim rides along for the same
-       reason (#903), and so does the #949 navigation drawer. */ navDrawer()}${settingsDialog()}${entryDialog()}
+       reason (#903), and so does the #949 navigation drawer. */ navDrawer(demoRow ? demoRow() : "")}${settingsDialog()}${entryDialog()}
   </body>
   </html>`;
   }
@@ -272,7 +272,7 @@ function appBarActions(): string {
     the settings scrim, #355). The Settings row carries its own id; the
     settings dialog script wires it as a second opener. Desktop never shows
     the hamburger, so the drawer is unreachable there. */
-function navDrawer(): string {
+function navDrawer(demoRowHtml: string = ""): string {
   return `<div class="nav-drawer-scrim" id="nav-drawer-scrim" hidden>
     <nav class="nav-drawer" role="dialog" aria-modal="true" aria-label="Menu">
       <div class="nav-drawer-head">Menu</div>
@@ -282,6 +282,7 @@ function navDrawer(): string {
       <form method="POST" action="/logout" class="nav-drawer-logout">
         <button class="nav-drawer-row" type="submit">${icon("logout")}<span>Log out</span></button>
       </form>
+      ${demoRowHtml}
     </nav>
   </div>
   <script>(function(){
