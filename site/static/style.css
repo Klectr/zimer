@@ -236,9 +236,9 @@ body {
 
 /* Body margins follow the M3 window size classes: 16px on compact (<600px),
    24px on medium and wider (via --layout-body-margin). */
-main { max-width: 1000px; margin: 0 auto; padding: 24px var(--layout-body-margin) 96px; }
-main.page-calendar { max-width: 1360px; }
-main.login { max-width: 420px; margin-top: 8vh; }
+/* #966: content spans the full width of the main region — no max-width caps. */
+main { padding: 24px var(--layout-body-margin) 96px; }
+main.login { max-width: 420px; margin: 0 auto; margin-top: 8vh; }
 /* #361: no horizontal inset — headings align with the M3 body-margin ruler. */
 h2.md-headline-small { margin: 24px 0 12px; }
 
@@ -883,9 +883,6 @@ body.app-fixed .md-nav-rail { position: static; height: auto; }
 @media (min-width: 600px) {
   .md-bottom-nav { display: none; }
 }
-/* #320: M3 — a simple list reads best in a narrower centered column, not the
-   full 1000px app container. Matches the public invoice page rhythm. */
-main.page-invoices { max-width: 760px; }
 /* ---------------- invoices list-detail (M3 canonical, #364) ----------------
  * The invoice list → invoice document is a parent-child pairing, so M3
  * expects the list-detail layout: two panes at expanded+, a single pane
@@ -900,7 +897,6 @@ main.page-invoices { max-width: 760px; }
   .invoice-detail-pane { flex: 1; min-width: 0; overflow-y: auto; }
   .invoice-detail-pane .detail-back { display: none; }
   .inv-row.selected { background: var(--md-sys-color-secondary-container); border-radius: 12px; }
-  main.page-invoices { max-width: 1160px; }
 }
 @media (max-width: 839px) {
   .invoice-list-pane, .invoice-detail-pane { flex: 1; min-height: 0; overflow-y: auto; }
@@ -1370,7 +1366,6 @@ body.app-fixed .cal-gutter-spacer {
   .client-detail-pane { flex: 1; min-width: 0; overflow-y: auto; }
   .client-detail-pane .detail-back { display: none; }
   .client-row.selected { background: var(--md-sys-color-secondary-container); border-radius: 12px; }
-  main.page-manage { max-width: 1160px; }
 }
 @media (max-width: 839px) {
   .client-list-pane, .client-detail-pane { flex: 1; min-height: 0; overflow-y: auto; }
