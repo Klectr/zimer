@@ -1691,7 +1691,8 @@ body.app-fixed .cal-gutter-spacer {
 .form-info p { margin: 0; }
 .form-info a { color: var(--md-sys-color-primary); }
 
-.invoice-sheet { max-width: 720px; }
+/* #969: the preview sheet centers in its pane. */
+.invoice-sheet { max-width: 720px; margin: 0 auto; }
 
 /* Public client invoice page: centered sheet, no app chrome. */
 .page-public-invoice { max-width: 800px; margin: 0 auto; padding: 32px 24px 48px; }
