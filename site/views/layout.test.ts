@@ -187,6 +187,15 @@ describe("layout navigation drawer (#949)", () => {
     expect(drawer).not.toContain('id="nav-drawer-close"');
   });
 
+  test("the demo row thunk renders inside the drawer", () => {
+    const { layout } = createLayoutViews(noRunning, undefined, undefined, undefined,
+      () => `<form method="POST" action="/demo/load" class="nav-drawer-form nav-drawer-demo"><button class="nav-drawer-row" type="submit"><span>Load demo data</span></button></form>`);
+    const body = layout("T", "body");
+    const drawer = body.slice(body.indexOf('id="nav-drawer-scrim"'), body.indexOf('id="settings-scrim"'));
+    expect(drawer).toContain('action="/demo/load"');
+    expect(drawer).toContain("<span>Load demo data</span>");
+  });
+
   test("drawer logout is a POST form, like the app bar's", () => {
     const { layout } = createLayoutViews(noRunning);
     const body = layout("T", "body");

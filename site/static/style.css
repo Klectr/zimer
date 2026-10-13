@@ -1398,6 +1398,9 @@ body.app-fixed .cal-gutter-spacer {
 }
 .nav-drawer-row svg { flex: none; }
 .nav-drawer-logout { margin: 0; }
+.nav-drawer-form { margin: 0; }
+/* #949: the demo row is a separate group — separated by space, not a divider. */
+.nav-drawer-demo { margin-top: 12px; }
 
 /* ---------------- forms / manage ---------------- */
 .form { display: grid; gap: 16px; max-width: 480px; }
@@ -1533,6 +1536,13 @@ body.app-fixed .cal-gutter-spacer {
 .cal-first-run { margin-top: 12px; padding: 12px 14px; border-radius: 12px;
   background: var(--md-sys-color-surface-container); }
 .cal-first-run p { margin: 8px 0; }
+/* #949: below 600px the in-content demo cards hide — the load/remove action
+   lives in the drawer instead (demoDrawerRow). Placed after the base rules
+   above so the display:none wins at equal specificity. */
+@media (max-width: 599px) {
+  .demo-banner, .cal-first-run { display: none; }
+  .empty-state form[action="/demo/load"] { display: none; }
+}
 
 /* #353: content-driven thresholds, not M3 window size classes. Main's extra
    bottom padding keeps the fixed snackbar from covering trailing content on
