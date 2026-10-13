@@ -93,11 +93,14 @@ export function createDomain(deps: DomainDeps) {
     return "INV-" + String(r.n).padStart(4, "0");
   }
 
-  /** Create (or regenerate) a Stripe payment link for a sent invoice. */
+  /** Create (or regenerate) a Stripe payment link for a sent invoice.
+      Disabled on hosted instances (#962): the platform key would collect
+      payments meant for the user. Self-hosted only until Stripe Connect. */
   async function stripeLinkFor(id: number): Promise<{ url?: string; error?: string; status?: number }> {
     const inv = qInvoice.get(id) as Invoice | null;
     if (!inv) return { error: "not found", status: 404 };
     if (inv.status !== "sent") return { error: "only sent invoices can collect via Stripe", status: 400 };
+    if (process.env.HOSTED === "1") return { error: "Stripe payments are not available on hosted Zimer yet", status: 503 };
     if (!stripeConfigured()) return { error: "STRIPE_SECRET_KEY not configured", status: 503 };
     const full = getInvoice(id)!;
     const t = invoiceTotals(full.items, full.tax_rate);

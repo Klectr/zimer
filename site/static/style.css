@@ -1954,6 +1954,22 @@ body.app-fixed .cal-gutter-spacer {
 .internal-notes-label { font-size: 0.75rem; letter-spacing: .4px; text-transform: uppercase;
   color: var(--md-sys-color-on-surface-variant); margin-bottom: 6px; }
 .internal-notes p { margin: 0; white-space: pre-wrap; }
+/* #956: proof-of-payment section — app surface only, tonal like internal notes. */
+.payment-proof { margin: 20px 0 0; padding: 14px 16px; border-radius: 12px;
+  background: var(--md-sys-color-surface-container); }
+.payment-proof .internal-notes-label svg { vertical-align: -4px; margin-right: 4px; }
+.proof-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; }
+.proof-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.proof-meta { font-size: 0.85rem; white-space: nowrap; }
+.proof-icons { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+.proof-icons .inline { display: inline; }
+.proof-nudge { margin: 4px 0 10px; }
+.proof-upload { display: flex; align-items: center; gap: 12px; margin-top: 10px; flex-wrap: wrap; }
+.proof-file-label { font-size: 0.9rem; color: var(--md-sys-color-on-surface-variant);
+  padding: 8px 16px; border-radius: 20px; background: var(--md-sys-color-surface-container-high);
+  cursor: pointer; white-space: nowrap; }
+.proof-upload input[type="file"] { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+.proof-hint { margin: 8px 0 0; font-size: 0.8rem; }
 
 /* ---------------- Modern invoice template (#233) ---------------- */
 .template-modern { overflow: hidden; }

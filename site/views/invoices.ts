@@ -9,6 +9,7 @@ import { getMeta } from "../db.ts";
 import { workspaceEmpty } from "../lib/demo.ts"; /* #300: empty-state CTA */
 import type { Invoice, InvoiceItem, NewInvParams } from "../lib/types.ts";
 import type { PdfInvoice } from "../pdf.ts";
+import { listProofs } from "../lib/payment_proofs.ts"; /* #956 */
 
 export interface InvoiceViewDeps {
   db: Database;
@@ -557,12 +558,76 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     };
   }
 
+  /* #956: proof-of-payment attachments — evidence backing paid status.
+     App surface only (never on the public invoice page or print). Upload is
+     optional; a nudge encourages attaching proof when a paid invoice has
+     none. */
+  function paymentProofSection(inv: Invoice): string {
+    if (inv.status !== "sent" && inv.status !== "paid") return "";
+    const proofs = listProofs(db, inv.id);
+    const fmtSize = (n: number) => n < 1024 ? `${n} B` : `${(n / 1024).toFixed(0)} KB`;
+    const rows = proofs.map(p => `
+      <div class="proof-row">
+        <a class="proof-name" href="/invoices/${inv.id}/payment-proof/${p.id}" target="_blank" rel="noopener">${esc(p.filename)}</a>
+        <span class="proof-meta muted">${fmtSize(p.size)} · ${esc(shortYmd(p.created_at.slice(0, 10)))}</span>
+        <span class="proof-icons">
+          <a class="md-icon-button" href="/invoices/${inv.id}/payment-proof/${p.id}" download="${esc(p.filename)}" data-tip="Download" aria-label="Download proof">${icon("download")}</a>
+          <form method="post" action="/invoices/${inv.id}/payment-proof/${p.id}/delete" class="inline">
+            <button class="md-icon-button danger" type="submit" data-tip="Delete proof" aria-label="Delete proof" data-confirm="Delete this proof of payment?">${icon("delete")}</button>
+          </form>
+        </span>
+      </div>`).join("");
+    const nudge = inv.status === "paid" && proofs.length === 0 ? `
+      <p class="proof-nudge muted">No proof attached — add the bank receipt or payment confirmation so this payment stays verifiable.</p>` : "";
+    return `<section class="payment-proof no-print" id="proof" aria-label="Proof of payment">
+      <div class="internal-notes-label">${icon("receipt")} Proof of payment</div>
+      ${rows}
+      ${nudge}
+      <form method="post" action="/invoices/${inv.id}/payment-proof" enctype="multipart/form-data" class="proof-upload" data-invoice-id="${inv.id}">
+        <label class="proof-file-label" for="proof-file-${inv.id}">Choose file</label>
+        <input id="proof-file-${inv.id}" class="proof-file-input" type="file" name="proof" accept="image/png,image/jpeg,image/gif,image/webp,application/pdf" required>
+      </form>
+      <p class="proof-hint muted">PNG, JPEG, GIF, WebP or PDF, up to 10 MB. Optional — cash payments have no file.</p>
+      <script>(function(){
+        /* Upload proof without full page refresh. Guarded global so htmx
+           re-renders of the detail pane don't stack listeners. */
+        if (window.__proofPickerWired) return;
+        window.__proofPickerWired = true;
+        document.addEventListener("change", function(ev){
+          var t = ev.target;
+          if (!t || t.type !== "file" || !t.classList || !t.classList.contains("proof-file-input")) return;
+          var form = t.closest("form");
+          if (!t.files || !t.files[0] || !form) return;
+          var fd = new FormData(form);
+          fetch(form.action, { method: "POST", body: fd, headers: { "X-Proof-Upload": "1" } })
+            .then(function(res){ if (!res.ok) throw new Error("upload failed"); return res.text(); })
+            .then(function(){
+              /* Re-fetch the invoice detail and swap just the proof section */
+              var invId = form.getAttribute("data-invoice-id");
+              return fetch("/invoices?invoice=" + invId, { headers: { "X-Proof-Refresh": "1" } });
+            })
+            .then(function(res){ return res.text(); })
+            .then(function(pageHtml){
+              var doc = new DOMParser().parseFromString(pageHtml, "text/html");
+              var fresh = doc.getElementById("proof");
+              var current = document.getElementById("proof");
+              if (fresh && current) current.outerHTML = fresh.outerHTML;
+            })
+            .catch(function(){ form.submit(); });
+        });
+      })();</script>
+    </section>`;
+  }
+
   /* #71: detail body as a fragment — status/Stripe/link actions swap
      #invoice-detail in place instead of reloading the page. */
   function invoiceDetailBody(inv: Invoice & { items: InvoiceItem[] }, origin: string): string {
     const hxDetail = `hx-target="#invoice-detail" hx-swap="outerHTML"`;
     const next = inv.status === "draft" ? "sent" : inv.status === "sent" ? "paid" : null;
     const nextLabel = next === "sent" ? "Mark sent" : next === "paid" ? "Mark paid" : "";
+    const nextConfirm = next === "sent"
+      ? "Mark this zinvoice as sent? Sent zinvoices can't be edited."
+      : next === "paid" ? "Mark this zinvoice as paid?" : "";
     const t = invoiceTotals(inv.items, inv.tax_rate);
     const token = getPublicToken(inv.id);
     const clientLink = token ? `${origin}/i/${token}` : null;
@@ -617,7 +682,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
         <span class="share-url-wrap" data-tip="${esc(clientLink)}"><span class="share-url">${esc(clientLink)}</span></span>
         <span class="share-icons">
           ${copyBtn(clientLink)}
-          ${actBtn(`/invoices/${inv.id}/public-token/regenerate`, "refresh", "Regenerate link (invalidates the old one)", "", "", "Delete", "Regenerate link")}
+          ${actBtn(`/invoices/${inv.id}/public-token/regenerate`, "refresh", "Regenerate link (invalidates the old one)", "", "Regenerate the client link? The old URL will stop working.", "Regenerate", "Regenerate link")}
           ${actBtn(`/invoices/${inv.id}/public-token/revoke`, "delete", "Revoke link", "danger", "Revoke the client link? The current URL will stop working.", "Revoke")}
         </span>
       </div>` : `
@@ -668,7 +733,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
           <a class="md-icon-button tip-right" href="/invoices/${inv.id}.pdf" download data-tip="Download PDF" aria-label="Download PDF">${icon("download")}</a>
           ${next ? `<form method="post" action="/invoices/${inv.id}/status" class="inline" hx-post="/invoices/${inv.id}/status" ${hxDetail}>
             <input type="hidden" name="status" value="${next}">
-            <button class="md-icon-button tip-right" type="submit" data-tip="${nextLabel}" aria-label="${nextLabel}">${icon("check")}</button>
+            <button class="md-icon-button tip-right" type="submit" data-tip="${nextLabel}" aria-label="${nextLabel}" data-confirm="${nextConfirm}" data-confirm-label="${nextLabel}">${icon("check")}</button>
           </form>` : ""}
           ${inv.status === "draft" ? `<form method="post" action="/invoices/${inv.id}/delete" class="inline">
             <button class="md-icon-button danger tip-right" type="submit" data-tip="Delete draft" aria-label="Delete draft" data-confirm="Delete this draft zinvoice? Its entries become unbilled again.">${icon("delete")}</button>
@@ -678,6 +743,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       ${invoiceDoc(inv)}
       ${internalBlock}
       ${shareLines}
+      ${paymentProofSection(inv)}
       </div>`;
   }
 

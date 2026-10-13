@@ -97,3 +97,12 @@ Implemented as proposed, drawer for all four actions:
   `mobile-calendar-topbar.png`, `desktop-timer-topbar.png`; after:
   `mobile-after-closed.png`, `mobile-after-drawer-open.png`,
   `desktop-after.png`).
+
+## Decision (Triston, 2026-10-12)
+
+Follow the M3 spec: the bottom navigation bar stays on compact screens — it
+is the spec's pattern for 3–5 frequently switched destinations, and Zimer's
+four destinations are switched constantly. The drawer carries only the four
+app-bar actions. Moving destinations into the drawer to reclaim the ~80dp
+bottom strip was considered and rejected: it would make every destination
+switch two taps.
