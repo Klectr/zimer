@@ -1369,6 +1369,7 @@ body.app-fixed .cal-gutter-spacer {
 .nav-drawer-scrim.open { opacity: 1; }
 .nav-drawer {
   position: absolute; top: 0; left: 0; bottom: 0;
+  touch-action: pan-y; /* horizontal drags reach the swipe-to-close handler */
   width: min(360px, 100vw);
   background: var(--md-sys-color-surface-container-low);
   border-radius: 0 var(--md-sys-shape-corner-large) var(--md-sys-shape-corner-large) 0;
