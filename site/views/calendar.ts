@@ -1141,7 +1141,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
         <button class="md-icon-button" data-close-entry type="button" aria-label="Close dialog">${icon("close")}</button>
       </div>
       ${locked ? `<p class="muted md-body-medium">Zinvoiced on ${esc(e.invoice_number || "")} — this time can\u2019t be edited.</p>` : ""}
-      <form method="post" action="/entries/${e.id}" hx-post="/entries/${e.id}" hx-swap="none" class="form" id="edit-entry-form">
+      <form hx-post="/entries/${e.id}" hx-swap="none" class="form" id="edit-entry-form">
         ${editEntryFields(e, dis)}
         <div class="cal-dialog-actions">
           <span class="cal-spacer"></span>
