@@ -84,8 +84,13 @@ Implemented as proposed, drawer for all four actions:
   The settings dialog gained the drawer row as a second opener; closing the
   dialog returns focus to the hamburger when it was opened from the drawer.
 - `site/static/style.css`: below 600px the icon row hides and the hamburger
-  shows; drawer + scrim follow the `.cal-scrim` fade pattern, panel slides
-  from the leading edge; drawer hidden in print.
+  shows; panel slides from the leading edge; drawer hidden in print.
+- Spec alignment (2026-10-12, after reading the official M3 navigation
+  drawer spec): 360dp container on `surface-container-low`, 0/16/16/0
+  corners, 32% scrim, 56dp full-round label-large rows in
+  `on-surface-variant`, a text headline ("Menu") instead of a logo + close
+  button header — dismissal is scrim tap / Escape, per spec. Updated shot:
+  `mobile-spec-drawer-open.png`.
 - Tests: `site/views/layout.test.ts` covers the hamburger, the labeled rows,
   and the drawer logout POST form. Full suite passes on this branch.
 - Screenshots in `docs/949-screenshots/` (before: `mobile-timer-topbar.png`,

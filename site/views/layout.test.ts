@@ -179,6 +179,14 @@ describe("layout navigation drawer (#949)", () => {
     expect(body).toContain("<span>Log out</span>");
   });
 
+  test("drawer header is the spec headline — no close button", () => {
+    const { layout } = createLayoutViews(noRunning);
+    const body = layout("T", "body");
+    const drawer = body.slice(body.indexOf('id="nav-drawer-scrim"'), body.indexOf('id="settings-scrim"'));
+    expect(drawer).toContain('<div class="nav-drawer-head">Menu</div>');
+    expect(drawer).not.toContain('id="nav-drawer-close"');
+  });
+
   test("drawer logout is a POST form, like the app bar's", () => {
     const { layout } = createLayoutViews(noRunning);
     const body = layout("T", "body");

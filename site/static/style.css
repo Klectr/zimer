@@ -1350,12 +1350,14 @@ body.app-fixed .cal-gutter-spacer {
   .app-bar-actions { display: none; }
   .app-bar-menu-btn { display: inline-flex; }
 }
-/* #949: M3 navigation drawer — scrim mirrors the .cal-scrim fade; the panel
-   slides from the leading edge. Rows are icon + text so every action is
-   self-describing on touch. */
+/* #949: M3 modal navigation drawer, per the official spec measurements:
+   360dp container on surface-container-low, 0/16/16/0 corners, 32% scrim,
+   56dp full-round rows (label-large, on-surface-variant; the indicator sits
+   12dp from the container edge and content 28dp). Dismissal is scrim tap or
+   Escape — the spec has no close button. */
 .nav-drawer-scrim {
   position: fixed; inset: 0; z-index: 60;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.32);
   opacity: 0;
   transition: opacity var(--motion-duration-short4) var(--motion-easing-standard);
 }
@@ -1363,28 +1365,32 @@ body.app-fixed .cal-gutter-spacer {
 .nav-drawer-scrim.open { opacity: 1; }
 .nav-drawer {
   position: absolute; top: 0; left: 0; bottom: 0;
-  width: min(280px, 85vw);
-  background: var(--md-sys-color-surface-container);
+  width: min(360px, 100vw);
+  background: var(--md-sys-color-surface-container-low);
   border-radius: 0 var(--md-sys-shape-corner-large) var(--md-sys-shape-corner-large) 0;
   padding: 12px;
-  display: flex; flex-direction: column; gap: 4px;
+  display: flex; flex-direction: column;
   transform: translateX(-100%);
   transition: transform var(--motion-duration-short4) var(--motion-easing-standard);
 }
 .nav-drawer-scrim.open .nav-drawer { transform: translateX(0); }
 .nav-drawer-head {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 4px 4px 12px 12px;
+  padding: 12px 16px 16px;
+  font-size: 0.875rem; font-weight: 500;
+  color: var(--md-sys-color-on-surface-variant);
 }
 .nav-drawer-row {
   display: flex; align-items: center; gap: 12px;
-  min-height: 56px; padding: 0 16px 0 12px;
+  min-height: 56px; padding: 0 16px;
   border: 0; border-radius: var(--md-sys-shape-corner-full);
-  background: transparent; color: var(--md-sys-color-on-surface);
-  font: inherit; font-size: 0.875rem; text-align: left;
+  background: transparent; color: var(--md-sys-color-on-surface-variant);
+  font: inherit; font-size: 0.875rem; font-weight: 500; text-align: left;
   text-decoration: none; cursor: pointer; width: 100%;
 }
-.nav-drawer-row:hover { background: var(--md-sys-color-secondary-container); }
+.nav-drawer-row:hover, .nav-drawer-row:focus-visible {
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
 .nav-drawer-row svg { flex: none; }
 .nav-drawer-logout { margin: 0; }
 

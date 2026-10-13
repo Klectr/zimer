@@ -275,10 +275,7 @@ function appBarActions(): string {
 function navDrawer(): string {
   return `<div class="nav-drawer-scrim" id="nav-drawer-scrim" hidden>
     <nav class="nav-drawer" role="dialog" aria-modal="true" aria-label="Menu">
-      <div class="nav-drawer-head">
-        <span class="md-top-app-bar-title">${logo(34)}</span>
-        <button class="md-icon-button" id="nav-drawer-close" type="button" aria-label="Close menu">${icon("close")}</button>
-      </div>
+      <div class="nav-drawer-head">Menu</div>
       <button class="nav-drawer-row" id="drawer-settings-btn" type="button">${icon("settings")}<span>Settings</span></button>
       <a class="nav-drawer-row" href="/export/entries.csv" download>${icon("table")}<span>Export entries CSV</span></a>
       <a class="nav-drawer-row" href="/backup" download>${icon("database")}<span>Download backup</span></a>
@@ -290,14 +287,13 @@ function navDrawer(): string {
   <script>(function(){
     var scrim=document.getElementById('nav-drawer-scrim');
     var btn=document.getElementById('appbar-menu-btn');
-    var closeBtn=document.getElementById('nav-drawer-close');
-    if(!scrim||!btn||!closeBtn) return;
+    if(!scrim||!btn) return;
     var open_=false;
     function open(){
       open_=true;
       scrim.hidden=false; void scrim.offsetWidth; scrim.classList.add('open');
       document.addEventListener('keydown',onKey,true);
-      closeBtn.focus();
+      var first=scrim.querySelector('.nav-drawer-row'); if(first) first.focus();
     }
     function close(refocus){
       if(!open_) return; open_=false;
@@ -311,7 +307,6 @@ function navDrawer(): string {
     function onKey(e){ if(e.key==='Escape'){ e.preventDefault(); close(true); }
       else if(e.key==='Tab'&&window.tkTrapTab){ window.tkTrapTab(scrim,e); } }
     scrim.addEventListener('pointerdown',function(e){ if(e.target===scrim) close(false); });
-    closeBtn.addEventListener('click',function(){ close(true); });
     btn.addEventListener('click',open);
     /* Any row activation closes the drawer: downloads navigate away or stay
        (download), logout submits, and Settings hands off to its dialog (its
