@@ -10,6 +10,8 @@ export const ICONS: Record<string, string> = {
   check: `<path d="M5 12.5l4.5 4.5L19 7.5"/>`,
   card: `<rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10.5h18"/><path d="M6.5 14.5h4"/>`,
   add: `<path d="M12 5v14M5 12h14"/>`,
+  /* #949: hamburger for the compact navigation drawer. */
+  menu: `<path d="M4 7h16M4 12h16M4 17h16"/>`,
   chevron_left: `<path d="M14.5 6l-6 6 6 6"/>`,
   chevron_right: `<path d="M9.5 6l6 6-6 6"/>`,
   arrow_left: `<path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/>`,
