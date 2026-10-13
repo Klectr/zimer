@@ -454,7 +454,12 @@ export function createWebRouter(deps: WebDeps) {
             const endRaw = String(form.get("end_time") || "");
             const pid = form.get("project_id") ? Number(form.get("project_id")) : null;
             const desc = String(form.get("description") || "");
-            const startIso = new Date(String(form.get("start_time"))).toISOString();
+            const startRaw = String(form.get("start_time"));
+            /* #964: bare datetimes parse as UTC — reject them loudly instead
+               of silently corrupting the entry's times. */
+            if (!/(Z|[+-]\d{2}:?\d{2})$/.test(startRaw) || (endRaw && !/(Z|[+-]\d{2}:?\d{2})$/.test(endRaw)))
+              return new Response("start_time/end_time must include a timezone offset", { status: 400 });
+            const startIso = new Date(startRaw).toISOString();
             const endIso = endRaw ? new Date(endRaw).toISOString() : null;
             /* #930: idempotent against rapid re-submits (double-tap on save) —
                an identical entry created seconds ago is returned, not duplicated. */
@@ -492,11 +497,16 @@ export function createWebRouter(deps: WebDeps) {
           const form = await req.formData();
           const endRaw = String(form.get("end_time") || "");
           const pid = form.get("project_id");
+          const startRaw = String(form.get("start_time"));
+          /* #964: bare datetimes parse as UTC — reject them loudly instead
+             of silently corrupting the entry's times. */
+          if (!/(Z|[+-]\d{2}:?\d{2})$/.test(startRaw) || (endRaw && !/(Z|[+-]\d{2}:?\d{2})$/.test(endRaw)))
+            return new Response("start_time/end_time must include a timezone offset", { status: 400 });
           db.query("UPDATE time_entries SET description = ?, project_id = ?, start_time = ?, end_time = ? WHERE id = ?")
             .run(
               String(form.get("description") || ""),
               pid ? Number(pid) : null,
-              new Date(String(form.get("start_time"))).toISOString(),
+              new Date(startRaw).toISOString(),
               endRaw ? new Date(endRaw).toISOString() : null,
               id);
           return isHtmx(req)
