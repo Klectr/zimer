@@ -1181,11 +1181,15 @@ export function createCalendarViews(deps: CalendarViewDeps) {
         var els=form.querySelectorAll('input[type=datetime-local][data-iso]');
         for(var i=0;i<els.length;i++){var iso=els[i].getAttribute("data-iso");if(iso)els[i].value=toLocalInput(iso);}
         /* htmx posts the form — rewrite the datetime params with the client
-           tz offset before htmx gathers them (same suffix rule as the page). */
+           tz offset before htmx gathers them (same suffix rule as the page).
+           #975: assign unconditionally — detail.parameters is a Proxy over
+           FormData with no has trap, so an in-membership check is always
+           false and the suffix silently never landed (bare datetimes then
+           hit the #964 400 guard and the dialog could not save at all). */
         form.addEventListener("htmx:configRequest",function(ev){
           var o=-new Date().getTimezoneOffset(),s=o<0?"-":"+",a=Math.abs(o);
           var suf=s+p2(Math.floor(a/60))+":"+p2(a%60);
-          for(var j=0;j<els.length;j++){if(els[j].value&&els[j].name in ev.detail.parameters){
+          for(var j=0;j<els.length;j++){if(els[j].value){
             ev.detail.parameters[els[j].name]=els[j].value+suf;}}
         });
       })();</script>`;
