@@ -189,3 +189,19 @@ describe("bare datetimes are rejected (#964)", () => {
     expect(body).not.toContain('action="/entries/');
   });
 });
+
+/** #975: the dialog's htmx:configRequest handler appended the tz suffix only
+ *  when `els[j].name in ev.detail.parameters` — but htmx 2.0.4's parameters
+ *  is a Proxy over FormData with no `has` trap, so the check was always
+ *  false, the suffix never landed, and every dialog save hit the #964 400.
+ *  The handler must assign unconditionally (the proxy's set trap writes
+ *  through to the FormData). */
+describe("dialog tz-suffix handler shape (#975)", () => {
+  test("configRequest handler assigns parameters without an `in` guard", async () => {
+    const { entry, handleWeb } = setup();
+    const res = await getEdit(handleWeb, entry.id, true);
+    const body = await res!.text();
+    expect(body).toContain("ev.detail.parameters[els[j].name]=els[j].value+suf;");
+    expect(body).not.toContain("in ev.detail.parameters");
+  });
+});
