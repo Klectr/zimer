@@ -141,7 +141,21 @@ describe("PostHog snippet (#928)", () => {
     expect(html).toContain('ph.identify("42")');
     expect(html).toContain("autocapture: false");
     expect(html).toContain("capture_pageview: false");
+    expect(html).toContain("request_batching: false");
+    expect(html).toContain('defaults: "2026-05-30"');
+    expect(html).toContain('localStorage.getItem("zimer_utm")');
+    expect(html).toContain('localStorage.removeItem("zimer_utm")');
+    expect(html).toContain('ph.capture("$set", { $set_once: u.p })');
     expect(html).toContain("/static/analytics.js");
+  });
+
+  test("#981: utm stash script reads the utm params and stores them", async () => {
+    const src = await Bun.file("site/static/utm.js").text();
+    for (const k of ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"])
+      expect(src).toContain(`"${k}"`);
+    expect(src).toContain('localStorage.setItem("zimer_utm"');
+    expect(src).toContain("Date.now()");
+    expect(src).toContain("URLSearchParams");
   });
 
   test("snippet omits identify when userId is null", () => {

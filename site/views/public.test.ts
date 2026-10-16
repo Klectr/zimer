@@ -32,6 +32,11 @@ describe("auth labels (#827)", () => {
       expect(html).toContain(`<label for="${id}">`);
     }
   });
+
+  test("#981: auth pages load the utm stash script", () => {
+    expect(views.signupPage()).toContain("/static/utm.js");
+    expect(views.hostedLoginPage()).toContain("/static/utm.js");
+  });
 });
 
 /** #924: OG + Twitter card tags on public pages. */
