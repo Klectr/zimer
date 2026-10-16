@@ -100,7 +100,6 @@ export function createLandingViews() {
   <li>${icon("check")}<span>Browser extension included</span></li>
   <li>${icon("check")}<span>Back up by copying one file</span></li>
   </ul>
-  <a class="md-text-button landing-cta-btn" href="https://github.com/tristonarmstrong/zimer" target="_blank" rel="noopener">View on GitHub</a>
   </article>
   </div>
   </section>
