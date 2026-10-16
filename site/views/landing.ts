@@ -30,6 +30,7 @@ export function createLandingViews() {
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:image" content="${origin}/static/og-image.png">
   <script src="/static/motion.js" defer></script>
+  <script src="/static/utm.js" defer></script>
   </head>
   <body>
   <main class="page-landing">
