@@ -189,7 +189,8 @@ export function createPublicViews(deps: PublicViewDeps) {
   <title>${title} · Zimer</title>
   <link rel="stylesheet" href="/static/style.css">
   <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
-  <script src="/static/motion.js" defer></script></head>
+  <script src="/static/motion.js" defer></script>
+  <script src="/static/utm.js" defer></script></head>
   <body><main class="login">
   <div class="md-card" style="border-radius:28px;padding:28px">
   <h1 class="md-headline-small" style="margin-top:0;display:flex;align-items:center;gap:12px">${logo(32)}<span>Zimer</span></h1>
