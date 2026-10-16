@@ -23,9 +23,10 @@ export function posthogSnippet(key: string, host: string, userId: number | null)
 posthog.init(${jsStr(key)}, {
   api_host: ${jsStr(host)},
   defaults: "2026-05-30",
+  request_batching: false,
   autocapture: false,
   capture_pageview: false,
-  loaded: function(ph) { ${userId !== null ? `ph.identify(${jsStr(String(userId))});` : ""} },
+  loaded: function(ph) { ${userId !== null ? `ph.identify(${jsStr(String(userId))}); try { var u = JSON.parse(localStorage.getItem("zimer_utm") || "null"); if (u) { localStorage.removeItem("zimer_utm"); if (u.p && Date.now() - (u.t || 0) < 2592000000) ph.capture("$set", { $set_once: u.p }); } } catch (e) {}` : ""} },
 });
 </script>`;
 }

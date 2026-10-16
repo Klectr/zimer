@@ -80,6 +80,7 @@ describe("#731: landing page view", () => {
     expect(page).not.toContain("–");
     expect(page).toContain('content="noindex"');
     expect(page).toContain("/static/style.css");
+    expect(page).toContain("/static/utm.js");
   });
 
   test("#888: self-host plan links the GitHub repo", () => {
