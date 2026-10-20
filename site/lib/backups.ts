@@ -27,7 +27,7 @@ import { join } from "node:path";
 import { tenantDbPath } from "./tenants.ts"; /* #745 */
 
 export const RETENTION_DAYS = 7;
-/** Freshness threshold for /health — matches the hosted-ops.md alert rule. */
+/** Freshness threshold — matches the hosted-ops.md alert rule (24h). */
 export const FRESH_BACKUP_MS = 24 * 3600 * 1000;
 
 export function backupRoot(dataDir: string): string {
@@ -212,8 +212,9 @@ function newestDbMtime(dir: string): number | null {
   return latest;
 }
 
-/** /health freshness snapshot: ISO time of the newest accounts backup (null
- *  when none), and how many tenants have a backup newer than FRESH_BACKUP_MS. */
+/** Freshness snapshot: ISO time of the newest accounts backup (null when
+ *  none), and how many tenants have a backup newer than FRESH_BACKUP_MS.
+ *  #989: no longer served on public /health (ok only) — internal use. */
 export function backupFreshness(dataDir: string): {
   accounts: string | null;
   tenants: number;

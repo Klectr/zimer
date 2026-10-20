@@ -5,7 +5,7 @@
 
 import { join, normalize, sep } from "node:path";
 import type { Database, Statement } from "bun:sqlite";
-import { addDays, csvCell, entryIsLocked, esc, isPaymentTermsKey, round2, termsDays, termsKey, todayStr } from "../lib/format.ts";
+import { addDays, clientColor, csvCell, entryIsLocked, esc, isPaymentTermsKey, round2, termsDays, termsKey, todayStr } from "../lib/format.ts";
 import type { Entry, Invoice, InvoiceItem } from "../lib/types.ts";
 import type { ClientSel } from "../views/manage.ts"; /* #367 */
 import type { PdfInvoice } from "../pdf.ts";
@@ -14,12 +14,11 @@ import { clientIp, originMatches, secureCookieAttr } from "../lib/http.ts";
 import { createRateLimiter } from "../lib/ratelimit.ts";
 import { loadChangelog } from "../lib/changelog.ts"; /* #303 */
 import { licenseTerms } from "../lib/license-terms.ts"; /* #341 */
-import { appVersion } from "../lib/version.ts"; /* #730 */
 import { updateSectionHtml, checkForUpdates, updateStatusHtml } from "../lib/updates.ts"; /* #340 */
 import { THEMES, themeCss, themeKey } from "../lib/theme.ts"; /* #884 */
 import type { AccountsDb } from "../lib/accounts.ts"; /* #732 */
 import { findTenantByPublicToken } from "../lib/tenants.ts"; /* #741 */
-import { countProofs, deleteProof, getProof, insertProof, listProofs, sanitizeFilename, validateProofFile } from "../lib/payment_proofs.ts"; /* #956 */
+import { countProofs, deleteProof, getProof, insertProof, listProofs, sanitizeFilename, validateProofFile, PROOF_MAX_BYTES, PROOF_MAX_PER_INVOICE } from "../lib/payment_proofs.ts"; /* #956 */
 
 /* #733: everything derived from one tenant's SQLite bundle. Resolved per
    request from the session (session → user → tenant tree, cached by user
@@ -106,7 +105,7 @@ export interface WebDeps {
   hostedLoginPage: (error?: string) => string; /* #732 */
   HOSTED: boolean; /* #732 */
   accounts: AccountsDb | null; /* #732 */
-  backupHealth: (() => { accounts: string | null; tenants: number }) | null; /* #730 part 2 */
+
   changelogPage: (entries: import("../lib/changelog.ts").ChangelogEntry[], origin: string) => string;
   termsPage: (sections: import("../lib/license-terms.ts").TermsSection[]) => string; /* #341 */
   privacyPage: () => string; /* #730 */
@@ -137,7 +136,7 @@ export interface WebDeps {
 export function createWebRouter(deps: WebDeps) {
   const {
     getTenant, STATIC_DIR, TOKEN, authedPage, tokensEqual, html, json, csvResponse, isHtmx,
-    shareOrigin, PORT, loginPage, signupPage, hostedLoginPage, HOSTED, accounts, backupHealth,
+    shareOrigin, PORT, loginPage, signupPage, hostedLoginPage, HOSTED, accounts,
     changelogPage, termsPage, privacyPage, noSuchInvoicePage, rateLimitPage,
     notFoundPage: publicNotFound, errorPage: publicError,
     invoicePdf, stripeConfigured,
@@ -288,14 +287,10 @@ export function createWebRouter(deps: WebDeps) {
            limit — monitoring services hit this every few minutes, and it
            must answer even when the app is otherwise idle. */
         if (path === "/health" && method === "GET") {
-          return json({
-            ok: true,
-            version: appVersion(),
-            /* #730 part 2: backup freshness, hosted mode only. `accounts` is
-               the ISO time of the newest accounts.db backup (null when none);
-               `tenants` counts tenants whose newest backup is under 24h old. */
-            ...(backupHealth ? { backups: backupHealth() } : {}),
-          });
+          /* #989: ok only — version, backup timestamps, and tenant counts
+             are reconnaissance, and freshness enumeration cost a directory
+             scan per hit. backupFreshness() remains for internal use. */
+          return json({ ok: true });
         }
 
         /* #341: public terms page — no auth, same rate limit as the public
@@ -685,7 +680,7 @@ export function createWebRouter(deps: WebDeps) {
         if (path === "/clients" && method === "POST") {
           const form = await req.formData();
           const r = db.query("INSERT INTO clients (name, color, rate) VALUES (?, ?, ?) RETURNING id")
-            .get(String(form.get("name")), String(form.get("color") || "#fb923c"),
+            .get(String(form.get("name")), clientColor(form.get("color")),
                  Number(form.get("rate") || 0)) as any;
           /* #367: plain POST (see the add-client form) — land on the new
              client selected, on every width. */
@@ -976,13 +971,25 @@ export function createWebRouter(deps: WebDeps) {
         if (m && method === "POST") {
           const inv = qInvoice.get(Number(m[1])) as Invoice | null;
           if (!inv || (inv.status !== "sent" && inv.status !== "paid")) return new Response("Not found.", { status: 404 });
+          /* #985: count cap first — reject before the body is even parsed. */
+          if (countProofs(db, inv.id) >= PROOF_MAX_PER_INVOICE)
+            return new Response(`This invoice already has the maximum of ${PROOF_MAX_PER_INVOICE} payment proofs. Delete one before adding another.`, { status: 400 });
           let form: FormData;
           try { form = await req.formData(); } catch { return new Response("Bad upload.", { status: 400 }); }
           const file = form.get("proof");
           if (!(file instanceof File) || file.size === 0) return new Response("Choose a file first.", { status: 400 });
+          /* #985: reject oversize from the declared size before buffering. */
+          if (file.size > PROOF_MAX_BYTES)
+            return new Response(`The file is too large (max ${PROOF_MAX_BYTES / 1024 / 1024} MB).`, { status: 400 });
           const bytes = new Uint8Array(await file.arrayBuffer());
           const err = validateProofFile(bytes, file.type);
           if (err) return new Response(err, { status: 400 });
+          /* #985: re-checked synchronously at insert — the pre-parse check
+             alone races under concurrent uploads (every in-flight request
+             reads the same pre-cap count across the awaits above). No await
+             between this check and the insert, so it is atomic. */
+          if (countProofs(db, inv.id) >= PROOF_MAX_PER_INVOICE)
+            return new Response(`This invoice already has the maximum of ${PROOF_MAX_PER_INVOICE} payment proofs. Delete one before adding another.`, { status: 400 });
           insertProof(db, inv.id, sanitizeFilename(file.name), file.type, bytes);
           /* Fetch upload (no-refresh): return 200, client swaps the proof section */
           if (req.headers.get("X-Proof-Upload")) {

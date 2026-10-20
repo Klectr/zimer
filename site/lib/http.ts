@@ -116,9 +116,10 @@ export function clientIp(req: Request): string {
  *  proxies that strip the header) — SameSite=Lax cookies still cover the
  *  modern-browser POST path on top of this. The host is read through the same
  *  validated forwarded-host path publicOrigin() uses, so the check holds
- *  behind the nginx proxy. /api/* stays exempt: Bearer tokens aren't ambient
- *  credentials, so there's nothing to forge, and the extension calls it
- *  cross-origin. */
+ *  behind the nginx proxy. Bearer-token API calls stay exempt: tokens aren't
+ *  ambient credentials, so there's nothing to forge, and the extension calls
+ *  it cross-origin. #984: API calls authenticated by the session cookie ARE
+ *  ambient, so api.ts applies this same check to cookie-authed mutations. */
 export function originMatches(req: Request): boolean {
   const origin = req.headers.get("origin")?.trim() || req.headers.get("referer")?.trim();
   if (!origin) return true; /* nothing to judge */

@@ -56,22 +56,23 @@ export function verifyWebhookSignature(
   secret: string
 ): boolean {
   if (!header || !secret) return false;
-  const parts: Record<string, string> = {};
+  let t: string | undefined;
+  const v1s: string[] = [];
   for (const p of header.split(",")) {
     const i = p.indexOf("=");
-    if (i > 0) parts[p.slice(0, i).trim()] = p.slice(i + 1).trim();
+    if (i <= 0) continue;
+    const k = p.slice(0, i).trim();
+    /* #988: during a secret rotation Stripe sends several v1 signatures —
+       keep them all and accept a match against any, like Stripe's own libs. */
+    if (k === "t") t = p.slice(i + 1).trim();
+    else if (k === "v1") v1s.push(p.slice(i + 1).trim());
   }
-  const t = parts["t"];
-  const v1 = parts["v1"];
-  if (!t || !v1) return false;
+  if (!t || v1s.length === 0) return false;
   const ts = Number(t);
   if (!Number.isFinite(ts) || Math.abs(Date.now() / 1000 - ts) > 300) return false;
   const expected = createHmac("sha256", secret).update(`${t}.${payload}`).digest();
-  let actual: Buffer;
-  try {
-    actual = Buffer.from(v1, "hex");
-  } catch {
-    return false;
-  }
-  return expected.length === actual.length && timingSafeEqual(expected, actual);
+  return v1s.some((v1) => {
+    const actual = Buffer.from(v1, "hex");
+    return expected.length === actual.length && timingSafeEqual(expected, actual);
+  });
 }

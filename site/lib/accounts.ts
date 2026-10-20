@@ -5,7 +5,7 @@
  *  path never touches this module. */
 
 import { Database } from "bun:sqlite";
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { join } from "node:path";
 import { secureCookieAttr } from "./http.ts";
 
@@ -49,6 +49,22 @@ CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
     db.exec("ALTER TABLE users ADD COLUMN deleted_at TEXT");
   }
 
+  /* #986: session tokens are stored as SHA-256 hashes, never verbatim —
+     a leaked accounts.db copy must not be a session-takeover kit. One-time
+     migration for sessions written by older versions, guarded by
+     user_version so later boots skip it. */
+  const hashSessionToken = (t: string): string =>
+    createHash("sha256").update(t).digest("hex");
+  const uv = db.query("PRAGMA user_version").get() as { user_version: number };
+  if (uv.user_version < 1) {
+    db.transaction(() => {
+      const rows = db.query("SELECT token FROM sessions").all() as { token: string }[];
+      const upd = db.query("UPDATE sessions SET token = ? WHERE token = ?");
+      for (const r of rows) upd.run(hashSessionToken(r.token), r.token);
+      db.exec("PRAGMA user_version = 1");
+    })();
+  }
+
   const qUserByEmail = db.query(
     "SELECT id, email, created_at FROM users WHERE email = ?"
   );
@@ -76,15 +92,26 @@ CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
     if (!validEmail(e)) return { error: "Enter a valid email address." };
     if (password.length < 8)
       return { error: "Password must be at least 8 characters." };
-    /* #913: don't confirm registration — the page already offers "Log in instead". */
-    if (qUserByEmail.get(e)) return { error: "That email can't be used for a new account." };
+    /* #913: never confirm registration. The existence check alone would
+       enumerate accounts by message AND by timing (fresh emails pay the
+       argon2 cost, registered ones used to answer instantly) — so hash on
+       both paths and give the duplicate case the generic failure. */
+    const exists = !!qUserByEmail.get(e);
     const password_hash = await Bun.password.hash(password);
-    const user = db
-      .query(
-        "INSERT INTO users (email, password_hash) VALUES (?, ?) RETURNING id, email, created_at"
-      )
-      .get(e, password_hash) as AccountUser;
-    return { user };
+    if (exists) return { error: "Couldn't create your account. If you already have one, log in instead." };
+    try {
+      const user = db
+        .query(
+          "INSERT INTO users (email, password_hash) VALUES (?, ?) RETURNING id, email, created_at"
+        )
+        .get(e, password_hash) as AccountUser;
+      return { user };
+    } catch {
+      /* #913: a concurrent signup for the same fresh email passed the
+         check above too — the UNIQUE constraint is the real guard, and
+         its loser gets the same generic failure, never a 500. */
+      return { error: "Couldn't create your account. If you already have one, log in instead." };
+    }
   }
 
   /** Verify credentials and mint a session token. Generic error either way —
@@ -101,12 +128,13 @@ CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
     return { token: createSession(user.id) };
   }
 
-  /** Mint a session token for a user id. */
+  /** Mint a session token for a user id. The raw token goes to the cookie;
+   *  #986: only its SHA-256 hash is stored. */
   function createSession(userId: number): string {
     const token = randomBytes(32).toString("hex");
     const expires_at = new Date(Date.now() + SESSION_MAX_AGE_SEC * 1000).toISOString();
     db.query("INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)").run(
-      token,
+      hashSessionToken(token),
       userId,
       expires_at
     );
@@ -115,17 +143,18 @@ CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
 
   /** Look up the user for a session token. Expired sessions are dropped. */
   function sessionUser(token: string): AccountUser | null {
-    const s = qSession.get(token) as { user_id: number; expires_at: string } | null;
+    const h = hashSessionToken(token);
+    const s = qSession.get(h) as { user_id: number; expires_at: string } | null;
     if (!s) return null;
     if (s.expires_at <= new Date().toISOString()) {
-      db.query("DELETE FROM sessions WHERE token = ?").run(token);
+      db.query("DELETE FROM sessions WHERE token = ?").run(h);
       return null;
     }
     return (qUserById.get(s.user_id) as AccountUser | null) ?? null;
   }
 
   function destroySession(token: string): void {
-    db.query("DELETE FROM sessions WHERE token = ?").run(token);
+    db.query("DELETE FROM sessions WHERE token = ?").run(hashSessionToken(token));
   }
 
   /** Extract the session token from a request's cookies. */
