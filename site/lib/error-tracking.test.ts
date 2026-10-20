@@ -35,7 +35,7 @@ describe("captureException", () => {
     expect(calls).toHaveLength(0);
   });
 
-  test("with a key -> one $exception POST in the SDK shape", () => {
+  test("with a key -> one $exception POST in PostHog's documented schema", () => {
     process.env.POSTHOG_KEY = "phc_test";
     delete process.env.POSTHOG_HOST;
     const calls = stubFetch();
@@ -47,12 +47,24 @@ describe("captureException", () => {
     expect(body.api_key).toBe("phc_test");
     expect(body.event).toBe("$exception");
     expect(body.distinct_id).toBe("zimer-server");
-    expect(body.properties.$exception_type).toBe("TypeError");
-    expect(body.properties.$exception_message).toBe("cannot read properties of undefined");
-    expect(body.properties.$exception_stack_trace_raw).toContain("TypeError");
+    /* The manual-install schema: $exception_list[0] = { type, value,
+       stacktrace: { type: "raw", frames[] } }. Asserted against the docs,
+       not against whatever the implementation happens to emit. */
     expect(body.properties.$exception_list).toHaveLength(1);
-    expect(body.properties.$exception_list[0].type).toBe("TypeError");
-    expect(body.properties.$exception_list[0].stack_trace.type).toBe("raw");
+    const item = body.properties.$exception_list[0];
+    expect(item.type).toBe("TypeError");
+    expect(item.value).toBe("cannot read properties of undefined");
+    expect(item.stacktrace.type).toBe("raw");
+    expect(Array.isArray(item.stacktrace.frames)).toBe(true);
+    expect(item.stacktrace.frames.length).toBeGreaterThan(0);
+    const frame = item.stacktrace.frames[0];
+    expect(frame.platform).toBe("custom");
+    expect(frame.lang).toBe("javascript");
+    expect(typeof frame.function).toBe("string");
+    expect(frame.filename).toContain("error-tracking.test");
+    expect(frame.lineno).toBeGreaterThan(0);
+    expect(frame.colno).toBeGreaterThan(0);
+    expect(body.properties.$process_person_profile).toBe(false);
   });
 
   test("non-Error input is coerced, extra properties ride along", () => {
@@ -68,5 +80,13 @@ describe("captureException", () => {
     process.env.POSTHOG_KEY = "phc_test";
     stubFetch(true);
     expect(() => captureException(new Error("boom"))).not.toThrow();
+  });
+
+  test("hostile thrown values cannot make the reporter throw", () => {
+    process.env.POSTHOG_KEY = "phc_test";
+    stubFetch();
+    expect(() => captureException(Object.create(null))).not.toThrow();
+    const evil = { toString() { throw new Error("evil toString"); } };
+    expect(() => captureException(evil)).not.toThrow();
   });
 });

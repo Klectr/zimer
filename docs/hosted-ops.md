@@ -23,8 +23,9 @@ Exceptions land in PostHog's Error tracking: browser errors via the
 snippet's exception autocapture (attached to the session replay), and
 unhandled server errors via the Bun.serve error handler POSTing an
 $exception event (distinct id `zimer-server`). Both are gated on
-POSTHOG_KEY, so they exist only where analytics does. Triage there, not
-in server logs.
+POSTHOG_KEY, so they exist only where analytics does. Server errors are
+also still logged to stderr; triage in PostHog, where the issue groups
+them and carries the stack.
 
 ## External uptime monitoring
 

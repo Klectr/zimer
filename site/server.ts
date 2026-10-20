@@ -258,9 +258,12 @@ Bun.serve({
       ?? html((getTenant(req)?.notFoundPage ?? publicNotFound)(authedPage(req, TOKEN)), 404);
     return secureResponse(res, req); /* #910: security headers on every response */
   },
-  /* #1023: unhandled route errors land in PostHog error tracking (no-op
-     without POSTHOG_KEY); the client still gets the plain 500 it gets today. */
+  /* #1023: unhandled route errors are logged (a custom error handler
+     silences Bun's own logging) and reported to PostHog error tracking
+     (no-op without POSTHOG_KEY); the client gets a plain 500 with no
+     internals — Bun's default page leaks stack + source outside prod. */
   error(err) {
+    console.error(err);
     captureException(err);
     return new Response("Internal Server Error", { status: 500 });
   },
