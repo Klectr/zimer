@@ -15,8 +15,9 @@ import { TRIAL_NUDGE_DAYS, trialDaysLeft, type Billing } from "../lib/billing.ts
  *  analytics.js. The user is identified by stable account ID (never email);
  *  posthog.reset() fires on logout so the next browser user doesn't inherit
  *  the identity. #998: landing mode flips pageview + autocapture on so ad
- *  arrivals and CTA clicks are visible, with session recording disabled
- *  and no person profiles for anonymous visitors. */
+ *  arrivals and CTA clicks are visible, with no person profiles for
+ *  anonymous visitors. #1001: session recording is enabled in landing
+ *  mode (owner decision) so landing visits produce replays. */
 export function posthogSnippet(key: string, host: string, userId: number | null, opts?: { landing?: boolean }): string {
   const landing = opts?.landing === true;
   /* JSON.stringify alone doesn't neutralize </script> inside the key — escape
@@ -30,7 +31,7 @@ posthog.init(${jsStr(key)}, {
   request_batching: false,
   autocapture: ${landing},
   capture_pageview: ${landing},
-${landing ? `  disable_session_recording: true,
+${landing ? `  disable_session_recording: false,
   person_profiles: "identified_only",
 ` : ""}  loaded: function(ph) { ${userId !== null ? `ph.identify(${jsStr(String(userId))}); try { var u = JSON.parse(localStorage.getItem("zimer_utm") || "null"); if (u) { localStorage.removeItem("zimer_utm"); if (u.p && Date.now() - (u.t || 0) < 2592000000) ph.capture("$set", { $set_once: u.p }); } } catch (e) {}` : ""} },
 });
