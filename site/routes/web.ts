@@ -989,6 +989,12 @@ export function createWebRouter(deps: WebDeps) {
           const bytes = new Uint8Array(await file.arrayBuffer());
           const err = validateProofFile(bytes, file.type);
           if (err) return new Response(err, { status: 400 });
+          /* #985: re-checked synchronously at insert — the pre-parse check
+             alone races under concurrent uploads (every in-flight request
+             reads the same pre-cap count across the awaits above). No await
+             between this check and the insert, so it is atomic. */
+          if (countProofs(db, inv.id) >= PROOF_MAX_PER_INVOICE)
+            return new Response(`This invoice already has the maximum of ${PROOF_MAX_PER_INVOICE} payment proofs. Delete one before adding another.`, { status: 400 });
           insertProof(db, inv.id, sanitizeFilename(file.name), file.type, bytes);
           /* Fetch upload (no-refresh): return 200, client swaps the proof section */
           if (req.headers.get("X-Proof-Upload")) {
