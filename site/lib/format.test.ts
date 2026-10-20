@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { csvCell, fmtDur, schemeColor, shortDateRange, shortDateRangeYear, shortYmd } from "./format.ts";
+import { clientColor, csvCell, fmtDur, schemeColor, shortDateRange, shortDateRangeYear, shortYmd } from "./format.ts";
 
 /* #914: CSV formula injection — cells starting with =, +, - or @ (after
    leading whitespace) get a single-quote prefix so Excel/Sheets open them
@@ -91,5 +91,21 @@ describe("schemeColor", () => {
   test("nullish colors pass through for call-site fallbacks", () => {
     expect(schemeColor(null)).toBeNull();
     expect(schemeColor(undefined)).toBeUndefined();
+  });
+});
+
+describe("clientColor (#990)", () => {
+  test("plain #rrggbb values pass through", () => {
+    expect(clientColor("#fb923c")).toBe("#fb923c");
+    expect(clientColor("#7CC4FF")).toBe("#7CC4FF");
+    expect(clientColor("  #b39ddb ")).toBe("#b39ddb");
+  });
+  test("anything else falls back to the brand default", () => {
+    expect(clientColor("#fff;position:fixed;inset:0")).toBe("#fb923c");
+    expect(clientColor("red")).toBe("#fb923c");
+    expect(clientColor("#fff")).toBe("#fb923c");
+    expect(clientColor("")).toBe("#fb923c");
+    expect(clientColor(null)).toBe("#fb923c");
+    expect(clientColor(undefined)).toBe("#fb923c");
   });
 });
