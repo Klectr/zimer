@@ -4,6 +4,7 @@
  *  stays within the shipped offer: $12/month, 14-day free trial. */
 import { describe, expect, test } from "bun:test";
 import { createLandingViews } from "../views/landing.ts";
+import { posthogSnippet } from "../views/layout.ts";
 import { createLandingRouter } from "./landing.ts";
 import { html } from "../lib/http.ts";
 
@@ -81,5 +82,13 @@ describe("#731: landing page view", () => {
     expect(page).toContain('content="noindex"');
     expect(page).toContain("/static/style.css");
     expect(page).toContain("/static/utm.js");
+  });
+
+  test("#998: analytics head renders only when the thunk supplies it", () => {
+    const bare = createLandingViews().landingPage("https://example.com");
+    expect(bare).not.toContain("posthog");
+    const wired = createLandingViews(() => posthogSnippet("phc_test123", "https://us.i.posthog.com", null, { landing: true })).landingPage("https://example.com");
+    expect(wired).toContain("phc_test123");
+    expect(wired).toContain("capture_pageview: true");
   });
 });
