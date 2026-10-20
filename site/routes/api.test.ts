@@ -127,6 +127,11 @@ describe("#984: CSRF guard on cookie-authed API mutations", () => {
     const res = await patchWith({ origin: "https://evil.klectr.dev", authorization: "Bearer test-token" });
     expect(res.status).toBe(200);
   });
+
+  test("an invalid Bearer does not buy an exemption (cookie path still guarded)", async () => {
+    const res = await patchWith({ origin: "https://evil.klectr.dev", authorization: "Bearer wrong-token" });
+    expect(res.status).toBe(403);
+  });
 });
 
 describe("PATCH /api/invoices/:id paid_at", () => {

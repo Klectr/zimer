@@ -77,7 +77,7 @@ function billingWallPage(sub: Subscription | null): string {
     ? "Your last payment didn't go through, so Zimer is paused until billing is current."
     : "Your 14-day trial has ended, so Zimer is paused until you subscribe.";
   const cta = failed || sub?.stripe_customer_id
-    ? `<form method="POST" action="/billing/portal"><button class="md-filled-button" type="submit">Manage billing</button></form>`
+    ? `<form method="POST" action="/billing/portal" style="margin:0"><button class="md-filled-button" type="submit">Manage billing</button></form>`
     : `<form method="POST" action="/billing/checkout" style="margin:0">
          <button class="md-filled-button" type="submit">Subscribe · $12/month</button>
        </form>`;
