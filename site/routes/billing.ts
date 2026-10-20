@@ -4,7 +4,7 @@
  *
  *  - POST /billing/checkout (authed, HOSTED only): Stripe Checkout Session
  *    in subscription mode with a 14-day trial → 303 to Stripe.
- *  - GET /billing/portal (authed, HOSTED only): customer portal session
+ *  - POST /billing/portal (authed, HOSTED only): customer portal session
  *    (self-serve card update / cancel) → 303 to Stripe.
  *  - POST /billing/webhook: Stripe-signed, no auth. Updates the
  *    subscriptions table; signature verified before any DB access.
@@ -77,7 +77,7 @@ function billingWallPage(sub: Subscription | null): string {
     ? "Your last payment didn't go through, so Zimer is paused until billing is current."
     : "Your 14-day trial has ended, so Zimer is paused until you subscribe.";
   const cta = failed || sub?.stripe_customer_id
-    ? `<a class="md-filled-button" href="/billing/portal">Manage billing</a>`
+    ? `<form method="POST" action="/billing/portal"><button class="md-filled-button" type="submit">Manage billing</button></form>`
     : `<form method="POST" action="/billing/checkout" style="margin:0">
          <button class="md-filled-button" type="submit">Subscribe · $12/month</button>
        </form>`;
@@ -189,7 +189,10 @@ export function createBillingRouter(deps: BillingDeps) {
       }
     }
 
-    if (path === "/billing/portal" && method === "GET") {
+    if (path === "/billing/portal" && method === "POST") {
+      /* #984: minting a portal session is a state change — POST + the #912
+         origin check, never a bare link a cross-site page can trigger. */
+      if (!originMatches(req)) return json({ error: "cross-site request blocked" }, 403);
       const sub = billing.getSubscriptionStatus(user.id);
       if (!sub?.stripe_customer_id) {
         return json({ error: "No subscription yet — check out first." }, 409);

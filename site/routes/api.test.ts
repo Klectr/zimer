@@ -71,6 +71,64 @@ function setup() {
   return { patchStatus, paidAt, status };
 }
 
+describe("#984: CSRF guard on cookie-authed API mutations", () => {
+  async function patchWith(headers: Record<string, string>) {
+    const { handleApi } = createApiRouter({
+      getTenant: () => setupTenantOnly(),
+      TOKEN: "test-token",
+      authedApi: () => true,
+      json: (data: unknown, status = 200) => Response.json(data, { status }),
+      entryToJson: (e: any) => e,
+      verifyWebhookSignature: () => false,
+      shareOrigin: () => "",
+    });
+    const req = new Request("http://localhost/api/invoices/1", {
+      method: "PATCH",
+      headers: { "content-type": "application/json", ...headers },
+      body: JSON.stringify({ status: "paid" }),
+    });
+    return (await handleApi(req, new URL(req.url), "/api/invoices/1", "PATCH"))!;
+  }
+  function setupTenantOnly() {
+    const db = new BunDatabase(":memory:");
+    db.exec(`CREATE TABLE invoices (id INTEGER PRIMARY KEY, status TEXT NOT NULL DEFAULT 'draft', paid_at TEXT)`);
+    db.query("INSERT INTO invoices (id, status) VALUES (1, 'sent')").run();
+    return {
+      db,
+      qRunning: stubStatement(), qOne: stubStatement(), qRange: stubStatement(),
+      qInvoice: { get: (id: number) => db.query("SELECT id, status FROM invoices WHERE id = ?").get(id) } as unknown as Statement,
+      qInvoices: stubStatement(),
+      groupToLineItems: () => [], unbilledEntries: () => [],
+      getInvoice: (id: number) => ({ id, items: [], tax_rate: 0 }) as any,
+      invoiceTotals: () => ({ subtotal: 0, tax: 0, total: 0 }),
+      nextInvoiceNumber: () => "INV-0001", mintPublicToken: () => "tok",
+      stripeLinkFor: async () => ({}),
+      revenueTotals: () => null, revenueMonthly: () => [], revenueByClient: () => [], revenueOverdue: () => [],
+      freezeInvoiceSnapshots: () => {},
+    } as any;
+  }
+
+  test("cookie-authed mutation with a foreign Origin -> 403", async () => {
+    const res = await patchWith({ origin: "https://evil.klectr.dev" });
+    expect(res.status).toBe(403);
+  });
+
+  test("cookie-authed mutation with a matching Origin -> passes", async () => {
+    const res = await patchWith({ origin: "http://localhost", host: "localhost" });
+    expect(res.status).toBe(200);
+  });
+
+  test("cookie-authed mutation with no Origin -> passes (nothing to judge)", async () => {
+    const res = await patchWith({});
+    expect(res.status).toBe(200);
+  });
+
+  test("Bearer-authed mutation with a foreign Origin -> exempt, passes", async () => {
+    const res = await patchWith({ origin: "https://evil.klectr.dev", authorization: "Bearer test-token" });
+    expect(res.status).toBe(200);
+  });
+});
+
 describe("PATCH /api/invoices/:id paid_at", () => {
   test("marking paid stamps paid_at with today's date", async () => {
     const { patchStatus, paidAt, status } = setup();
