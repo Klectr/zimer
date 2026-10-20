@@ -108,7 +108,8 @@ describe("#736: billing wall page + subscription gate", () => {
     expect(res.status).toBe(200);
     const body = await res.text();
     expect(body).toContain("Payment failed");
-    expect(body).toContain('href="/billing/portal"');
+    expect(body).toContain('action="/billing/portal"');
+    expect(body).toContain('method="POST"');
   });
 
   test("expired trial, no subscription row -> 'Your trial ended' + subscribe", async () => {
@@ -184,10 +185,10 @@ describe("#736: billing wall page + subscription gate", () => {
     const { user, cookie } = await authedCookie(accounts);
     billing!.upsertFromStripeEvent(subEventFor(user.id, "past_due", -10));
     const req = new Request("http://localhost/billing/portal", {
-      method: "GET",
+      method: "POST",
       headers: { cookie },
     });
-    const res = (await handleBilling(req, new URL(req.url), "/billing/portal", "GET"))!;
+    const res = (await handleBilling(req, new URL(req.url), "/billing/portal", "POST"))!;
     expect(res.status).toBe(303);
     expect(res.headers.get("location")).toBe("https://billing.stripe.com/p/bps_1");
   });
@@ -373,11 +374,33 @@ describe("#728: billing routes", () => {
     const { accounts, handleBilling } = setup();
     const { cookie } = await authedCookie(accounts);
     const req = new Request("http://localhost/billing/portal", {
+      method: "POST",
+      headers: { cookie },
+    });
+    const res = (await handleBilling(req, new URL(req.url), "/billing/portal", "POST"))!;
+    expect(res.status).toBe(409);
+  });
+
+  test("#984: GET /billing/portal is no longer a route", async () => {
+    const { accounts, handleBilling } = setup();
+    const { cookie } = await authedCookie(accounts);
+    const req = new Request("http://localhost/billing/portal", {
       method: "GET",
       headers: { cookie },
     });
     const res = (await handleBilling(req, new URL(req.url), "/billing/portal", "GET"))!;
-    expect(res.status).toBe(409);
+    expect(res.status).toBe(404);
+  });
+
+  test("#984: portal POST with a mismatched Origin is rejected with 403", async () => {
+    const { accounts, handleBilling } = setup();
+    const { cookie } = await authedCookie(accounts);
+    const req = new Request("http://localhost/billing/portal", {
+      method: "POST",
+      headers: { cookie, origin: "https://evil.example.com" },
+    });
+    const res = (await handleBilling(req, new URL(req.url), "/billing/portal", "POST"))!;
+    expect(res.status).toBe(403);
   });
 
   test("portal with a customer -> 303 to the portal URL", async () => {
@@ -397,10 +420,10 @@ describe("#728: billing routes", () => {
       },
     });
     const req = new Request("http://localhost/billing/portal", {
-      method: "GET",
+      method: "POST",
       headers: { cookie },
     });
-    const res = (await handleBilling(req, new URL(req.url), "/billing/portal", "GET"))!;
+    const res = (await handleBilling(req, new URL(req.url), "/billing/portal", "POST"))!;
     expect(res.status).toBe(303);
     expect(res.headers.get("location")).toBe("https://billing.stripe.com/p/bps_1");
     const params = new URLSearchParams(lastStripeCall!.body);

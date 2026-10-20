@@ -6,6 +6,8 @@ import type { Database, Statement } from "bun:sqlite";
 import { entryIsLocked, round2, todayStr } from "../lib/format.ts";
 import type { Entry, Invoice, InvoiceItem } from "../lib/types.ts";
 import { findTenantByPaymentLinkId } from "../lib/tenants.ts"; /* #741 */
+import { authedApi as bearerAuthedApi } from "../lib/auth.ts"; /* #984 */
+import { originMatches } from "../lib/http.ts"; /* #984 */
 
 /* #733: everything derived from one tenant's SQLite bundle. Resolved per
    request from the session (session → user → tenant tree, cached by user
@@ -141,6 +143,15 @@ export function createApiRouter(deps: ApiDeps) {
             /* #733: auth passed but no tenant — hosted mode, master Bearer
                token with no session. Tenant data needs a user session. */
             if (!tenant) return json({ error: "unauthorized" }, 401);
+            /* #984: a request authenticated by the hosted session cookie
+               (no Bearer token) carries an ambient credential — mutating
+               calls get the same #912 origin check as web routes. Bearer
+               calls are not ambient and stay exempt. */
+            if (
+              method !== "GET" && method !== "HEAD" &&
+              !bearerAuthedApi(req, TOKEN) && !originMatches(req)
+            )
+              return json({ error: "cross-site request blocked" }, 403);
             /* #736: hosted subscription gate — an authed user past
                entitlement gets 403 on the data API. /billing/* never
                reaches this router (the billing router is mounted first),
