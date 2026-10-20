@@ -37,6 +37,9 @@ describe("#731: landing page router", () => {
     expect(body).toContain("14-day free trial");
     expect(body).toContain('href="/signup"');
     expect(body).toContain('href="#pricing"');
+    /* #1017: the repo is public — the Self-host plan links out to it. */
+    expect(body).toContain('href="https://github.com/Klectr/zimer"');
+    expect(body).toContain("View on GitHub");
     expect(body).toContain("support@klectr.dev");
   });
 
