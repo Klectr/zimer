@@ -1,5 +1,7 @@
 /** #732: hosted accounts — signup, login, and session behavior. */
 import { describe, expect, test } from "bun:test";
+import { Database } from "bun:sqlite";
+import { createHash } from "node:crypto";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -31,6 +33,34 @@ describe("hosted accounts (#732)", () => {
        offers "Log in instead", so the message stays generic. */
     expect(r.error).toBe("That email can't be used for a new account.");
     expect(r.user).toBeUndefined();
+  });
+
+  test("#986: sessions are stored as SHA-256 hashes, never raw tokens", async () => {
+    const a = accountsDb();
+    await a.signup("ada@example.com", "correct-horse-8");
+    const { token } = await a.login("ada@example.com", "correct-horse-8");
+    const row = a.db.query("SELECT token FROM sessions").get() as { token: string };
+    expect(row.token).not.toBe(token);
+    expect(row.token).toBe(createHash("sha256").update(token!).digest("hex"));
+    expect(a.sessionUser(token!)!.email).toBe("ada@example.com");
+    a.destroySession(token!);
+    expect(a.sessionUser(token!)).toBeNull();
+  });
+
+  test("#986: pre-migration raw-token sessions are hashed in place and keep working", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "tk-acct-legacy-"));
+    const raw = new Database(join(dir, "accounts.db"), { create: true });
+    raw.exec(`CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT NOT NULL UNIQUE, password_hash TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')), deleted_at TEXT);
+CREATE TABLE sessions (token TEXT PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, expires_at TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')));
+CREATE INDEX idx_sessions_user ON sessions(user_id);`);
+    raw.query("INSERT INTO users (email, password_hash) VALUES ('ada@example.com', 'x')").run();
+    const legacyToken = "a".repeat(64);
+    raw.query("INSERT INTO sessions (token, user_id, expires_at) VALUES (?, 1, '2999-01-01T00:00:00.000Z')").run(legacyToken);
+    raw.close();
+    const a = createAccountsDb(dir);
+    expect(a.sessionUser(legacyToken)!.email).toBe("ada@example.com");
+    const row = a.db.query("SELECT token FROM sessions").get() as { token: string };
+    expect(row.token).toBe(createHash("sha256").update(legacyToken).digest("hex"));
   });
 
   test("bad email and short password are rejected", async () => {
@@ -70,14 +100,16 @@ describe("hosted accounts (#732)", () => {
     const a = accountsDb();
     const { user } = await a.signup("ada@example.com", "correct-horse-8");
     const token = "expired-token";
+    /* #986: stored form is the token's hash. */
+    const stored = createHash("sha256").update(token).digest("hex");
     a.db
       .query("INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)")
-      .run(token, user!.id, "2000-01-01T00:00:00.000Z");
+      .run(stored, user!.id, "2000-01-01T00:00:00.000Z");
     expect(a.sessionUser(token)).toBeNull();
     /* and the row is cleaned up */
     const left = a.db
       .query("SELECT token FROM sessions WHERE token = ?")
-      .get(token);
+      .get(stored);
     expect(left).toBeNull();
   });
 

@@ -5,7 +5,7 @@
  *  path never touches this module. */
 
 import { Database } from "bun:sqlite";
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { join } from "node:path";
 import { secureCookieAttr } from "./http.ts";
 
@@ -47,6 +47,22 @@ CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
   const userCols = db.query("PRAGMA table_info(users)").all() as { name: string }[];
   if (!userCols.some(c => c.name === "deleted_at")) {
     db.exec("ALTER TABLE users ADD COLUMN deleted_at TEXT");
+  }
+
+  /* #986: session tokens are stored as SHA-256 hashes, never verbatim —
+     a leaked accounts.db copy must not be a session-takeover kit. One-time
+     migration for sessions written by older versions, guarded by
+     user_version so later boots skip it. */
+  const hashSessionToken = (t: string): string =>
+    createHash("sha256").update(t).digest("hex");
+  const uv = db.query("PRAGMA user_version").get() as { user_version: number };
+  if (uv.user_version < 1) {
+    db.transaction(() => {
+      const rows = db.query("SELECT token FROM sessions").all() as { token: string }[];
+      const upd = db.query("UPDATE sessions SET token = ? WHERE token = ?");
+      for (const r of rows) upd.run(hashSessionToken(r.token), r.token);
+      db.exec("PRAGMA user_version = 1");
+    })();
   }
 
   const qUserByEmail = db.query(
@@ -101,12 +117,13 @@ CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
     return { token: createSession(user.id) };
   }
 
-  /** Mint a session token for a user id. */
+  /** Mint a session token for a user id. The raw token goes to the cookie;
+   *  #986: only its SHA-256 hash is stored. */
   function createSession(userId: number): string {
     const token = randomBytes(32).toString("hex");
     const expires_at = new Date(Date.now() + SESSION_MAX_AGE_SEC * 1000).toISOString();
     db.query("INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)").run(
-      token,
+      hashSessionToken(token),
       userId,
       expires_at
     );
@@ -115,17 +132,18 @@ CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
 
   /** Look up the user for a session token. Expired sessions are dropped. */
   function sessionUser(token: string): AccountUser | null {
-    const s = qSession.get(token) as { user_id: number; expires_at: string } | null;
+    const h = hashSessionToken(token);
+    const s = qSession.get(h) as { user_id: number; expires_at: string } | null;
     if (!s) return null;
     if (s.expires_at <= new Date().toISOString()) {
-      db.query("DELETE FROM sessions WHERE token = ?").run(token);
+      db.query("DELETE FROM sessions WHERE token = ?").run(h);
       return null;
     }
     return (qUserById.get(s.user_id) as AccountUser | null) ?? null;
   }
 
   function destroySession(token: string): void {
-    db.query("DELETE FROM sessions WHERE token = ?").run(token);
+    db.query("DELETE FROM sessions WHERE token = ?").run(hashSessionToken(token));
   }
 
   /** Extract the session token from a request's cookies. */
