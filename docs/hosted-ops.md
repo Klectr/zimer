@@ -17,6 +17,15 @@ counts were reconnaissance for anyone who asked, so they no longer ride
 along. If `/health` doesn't answer, the server is down or unreachable —
 nothing fancier to check first.
 
+## Error tracking (#1023)
+
+Exceptions land in PostHog's Error tracking: browser errors via the
+snippet's exception autocapture (attached to the session replay), and
+unhandled server errors via the Bun.serve error handler POSTing an
+$exception event (distinct id `zimer-server`). Both are gated on
+POSTHOG_KEY, so they exist only where analytics does. Triage there, not
+in server logs.
+
 ## External uptime monitoring
 
 We don't monitor ourselves from the same box. Set up an external check

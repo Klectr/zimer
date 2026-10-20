@@ -19,6 +19,7 @@ import { getToken, tokensEqual, authedApi, authedPage } from "./lib/auth.ts";
 import { createAccountsDb } from "./lib/accounts.ts"; /* #732 */
 import { createTenantStore } from "./lib/tenants.ts"; /* #733 */
 import { backupAll } from "./lib/backups.ts"; /* #730 part 2 */
+import { captureException } from "./lib/error-tracking.ts"; /* #1023 */
 import { createDb, getMeta, type DbBundle } from "./db.ts";
 import { resourcePath } from "./lib/paths.ts"; /* #519 */
 import { createRevenue } from "./lib/revenue.ts";
@@ -256,6 +257,12 @@ Bun.serve({
       /* #733: tenant's app-layout 404 when there is one, else public chrome. */
       ?? html((getTenant(req)?.notFoundPage ?? publicNotFound)(authedPage(req, TOKEN)), 404);
     return secureResponse(res, req); /* #910: security headers on every response */
+  },
+  /* #1023: unhandled route errors land in PostHog error tracking (no-op
+     without POSTHOG_KEY); the client still gets the plain 500 it gets today. */
+  error(err) {
+    captureException(err);
+    return new Response("Internal Server Error", { status: 500 });
   },
 });
 
