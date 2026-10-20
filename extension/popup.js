@@ -1,5 +1,4 @@
 /* Timekeep extension popup — vanilla JS, no build step. */
-import { matchRule, upsertRule } from "./rules.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -63,7 +62,6 @@ async function refresh() {
     } else {
       stopTicking();
       await loadProjects();
-      await maybeSuggest();
     }
   } catch (e) {
     $("main-error").textContent = e.message;
@@ -78,54 +76,6 @@ async function loadProjects() {
       `<option value="${p.id}">${escapeHtml(p.name)}${p.client_name ? ` (${escapeHtml(p.client_name)})` : ""}</option>`
     ).join("");
   } catch { /* leave the empty default */ }
-}
-
-/* Milestone 15: autotracker — rules live in chrome.storage.sync as
-   [{id, pattern, projectId, projectName}]. Matching is the pure matchRule()
-   in rules.js, unit-tested outside the browser. */
-async function getRules() {
-  const s = await chrome.storage.sync.get(["rules"]);
-  return Array.isArray(s.rules) ? s.rules : [];
-}
-async function saveRules(rules) {
-  await chrome.storage.sync.set({ rules });
-}
-async function activeTabInfo() {
-  try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    return tab ? { title: tab.title || "", url: tab.url || "" } : { title: "", url: "" };
-  } catch { return { title: "", url: "" }; }
-}
-function domainOf(url) {
-  try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return ""; }
-}
-async function renderRules() {
-  const rules = await getRules();
-  const projects = await api("/api/projects").catch(() => []);
-  const pmap = Object.fromEntries(projects.map((p) => [String(p.id), p]));
-  const list = $("rules-list");
-  list.innerHTML = rules.length ? "" : `<div class="muted tiny">No rules yet — add one for the site you're on.</div>`;
-  for (const r of rules) {
-    const p = pmap[String(r.projectId)];
-    const label = p ? `${escapeHtml(p.name)}${p.client_name ? ` (${escapeHtml(p.client_name)})` : ""}` : escapeHtml(r.projectName || "Unknown project");
-    const row = document.createElement("div");
-    row.className = "rule-row";
-    row.innerHTML = `<span class="rule-pat">${escapeHtml(r.pattern)}</span><span class="rule-proj">${label}</span>`;
-    const del = document.createElement("button");
-    del.className = "ghost tiny-btn";
-    del.textContent = "Delete";
-    del.addEventListener("click", async () => {
-      await saveRules((await getRules()).filter((x) => x.id !== r.id));
-      await renderRules();
-    });
-    row.appendChild(del);
-    list.appendChild(row);
-  }
-  // project picker for the add form
-  const sel = $("rule-project");
-  sel.innerHTML = projects.map((p) =>
-    `<option value="${p.id}">${escapeHtml(p.name)}${p.client_name ? ` (${escapeHtml(p.client_name)})` : ""}</option>`
-  ).join("");
 }
 
 function escapeHtml(s) {
@@ -190,76 +140,6 @@ $("btn-settings").addEventListener("click", () => {
   $("site-url").value = siteUrl;
   $("api-token").value = token;
   show("setup");
-});
-
-$("btn-rules").addEventListener("click", async () => {
-  const panel = $("rules-panel");
-  panel.classList.toggle("hidden");
-  if (!panel.classList.contains("hidden")) {
-    const { url } = await activeTabInfo();
-    if (!$("rule-pattern").value) $("rule-pattern").value = domainOf(url);
-    await renderRules();
-  }
-});
-$("btn-add-rule").addEventListener("click", async () => {
-  $("rules-error").textContent = "";
-  const pattern = $("rule-pattern").value.trim();
-  const projectId = $("rule-project").value;
-  if (!pattern || !projectId) { $("rules-error").textContent = "Pattern and project are required."; return; }
-  const projects = await api("/api/projects").catch(() => []);
-  const p = projects.find((x) => String(x.id) === String(projectId));
-  const rules = await getRules();
-  /* #641: a pattern that already has a rule updates that rule's project
-     instead of stacking a dead duplicate the matcher would never reach. */
-  const { updated } = upsertRule(rules, pattern, projectId, p ? p.name : "");
-  await saveRules(rules);
-  $("rule-pattern").value = "";
-  if (updated) $("rules-error").textContent = "That pattern already has a rule — updated it instead of adding a duplicate.";
-  await renderRules();
-});
-
-/* Milestone 15.2: one-tap suggestion from the active tab. Never auto-starts. */
-let suggestedRuleId = null;
-async function maybeSuggest() {
-  const panel = $("suggest-panel");
-  panel.classList.add("hidden");
-  suggestedRuleId = null;
-  const rules = await getRules();
-  if (!rules.length) return;
-  const { title, url } = await activeTabInfo();
-  if (!title && !url) return;
-  const rule = matchRule(rules, title, url);
-  if (!rule) return;
-  const projects = await api("/api/projects").catch(() => []);
-  const p = projects.find((x) => String(x.id) === String(rule.projectId));
-  if (!p) return; // project gone from server — leave the rule alone
-  suggestedRuleId = rule.id;
-  $("suggest-text").innerHTML = `Start <strong>${escapeHtml(p.name)}</strong>${p.client_name ? ` (${escapeHtml(p.client_name)})` : ""}?`;
-  $("suggest-desc").textContent = title || url;
-  panel.classList.remove("hidden");
-}
-$("btn-suggest-start").addEventListener("click", async () => {
-  $("main-error").textContent = "";
-  const rules = await getRules();
-  const rule = rules.find((r) => r.id === suggestedRuleId);
-  if (!rule) return;
-  const { title } = await activeTabInfo();
-  $("btn-suggest-start").disabled = true;
-  try {
-    await api("/api/timer/start", {
-      method: "POST",
-      body: JSON.stringify({ description: (title || "").slice(0, 200), project_id: Number(rule.projectId) }),
-    });
-    await refresh();
-  } catch (e) {
-    $("main-error").textContent = e.message;
-  } finally {
-    $("btn-suggest-start").disabled = false;
-  }
-});
-$("btn-suggest-dismiss").addEventListener("click", () => {
-  $("suggest-panel").classList.add("hidden");
-  suggestedRuleId = null;
 });
 
 /* init */

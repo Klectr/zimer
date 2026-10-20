@@ -31,23 +31,6 @@
   .error { color: #ff6b6b; font-size: 12px; margin-top: 8px; }
   .hidden { display: none; }
   label { display: block; font-size: 12px; color: #8a8a96; margin-bottom: 4px; }
-  /* Milestone 15: autotracker rules */
-  #rules-panel { margin-top: 12px; border-top: 1px solid #2a2a34; padding-top: 12px; }
-  .rule-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; font-size: 12px; }
-  .rule-pat { background: #1a1a21; border-radius: 6px; padding: 4px 8px; max-width: 110px;
-              overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .rule-proj { flex: 1; color: #8a8a96; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .tiny-btn { width: auto; padding: 4px 10px; font-size: 12px; margin-top: 0; }
-  #rules-panel .row2 { display: flex; gap: 6px; }
-  #rules-panel .row2 input { margin-bottom: 0; }
-  /* Milestone 15.2: suggestion card */
-  #suggest-panel { background: #241f10; border-radius: 12px; padding: 12px; margin-bottom: 12px; }
-  #suggest-panel .sug-label { font-size: 11px; letter-spacing: 0.08em; color: var(--primary); margin-bottom: 4px; }
-  /* #695: the headline is the card's title — style it as one, not body text. */
-  #suggest-text { font-size: 15px; font-weight: 600; margin: 0 0 8px; }
-  #suggest-desc { font-size: 12px; color: #8a8a96; margin: 2px 0 8px;
-                  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #suggest-panel .row { margin-top: 0; }
 </style>
 </head>
 <body>
@@ -75,15 +58,6 @@
       <div class="elapsed" id="run-elapsed">…</div>
       <button id="btn-stop" class="stop">Stop</button>
     </div>
-    <div id="suggest-panel" class="hidden">
-      <div class="sug-label">SUGGESTED</div>
-      <div id="suggest-text"></div>
-      <div id="suggest-desc"></div>
-      <div class="row">
-        <button id="btn-suggest-start" class="start">Start</button>
-        <button id="btn-suggest-dismiss" class="ghost">Dismiss</button>
-      </div>
-    </div>
     <div id="timer-idle" class="hidden">
       <!-- #515: placeholder-only fields get real accessible names. -->
       <input id="in-desc" type="text" placeholder="What are you working on?" autocomplete="off" aria-label="What are you working on?">
@@ -94,18 +68,6 @@
     <div class="row">
       <button id="btn-open" class="ghost">Open dashboard</button>
       <button id="btn-settings" class="ghost">Settings</button>
-    </div>
-    <button id="btn-rules" class="ghost">Autotracker rules</button>
-    <div id="rules-panel" class="hidden">
-      <div id="rules-list"></div>
-      <label for="rule-pattern">Match text (part of page title or URL)</label>
-      <div class="row2">
-        <input id="rule-pattern" type="text" placeholder="e.g. github.com" autocomplete="off">
-      </div>
-      <label for="rule-project">Project</label>
-      <select id="rule-project"></select>
-      <button id="btn-add-rule" class="start">Add rule</button>
-      <div id="rules-error" class="error" role="alert"></div>
     </div>
   </div>
 
