@@ -163,6 +163,22 @@ describe("PostHog snippet (#928)", () => {
     expect(html).not.toContain("ph.identify");
   });
 
+  test("#998: landing snippet captures pageviews and clicks, recording off", () => {
+    const html = posthogSnippet("phc_test123", "https://us.i.posthog.com", null, { landing: true });
+    expect(html).toContain("autocapture: true");
+    expect(html).toContain("capture_pageview: true");
+    expect(html).toContain("disable_session_recording: true");
+    expect(html).toContain('person_profiles: "identified_only"');
+    expect(html).not.toContain("ph.identify");
+    expect(html).not.toContain("zimer_utm");
+  });
+
+  test("#998: app snippet keeps session-recording config out and capture off", () => {
+    const html = posthogSnippet("phc_test123", "https://us.i.posthog.com", 42);
+    expect(html).not.toContain("disable_session_recording");
+    expect(html).not.toContain("person_profiles");
+  });
+
   test("key is JSON-escaped, not interpolated raw", () => {
     const html = posthogSnippet('phc_"><script>alert(1)</script>', "https://us.i.posthog.com", 1);
     expect(html).not.toContain('"><script>alert(1)</script>');

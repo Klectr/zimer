@@ -9,7 +9,7 @@
 
 import { icon, logo } from "../lib/icons.ts";
 
-export function createLandingViews() {
+export function createLandingViews(posthogHead?: () => string) {
   function landingPage(origin: string): string {
     return `<!DOCTYPE html>
   <html lang="en">
@@ -31,6 +31,7 @@ export function createLandingViews() {
   <meta name="twitter:image" content="${origin}/static/og-image.png">
   <script src="/static/motion.js" defer></script>
   <script src="/static/utm.js" defer></script>
+  ${posthogHead ? posthogHead() : ""}
   </head>
   <body>
   <main class="page-landing">
