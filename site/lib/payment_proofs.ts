@@ -17,6 +17,10 @@ export const PROOF_MIME_ALLOWLIST = new Set([
 /* 10 MiB — screenshots and PDF exports fit comfortably; blocks abuse. */
 export const PROOF_MAX_BYTES = 10 * 1024 * 1024;
 
+/* #985: per-invoice count cap — proofs are DB BLOBs on a shared disk, so an
+   unbounded count lets one tenant fill the volume for everyone. */
+export const PROOF_MAX_PER_INVOICE = 10;
+
 export interface PaymentProof {
   id: number;
   invoice_id: number;
