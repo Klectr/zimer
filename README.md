@@ -9,7 +9,7 @@ Self-hostable time tracker — timer → invoice. One Bun server, one SQLite fil
 [![runtime: bun](https://img.shields.io/badge/runtime-bun-1a1c1e?logo=bun&logoColor=white)](https://bun.sh)
 [![ui: htmx](https://img.shields.io/badge/ui-htmx-1a1c1e?logo=htmx&logoColor=white)](https://htmx.org)
 [![database: sqlite](https://img.shields.io/badge/database-sqlite-1a1c1e?logo=sqlite&logoColor=white)](https://sqlite.org)
-[![license: MIT](https://img.shields.io/badge/license-MIT-1a1c1e)](LICENSE)
+[![license: Elastic 2.0](https://img.shields.io/badge/license-Elastic%202.0-1a1c1e)](LICENSE)
 
 </div>
 
