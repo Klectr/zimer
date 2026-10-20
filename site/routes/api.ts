@@ -3,7 +3,7 @@
  *  path is not an API path so the caller falls through to web routes. */
 
 import type { Database, Statement } from "bun:sqlite";
-import { entryIsLocked, round2, todayStr } from "../lib/format.ts";
+import { clientColor, entryIsLocked, round2, todayStr } from "../lib/format.ts";
 import type { Entry, Invoice, InvoiceItem } from "../lib/types.ts";
 import { findTenantByPaymentLinkId } from "../lib/tenants.ts"; /* #741 */
 
@@ -211,7 +211,7 @@ export function createApiRouter(deps: ApiDeps) {
             if (path === "/api/clients" && method === "POST") {
               if (!body.name) return json({ error: "name required" }, 400);
               const r = db.query("INSERT INTO clients (name, color, rate) VALUES (?, ?, ?) RETURNING *")
-                .get(String(body.name), String(body.color || "#fb923c"), Number(body.rate) || 0) as any;
+                .get(String(body.name), clientColor(body.color), Number(body.rate) || 0) as any;
               return json(r, 201);
             }
             m = path.match(/^\/api\/clients\/(\d+)$/);

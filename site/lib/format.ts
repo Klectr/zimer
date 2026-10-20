@@ -40,6 +40,14 @@ export function entryIsLocked(e: { invoice_status: string | null }): boolean {
   return e.invoice_status === "sent" || e.invoice_status === "paid";
 }
 
+/** #990: client colors render inside a style attribute. Anything that is
+ *  not a plain #rrggbb falls back to the brand default, so a stored value
+ *  can never inject extra CSS declarations via `;`. */
+export function clientColor(v: unknown): string {
+  const c = String(v ?? "").trim();
+  return /^#[0-9a-f]{6}$/i.test(c) ? c : "#fb923c";
+}
+
 /** Milestone 10: quote a CSV cell when it contains a comma, quote, or newline.
  * #914: a cell whose first non-whitespace char is =, +, - or @ executes as a
  * formula when the CSV is opened in Excel/Sheets. Prefix it with a single

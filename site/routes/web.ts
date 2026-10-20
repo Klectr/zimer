@@ -5,7 +5,7 @@
 
 import { join, normalize, sep } from "node:path";
 import type { Database, Statement } from "bun:sqlite";
-import { addDays, csvCell, entryIsLocked, esc, isPaymentTermsKey, round2, termsDays, termsKey, todayStr } from "../lib/format.ts";
+import { addDays, clientColor, csvCell, entryIsLocked, esc, isPaymentTermsKey, round2, termsDays, termsKey, todayStr } from "../lib/format.ts";
 import type { Entry, Invoice, InvoiceItem } from "../lib/types.ts";
 import type { ClientSel } from "../views/manage.ts"; /* #367 */
 import type { PdfInvoice } from "../pdf.ts";
@@ -685,7 +685,7 @@ export function createWebRouter(deps: WebDeps) {
         if (path === "/clients" && method === "POST") {
           const form = await req.formData();
           const r = db.query("INSERT INTO clients (name, color, rate) VALUES (?, ?, ?) RETURNING id")
-            .get(String(form.get("name")), String(form.get("color") || "#fb923c"),
+            .get(String(form.get("name")), clientColor(form.get("color")),
                  Number(form.get("rate") || 0)) as any;
           /* #367: plain POST (see the add-client form) — land on the new
              client selected, on every width. */
