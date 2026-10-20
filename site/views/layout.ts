@@ -10,11 +10,15 @@ import { TRIAL_NUDGE_DAYS, trialDaysLeft, type Billing } from "../lib/billing.ts
 
 /** #928: PostHog product analytics snippet. Rendered in <head> only when
  *  POSTHOG_KEY is set (self-hosters opt in by configuring it; the hosted
- *  instance sets it in start.sh). Autocapture and pageviews are off — we
- *  only send the explicit timer → invoice funnel events from analytics.js.
- *  The user is identified by stable account ID (never email); posthog.reset()
- *  fires on logout so the next browser user doesn't inherit the identity. */
-export function posthogSnippet(key: string, host: string, userId: number | null): string {
+ *  instance sets it in start.sh). In the app, autocapture and pageviews are
+ *  off — we only send the explicit timer → invoice funnel events from
+ *  analytics.js. The user is identified by stable account ID (never email);
+ *  posthog.reset() fires on logout so the next browser user doesn't inherit
+ *  the identity. #998: landing mode flips pageview + autocapture on so ad
+ *  arrivals and CTA clicks are visible, with session recording disabled
+ *  and no person profiles for anonymous visitors. */
+export function posthogSnippet(key: string, host: string, userId: number | null, opts?: { landing?: boolean }): string {
+  const landing = opts?.landing === true;
   /* JSON.stringify alone doesn't neutralize </script> inside the key — escape
      angle brackets so a malicious key can't break out of the script block. */
   const jsStr = (s: string) => JSON.stringify(s).replace(/</g, "\\u003c").replace(/>/g, "\\u003e");
@@ -24,9 +28,11 @@ posthog.init(${jsStr(key)}, {
   api_host: ${jsStr(host)},
   defaults: "2026-05-30",
   request_batching: false,
-  autocapture: false,
-  capture_pageview: false,
-  loaded: function(ph) { ${userId !== null ? `ph.identify(${jsStr(String(userId))}); try { var u = JSON.parse(localStorage.getItem("zimer_utm") || "null"); if (u) { localStorage.removeItem("zimer_utm"); if (u.p && Date.now() - (u.t || 0) < 2592000000) ph.capture("$set", { $set_once: u.p }); } } catch (e) {}` : ""} },
+  autocapture: ${landing},
+  capture_pageview: ${landing},
+${landing ? `  disable_session_recording: true,
+  person_profiles: "identified_only",
+` : ""}  loaded: function(ph) { ${userId !== null ? `ph.identify(${jsStr(String(userId))}); try { var u = JSON.parse(localStorage.getItem("zimer_utm") || "null"); if (u) { localStorage.removeItem("zimer_utm"); if (u.p && Date.now() - (u.t || 0) < 2592000000) ph.capture("$set", { $set_once: u.p }); } } catch (e) {}` : ""} },
 });
 </script>`;
 }

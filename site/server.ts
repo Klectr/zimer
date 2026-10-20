@@ -221,7 +221,12 @@ const { handleApi } = createApiRouter({
 /* #731: hosted landing page for logged-out visitors on GET / — the same
    auth check web.ts uses for pages, so authed hosted users and self-host
    both fall through to handleWeb's existing behavior. */
-const { landingPage } = createLandingViews(); /* #731 */
+const { landingPage } = createLandingViews(() => { /* #998 */
+  const key = (process.env.POSTHOG_KEY || "").trim();
+  if (!key) return "";
+  const host = (process.env.POSTHOG_HOST || "https://us.i.posthog.com").trim().replace(/\/+$/, "");
+  return posthogSnippet(key, host, null, { landing: true });
+});
 const visitorAuthed = (req: Request): boolean =>
   HOSTED ? accounts!.sessionUserFromRequest(req) !== null : authedPage(req, TOKEN);
 const { handleLanding } = createLandingRouter({ hosted: HOSTED, visitorAuthed, landingPage, shareOrigin: (req: Request) => PUBLIC_BASE_URL || publicOrigin(req, PORT), /* #865 */ html }); /* #731 */
