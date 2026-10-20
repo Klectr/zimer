@@ -107,7 +107,7 @@ zimer/
 ├── AGENTS.md            # the always-known rules: Bun-only, M3 dark, workflows
 ├── PLAN.md              # the plan: architecture, API contract, milestones
 ├── CHANGELOG.md         # what's new, newest first
-├── LICENSE              # MIT
+├── LICENSE              # Elastic License 2.0 (source-available)
 ├── VERSION
 ├── install.sh           # one-command install / updater
 ├── site/
@@ -142,4 +142,9 @@ Every change goes issue → early PR → test evidence → merge. See [docs/work
 
 ## License
 
-[MIT](LICENSE) © 2026 tristonarmstrong
+[Elastic License 2.0](LICENSE) © 2026 Triston Armstrong
+
+Zimer is source-available, not open source. You can use, copy, modify, and
+redistribute it under the license terms — but you may not provide it to
+third parties as a hosted or managed service, circumvent its license-key
+functionality, or remove its licensing and copyright notices.
