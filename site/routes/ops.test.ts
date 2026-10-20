@@ -8,7 +8,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Database } from "bun:sqlite";
 import { createDb } from "../db.ts";
-
 import { createWebRouter } from "./web.ts";
 import { createPublicViews } from "../views/public.ts";
 

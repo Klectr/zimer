@@ -14,7 +14,6 @@ import { clientIp, originMatches, secureCookieAttr } from "../lib/http.ts";
 import { createRateLimiter } from "../lib/ratelimit.ts";
 import { loadChangelog } from "../lib/changelog.ts"; /* #303 */
 import { licenseTerms } from "../lib/license-terms.ts"; /* #341 */
-
 import { updateSectionHtml, checkForUpdates, updateStatusHtml } from "../lib/updates.ts"; /* #340 */
 import { THEMES, themeCss, themeKey } from "../lib/theme.ts"; /* #884 */
 import type { AccountsDb } from "../lib/accounts.ts"; /* #732 */
@@ -106,7 +105,7 @@ export interface WebDeps {
   hostedLoginPage: (error?: string) => string; /* #732 */
   HOSTED: boolean; /* #732 */
   accounts: AccountsDb | null; /* #732 */
-  backupHealth: (() => { accounts: string | null; tenants: number }) | null; /* #730 part 2 */
+
   changelogPage: (entries: import("../lib/changelog.ts").ChangelogEntry[], origin: string) => string;
   termsPage: (sections: import("../lib/license-terms.ts").TermsSection[]) => string; /* #341 */
   privacyPage: () => string; /* #730 */
