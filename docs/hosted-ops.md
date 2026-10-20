@@ -114,3 +114,12 @@ target) gets a line here and in the changelog. Future-you is on call.
   `DATA_DIR/backups/accounts-<ts>.db`, 7-day daily retention, 60s-after-boot
   + every `BACKUP_INTERVAL_HOURS` (default 6; 0 disables) in hosted mode
   only, freshness on `GET /health` as `backups.accounts`/`backups.tenants`.
+- 2026-10-20 (#986): session tokens are stored in accounts.db as SHA-256
+  hashes; the first boot of the new build rewrites existing rows in place
+  (guarded by `PRAGMA user_version`). Two hazards: (1) rolling back across
+  this migration strands any raw sessions the old build mints afterwards —
+  they can never be re-hashed (indistinguishable from digests) and their
+  owners get logged out on the next forward deploy; (2) restoring
+  accounts.db from a `sqlite .dump` loses `user_version`, so the migration
+  re-runs and invalidates all live sessions (they self-heal at next login).
+  Prefer `VACUUM INTO` backups, which preserve it.
