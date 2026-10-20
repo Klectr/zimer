@@ -19,7 +19,7 @@ import { updateSectionHtml, checkForUpdates, updateStatusHtml } from "../lib/upd
 import { THEMES, themeCss, themeKey } from "../lib/theme.ts"; /* #884 */
 import type { AccountsDb } from "../lib/accounts.ts"; /* #732 */
 import { findTenantByPublicToken } from "../lib/tenants.ts"; /* #741 */
-import { countProofs, deleteProof, getProof, insertProof, listProofs, sanitizeFilename, validateProofFile } from "../lib/payment_proofs.ts"; /* #956 */
+import { countProofs, deleteProof, getProof, insertProof, listProofs, sanitizeFilename, validateProofFile, PROOF_MAX_BYTES, PROOF_MAX_PER_INVOICE } from "../lib/payment_proofs.ts"; /* #956 */
 
 /* #733: everything derived from one tenant's SQLite bundle. Resolved per
    request from the session (session → user → tenant tree, cached by user
@@ -976,10 +976,16 @@ export function createWebRouter(deps: WebDeps) {
         if (m && method === "POST") {
           const inv = qInvoice.get(Number(m[1])) as Invoice | null;
           if (!inv || (inv.status !== "sent" && inv.status !== "paid")) return new Response("Not found.", { status: 404 });
+          /* #985: count cap first — reject before the body is even parsed. */
+          if (countProofs(db, inv.id) >= PROOF_MAX_PER_INVOICE)
+            return new Response(`This invoice already has the maximum of ${PROOF_MAX_PER_INVOICE} payment proofs. Delete one before adding another.`, { status: 400 });
           let form: FormData;
           try { form = await req.formData(); } catch { return new Response("Bad upload.", { status: 400 }); }
           const file = form.get("proof");
           if (!(file instanceof File) || file.size === 0) return new Response("Choose a file first.", { status: 400 });
+          /* #985: reject oversize from the declared size before buffering. */
+          if (file.size > PROOF_MAX_BYTES)
+            return new Response(`The file is too large (max ${PROOF_MAX_BYTES / 1024 / 1024} MB).`, { status: 400 });
           const bytes = new Uint8Array(await file.arrayBuffer());
           const err = validateProofFile(bytes, file.type);
           if (err) return new Response(err, { status: 400 });
