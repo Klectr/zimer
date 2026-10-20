@@ -76,15 +76,26 @@ CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
     if (!validEmail(e)) return { error: "Enter a valid email address." };
     if (password.length < 8)
       return { error: "Password must be at least 8 characters." };
-    /* #913: don't confirm registration — the page already offers "Log in instead". */
-    if (qUserByEmail.get(e)) return { error: "That email can't be used for a new account." };
+    /* #913: never confirm registration. The existence check alone would
+       enumerate accounts by message AND by timing (fresh emails pay the
+       argon2 cost, registered ones used to answer instantly) — so hash on
+       both paths and give the duplicate case the generic failure. */
+    const exists = !!qUserByEmail.get(e);
     const password_hash = await Bun.password.hash(password);
-    const user = db
-      .query(
-        "INSERT INTO users (email, password_hash) VALUES (?, ?) RETURNING id, email, created_at"
-      )
-      .get(e, password_hash) as AccountUser;
-    return { user };
+    if (exists) return { error: "Couldn't create your account. If you already have one, log in instead." };
+    try {
+      const user = db
+        .query(
+          "INSERT INTO users (email, password_hash) VALUES (?, ?) RETURNING id, email, created_at"
+        )
+        .get(e, password_hash) as AccountUser;
+      return { user };
+    } catch {
+      /* #913: a concurrent signup for the same fresh email passed the
+         check above too — the UNIQUE constraint is the real guard, and
+         its loser gets the same generic failure, never a 500. */
+      return { error: "Couldn't create your account. If you already have one, log in instead." };
+    }
   }
 
   /** Verify credentials and mint a session token. Generic error either way —
