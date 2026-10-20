@@ -141,6 +141,7 @@ describe("PostHog snippet (#928)", () => {
     expect(html).toContain('ph.identify("42")');
     expect(html).toContain("autocapture: false");
     expect(html).toContain("capture_pageview: false");
+    expect(html).toContain("capture_exceptions: true"); /* #1023 */
     expect(html).toContain("request_batching: false");
     expect(html).toContain('defaults: "2026-05-30"');
     expect(html).toContain('localStorage.getItem("zimer_utm")');
@@ -167,6 +168,7 @@ describe("PostHog snippet (#928)", () => {
     const html = posthogSnippet("phc_test123", "https://us.i.posthog.com", null, { landing: true });
     expect(html).toContain("autocapture: true");
     expect(html).toContain("capture_pageview: true");
+    expect(html).toContain("capture_exceptions: true"); /* #1023 */
     expect(html).toContain("disable_session_recording: false");
     expect(html).toContain('person_profiles: "identified_only"');
     expect(html).not.toContain("ph.identify");
