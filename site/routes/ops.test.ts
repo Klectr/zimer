@@ -8,7 +8,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Database } from "bun:sqlite";
 import { createDb } from "../db.ts";
-import { appVersion } from "../lib/version.ts";
 import { createWebRouter } from "./web.ts";
 import { createPublicViews } from "../views/public.ts";
 
@@ -86,23 +85,14 @@ const get = (handleWeb: any, path: string, authed = true, htmx = false) =>
   );
 
 describe("GET /health", () => {
-  test("200 JSON {ok:true, version} with no auth", async () => {
+  test("200 JSON {ok:true} only, with no auth (#989)", async () => {
     /* authed=false: the whole point is monitoring needs no session. */
     const { handleWeb } = setup(false);
     const res = await get(handleWeb, "/health", false);
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toContain("application/json");
     const body = await res.json();
-    expect(body.ok).toBe(true);
-    expect(typeof body.version).toBe("string");
-    expect(body.version).toBe(appVersion());
-  });
-
-  test("version matches the repo VERSION source", async () => {
-    const { handleWeb } = setup(false);
-    const body = await (await get(handleWeb, "/health", false)).json();
-    expect(body.version).not.toBe("0.0.0-dev");
-    expect(/^\d+\.\d+\.\d+$/.test(body.version)).toBe(true);
+    expect(body).toEqual({ ok: true });
   });
 });
 
