@@ -163,11 +163,11 @@ describe("PostHog snippet (#928)", () => {
     expect(html).not.toContain("ph.identify");
   });
 
-  test("#998: landing snippet captures pageviews and clicks, recording off", () => {
+  test("#998/#1001: landing snippet captures pageviews and clicks, recording on", () => {
     const html = posthogSnippet("phc_test123", "https://us.i.posthog.com", null, { landing: true });
     expect(html).toContain("autocapture: true");
     expect(html).toContain("capture_pageview: true");
-    expect(html).toContain("disable_session_recording: true");
+    expect(html).toContain("disable_session_recording: false");
     expect(html).toContain('person_profiles: "identified_only"');
     expect(html).not.toContain("ph.identify");
     expect(html).not.toContain("zimer_utm");
