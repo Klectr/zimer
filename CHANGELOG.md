@@ -2,6 +2,10 @@
 
 What's new in Zimer, newest first.
 
+## 2026-10-20
+
+- **The browser extension drops the autotracker.** The rules panel, the suggestion card it fed, and the `activeTab` permission are gone. The popup just does setup, start/stop with a description and project, and the Ctrl+Shift+Y hotkey — all it ever needed to do.
+
 ## 2026-10-07
 
 - **Changelog renders inline code.** Backticked names (like `--primary`) used to show the literal backticks on the changelog page — they render as code spans now.
