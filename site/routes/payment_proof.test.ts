@@ -108,6 +108,33 @@ describe("POST /invoices/:id/payment-proof", () => {
     const res = await upload(handleWeb, invId, new File([big], "big.png", { type: "image/png" }));
     expect(res.status).toBe(400);
   });
+  test("#985: rejects uploads past the per-invoice cap", async () => {
+    const { db, invId, handleWeb } = setup();
+    for (let i = 0; i < 10; i++) insertProof(db, invId, `p${i}.png`, "image/png", png);
+    const res = await upload(handleWeb, invId, new File([png], "one-more.png", { type: "image/png" }));
+    expect(res.status).toBe(400);
+    expect(await res.text()).toContain("maximum of 10");
+    expect(db.query("SELECT COUNT(*) AS n FROM invoice_payment_proofs WHERE invoice_id = ?").get(invId)).toEqual({ n: 10 });
+  });
+  test("#985: concurrent uploads cannot burst past the cap", async () => {
+    const { db, invId, handleWeb } = setup();
+    for (let i = 0; i < 9; i++) insertProof(db, invId, `p${i}.png`, "image/png", png);
+    const results = await Promise.all(
+      Array.from({ length: 6 }, () =>
+        upload(handleWeb, invId, new File([png], "burst.png", { type: "image/png" })))
+    );
+    const stored = (db.query("SELECT COUNT(*) AS n FROM invoice_payment_proofs WHERE invoice_id = ?").get(invId) as { n: number }).n;
+    expect(stored).toBe(10);
+    expect(results.filter((r) => r.status === 302)).toHaveLength(1);
+    expect(results.filter((r) => r.status === 400)).toHaveLength(5);
+  });
+  test("#985: the cap counts only the target invoice", async () => {
+    const { db, invId, handleWeb } = setup();
+    const other = db.query("INSERT INTO invoices (client_id, number, issue_date, status) VALUES (1, 'INV-0009', '2026-10-03', 'sent') RETURNING id").get() as { id: number };
+    for (let i = 0; i < 10; i++) insertProof(db, other.id, `p${i}.png`, "image/png", png);
+    const res = await upload(handleWeb, invId, new File([png], "ok.png", { type: "image/png" }));
+    expect(res.status).toBe(302);
+  });
   test("rejects missing file", async () => {
     const { invId, handleWeb } = setup();
     const req = new Request(`http://x/invoices/${invId}/payment-proof`, { method: "POST", body: new FormData() });

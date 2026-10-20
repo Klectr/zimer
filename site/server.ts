@@ -18,7 +18,7 @@ import { json, html, isHtmx, publicOrigin, secureResponse } from "./lib/http.ts"
 import { getToken, tokensEqual, authedApi, authedPage } from "./lib/auth.ts";
 import { createAccountsDb } from "./lib/accounts.ts"; /* #732 */
 import { createTenantStore } from "./lib/tenants.ts"; /* #733 */
-import { backupAll, backupFreshness } from "./lib/backups.ts"; /* #730 part 2 */
+import { backupAll } from "./lib/backups.ts"; /* #730 part 2 */
 import { createDb, getMeta, type DbBundle } from "./db.ts";
 import { resourcePath } from "./lib/paths.ts"; /* #519 */
 import { createRevenue } from "./lib/revenue.ts";
@@ -234,7 +234,6 @@ const { handleWeb } = createWebRouter({
   getTenant,
   STATIC_DIR, TOKEN, authedPage, tokensEqual, html, json, csvResponse, isHtmx,
   HOSTED, accounts, /* #732 */
-  backupHealth: HOSTED ? () => backupFreshness(DATA_DIR) : null, /* #730 part 2 */
   shareOrigin: (req: Request) => PUBLIC_BASE_URL || publicOrigin(req, PORT),
   PORT, loginPage, signupPage, hostedLoginPage, changelogPage, termsPage, privacyPage, notFoundPage: publicNotFound, noSuchInvoicePage, rateLimitPage, errorPage: publicError,
   invoicePdf, stripeConfigured,

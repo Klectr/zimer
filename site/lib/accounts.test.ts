@@ -31,7 +31,7 @@ describe("hosted accounts (#732)", () => {
     const r = await a.signup("ADA@example.com", "another-pass-9");
     /* #913: must not reveal that the email is registered — the page already
        offers "Log in instead", so the message stays generic. */
-    expect(r.error).toBe("That email can't be used for a new account.");
+    expect(r.error).toBe("Couldn't create your account. If you already have one, log in instead.");
     expect(r.user).toBeUndefined();
   });
 
@@ -61,6 +61,18 @@ CREATE INDEX idx_sessions_user ON sessions(user_id);`);
     expect(a.sessionUser(legacyToken)!.email).toBe("ada@example.com");
     const row = a.db.query("SELECT token FROM sessions").get() as { token: string };
     expect(row.token).toBe(createHash("sha256").update(legacyToken).digest("hex"));
+  });
+
+  test("#913: concurrent duplicate signups \u2014 one wins, the loser gets the generic error (no throw)", async () => {
+    const a = accountsDb();
+    const [r1, r2] = await Promise.all([
+      a.signup("race@example.com", "correct-horse-8"),
+      a.signup("race@example.com", "correct-horse-8"),
+    ]);
+    const outcomes = [r1, r2];
+    expect(outcomes.filter((r) => r.user)).toHaveLength(1);
+    const loser = outcomes.find((r) => !r.user)!;
+    expect(loser.error).toBe("Couldn't create your account. If you already have one, log in instead.");
   });
 
   test("bad email and short password are rejected", async () => {
@@ -170,6 +182,6 @@ CREATE INDEX idx_sessions_user ON sessions(user_id);`);
     const { user } = await a.signup("taken@example.com", "correct-horse-8");
     a.db.query("UPDATE users SET deleted_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?").run(user!.id);
     const { error } = await a.signup("taken@example.com", "another-pass-9");
-    expect(error).toBe("That email can't be used for a new account.");
+    expect(error).toBe("Couldn't create your account. If you already have one, log in instead.");
   });
 });

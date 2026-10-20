@@ -9,19 +9,13 @@ per-customer backups (this doc).
 `GET /health` — no auth, no rate limit. Returns `200`:
 
 ```json
-{ "ok": true, "version": "1.0.0" }
+{ "ok": true }
 ```
 
-Hosted mode also carries backup freshness:
-
-```json
-{ "ok": true, "version": "1.0.0",
-  "backups": { "accounts": "2026-10-03T12:00:00.000Z", "tenants": 41 } }
-```
-
-`version` comes from the repo `VERSION` file (see `site/lib/version.ts`).
-If `/health` doesn't answer, the server is down or unreachable — nothing
-fancier to check first.
+That's the whole payload (#989): version, backup timestamps, and tenant
+counts were reconnaissance for anyone who asked, so they no longer ride
+along. If `/health` doesn't answer, the server is down or unreachable —
+nothing fancier to check first.
 
 ## External uptime monitoring
 
@@ -51,8 +45,10 @@ Beyond "is it up":
   demand, not stored. Alert at 80% on the data volume — a full disk is
   the most likely way a SQLite app dies.
 - **Backup freshness:** automated per-customer backups run on the server
-  (below). Alert if `/health`'s `backups.accounts` is older than 24h, or if
-  `backups.tenants` drops below the known customer count.
+  (below). `/health` no longer reports freshness (#989) — alert on the
+  backup files themselves: the newest file under `DATA_DIR/backups/` (and
+  the newest `backups/accounts-*.db`) must be under 24h old. Any file-age
+  check works, e.g. `find /opt/zimer-dev/data/backups -type f -mmin -1440`.
 - **TLS/cert:** Cloudflare terminates TLS. If browsers report cert
   errors but `/health` is fine, it's the Cloudflare edge, not us.
 
@@ -113,7 +109,8 @@ target) gets a line here and in the changelog. Future-you is on call.
   to `DATA_DIR/backups/<user_id>/`, accounts separately to
   `DATA_DIR/backups/accounts-<ts>.db`, 7-day daily retention, 60s-after-boot
   + every `BACKUP_INTERVAL_HOURS` (default 6; 0 disables) in hosted mode
-  only, freshness on `GET /health` as `backups.accounts`/`backups.tenants`.
+  only, freshness on `GET /health` as `backups.accounts`/`backups.tenants`
+  (removed by #989 — freshness is monitored on the backup files directly).
 - 2026-10-20 (#986): session tokens are stored in accounts.db as SHA-256
   hashes; the first boot of the new build rewrites existing rows in place
   (guarded by `PRAGMA user_version`). Two hazards: (1) rolling back across
