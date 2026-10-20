@@ -83,12 +83,19 @@ CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
     const exists = !!qUserByEmail.get(e);
     const password_hash = await Bun.password.hash(password);
     if (exists) return { error: "Couldn't create your account. If you already have one, log in instead." };
-    const user = db
-      .query(
-        "INSERT INTO users (email, password_hash) VALUES (?, ?) RETURNING id, email, created_at"
-      )
-      .get(e, password_hash) as AccountUser;
-    return { user };
+    try {
+      const user = db
+        .query(
+          "INSERT INTO users (email, password_hash) VALUES (?, ?) RETURNING id, email, created_at"
+        )
+        .get(e, password_hash) as AccountUser;
+      return { user };
+    } catch {
+      /* #913: a concurrent signup for the same fresh email passed the
+         check above too — the UNIQUE constraint is the real guard, and
+         its loser gets the same generic failure, never a 500. */
+      return { error: "Couldn't create your account. If you already have one, log in instead." };
+    }
   }
 
   /** Verify credentials and mint a session token. Generic error either way —

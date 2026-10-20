@@ -33,6 +33,18 @@ describe("hosted accounts (#732)", () => {
     expect(r.user).toBeUndefined();
   });
 
+  test("#913: concurrent duplicate signups — one wins, the loser gets the generic error (no throw)", async () => {
+    const a = accountsDb();
+    const [r1, r2] = await Promise.all([
+      a.signup("race@example.com", "correct-horse-8"),
+      a.signup("race@example.com", "correct-horse-8"),
+    ]);
+    const outcomes = [r1, r2];
+    expect(outcomes.filter((r) => r.user)).toHaveLength(1);
+    const loser = outcomes.find((r) => !r.user)!;
+    expect(loser.error).toBe("Couldn't create your account. If you already have one, log in instead.");
+  });
+
   test("bad email and short password are rejected", async () => {
     const a = accountsDb();
     expect((await a.signup("not-an-email", "correct-horse-8")).error).toBe(
