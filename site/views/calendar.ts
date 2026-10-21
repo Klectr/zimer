@@ -307,7 +307,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       <a class="md-icon-button tip-right" href="/calendar?week=${next}" hx-get="/partial/week?week=${next}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?week=${next}" data-slide="next" data-tip="Next week" aria-label="Next week">${icon("chevron_right")}</a>`;
     const nudgeChip = uninvoiced > 0 ? `
       <a class="nudge-chip" href="/invoices/new?from=${sun}&to=${addDays(sun, 7)}">
-        <span class="md-label-large">${fmtDur(uninvoiced)} not yet zinvoiced</span>
+        ${uninvoiced < weekBillable ? `<span class="md-label-large">${fmtDur(uninvoiced)} not yet zinvoiced</span>` : ""}
         ${/* #592: the link invoices the VIEWED week, so "this week" lies on
            past/future weeks. Keep it on the current week, "this period"
            everywhere else. */ ""}
