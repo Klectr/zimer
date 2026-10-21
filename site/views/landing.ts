@@ -54,7 +54,7 @@ export function createLandingViews(posthogHead?: () => string) {
   <div class="landing-hero-visual" data-enter="2">
   <picture>
   <source srcset="/static/mascot.webp" type="image/webp">
-  <img class="landing-mascot" src="/static/mascot.png" alt="Klectr the Alien, the Zimer mascot" width="400" height="400">
+  <img class="landing-mascot" src="/static/mascot.png" alt="Klectr the Alien, the Zimer mascot" width="720" height="720">
   </picture>
   </div>
   </section>

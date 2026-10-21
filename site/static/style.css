@@ -112,6 +112,7 @@
 [data-enter="2"] { animation-delay: 60ms; }
 [data-enter="3"] { animation-delay: 120ms; }
 [data-enter="4"] { animation-delay: 180ms; }
+[data-enter="5"] { animation-delay: 240ms; }
 @keyframes content-enter { from { opacity: 0; transform: translateY(16px); } }
 
 /* ---------------- global scrollbars (M3 tonal, #191) ---------------- */
