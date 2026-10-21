@@ -400,7 +400,7 @@ describe("calendar week-only carousel (#572)", () => {
   test("slim chip rides inline in the summary, beside the total (#1041)", () => {
     const aside = asideOf(viewsFor([monEntry, tueEntry]).weekInner("2026-09-20", "America/Chicago"));
     expect(aside).toContain("nudge-chip nudge-chip--solo");
-    expect(aside).toMatch(/<\/a>\s*<\/div>\s*<div class="m3-progress/);
+    expect(aside).toMatch(/cal-summary">[\s\S]*?nudge-chip--solo[\s\S]*?<\/a>\s*<\/div>/);
   });
 
   test("amount chip keeps its full-width row: no solo placement (#1041)", () => {
