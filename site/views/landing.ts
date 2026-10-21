@@ -35,15 +35,18 @@ export function createLandingViews(posthogHead?: () => string) {
   </head>
   <body>
   <main class="page-landing">
+  <header class="landing-topbar">
+  <p class="landing-brand">${logo(28)}<span>Zimer</span></p>
+  <a class="md-text-button landing-signin" href="/login">Sign in</a>
+  </header>
   <section class="landing-hero">
   <div class="landing-hero-copy" data-enter>
-  <p class="landing-brand">${logo(28)}<span>Zimer</span></p>
   <p class="landing-eyebrow"><span class="landing-eyebrow-dot" aria-hidden="true"></span>Time tracking to zinvoicing</p>
   <h1 class="landing-headline">Your Zimer is your Zinvoice.</h1>
   <p class="landing-sub">Start the Zimer while you work. When the work is done, Zimer turns your tracked hours into a clean Zinvoice you can send in one step.</p>
   <div class="landing-cta-row">
   <a class="md-filled-button landing-cta-btn" href="/signup">Start free trial</a>
-  <a class="md-text-button" href="#pricing">See pricing</a>
+  <a class="md-text-button landing-text-btn" href="#pricing">See pricing</a>
   </div>
   <p class="muted landing-price"><strong>$12/month.</strong> 14-day free trial. Cancel anytime.</p>
   <p class="muted landing-selfhost">Prefer to run it yourself? Self-host is free forever.</p>
