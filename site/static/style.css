@@ -795,7 +795,7 @@ body.app { background: var(--md-sys-color-surface-container); }
  * inner content corners without becoming a scroll container. */
 .app-sheet {
   background: var(--md-sys-color-surface);
-  border-radius: var(--md-sys-shape-corner-medium);
+  border-radius: var(--md-sys-shape-corner-extra-large);
   overflow: clip;
   display: flex;
   flex-direction: column;
@@ -1842,7 +1842,7 @@ body.app-fixed .cal-gutter-spacer {
   .landing-plan-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 28px; }
 }
 .landing-plan { display: flex; flex-direction: column; gap: 12px; padding: 24px 20px;
-  border-radius: var(--md-sys-shape-corner-extra-large);
+  border-radius: var(--md-sys-shape-corner-medium);
   background: var(--md-sys-color-surface-container-low); }
 @media (min-width: 840px) { .landing-plan { padding: 28px; } }
 .landing-plan-featured { background:
