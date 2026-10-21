@@ -31,7 +31,8 @@ describe("#731: landing page router", () => {
   test("hosted logged-out GET / -> 200 landing, CTA to /signup", async () => {
     const { res, body } = await get(true, false, "/");
     expect(res!.status).toBe(200);
-    expect(body).toContain("<title>Zimer: your Zimer is your Zinvoice</title>");
+    expect(body).toContain("<title>Zimer: the time tracker that turns your hours into an invoice</title>");
+    expect(body).toContain("The time tracker that turns your hours into an invoice.");
     expect(body).toContain("Your Zimer is your Zinvoice.");
     expect(body).toContain("$12/month");
     expect(body).toContain("14-day free trial");
@@ -93,5 +94,14 @@ describe("#731: landing page view", () => {
     const wired = createLandingViews(() => posthogSnippet("phc_test123", "https://us.i.posthog.com", null, { landing: true })).landingPage("https://example.com");
     expect(wired).toContain("phc_test123");
     expect(wired).toContain("capture_pageview: true");
+  });
+});
+
+describe("#1044: hero leads with the promise and the product", () => {
+  test("the app screenshot renders inside the hero section", async () => {
+    const { body } = await get(true, false, "/");
+    const hero = body!.slice(body!.indexOf('<section class="landing-hero">'), body!.indexOf("</section>"));
+    expect(hero).toContain("landing-shot");
+    expect(hero).toContain("The time tracker that turns your hours into an invoice.");
   });
 });
