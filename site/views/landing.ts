@@ -54,11 +54,11 @@ export function createLandingViews(posthogHead?: () => string) {
   <div class="landing-hero-visual" data-enter="2">
   <picture>
   <source srcset="/static/mascot.webp" type="image/webp">
-  <img class="landing-mascot" src="/static/mascot.png" alt="Klectr the Alien, the Zimer mascot" width="720" height="720">
+  <img class="landing-mascot" src="/static/mascot.png" alt="Klectr the Alien, the Zimer mascot" width="720" height="720" fetchpriority="low">
   </picture>
   </div>
   <figure class="landing-shot" data-enter="3">
-  <img src="/static/app-shot.webp" alt="The Zimer app on a phone: this week's tracked time by day, with totals per client and a Zinvoice this week button" width="780" height="1688">
+  <img src="/static/app-shot.webp" alt="The Zimer app on a phone: this week's tracked time by day, with totals per client and a Zinvoice this week button" width="780" height="1688" fetchpriority="high">
   </figure>
   </section>
   <section class="landing-section" data-enter="4">
