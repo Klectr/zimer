@@ -960,6 +960,11 @@ body.app-fixed .md-nav-rail { position: static; height: auto; }
 .cal-supporting .m3-progress, .cal-supporting .week-clients, .cal-supporting .cal-hint { margin: 0; }
 /* #542: the week-over-week delta's trend icon rides the muted label baseline
    at label size — the same 14px treatment the Stripe paid chip's icon gets. */
+.cal-summary { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; }
+.cal-summary-total { grid-row: 1; grid-column: 1; }
+.cal-summary-sub { grid-row: 2; grid-column: 1 / -1; }
+.cal-summary .nudge-chip { grid-row: 3; grid-column: 1 / -1; justify-self: start; margin: 10px 0 14px; }
+.cal-summary .nudge-chip--solo { grid-row: 1; grid-column: 2; justify-self: end; align-self: center; margin: 0; }
 .cal-summary .cal-delta svg { width: 14px; height: 14px; vertical-align: -2px; margin-right: 2px; }
 .cal-pane-layout .cal-carousel { grid-area: grid; }
 @media (min-width: 840px) {

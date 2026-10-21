@@ -397,6 +397,19 @@ describe("calendar week-only carousel (#572)", () => {
     expect(aside).toContain("1h not yet zinvoiced");
   });
 
+  test("slim chip rides inline in the summary, beside the total (#1041)", () => {
+    const aside = asideOf(viewsFor([monEntry, tueEntry]).weekInner("2026-09-20", "America/Chicago"));
+    expect(aside).toContain("nudge-chip nudge-chip--solo");
+    expect(aside).toMatch(/cal-summary">[\s\S]*?nudge-chip--solo[\s\S]*?<\/a>\s*<\/div>/);
+  });
+
+  test("amount chip keeps its full-width row: no solo placement (#1041)", () => {
+    const invoicedMon = { ...monEntry, invoice_id: 7, invoice_number: "INV-0001", invoice_status: "sent" };
+    const aside = asideOf(viewsFor([invoicedMon, tueEntry]).weekInner("2026-09-20", "America/Chicago"));
+    expect(aside).toContain("nudge-chip");
+    expect(aside).not.toContain("nudge-chip--solo");
+  });
+
   test("weekGrid loads the week skeleton with no day param", () => {
     const html = viewsFor([]).weekGrid("2026-09-20");
     expect(html).toContain('hx-get="/partial/week?week=2026-09-20"');
@@ -445,7 +458,7 @@ describe("week summary delta (#524)", () => {
       calHourPx: 64,
     } as any);
     const html = views.weekInner("2026-09-20", "America/Chicago");
-    const m = html.match(/<div class="cal-summary">[\s\S]*?<\/div>\s*<\/div>/);
+    const m = html.match(/<div class="cal-summary">[\s\S]*?cal-summary-sub">[\s\S]*?<\/div>/);
     if (!m) throw new Error("no cal-summary block");
     return m[0];
   }
