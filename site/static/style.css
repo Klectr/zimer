@@ -1820,6 +1820,7 @@ body.app-fixed .cal-gutter-spacer {
   .landing-hero-visual .landing-mascot { width: min(400px, 80vw); }
 }
 
+.landing-hero .landing-shot { grid-column: 1 / -1; margin: 0 auto; }
 .landing-shot { margin: clamp(32px, 6vw, 56px) auto 0; max-width: 400px; padding: 8px;
   background: var(--md-sys-color-surface-container-low);
   border-radius: var(--md-sys-shape-corner-large); }
@@ -1887,7 +1888,7 @@ body.app-fixed .cal-gutter-spacer {
 @media (max-width: 599px) {
   .landing-topbar { margin-bottom: 12px; }
   .landing-hero { gap: 20px; }
-  .landing-hero-visual .landing-mascot { width: min(176px, 46vw); }
+  .landing-hero-visual { display: none; }
   .landing-section { margin-top: 28px; }
 }
 
