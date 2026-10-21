@@ -1814,6 +1814,12 @@ body.app-fixed .cal-gutter-spacer {
   .landing-hero-visual .landing-mascot { width: min(400px, 80vw); }
 }
 
+.landing-shot { margin: clamp(32px, 6vw, 56px) auto 0; max-width: 400px; padding: 8px;
+  background: var(--md-sys-color-surface-container-low);
+  border-radius: var(--md-sys-shape-corner-large); }
+.landing-shot img { display: block; width: 100%; height: auto;
+  border-radius: var(--md-sys-shape-corner-medium); }
+
 .landing-section { margin-top: clamp(40px, 8vw, 80px); scroll-margin-top: 16px; }
 .landing-section-title { margin: 0; font-size: clamp(1.5rem, 3.4vw, 2rem); line-height: 1.33;
   font-weight: 600; letter-spacing: -0.01em; }

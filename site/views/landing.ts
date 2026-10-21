@@ -52,10 +52,16 @@ export function createLandingViews(posthogHead?: () => string) {
   <p class="muted landing-selfhost">Prefer to run it yourself? Self-host is free forever.</p>
   </div>
   <div class="landing-hero-visual" data-enter="2">
+  <picture>
+  <source srcset="/static/mascot.webp" type="image/webp">
   <img class="landing-mascot" src="/static/mascot.png" alt="Klectr the Alien, the Zimer mascot" width="400" height="400">
+  </picture>
   </div>
   </section>
-  <section class="landing-section" data-enter="3">
+  <figure class="landing-shot" data-enter="3">
+  <img src="/static/app-shot.webp" alt="The Zimer app on a phone: this week's tracked time by day, with totals per client and a Zinvoice this week button" width="780" height="1688">
+  </figure>
+  <section class="landing-section" data-enter="4">
   <h2 class="landing-section-title">Everything from first tap to paid</h2>
   <p class="muted landing-section-sub">One app for the whole loop: track the time, send the Zinvoice, watch the money land.</p>
   <div class="landing-feature-grid">
@@ -81,7 +87,7 @@ export function createLandingViews(posthogHead?: () => string) {
   </article>
   </div>
   </section>
-  <section class="landing-section" id="pricing" data-enter="4">
+  <section class="landing-section" id="pricing" data-enter="5">
   <h2 class="landing-section-title">Simple, honest pricing</h2>
   <p class="muted landing-section-sub">Hosted for $12 a month, or self-host it for nothing. Both get the whole app.</p>
   <div class="landing-plan-grid">
