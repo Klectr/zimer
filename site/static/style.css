@@ -795,7 +795,7 @@ body.app { background: var(--md-sys-color-surface-container); }
  * inner content corners without becoming a scroll container. */
 .app-sheet {
   background: var(--md-sys-color-surface);
-  border-radius: var(--md-sys-shape-corner-extra-large);
+  border-radius: var(--md-sys-shape-corner-medium);
   overflow: clip;
   display: flex;
   flex-direction: column;
@@ -1775,6 +1775,10 @@ body.app-fixed .cal-gutter-spacer {
 .page-landing { max-width: 1080px; margin: 0 auto;
   padding: clamp(24px, 7vw, 40px) var(--layout-body-margin) clamp(40px, 9vw, 56px); }
 
+.landing-topbar { display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; margin-bottom: clamp(20px, 5vw, 36px); }
+.landing-signin, .landing-text-btn { min-height: 48px; }
+
 .landing-hero { display: grid; gap: 28px; align-items: center; }
 @media (min-width: 840px) {
   .landing-hero { grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr); gap: 56px; }
@@ -1786,24 +1790,24 @@ body.app-fixed .cal-gutter-spacer {
   padding: 6px 14px 6px 10px; border-radius: var(--md-sys-shape-corner-full);
   background: var(--md-sys-color-surface-container-high);
   color: var(--md-sys-color-on-surface-variant);
-  font-size: 0.8125rem; font-weight: 500; letter-spacing: 0.3px; }
+  font-size: 0.875rem; line-height: 20px; font-weight: 500; letter-spacing: 0.3px; }
 .landing-eyebrow-dot { width: 8px; height: 8px; border-radius: 50%;
   background: var(--md-sys-color-primary); flex: none; }
-.landing-headline { margin: 0; font-size: clamp(2.25rem, 6vw, 3.5rem); line-height: 1.06;
+.landing-headline { margin: 0; font-size: clamp(2.25rem, 6vw, 3.5rem); line-height: 1.22;
   font-weight: 600; letter-spacing: -0.02em; color: var(--md-sys-color-on-surface); }
-.landing-sub { margin: 0; max-width: 42ch; font-size: 1.0625rem; line-height: 1.6;
+.landing-sub { margin: 0; max-width: 42ch; font-size: 1rem; line-height: 1.5;
   color: var(--md-sys-color-on-surface-variant); }
 .landing-cta-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .landing-cta-btn { font-size: 1rem; min-height: 48px; padding: 0 32px; }
-.landing-price { margin: 0; font-size: 0.9375rem; }
+.landing-price { margin: 0; font-size: 0.875rem; }
 .landing-price strong { color: var(--md-sys-color-on-surface); font-weight: 600; }
-.landing-selfhost { margin: 0; font-size: 0.8125rem; }
+.landing-selfhost { margin: 0; font-size: 0.875rem; }
 .landing-selfhost a { color: var(--md-sys-color-primary); }
 
 .landing-hero-visual { position: relative; display: flex; justify-content: center; }
 .landing-hero-visual::before { content: ""; position: absolute; inset: 8% 12%;
   border-radius: 50%;
-  background: radial-gradient(closest-side, rgba(242, 193, 78, 0.22), rgba(242, 193, 78, 0) 72%);
+  background: radial-gradient(closest-side, rgba(251, 146, 60, 0.22), rgba(251, 146, 60, 0) 72%);
   pointer-events: none; }
 .landing-hero-visual .landing-mascot { position: relative; width: min(300px, 72vw); height: auto; margin: 0; }
 @media (min-width: 840px) {
@@ -1811,7 +1815,7 @@ body.app-fixed .cal-gutter-spacer {
 }
 
 .landing-section { margin-top: clamp(40px, 8vw, 80px); scroll-margin-top: 16px; }
-.landing-section-title { margin: 0; font-size: clamp(1.5rem, 3.4vw, 2rem); line-height: 1.2;
+.landing-section-title { margin: 0; font-size: clamp(1.5rem, 3.4vw, 2rem); line-height: 1.33;
   font-weight: 600; letter-spacing: -0.01em; }
 .landing-section-sub { margin: 8px 0 0; max-width: 56ch; }
 
@@ -1821,7 +1825,7 @@ body.app-fixed .cal-gutter-spacer {
 }
 @media (min-width: 1200px) { .landing-feature-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 .landing-feature { display: flex; flex-direction: column; gap: 8px; padding: 18px;
-  border-radius: var(--md-sys-shape-corner-large);
+  border-radius: var(--md-sys-shape-corner-medium);
   background: var(--md-sys-color-surface-container-low); }
 @media (min-width: 600px) { .landing-feature { padding: 20px; } }
 .landing-feature-icon { display: inline-flex; align-items: center; justify-content: center;
@@ -1842,9 +1846,9 @@ body.app-fixed .cal-gutter-spacer {
   background: var(--md-sys-color-surface-container-low); }
 @media (min-width: 840px) { .landing-plan { padding: 28px; } }
 .landing-plan-featured { background:
-  linear-gradient(180deg, rgba(242, 193, 78, 0.12), rgba(242, 193, 78, 0.02)),
+  linear-gradient(180deg, rgba(251, 146, 60, 0.12), rgba(251, 146, 60, 0.02)),
   var(--md-sys-color-surface-container-high); }
-.landing-plan-label { margin: 0; font-size: 0.8125rem; font-weight: 600; letter-spacing: 0.4px;
+.landing-plan-label { margin: 0; font-size: 0.875rem; font-weight: 600; letter-spacing: 0.4px;
   text-transform: uppercase; color: var(--md-sys-color-on-surface-variant); }
 .landing-plan-featured .landing-plan-label { color: var(--md-sys-color-primary); }
 .landing-plan-price { display: flex; align-items: baseline; gap: 2px; margin: 0; }
@@ -1863,9 +1867,17 @@ body.app-fixed .cal-gutter-spacer {
 
 .landing-foot { margin-top: clamp(40px, 8vw, 80px); text-align: center; }
 .landing-foot-links { margin: 0; line-height: 1.9; }
+.landing-foot-links a, .landing-support a { display: inline-block; padding: 10px 4px; }
 .landing-support { margin: 8px 0 0; }
 .landing-foot a { color: var(--md-sys-color-on-surface-variant); }
 .landing-foot a:hover { color: var(--md-sys-color-on-surface); }
+
+@media (max-width: 599px) {
+  .landing-topbar { margin-bottom: 12px; }
+  .landing-hero { gap: 20px; }
+  .landing-hero-visual .landing-mascot { width: min(176px, 46vw); }
+  .landing-section { margin-top: 28px; }
+}
 
 /* Reusable M3 Expressive determinate progress bar, ported from
    homeschool-planner's dashboard (#85). The pumpkin fill is wave-masked and
