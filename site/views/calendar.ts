@@ -305,9 +305,10 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       ${isThisWeek ? "" : `<a class="md-text-button" href="/calendar" hx-get="/partial/week" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar">Today</a>`}
       <a class="md-icon-button" href="/calendar?week=${prev}" hx-get="/partial/week?week=${prev}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?week=${prev}" data-slide="prev" data-tip="Previous week" aria-label="Previous week">${icon("chevron_left")}</a>
       <a class="md-icon-button tip-right" href="/calendar?week=${next}" hx-get="/partial/week?week=${next}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?week=${next}" data-slide="next" data-tip="Next week" aria-label="Next week">${icon("chevron_right")}</a>`;
+    const showChipAmount = uninvoiced < weekBillable;
     const nudgeChip = uninvoiced > 0 ? `
-      <a class="nudge-chip" href="/invoices/new?from=${sun}&to=${addDays(sun, 7)}">
-        ${uninvoiced < weekBillable ? `<span class="md-label-large">${fmtDur(uninvoiced)} not yet zinvoiced</span>` : ""}
+      <a class="nudge-chip${showChipAmount ? "" : " nudge-chip--solo"}" href="/invoices/new?from=${sun}&to=${addDays(sun, 7)}">
+        ${showChipAmount ? `<span class="md-label-large">${fmtDur(uninvoiced)} not yet zinvoiced</span>` : ""}
         ${/* #592: the link invoices the VIEWED week, so "this week" lies on
            past/future weeks. Keep it on the current week, "this period"
            everywhere else. */ ""}
@@ -346,10 +347,10 @@ export function createCalendarViews(deps: CalendarViewDeps) {
         </div>
       </div>
       <div class="cal-summary">
-        <div class="md-headline-small">${fmtDur(weekTotal)}</div>
-        <div class="md-label-medium muted">${fmtDur(weekBillable)} billable${deltaHtml}</div>
+        <div class="md-headline-small cal-summary-total">${fmtDur(weekTotal)}</div>
+        <div class="md-label-medium muted cal-summary-sub">${fmtDur(weekBillable)} billable${deltaHtml}</div>
+        ${nudgeChip}
       </div>
-      ${nudgeChip}
       ${weekTargetBar(weekTotal)}
       ${clientStrip}
       ${/* #781: the create gesture differs per presentation — drag-to-create on
