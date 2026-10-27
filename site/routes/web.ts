@@ -293,6 +293,30 @@ export function createWebRouter(deps: WebDeps) {
           return json({ ok: true });
         }
 
+        /* #1050: crawler files — hosted is the public site; self-hosted
+           serves only the invoice surface, so it disallows everything. */
+        if (path === "/robots.txt" && method === "GET") {
+          const body = HOSTED
+            ? `User-agent: *\nAllow: /\nDisallow: /api/\n\nSitemap: ${shareOrigin(req)}/sitemap.xml\n`
+            : "User-agent: *\nDisallow: /\n";
+          return new Response(body, { headers: { "Content-Type": "text/plain; charset=utf-8" } });
+        }
+        if (path === "/sitemap.xml" && method === "GET" && HOSTED) {
+          const origin = shareOrigin(req);
+          const entries = await loadChangelog();
+          const latest = entries.reduce((m, e) => (/^\d{4}-\d{2}-\d{2}$/.test(e.date) && e.date > m ? e.date : m), "");
+          const urls = [`  <url><loc>${origin}/</loc></url>`];
+          if (latest) urls.push(`  <url><loc>${origin}/changelog</loc><lastmod>${latest}</lastmod></url>`);
+          return new Response(
+            `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>\n`,
+            { headers: { "Content-Type": "application/xml; charset=utf-8" } });
+        }
+
+        /* #1050: the content pages below are indexable only on the hosted
+           marketing site; the self-hosted instance serves them on the
+           invoice domain, where they stay noindexed by header. */
+        const pubRobots = HOSTED ? {} : { "X-Robots-Tag": "noindex" };
+
         /* #341: public terms page — no auth, same rate limit as the public
            invoice surface. */
         if (path === "/terms" && method === "GET") {
@@ -300,7 +324,7 @@ export function createWebRouter(deps: WebDeps) {
           if (!rl.allowed) {
             return html(rateLimitPage(), 429, { "Retry-After": String(rl.retryAfterSec) });
           }
-          return html(termsPage(licenseTerms()));
+          return html(termsPage(licenseTerms()), 200, pubRobots);
         }
 
         /* #730: public privacy policy — no auth, same rate limit and chrome
@@ -310,7 +334,7 @@ export function createWebRouter(deps: WebDeps) {
           if (!rl.allowed) {
             return html(rateLimitPage(), 429, { "Retry-After": String(rl.retryAfterSec) });
           }
-          return html(privacyPage());
+          return html(privacyPage(), 200, pubRobots);
         }
 
         /* #303: public changelog — no auth, same rate limit as the public
@@ -320,7 +344,7 @@ export function createWebRouter(deps: WebDeps) {
           if (!rl.allowed) {
             return html(rateLimitPage(), 429, { "Retry-After": String(rl.retryAfterSec) });
           }
-          return html(changelogPage(await loadChangelog(), shareOrigin(req)));
+          return html(changelogPage(await loadChangelog(), shareOrigin(req)), 200, pubRobots);
         }
 
         /* Public client invoice page: no auth, read-only. The token is a

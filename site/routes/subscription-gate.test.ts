@@ -36,7 +36,7 @@ function backdate(accounts: ReturnType<typeof createAccountsDb>, id: number, day
     .run(new Date(Date.now() - days * DAY).toISOString(), id);
 }
 
-function webSetup(accounts: ReturnType<typeof createAccountsDb>, gate: any, hosted: boolean) {
+function webSetup(accounts: ReturnType<typeof createAccountsDb>, gate: any, hosted: boolean, origin = "") {
   const noop = () => "";
   const tenant = {
     db: null, dbPath: "",
@@ -67,11 +67,11 @@ function webSetup(accounts: ReturnType<typeof createAccountsDb>, gate: any, host
     STATIC_DIR: "", TOKEN: "t",
     authedPage: () => true,
     tokensEqual: (a: string, b: string) => a === b,
-    html: (body: string, status = 200) => new Response(body, { status }),
+    html: (body: string, status = 200, extra: Record<string, string> = {}) => new Response(body, { status, headers: extra }),
     json: (data: unknown, status = 200) => Response.json(data, { status }),
     isHtmx: () => false,
     csvResponse: (f: string) => new Response(f),
-    shareOrigin: () => "",
+    shareOrigin: () => origin,
     PORT: 3000,
     loginPage: noop, signupPage: noop, hostedLoginPage: () => "HOSTED-LOGIN",
     HOSTED: hosted, accounts: hosted ? accounts : null,
@@ -258,5 +258,52 @@ describe("#736: API gating", () => {
     });
     const { handleApi } = apiSetup(accounts, inactiveAuthedUser);
     expect((await apiGet(handleApi, "/api/status", cookie)).status).toBe(200);
+  });
+});
+
+describe("#1050: crawler files", () => {
+  test("hosted robots.txt allows crawling, fences the API, declares the sitemap", async () => {
+    const { accounts, inactiveAuthedUser } = await hostedAccounts();
+    const { handleWeb } = webSetup(accounts, inactiveAuthedUser, true, "https://example.com");
+    const res = await webGet(handleWeb, "/robots.txt");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("text/plain");
+    const body = await res.text();
+    expect(body).toContain("User-agent: *");
+    expect(body).toContain("Disallow: /api/");
+    expect(body).toContain("Sitemap: https://example.com/sitemap.xml");
+  });
+
+  test("hosted sitemap lists the landing page and the changelog", async () => {
+    const { accounts, inactiveAuthedUser } = await hostedAccounts();
+    const { handleWeb } = webSetup(accounts, inactiveAuthedUser, true, "https://example.com");
+    const res = await webGet(handleWeb, "/sitemap.xml");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("application/xml");
+    const body = await res.text();
+    expect(body).toContain("<loc>https://example.com/</loc>");
+    expect(body).toContain("<loc>https://example.com/changelog</loc>");
+    expect(body).toMatch(/<lastmod>\d{4}-\d{2}-\d{2}<\/lastmod>/);
+  });
+
+  test("self-hosted robots.txt disallows everything and no sitemap is served", async () => {
+    const { accounts, inactiveAuthedUser } = await hostedAccounts();
+    const { handleWeb } = webSetup(accounts, inactiveAuthedUser, false);
+    const res = await webGet(handleWeb, "/robots.txt");
+    expect(res.status).toBe(200);
+    expect(await res.text()).toContain("Disallow: /");
+    const sm = await webGet(handleWeb, "/sitemap.xml");
+    expect(sm.headers.get("content-type") ?? "").not.toContain("application/xml");
+    expect(await sm.text()).not.toContain("<urlset");
+  });
+
+  test("content pages carry X-Robots-Tag noindex only when self-hosted", async () => {
+    const { accounts, inactiveAuthedUser } = await hostedAccounts();
+    for (const path of ["/terms", "/privacy", "/changelog"]) {
+      const hosted = webSetup(accounts, inactiveAuthedUser, true);
+      expect((await webGet(hosted.handleWeb, path)).headers.get("x-robots-tag")).toBeNull();
+      const selfHosted = webSetup(accounts, inactiveAuthedUser, false);
+      expect((await webGet(selfHosted.handleWeb, path)).headers.get("x-robots-tag")).toBe("noindex");
+    }
   });
 });
