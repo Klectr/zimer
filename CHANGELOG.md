@@ -2,6 +2,10 @@
 
 What's new in Zimer, newest first.
 
+## 2026-10-27
+
+- **Zimer can be found now.** The homepage, this changelog, and the legal pages are open to search engines, with a sitemap and crawler rules to match. Searching for a time tracker that turns hours into an invoice can actually land here.
+
 ## 2026-10-20
 
 - **The browser extension drops the autotracker.** The rules panel, the suggestion card it fed, and the `activeTab` permission are gone. The popup just does setup, start/stop with a description and project, and the Ctrl+Shift+Y hotkey — all it ever needed to do.
