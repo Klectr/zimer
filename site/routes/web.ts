@@ -293,9 +293,8 @@ export function createWebRouter(deps: WebDeps) {
           return json({ ok: true });
         }
 
-        /* #1050: crawler files. Hosted is the public marketing site:
-           crawlable, API off-limits, sitemap declared. Self-hosted serves
-           only the invoice surface, so it disallows everything. */
+        /* #1050: crawler files — hosted is the public site; self-hosted
+           serves only the invoice surface, so it disallows everything. */
         if (path === "/robots.txt" && method === "GET") {
           const body = HOSTED
             ? `User-agent: *\nAllow: /\nDisallow: /api/\n\nSitemap: ${shareOrigin(req)}/sitemap.xml\n`
