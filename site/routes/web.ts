@@ -293,6 +293,26 @@ export function createWebRouter(deps: WebDeps) {
           return json({ ok: true });
         }
 
+        /* #1050: crawler files. Hosted is the public marketing site:
+           crawlable, API off-limits, sitemap declared. Self-hosted serves
+           only the invoice surface, so it disallows everything. */
+        if (path === "/robots.txt" && method === "GET") {
+          const body = HOSTED
+            ? `User-agent: *\nAllow: /\nDisallow: /api/\n\nSitemap: ${shareOrigin(req)}/sitemap.xml\n`
+            : "User-agent: *\nDisallow: /\n";
+          return new Response(body, { headers: { "Content-Type": "text/plain; charset=utf-8" } });
+        }
+        if (path === "/sitemap.xml" && method === "GET" && HOSTED) {
+          const origin = shareOrigin(req);
+          const entries = await loadChangelog();
+          const latest = entries.reduce((m, e) => (e.date > m ? e.date : m), "");
+          const urls = [`  <url><loc>${origin}/</loc><lastmod>2026-10-27</lastmod></url>`];
+          if (latest) urls.push(`  <url><loc>${origin}/changelog</loc><lastmod>${latest}</lastmod></url>`);
+          return new Response(
+            `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>\n`,
+            { headers: { "Content-Type": "application/xml; charset=utf-8" } });
+        }
+
         /* #341: public terms page — no auth, same rate limit as the public
            invoice surface. */
         if (path === "/terms" && method === "GET") {

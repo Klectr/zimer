@@ -62,3 +62,17 @@ describe("social meta tags (#924)", () => {
     expect(html).toContain('property="og:image" content="https://zimer.klectr.dev/static/og-image.png"');
   });
 });
+
+describe("indexing split (#1050)", () => {
+  test("public content pages are indexable; auth and invoice pages are not", () => {
+    const v = views as any;
+    expect(v.changelogPage([], "https://example.com")).not.toContain('content="noindex"');
+    expect(v.termsPage([])).not.toContain('content="noindex"');
+    expect(v.privacyPage()).not.toContain('content="noindex"');
+    expect(v.loginPage()).toContain('content="noindex"');
+    expect(v.signupPage()).toContain('content="noindex"');
+    expect(v.hostedLoginPage()).toContain('content="noindex"');
+    const inv: any = { id: 1, number: "INV-0001", tax_rate: 0, stripe_payment_link: "", items: [], public_token: "abc123" };
+    expect(v.publicInvoicePage(inv, "https://example.com", "/i/abc123")).toContain('content="noindex"');
+  });
+});

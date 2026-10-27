@@ -83,7 +83,8 @@ describe("#731: landing page view", () => {
     const page = landingPage("https://example.com");
     expect(page).not.toContain("—");
     expect(page).not.toContain("–");
-    expect(page).toContain('content="noindex"');
+    expect(page).not.toContain('content="noindex"');
+    expect(page).toContain('<link rel="canonical" href="https://example.com/">');
     expect(page).toContain("/static/style.css");
     expect(page).toContain("/static/utm.js");
   });
@@ -103,5 +104,19 @@ describe("#1044: hero leads with the promise and the product", () => {
     const hero = body!.slice(body!.indexOf('<section class="landing-hero">'), body!.indexOf("</section>"));
     expect(hero).toContain("landing-shot");
     expect(hero).toContain("The time tracker that turns your hours into an invoice.");
+  });
+});
+
+describe("#1050: landing structured data", () => {
+  test("JSON-LD parses and names the Organization and WebSite", () => {
+    const { landingPage } = createLandingViews();
+    const page = landingPage("https://example.com");
+    const m = page.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
+    if (!m) throw new Error("no JSON-LD block");
+    const data = JSON.parse(m[1]);
+    const types = data["@graph"].map((n: any) => n["@type"]);
+    expect(types).toEqual(["Organization", "WebSite"]);
+    expect(data["@graph"][0].url).toBe("https://example.com/");
+    expect(data["@graph"][0].sameAs).toEqual(["https://github.com/Klectr/zimer"]);
   });
 });

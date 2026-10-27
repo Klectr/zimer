@@ -61,7 +61,7 @@ export function createPublicViews(deps: PublicViewDeps) {
   }
 
   /* #730: public privacy policy — same minimal public chrome as the
-     changelog: no auth, no app nav, noindex. Content is deliberately
+     changelog: no auth, no app nav. Content is deliberately
      brief: what we store, where, what we don't do, and how to delete. */
   function privacyPage(): string {
     const sections: TermsSection[] = [
@@ -92,7 +92,6 @@ export function createPublicViews(deps: PublicViewDeps) {
   <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="robots" content="noindex">
   <title>Privacy policy · Zimer</title>
   <link rel="stylesheet" href="/static/style.css">
   <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
@@ -108,7 +107,7 @@ export function createPublicViews(deps: PublicViewDeps) {
   }
 
   /* #303: public changelog — same minimal public chrome as the invoice page:
-     no auth, no app nav, noindex. */
+     no auth, no app nav. */
   function changelogPage(entries: ChangelogEntry[], origin: string): string {
     const body = entries.length ? entries.map(e => `
       <section class="changelog-release">
@@ -121,7 +120,6 @@ export function createPublicViews(deps: PublicViewDeps) {
   <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="robots" content="noindex">
   <title>Changelog · Zimer</title>${ogTags("Changelog · Zimer", "What's new in Zimer.", origin + "/changelog", origin + "/static/og-image.png")}
   <link rel="stylesheet" href="/static/style.css">
   <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
@@ -137,7 +135,7 @@ export function createPublicViews(deps: PublicViewDeps) {
   }
 
   /* #341: public license terms — same minimal public chrome as the
-     changelog: no auth, no app nav, noindex. */
+     changelog: no auth, no app nav. */
   function termsPage(sections: TermsSection[]): string {
     const body = sections.map(s => `
       <section class="changelog-release">
@@ -149,7 +147,6 @@ export function createPublicViews(deps: PublicViewDeps) {
   <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="robots" content="noindex">
   <title>Terms of service · Zimer</title>
   <link rel="stylesheet" href="/static/style.css">
   <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
@@ -166,6 +163,7 @@ export function createPublicViews(deps: PublicViewDeps) {
 
   function loginPage(): string {
     return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
   <title>Log in · Zimer</title>
   <link rel="stylesheet" href="/static/style.css">
   <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
@@ -186,6 +184,7 @@ export function createPublicViews(deps: PublicViewDeps) {
   /* #732: hosted signup + login pages. Same M3 card as the token login. */
   function authShell(title: string, form: string, error?: string): string {
     return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
   <title>${title} · Zimer</title>
   <link rel="stylesheet" href="/static/style.css">
   <link rel="icon" type="image/svg+xml" href="/static/logo.svg">

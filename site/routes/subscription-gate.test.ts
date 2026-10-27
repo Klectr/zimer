@@ -260,3 +260,39 @@ describe("#736: API gating", () => {
     expect((await apiGet(handleApi, "/api/status", cookie)).status).toBe(200);
   });
 });
+
+describe("#1050: crawler files", () => {
+  test("hosted robots.txt allows crawling, fences the API, declares the sitemap", async () => {
+    const { accounts, inactiveAuthedUser } = await hostedAccounts();
+    const { handleWeb } = webSetup(accounts, inactiveAuthedUser, true);
+    const res = await webGet(handleWeb, "/robots.txt");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("text/plain");
+    const body = await res.text();
+    expect(body).toContain("User-agent: *");
+    expect(body).toContain("Disallow: /api/");
+    expect(body).toContain("Sitemap: /sitemap.xml");
+  });
+
+  test("hosted sitemap lists the landing page and the changelog", async () => {
+    const { accounts, inactiveAuthedUser } = await hostedAccounts();
+    const { handleWeb } = webSetup(accounts, inactiveAuthedUser, true);
+    const res = await webGet(handleWeb, "/sitemap.xml");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("application/xml");
+    const body = await res.text();
+    expect(body).toContain("<loc>/</loc>");
+    expect(body).toContain("<loc>/changelog</loc>");
+    expect(body).toMatch(/<lastmod>\d{4}-\d{2}-\d{2}<\/lastmod>/);
+  });
+
+  test("self-hosted robots.txt disallows everything and no sitemap is served", async () => {
+    const { accounts, inactiveAuthedUser } = await hostedAccounts();
+    const { handleWeb } = webSetup(accounts, inactiveAuthedUser, false);
+    const res = await webGet(handleWeb, "/robots.txt");
+    expect(res.status).toBe(200);
+    expect(await res.text()).toContain("Disallow: /");
+    const sm = await webGet(handleWeb, "/sitemap.xml");
+    expect(await sm.text()).not.toContain("<urlset");
+  });
+});

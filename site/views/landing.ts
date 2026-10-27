@@ -3,7 +3,7 @@
  *  routes/landing.ts). Self-host mode never shows it (/ keeps bouncing
  *  to /login); authed hosted users fall through to the app.
  *
- *  Same minimal public chrome as /pricing: no app nav, noindex, M3 dark
+ *  Same minimal public chrome as /pricing: no app nav, M3 dark
  *  theme, pumpkin #fb923c for the CTA only, no emoji. Copy stays short:
  *  headline, what it does, $12/mo + 14-day trial, CTA to /signup. */
 
@@ -16,7 +16,7 @@ export function createLandingViews(posthogHead?: () => string) {
   <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="robots" content="noindex">
+  <link rel="canonical" href="${origin}/">
   <title>Zimer: the time tracker that turns your hours into an invoice</title>
   <meta name="description" content="Self-hosted time tracking for zinvoicing. Track your time, hit one button, send the Zinvoice. $12/month with a 14-day free trial.">
   <link rel="stylesheet" href="/static/style.css">
@@ -29,6 +29,9 @@ export function createLandingViews(posthogHead?: () => string) {
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:image" content="${origin}/static/og-image.png">
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@graph":[{"@type":"Organization","name":"Zimer","url":"${origin}/","logo":"${origin}/static/alien-180.png","sameAs":["https://github.com/Klectr/zimer"]},{"@type":"WebSite","name":"Zimer","url":"${origin}/"}]}
+  </script>
   <script src="/static/motion.js" defer></script>
   <script src="/static/utm.js" defer></script>
   ${posthogHead ? posthogHead() : ""}
