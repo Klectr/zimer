@@ -24,11 +24,16 @@ export function createLandingViews(posthogHead?: () => string) {
   <link rel="apple-touch-icon" href="/static/alien-180.png">
   <meta property="og:title" content="Zimer: the time tracker that turns your hours into an invoice">
   <meta property="og:description" content="Track your time, hit one button, send the Zinvoice. $12/month with a 14-day free trial.">
-  <meta property="og:image" content="${origin}/static/og-image.png">
+  <meta property="og:image" content="${origin}/static/og-image-v2.png">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Klectr the alien with a laptop beside the headline 'Turn your hours into an invoice.'">
   <meta property="og:url" content="${origin}/">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:image" content="${origin}/static/og-image.png">
+  <meta name="twitter:image" content="${origin}/static/og-image-v2.png">
+  <meta name="twitter:image:alt" content="Klectr the alien with a laptop beside the headline 'Turn your hours into an invoice.'">
   <script type="application/ld+json">
   {"@context":"https://schema.org","@graph":[{"@type":"Organization","name":"Zimer","url":"${origin}/","logo":"${origin}/static/alien-180.png","sameAs":["https://github.com/Klectr/zimer"]},{"@type":"WebSite","name":"Zimer","url":"${origin}/"}]}
   </script>

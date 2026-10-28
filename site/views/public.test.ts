@@ -51,6 +51,7 @@ describe("social meta tags (#924)", () => {
       'property="og:title" content="Zinvoice · Zimer"',
       'property="og:url" content="https://zimer.klectr.dev/i/abc123"',
       'property="og:image" content="https://zimer.klectr.dev/static/og-image.png"',
+      'property="og:image:width" content="2240"',
       'name="twitter:card" content="summary_large_image"',
     ]) expect(html).toContain(tag);
     expect(html).not.toContain("Acme"); // client names never leak
@@ -59,7 +60,7 @@ describe("social meta tags (#924)", () => {
     const html = (views as any).changelogPage([], "https://zimer.klectr.dev");
     expect(html).toContain('property="og:title" content="Changelog · Zimer"');
     expect(html).toContain('property="og:url" content="https://zimer.klectr.dev/changelog"');
-    expect(html).toContain('property="og:image" content="https://zimer.klectr.dev/static/og-image.png"');
+    expect(html).toContain('property="og:image" content="https://zimer.klectr.dev/static/og-image-v2.png"');
   });
 });
 
