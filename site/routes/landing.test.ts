@@ -48,13 +48,13 @@ describe("#731: landing page router", () => {
     const { res, body } = await get(true, false, "/");
     expect(res!.status).toBe(200);
     expect(body).toContain(
-      '<meta property="og:image" content="https://example.com/static/og-image-v2.png">'
+      '<meta property="og:image" content="https://example.com/static/og-image-v3.png">'
     );
     expect(body).toContain(
       '<meta property="og:url" content="https://example.com/">'
     );
     expect(body).toContain(
-      '<meta name="twitter:image" content="https://example.com/static/og-image-v2.png">'
+      '<meta name="twitter:image" content="https://example.com/static/og-image-v3.png">'
     );
     /* #1053: declared dimensions and alt text travel with the image. */
     expect(body).toContain('<meta property="og:image:width" content="1200">');

@@ -60,7 +60,7 @@ describe("social meta tags (#924)", () => {
     const html = (views as any).changelogPage([], "https://zimer.klectr.dev");
     expect(html).toContain('property="og:title" content="Changelog · Zimer"');
     expect(html).toContain('property="og:url" content="https://zimer.klectr.dev/changelog"');
-    expect(html).toContain('property="og:image" content="https://zimer.klectr.dev/static/og-image-v2.png"');
+    expect(html).toContain('property="og:image" content="https://zimer.klectr.dev/static/og-image-v3.png"');
   });
 });
 
