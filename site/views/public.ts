@@ -27,10 +27,15 @@ export function createPublicViews(deps: PublicViewDeps) {
   <meta property="og:title" content="${esc(title)}">
   <meta property="og:description" content="${esc(description)}">
   <meta property="og:image" content="${esc(image)}">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Klectr the alien with a laptop beside the headline 'Turn your hours into an invoice.'">
   <meta property="og:url" content="${esc(url)}">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:image" content="${esc(image)}">`;
+  <meta name="twitter:image" content="${esc(image)}">
+  <meta name="twitter:image:alt" content="Klectr the alien with a laptop beside the headline 'Turn your hours into an invoice.'">`;
   }
 
   /** Public client invoice page: no auth, read-only, no actions or navigation. */
@@ -46,7 +51,7 @@ export function createPublicViews(deps: PublicViewDeps) {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
-  <title>Invoice ${esc(inv.number)} · Zimer</title>${ogTags("Zinvoice · Zimer", "View and pay your Zinvoice securely.", origin + tokenPath, origin + "/static/og-image.png")}
+  <title>Invoice ${esc(inv.number)} · Zimer</title>${ogTags("Zinvoice · Zimer", "View and pay your Zinvoice securely.", origin + tokenPath, origin + "/static/og-image-v2.png")}
   <link rel="stylesheet" href="/static/style.css">
   <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
   <script src="/static/motion.js" defer></script>
@@ -120,7 +125,7 @@ export function createPublicViews(deps: PublicViewDeps) {
   <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Changelog · Zimer</title>${ogTags("Changelog · Zimer", "What's new in Zimer.", origin + "/changelog", origin + "/static/og-image.png")}
+  <title>Changelog · Zimer</title>${ogTags("Changelog · Zimer", "What's new in Zimer.", origin + "/changelog", origin + "/static/og-image-v2.png")}
   <link rel="stylesheet" href="/static/style.css">
   <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
   <script src="/static/motion.js" defer></script>
