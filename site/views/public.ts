@@ -22,20 +22,22 @@ export function createPublicViews(deps: PublicViewDeps) {
   /** #924: shared OG + Twitter card tags for public pages. Unfurlers ignore
       relative URLs, so image and url are absolute. Keep invoice tags generic —
       never client names or amounts. */
-  function ogTags(title: string, description: string, url: string, image: string): string {
+  const OG_CARD = { width: 1200, height: 630, alt: "Klectr the alien with a laptop beside the headline 'Turn your hours into an invoice.'" };
+  const OG_BRAND = { width: 2240, height: 1120, alt: "Klectr the alien with a clock and books beside the text 'your Zimer is your Zinvoice.'" };
+  function ogTags(title: string, description: string, url: string, image: string, card = OG_CARD): string {
     return `
   <meta property="og:title" content="${esc(title)}">
   <meta property="og:description" content="${esc(description)}">
   <meta property="og:image" content="${esc(image)}">
   <meta property="og:image:type" content="image/png">
-  <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="Klectr the alien with a laptop beside the headline 'Turn your hours into an invoice.'">
+  <meta property="og:image:width" content="${card.width}">
+  <meta property="og:image:height" content="${card.height}">
+  <meta property="og:image:alt" content="${card.alt}">
   <meta property="og:url" content="${esc(url)}">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:image" content="${esc(image)}">
-  <meta name="twitter:image:alt" content="Klectr the alien with a laptop beside the headline 'Turn your hours into an invoice.'">`;
+  <meta name="twitter:image:alt" content="${card.alt}">`;
   }
 
   /** Public client invoice page: no auth, read-only, no actions or navigation. */
@@ -51,7 +53,7 @@ export function createPublicViews(deps: PublicViewDeps) {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
-  <title>Invoice ${esc(inv.number)} · Zimer</title>${ogTags("Zinvoice · Zimer", "View and pay your Zinvoice securely.", origin + tokenPath, origin + "/static/og-image-v2.png")}
+  <title>Invoice ${esc(inv.number)} · Zimer</title>${ogTags("Zinvoice · Zimer", "View and pay your Zinvoice securely.", origin + tokenPath, origin + "/static/og-image.png", OG_BRAND)}
   <link rel="stylesheet" href="/static/style.css">
   <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
   <script src="/static/motion.js" defer></script>

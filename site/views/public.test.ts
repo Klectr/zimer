@@ -50,7 +50,8 @@ describe("social meta tags (#924)", () => {
     for (const tag of [
       'property="og:title" content="Zinvoice · Zimer"',
       'property="og:url" content="https://zimer.klectr.dev/i/abc123"',
-      'property="og:image" content="https://zimer.klectr.dev/static/og-image-v2.png"',
+      'property="og:image" content="https://zimer.klectr.dev/static/og-image.png"',
+      'property="og:image:width" content="2240"',
       'name="twitter:card" content="summary_large_image"',
     ]) expect(html).toContain(tag);
     expect(html).not.toContain("Acme"); // client names never leak
