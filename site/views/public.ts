@@ -22,7 +22,7 @@ export function createPublicViews(deps: PublicViewDeps) {
   /** #924: shared OG + Twitter card tags for public pages. Unfurlers ignore
       relative URLs, so image and url are absolute. Keep invoice tags generic —
       never client names or amounts. */
-  const OG_CARD = { width: 1200, height: 630, alt: "Klectr the alien with a laptop beside the headline 'Turn your hours into an invoice.'" };
+  const OG_CARD = { width: 1200, height: 630, alt: "Klectr the alien with a clock and books beside the headline 'Turn your hours into an invoice.'" };
   const OG_BRAND = { width: 2240, height: 1120, alt: "Klectr the alien with a clock and books beside the text 'your Zimer is your Zinvoice.'" };
   function ogTags(title: string, description: string, url: string, image: string, card = OG_CARD): string {
     return `
@@ -127,7 +127,7 @@ export function createPublicViews(deps: PublicViewDeps) {
   <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Changelog · Zimer</title>${ogTags("Changelog · Zimer", "What's new in Zimer.", origin + "/changelog", origin + "/static/og-image-v2.png")}
+  <title>Changelog · Zimer</title>${ogTags("Changelog · Zimer", "What's new in Zimer.", origin + "/changelog", origin + "/static/og-image-v3.png")}
   <link rel="stylesheet" href="/static/style.css">
   <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
   <script src="/static/motion.js" defer></script>
