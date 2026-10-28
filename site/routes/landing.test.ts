@@ -48,14 +48,19 @@ describe("#731: landing page router", () => {
     const { res, body } = await get(true, false, "/");
     expect(res!.status).toBe(200);
     expect(body).toContain(
-      '<meta property="og:image" content="https://example.com/static/og-image.png">'
+      '<meta property="og:image" content="https://example.com/static/og-image-v2.png">'
     );
     expect(body).toContain(
       '<meta property="og:url" content="https://example.com/">'
     );
     expect(body).toContain(
-      '<meta name="twitter:image" content="https://example.com/static/og-image.png">'
+      '<meta name="twitter:image" content="https://example.com/static/og-image-v2.png">'
     );
+    /* #1053: declared dimensions and alt text travel with the image. */
+    expect(body).toContain('<meta property="og:image:width" content="1200">');
+    expect(body).toContain('<meta property="og:image:height" content="630">');
+    expect(body).toContain('<meta property="og:image:alt"');
+    expect(body).toContain('<meta name="twitter:image:alt"');
   });
 
   test("hosted authed visitor falls through (null) — / keeps serving the app", async () => {
