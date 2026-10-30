@@ -70,7 +70,7 @@ export function createPublicViews(deps: PublicViewDeps) {
   /* #730: public privacy policy — same minimal public chrome as the
      changelog: no auth, no app nav. Content is deliberately
      brief: what we store, where, what we don't do, and how to delete. */
-  function privacyPage(): string {
+  function privacyPage(origin: string): string {
     const sections: TermsSection[] = [
       {
         heading: "What we store",
@@ -100,6 +100,8 @@ export function createPublicViews(deps: PublicViewDeps) {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Privacy policy · Zimer</title>
+  <meta name="description" content="Zimer privacy policy: what we store, where it lives, what we never do with your data, and how to delete your account.">
+  <link rel="canonical" href="${origin}/privacy">${ogTags("Privacy policy · Zimer", "Zimer privacy policy: what we store, where it lives, what we never do with your data, and how to delete your account.", origin + "/privacy", origin + "/static/og-image-v3.png")}
   <link rel="stylesheet" href="/static/style.css">
   <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
   <script src="/static/motion.js" defer></script>
@@ -127,7 +129,9 @@ export function createPublicViews(deps: PublicViewDeps) {
   <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Changelog · Zimer</title>${ogTags("Changelog · Zimer", "What's new in Zimer.", origin + "/changelog", origin + "/static/og-image-v3.png")}
+  <title>Changelog · Zimer</title>
+  <meta name="description" content="What's new in Zimer: release notes, fixes, and product changes.">
+  <link rel="canonical" href="${origin}/changelog">${ogTags("Changelog · Zimer", "What's new in Zimer: release notes, fixes, and product changes.", origin + "/changelog", origin + "/static/og-image-v3.png")}
   <link rel="stylesheet" href="/static/style.css">
   <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
   <script src="/static/motion.js" defer></script>
@@ -143,7 +147,7 @@ export function createPublicViews(deps: PublicViewDeps) {
 
   /* #341: public license terms — same minimal public chrome as the
      changelog: no auth, no app nav. */
-  function termsPage(sections: TermsSection[]): string {
+  function termsPage(sections: TermsSection[], origin: string): string {
     const body = sections.map(s => `
       <section class="changelog-release">
         <h2 class="md-title-large">${esc(s.heading)}</h2>
@@ -155,6 +159,8 @@ export function createPublicViews(deps: PublicViewDeps) {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Terms of service · Zimer</title>
+  <meta name="description" content="Zimer terms of service: the $12/month hosted plan with a 14-day free trial, 30-day refunds, and the free-forever self-hosted option.">
+  <link rel="canonical" href="${origin}/terms">${ogTags("Terms of service · Zimer", "Zimer terms of service: the $12/month hosted plan with a 14-day free trial, 30-day refunds, and the free-forever self-hosted option.", origin + "/terms", origin + "/static/og-image-v3.png")}
   <link rel="stylesheet" href="/static/style.css">
   <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
   <script src="/static/motion.js" defer></script>

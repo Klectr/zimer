@@ -65,8 +65,8 @@ function setup(authed = true) {
     HOSTED: false, accounts: null,
     loginPage: noop, signupPage: noop, hostedLoginPage: noop,
     changelogPage: () => [],
-    termsPage: (s: any) => views.termsPage(s),
-    privacyPage: () => views.privacyPage(),
+    termsPage: (s: any, origin: any) => views.termsPage(s, origin),
+    privacyPage: (origin: any) => views.privacyPage(origin),
     notFoundPage: noop, noSuchInvoicePage: noop,
     rateLimitPage: noop, errorPage: noop,
     invoicePdf: () => new Uint8Array(), stripeConfigured: () => false,
@@ -103,6 +103,7 @@ describe("GET /privacy", () => {
     expect(res.status).toBe(200);
     const html = await res.text();
     expect(html).toContain("Privacy policy");
+    expect(html).toContain('<link rel="canonical" href="/privacy">');
     expect(html).toContain("support@klectr.dev");
     expect(html.toLowerCase()).toContain("sell your data");
     expect(html).toContain("/terms");
@@ -115,6 +116,7 @@ describe("GET /terms (hosted fitness)", () => {
     const res = await get(handleWeb, "/privacy", false);
     expect(res.status).toBe(200); /* sanity: router wired */
     const terms = await (await get(handleWeb, "/terms", false)).text();
+    expect(terms).toContain('<link rel="canonical" href="/terms">');
     expect(terms).toContain("$12/month");
     expect(terms).toContain("14 days");
     expect(terms).not.toContain("$59");
