@@ -107,8 +107,8 @@ export interface WebDeps {
   accounts: AccountsDb | null; /* #732 */
 
   changelogPage: (entries: import("../lib/changelog.ts").ChangelogEntry[], origin: string) => string;
-  termsPage: (sections: import("../lib/license-terms.ts").TermsSection[]) => string; /* #341 */
-  privacyPage: () => string; /* #730 */
+  termsPage: (sections: import("../lib/license-terms.ts").TermsSection[], origin: string) => string; /* #341 */
+  privacyPage: (origin: string) => string; /* #730 */
   noSuchInvoicePage: () => string;
   rateLimitPage: () => string;
   /* #733: public-chrome 404/500 for the pre-auth paths — no tenant, no app
@@ -307,6 +307,8 @@ export function createWebRouter(deps: WebDeps) {
           const latest = entries.reduce((m, e) => (/^\d{4}-\d{2}-\d{2}$/.test(e.date) && e.date > m ? e.date : m), "");
           const urls = [`  <url><loc>${origin}/</loc></url>`];
           if (latest) urls.push(`  <url><loc>${origin}/changelog</loc><lastmod>${latest}</lastmod></url>`);
+          urls.push(`  <url><loc>${origin}/terms</loc></url>`);
+          urls.push(`  <url><loc>${origin}/privacy</loc></url>`);
           return new Response(
             `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>\n`,
             { headers: { "Content-Type": "application/xml; charset=utf-8" } });
@@ -324,7 +326,7 @@ export function createWebRouter(deps: WebDeps) {
           if (!rl.allowed) {
             return html(rateLimitPage(), 429, { "Retry-After": String(rl.retryAfterSec) });
           }
-          return html(termsPage(licenseTerms()), 200, pubRobots);
+          return html(termsPage(licenseTerms(), shareOrigin(req)), 200, pubRobots);
         }
 
         /* #730: public privacy policy — no auth, same rate limit and chrome
@@ -334,7 +336,7 @@ export function createWebRouter(deps: WebDeps) {
           if (!rl.allowed) {
             return html(rateLimitPage(), 429, { "Retry-After": String(rl.retryAfterSec) });
           }
-          return html(privacyPage(), 200, pubRobots);
+          return html(privacyPage(shareOrigin(req)), 200, pubRobots);
         }
 
         /* #303: public changelog — no auth, same rate limit as the public

@@ -56,6 +56,13 @@ describe("#731: landing page router", () => {
     expect(body).toContain(
       '<meta name="twitter:image" content="https://example.com/static/og-image-v3.png">'
     );
+    /* #1061: description names the buyer and the offer; og stays in sync. */
+    expect(body).toContain(
+      '<meta name="description" content="Time tracking for freelancers and solo work that turns hours into an invoice. Self-host it free forever, or hosted at $12/month flat with a 14-day free trial.">'
+    );
+    expect(body).toContain(
+      '<meta property="og:description" content="Time tracking for freelancers and solo work that turns hours into an invoice. Self-host it free forever, or hosted at $12/month flat with a 14-day free trial.">'
+    );
     /* #1053: declared dimensions and alt text travel with the image. */
     expect(body).toContain('<meta property="og:image:width" content="1200">');
     expect(body).toContain('<meta property="og:image:height" content="630">');

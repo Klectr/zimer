@@ -64,12 +64,39 @@ describe("social meta tags (#924)", () => {
   });
 });
 
+/** #1059: every indexable public page carries a meta description and a
+    self-referencing canonical; terms/privacy get OG tags like the rest. */
+describe("public page heads (#1059)", () => {
+  const v = views as any;
+  test("changelog has a description and canonical", () => {
+    const html = v.changelogPage([], "https://example.com");
+    expect(html).toContain('<meta name="description" content="What\'s new in Zimer: release notes, fixes, and product changes.">');
+    expect(html).toContain('<link rel="canonical" href="https://example.com/changelog">');
+  });
+  test("terms has a description, canonical, and OG tags", () => {
+    const html = v.termsPage([], "https://example.com");
+    expect(html).toContain('<meta name="description" content="Zimer terms of service: the $12/month hosted plan with a 14-day free trial, 30-day refunds, and the free-forever self-hosted option.">');
+    expect(html).toContain('<link rel="canonical" href="https://example.com/terms">');
+    expect(html).toContain('property="og:title" content="Terms of service · Zimer"');
+    expect(html).toContain('property="og:url" content="https://example.com/terms"');
+    expect(html).toContain('name="twitter:card" content="summary_large_image"');
+  });
+  test("privacy has a description, canonical, and OG tags", () => {
+    const html = v.privacyPage("https://example.com");
+    expect(html).toContain('<meta name="description" content="Zimer privacy policy: what we store, where it lives, what we never do with your data, and how to delete your account.">');
+    expect(html).toContain('<link rel="canonical" href="https://example.com/privacy">');
+    expect(html).toContain('property="og:title" content="Privacy policy · Zimer"');
+    expect(html).toContain('property="og:url" content="https://example.com/privacy"');
+    expect(html).toContain('name="twitter:card" content="summary_large_image"');
+  });
+});
+
 describe("indexing split (#1050)", () => {
   test("public content pages are indexable; auth and invoice pages are not", () => {
     const v = views as any;
     expect(v.changelogPage([], "https://example.com")).not.toContain('content="noindex"');
-    expect(v.termsPage([])).not.toContain('content="noindex"');
-    expect(v.privacyPage()).not.toContain('content="noindex"');
+    expect(v.termsPage([], "https://example.com")).not.toContain('content="noindex"');
+    expect(v.privacyPage("https://example.com")).not.toContain('content="noindex"');
     expect(v.loginPage()).toContain('content="noindex"');
     expect(v.signupPage()).toContain('content="noindex"');
     expect(v.hostedLoginPage()).toContain('content="noindex"');

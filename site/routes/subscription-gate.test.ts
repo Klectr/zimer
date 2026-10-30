@@ -284,6 +284,9 @@ describe("#1050: crawler files", () => {
     expect(body).toContain("<loc>https://example.com/</loc>");
     expect(body).toContain("<loc>https://example.com/changelog</loc>");
     expect(body).toMatch(/<lastmod>\d{4}-\d{2}-\d{2}<\/lastmod>/);
+    /* #1063: the indexable legal pages are listed too. */
+    expect(body).toContain("<loc>https://example.com/terms</loc>");
+    expect(body).toContain("<loc>https://example.com/privacy</loc>");
   });
 
   test("self-hosted robots.txt disallows everything and no sitemap is served", async () => {
