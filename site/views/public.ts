@@ -83,11 +83,11 @@ export function createPublicViews(deps: PublicViewDeps) {
       {
         heading: "Analytics",
         html: true,
-        body: "The hosted site uses <a href=\"https://posthog.com\" target=\"_blank\" rel=\"noopener\">PostHog</a> for product analytics. On the public pages it records page views and clicks. Across the hosted site, including inside the app, it records sessions (a replay of the visit) and errors when something breaks, and in the app it records a small set of product events (starting a Zimer, creating a Zinvoice) tied to your account ID, never your email. Self-hosted instances send us nothing. PostHog's privacy policy is at <a href=\"https://posthog.com/privacy\" target=\"_blank\" rel=\"noopener\">posthog.com/privacy</a>.",
+        body: "The hosted site uses <a href=\"https://posthog.com\" target=\"_blank\" rel=\"noopener\">PostHog</a> for product analytics. On the landing page it records page views and clicks. On the landing page and inside the app it records sessions (a replay of the visit) and errors when something breaks, and in the app it records a small set of product events (starting a Zimer, creating a Zinvoice) tied to your account ID, never your email. Self-hosted instances send us nothing. PostHog's privacy policy is at <a href=\"https://posthog.com/privacy\" target=\"_blank\" rel=\"noopener\">posthog.com/privacy</a>.",
       },
       {
         heading: "What we don't do",
-        body: "We don't sell your data, we don't share it with advertisers, and we don't track you around the web. The analytics we run on this site is the PostHog disclosure above. Public pages load a font and HTMX from public CDNs — standard practice, not tracking.",
+        body: "We don't sell your data, we don't share it with advertisers, and we don't track you around the web. The analytics we run on this site is described under Analytics above.",
       },
       {
         heading: "Deletion",

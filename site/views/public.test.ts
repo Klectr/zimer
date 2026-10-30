@@ -100,16 +100,19 @@ describe("privacy analytics disclosure (#1069)", () => {
     expect(html).toContain("Analytics");
     expect(html).toContain('<a href="https://posthog.com" target="_blank" rel="noopener">PostHog</a>');
     expect(html).toContain('<a href="https://posthog.com/privacy" target="_blank" rel="noopener">posthog.com/privacy</a>');
-    expect(html).toContain("records sessions (a replay of the visit)");
+    expect(html).toContain("On the landing page it records page views and clicks.");
+    expect(html).toContain("On the landing page and inside the app it records sessions (a replay of the visit)");
     expect(html).toContain("tied to your account ID, never your email");
     expect(html).toContain("Self-hosted instances send us nothing.");
-    expect(html).toContain("The analytics we run on this site is the PostHog disclosure above.");
+    expect(html).toContain("The analytics we run on this site is described under Analytics above.");
     expect(html.indexOf("Analytics")).toBeLessThan(html.indexOf("What we don&#39;t do"));
   });
   test("terms sections stay plain text (the html flag is opt-in)", () => {
     const html = v.termsPage([{ heading: "H", body: "<b>not bold</b>" }], "https://example.com");
     expect(html).toContain("&lt;b&gt;not bold&lt;/b&gt;");
     expect(html).not.toContain("<b>not bold</b>");
+    const raw = v.termsPage([{ heading: "H", body: "<b>bold</b>", html: true }], "https://example.com");
+    expect(raw).toContain("<b>bold</b>");
   });
 });
 
