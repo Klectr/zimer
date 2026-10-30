@@ -70,6 +70,16 @@ describe("#731: landing page router", () => {
     expect(body).toContain('<meta name="twitter:image:alt"');
   });
 
+  test("#1062: the page names the buyer and the wedge", async () => {
+    const { res, body } = await get(true, false, "/");
+    expect(res!.status).toBe(200);
+    expect(body).toContain("Built for freelancers and solo work");
+    expect(body).toContain("Freelancers, contractors, and solo shops.");
+    expect(body).toContain("Self-hosted time tracking on your own server");
+    expect(body).toContain("The bill stays the same");
+    expect(body).toContain("never move behind a surprise paywall");
+  });
+
   test("hosted authed visitor falls through (null) — / keeps serving the app", async () => {
     const { res, body } = await get(true, true, "/");
     expect(res).toBeNull();
