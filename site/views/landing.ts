@@ -95,7 +95,33 @@ export function createLandingViews(posthogHead?: () => string) {
   </article>
   </div>
   </section>
-  <section class="landing-section" id="pricing" data-enter="5">
+  <section class="landing-section" data-enter="5">
+  <h2 class="landing-section-title">Built for freelancers and solo work</h2>
+  <p class="muted landing-section-sub">Most time trackers are built for teams and payroll departments. Zimer is built for one person who bills by the hour.</p>
+  <div class="landing-feature-grid">
+  <article class="landing-feature">
+  <span class="landing-feature-icon">${icon("timer")}</span>
+  <h3 class="landing-feature-title">For one-person businesses</h3>
+  <p class="md-body-medium muted">Freelancers, contractors, and solo shops. No team seats, no payroll, no admin console to learn.</p>
+  </article>
+  <article class="landing-feature">
+  <span class="landing-feature-icon">${icon("database")}</span>
+  <h3 class="landing-feature-title">Your data stays yours</h3>
+  <p class="md-body-medium muted">Self-hosted time tracking on your own server, in one SQLite file you can copy. On hosted, your data is never sold, never shared with advertisers, and never used to track you around the web.</p>
+  </article>
+  <article class="landing-feature">
+  <span class="landing-feature-icon">${icon("card")}</span>
+  <h3 class="landing-feature-title">The bill stays the same</h3>
+  <p class="md-body-medium muted">Flat $12 a month. No per-seat pricing, no per-client meters. One tier, everything included.</p>
+  </article>
+  <article class="landing-feature">
+  <span class="landing-feature-icon">${icon("bolt")}</span>
+  <h3 class="landing-feature-title">Switching takes minutes</h3>
+  <p class="md-body-medium muted">Coming from Toggl or a spreadsheet? Start fresh in minutes: add your clients, set your rates, start the Zimer.</p>
+  </article>
+  </div>
+  </section>
+  <section class="landing-section" id="pricing" data-enter="6">
   <h2 class="landing-section-title">Simple, honest pricing</h2>
   <p class="muted landing-section-sub">Hosted for $12 a month, or self-host it for nothing. Both get the whole app.</p>
   <div class="landing-plan-grid">
