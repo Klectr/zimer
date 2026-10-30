@@ -386,13 +386,16 @@ export function createWebRouter(deps: WebDeps) {
            app route owns gets the public 404 rather than a login redirect.
            Paths the app owns keep bouncing to /login, so a bookmarked app
            page still lands on sign-in. */
-        if (method === "GET" && path.length > 1 && path.endsWith("/")) {
+        if ((method === "GET" || method === "HEAD") && path.length > 1 && path.endsWith("/")) {
           const trimmed = path.slice(0, -1);
-          if (["/changelog", "/terms", "/privacy", "/login", "/signup"].includes(trimmed)) {
-            return new Response(null, { status: 301, headers: { Location: trimmed } });
+          const slashPages = HOSTED
+            ? ["/changelog", "/terms", "/privacy", "/login", "/signup"]
+            : ["/changelog", "/terms", "/privacy", "/login"];
+          if (slashPages.includes(trimmed)) {
+            return new Response(null, { status: 301, headers: { Location: trimmed + url.search } });
           }
         }
-        if (method === "GET" && !pageAuthed(req)) {
+        if ((method === "GET" || method === "HEAD") && !pageAuthed(req)) {
           const first = path.split("/")[1] ?? "";
           const appSegments = ["", "partial", "timer", "calendar", "entries", "demo", "backup", "export", "manage", "business-profile", "daily-target", "settings", "check-updates", "clients", "projects", "invoices", "api", "billing"];
           if (!appSegments.includes(first)) {
