@@ -10,6 +10,7 @@ import { Database } from "bun:sqlite";
 import { createDb } from "../db.ts";
 import { createWebRouter } from "./web.ts";
 import { createPublicViews } from "../views/public.ts";
+import { createLayoutViews } from "../views/layout.ts";
 
 function setup(authed = true) {
   const db = createDb(mkdtempSync(join(tmpdir(), "tk-ops-"))).db;
@@ -121,6 +122,102 @@ describe("GET /terms (hosted fitness)", () => {
     expect(terms).toContain("14 days");
     expect(terms).not.toContain("$59");
     expect(terms.toLowerCase()).not.toContain("license key");
+  });
+});
+
+describe("public dead ends (#1060)", () => {
+  test("unknown path, logged out: 404, not a login bounce", async () => {
+    const { handleWeb } = setup(false);
+    const res = await get(handleWeb, "/nonexistent-page-xyz", false);
+    expect(res.status).toBe(404);
+  });
+
+  test("trailing slash on a public page: 301 to the canonical URL", async () => {
+    const { handleWeb } = setup(false);
+    const res = await get(handleWeb, "/changelog/", false);
+    expect(res.status).toBe(301);
+    expect(res.headers.get("location")).toBe("/changelog");
+    const terms = await get(handleWeb, "/terms/", false);
+    expect(terms.status).toBe(301);
+    expect(terms.headers.get("location")).toBe("/terms");
+  });
+
+  test("app paths still bounce logged-out visitors to /login", async () => {
+    const { handleWeb } = setup(false);
+    const res = await get(handleWeb, "/calendar", false);
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toBe("/login");
+    const inv = await get(handleWeb, "/invoices", false);
+    expect(inv.status).toBe(302);
+    expect(inv.headers.get("location")).toBe("/login");
+  });
+
+  test("root still bounces logged-out visitors to /login in self-host mode", async () => {
+    const { handleWeb } = setup(false);
+    const res = await get(handleWeb, "/", false);
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toBe("/login");
+  });
+});
+
+describe("public dead ends, hosted (#1060)", () => {
+  /* Production hosted seam: no session, so getTenant resolves null and the
+     router falls back to the public-chrome 404 page. */
+  function hostedSetup() {
+    const noop = () => "";
+    const layoutViews = createLayoutViews({ get: () => null } as any);
+    const views = createPublicViews({
+      getInvoice: () => null,
+      invoiceTotals: () => ({ subtotal: 0, tax: 0, total: 0 }),
+      invoiceDocumentHtml: () => "",
+      ensurePublicToken: () => "",
+    });
+    const { handleWeb } = createWebRouter({
+      getTenant: () => null,
+      STATIC_DIR: "", TOKEN: "t",
+      authedPage: () => false,
+      tokensEqual: (a: string, b: string) => a === b,
+      html: (body: string, status = 200) => new Response(body, { status }),
+      json: (data: unknown, status = 200) => Response.json(data, { status }),
+      isHtmx: (req: Request) => req.headers.get("HX-Request") === "true",
+      csvResponse: (f: string) => new Response(f),
+      shareOrigin: () => "https://example.com",
+      PORT: 3000,
+      loginPage: noop, signupPage: views.signupPage, hostedLoginPage: views.hostedLoginPage,
+      HOSTED: true,
+      accounts: { sessionUserFromRequest: () => null } as any,
+      changelogPage: views.changelogPage, termsPage: views.termsPage, privacyPage: views.privacyPage,
+      notFoundPage: layoutViews.notFoundPage, noSuchInvoicePage: layoutViews.noSuchInvoicePage,
+      rateLimitPage: layoutViews.rateLimitPage, errorPage: layoutViews.errorPage,
+      invoicePdf: () => new Uint8Array(), stripeConfigured: () => false,
+      workspaceEmpty: () => false, demoIds: () => [], seedDemoData: () => {},
+      removeDemoData: () => {}, entryToJson: (e: any) => e,
+    });
+    return { handleWeb };
+  }
+
+  test("unknown path, hosted with no session: 404 with the public chrome", async () => {
+    const { handleWeb } = hostedSetup();
+    const res = await get(handleWeb, "/nonexistent-page-xyz", false);
+    expect(res.status).toBe(404);
+    const body = await res.text();
+    expect(body).toContain("Page not found");
+    expect(body).not.toContain("/logout");
+  });
+
+  test("hosted /signup/ canonicalizes to /signup", async () => {
+    const { handleWeb } = hostedSetup();
+    const res = await get(handleWeb, "/signup/", false);
+    expect(res.status).toBe(301);
+    expect(res.headers.get("location")).toBe("/signup");
+  });
+
+  test("the slash redirect keeps the query string", async () => {
+    const { handleWeb } = hostedSetup();
+    const url = new URL("http://x/login/?logged_out=1");
+    const res = await handleWeb(new Request(url), url, url.pathname, "GET");
+    expect(res!.status).toBe(301);
+    expect(res!.headers.get("location")).toBe("/login?logged_out=1");
   });
 });
 
