@@ -380,6 +380,26 @@ export function createWebRouter(deps: WebDeps) {
 
         /* ---- JSON API is handled by routes/api.ts via handleApi; web routes continue below. ---- */
 
+        /* #1060: public-surface dead ends. A trailing slash on a public
+           page canonicalizes to the slashless URL instead of falling into
+           the login bounce below, and a logged-out request for a path no
+           app route owns gets the public 404 rather than a login redirect.
+           Paths the app owns keep bouncing to /login, so a bookmarked app
+           page still lands on sign-in. */
+        if (method === "GET" && path.length > 1 && path.endsWith("/")) {
+          const trimmed = path.slice(0, -1);
+          if (["/changelog", "/terms", "/privacy", "/login", "/signup"].includes(trimmed)) {
+            return new Response(null, { status: 301, headers: { Location: trimmed } });
+          }
+        }
+        if (method === "GET" && !pageAuthed(req)) {
+          const first = path.split("/")[1] ?? "";
+          const appSegments = ["", "partial", "timer", "calendar", "entries", "demo", "backup", "export", "manage", "business-profile", "daily-target", "settings", "check-updates", "clients", "projects", "invoices", "api", "billing"];
+          if (!appSegments.includes(first)) {
+            return html(pages.notFoundPage(authedPage(req, TOKEN)), 404);
+          }
+        }
+
         /* ---- pages ---- */
         try {
           if (!pageAuthed(req)) {
