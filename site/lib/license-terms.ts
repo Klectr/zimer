@@ -12,6 +12,7 @@
 export interface TermsSection {
   heading: string;
   body: string;
+  html?: boolean;
 }
 
 export function licenseTerms(): TermsSection[] {
