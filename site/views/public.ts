@@ -131,7 +131,7 @@ export function createPublicViews(deps: PublicViewDeps) {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Changelog · Zimer</title>
   <meta name="description" content="What's new in Zimer: release notes, fixes, and product changes.">
-  <link rel="canonical" href="${origin}/changelog">${ogTags("Changelog · Zimer", "What's new in Zimer.", origin + "/changelog", origin + "/static/og-image-v3.png")}
+  <link rel="canonical" href="${origin}/changelog">${ogTags("Changelog · Zimer", "What's new in Zimer: release notes, fixes, and product changes.", origin + "/changelog", origin + "/static/og-image-v3.png")}
   <link rel="stylesheet" href="/static/style.css">
   <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
   <script src="/static/motion.js" defer></script>

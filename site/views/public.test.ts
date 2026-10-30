@@ -75,7 +75,7 @@ describe("public page heads (#1059)", () => {
   });
   test("terms has a description, canonical, and OG tags", () => {
     const html = v.termsPage([], "https://example.com");
-    expect(html).toContain('<meta name="description" content="Zimer terms of service:');
+    expect(html).toContain('<meta name="description" content="Zimer terms of service: the $12/month hosted plan with a 14-day free trial, 30-day refunds, and the free-forever self-hosted option.">');
     expect(html).toContain('<link rel="canonical" href="https://example.com/terms">');
     expect(html).toContain('property="og:title" content="Terms of service · Zimer"');
     expect(html).toContain('property="og:url" content="https://example.com/terms"');
@@ -83,7 +83,7 @@ describe("public page heads (#1059)", () => {
   });
   test("privacy has a description, canonical, and OG tags", () => {
     const html = v.privacyPage("https://example.com");
-    expect(html).toContain('<meta name="description" content="Zimer privacy policy:');
+    expect(html).toContain('<meta name="description" content="Zimer privacy policy: what we store, where it lives, what we never do with your data, and how to delete your account.">');
     expect(html).toContain('<link rel="canonical" href="https://example.com/privacy">');
     expect(html).toContain('property="og:title" content="Privacy policy · Zimer"');
     expect(html).toContain('property="og:url" content="https://example.com/privacy"');
