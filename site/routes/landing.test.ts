@@ -74,10 +74,15 @@ describe("#731: landing page router", () => {
     const { res, body } = await get(true, false, "/");
     expect(res!.status).toBe(200);
     expect(body).toContain("Built for freelancers and solo work");
+    for (const title of ["For one-person businesses", "Your data stays yours", "The bill stays the same", "Switching takes minutes"]) {
+      expect(body).toContain(title);
+    }
     expect(body).toContain("Freelancers, contractors, and solo shops.");
     expect(body).toContain("Self-hosted time tracking on your own server");
-    expect(body).toContain("The bill stays the same");
-    expect(body).toContain("never move behind a surprise paywall");
+    expect(body).toContain("One tier, everything included.");
+    /* The who/wedge section sits between the features and pricing. */
+    expect(body.indexOf("Built for freelancers and solo work")).toBeGreaterThan(body.indexOf("Everything from first tap to paid"));
+    expect(body.indexOf("Built for freelancers and solo work")).toBeLessThan(body.indexOf('id="pricing"'));
   });
 
   test("hosted authed visitor falls through (null) — / keeps serving the app", async () => {

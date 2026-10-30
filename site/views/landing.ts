@@ -107,17 +107,17 @@ export function createLandingViews(posthogHead?: () => string) {
   <article class="landing-feature">
   <span class="landing-feature-icon">${icon("database")}</span>
   <h3 class="landing-feature-title">Your data stays yours</h3>
-  <p class="md-body-medium muted">Self-hosted time tracking on your own server, in one SQLite file you can copy. On hosted, your data is never sold or tracked around the web.</p>
+  <p class="md-body-medium muted">Self-hosted time tracking on your own server, in one SQLite file you can copy. On hosted, your data is never sold, never shared with advertisers, and never used to track you around the web.</p>
   </article>
   <article class="landing-feature">
   <span class="landing-feature-icon">${icon("card")}</span>
   <h3 class="landing-feature-title">The bill stays the same</h3>
-  <p class="md-body-medium muted">Flat $12 a month. No per-seat pricing, no per-client meters, and the features you already use never move behind a surprise paywall.</p>
+  <p class="md-body-medium muted">Flat $12 a month. No per-seat pricing, no per-client meters. One tier, everything included.</p>
   </article>
   <article class="landing-feature">
   <span class="landing-feature-icon">${icon("bolt")}</span>
-  <h3 class="landing-feature-title">One job, done simply</h3>
-  <p class="md-body-medium muted">Start a Zimer, stop it, send the Zinvoice. Zimer does one thing on purpose, so there is almost nothing to learn.</p>
+  <h3 class="landing-feature-title">Switching takes minutes</h3>
+  <p class="md-body-medium muted">Coming from Toggl or a spreadsheet? Start fresh in minutes: add your clients, set your rates, start the Zimer.</p>
   </article>
   </div>
   </section>
