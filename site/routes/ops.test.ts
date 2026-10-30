@@ -124,6 +124,41 @@ describe("GET /terms (hosted fitness)", () => {
   });
 });
 
+describe("public dead ends (#1060)", () => {
+  test("unknown path, logged out: 404, not a login bounce", async () => {
+    const { handleWeb } = setup(false);
+    const res = await get(handleWeb, "/nonexistent-page-xyz", false);
+    expect(res.status).toBe(404);
+  });
+
+  test("trailing slash on a public page: 301 to the canonical URL", async () => {
+    const { handleWeb } = setup(false);
+    const res = await get(handleWeb, "/changelog/", false);
+    expect(res.status).toBe(301);
+    expect(res.headers.get("location")).toBe("/changelog");
+    const terms = await get(handleWeb, "/terms/", false);
+    expect(terms.status).toBe(301);
+    expect(terms.headers.get("location")).toBe("/terms");
+  });
+
+  test("app paths still bounce logged-out visitors to /login", async () => {
+    const { handleWeb } = setup(false);
+    const res = await get(handleWeb, "/calendar", false);
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toBe("/login");
+    const inv = await get(handleWeb, "/invoices", false);
+    expect(inv.status).toBe(302);
+    expect(inv.headers.get("location")).toBe("/login");
+  });
+
+  test("root still bounces logged-out visitors to /login in self-host mode", async () => {
+    const { handleWeb } = setup(false);
+    const res = await get(handleWeb, "/", false);
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toBe("/login");
+  });
+});
+
 describe("settings support channel", () => {
   test("settings body ends with one mailto:support@klectr.dev link", async () => {
     const { handleWeb } = setup(true);
