@@ -1562,8 +1562,8 @@ body.app-fixed .cal-gutter-spacer {
 .unbilled-head { margin: 16px 4px 4px; }
 /* #948: compact the zinvoices header on phones so the invoice list gets
    more of the viewport: smaller title, short "CSV" label on Export (kept
-   readable per #949 — never icon-only), New zinvoice keeps its full label
-   as the primary action, tighter outstanding/unbilled. */
+   readable per #949), New zinvoice icon-only on phones (its label stays
+   as the aria-label), tighter outstanding/unbilled. */
 .page-head-invoices .page-head-actions .btn-label-short { display: none; }
 @media (max-width: 599px) {
   .page-head-invoices { margin-bottom: 4px; gap: 8px; }
