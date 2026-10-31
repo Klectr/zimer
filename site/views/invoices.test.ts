@@ -719,4 +719,9 @@ describe("#948: mobile zinvoices header", () => {
     expect(html).toContain('<span class="btn-label-short">CSV</span>');
     expect(html).toContain('aria-label="Export CSV"');
   });
+  test("New zinvoice label is wrapped in .btn-label (hidden on phones) with an aria-label", () => {
+    const html = views([{ ...baseRow, status: "sent", paid_at: null }]).invoicesPage(null, "http://x");
+    expect(html).toContain('<span class="btn-label">New zinvoice</span>');
+    expect(html).toContain('aria-label="New zinvoice"');
+  });
 });
