@@ -959,6 +959,18 @@ body.app-fixed .md-nav-rail { position: static; height: auto; }
 .cal-supporting { grid-area: summary; display: flex; flex-direction: column; gap: 14px; margin: 10px 0 12px; min-width: 0; }
 .cal-supporting .week-nav { margin: 0; }
 .cal-supporting .m3-progress, .cal-supporting .week-clients, .cal-supporting .cal-hint { margin: 0; }
+/* #945: on narrow viewports the week summary ("forehead") eats the scroll
+   area — compact it so the day list gets substantially more room. Desktop
+   is untouched. */
+@media (max-width: 839px) {
+  .cal-supporting { gap: 6px; margin: 4px 0 6px; }
+  .cal-supporting .week-nav h1 { font-size: 1.25rem; line-height: 28px; }
+  .cal-supporting .cal-summary .md-headline-small { font-size: 1.25rem; line-height: 28px; }
+  .cal-supporting .nudge-chip { padding: 4px 10px; font-size: 0.8125rem; }
+  .cal-supporting .m3-progress { gap: 8px; }
+  .cal-supporting .week-clients { gap: 4px 12px; font-size: 0.8125rem; }
+  .cal-supporting .cal-hint { font-size: 0.6875rem; line-height: 16px; }
+}
 /* #542: the week-over-week delta's trend icon rides the muted label baseline
    at label size — the same 14px treatment the Stripe paid chip's icon gets. */
 .cal-summary { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; }
@@ -1560,6 +1572,21 @@ body.app-fixed .cal-gutter-spacer {
 .invoice-detail-head { display: flex; align-items: center; gap: 12px; }
 /* #328: "Unbilled time" section head on the invoices page. */
 .unbilled-head { margin: 16px 4px 4px; }
+/* #948: compact the zinvoices header on phones so the invoice list gets
+   more of the viewport: smaller title, short "CSV" label on Export (kept
+   readable per #949), New zinvoice icon-only on phones (its label stays
+   as the aria-label), tighter outstanding/unbilled. */
+.page-head-invoices .page-head-actions .btn-label-short { display: none; }
+@media (max-width: 599px) {
+  .page-head-invoices { margin-bottom: 4px; gap: 8px; }
+  .page-head-invoices h1.md-headline-small { font-size: 1.375rem; line-height: 1.75rem; }
+  .page-head-invoices .page-head-actions .btn-label { display: none; }
+  .page-head-invoices .page-head-actions .btn-label-short { display: inline; }
+  .page-head-invoices .page-head-actions .md-text-button { padding: 0 12px; min-width: 40px; }
+  .page-head-invoices .page-head-actions .md-filled-button { padding: 0 16px; }
+  #inv-outstanding { margin: 8px 0 4px; font-size: 0.875rem; }
+  .unbilled-head { margin: 8px 4px 4px; }
+}
 
 .pill { display: inline-block; padding: 2px 12px; border-radius: var(--md-sys-shape-corner-full);
   font-size: 0.75rem; font-weight: 500; letter-spacing: 0.4px; vertical-align: middle; }
