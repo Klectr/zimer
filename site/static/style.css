@@ -959,6 +959,18 @@ body.app-fixed .md-nav-rail { position: static; height: auto; }
 .cal-supporting { grid-area: summary; display: flex; flex-direction: column; gap: 14px; margin: 10px 0 12px; min-width: 0; }
 .cal-supporting .week-nav { margin: 0; }
 .cal-supporting .m3-progress, .cal-supporting .week-clients, .cal-supporting .cal-hint { margin: 0; }
+/* #945: on narrow viewports the week summary ("forehead") eats the scroll
+   area — compact it so the day list gets substantially more room. Desktop
+   is untouched. */
+@media (max-width: 839px) {
+  .cal-supporting { gap: 6px; margin: 4px 0 6px; }
+  .cal-supporting .week-nav h1 { font-size: 1.25rem; line-height: 28px; }
+  .cal-supporting .cal-summary .md-headline-small { font-size: 1.25rem; line-height: 28px; }
+  .cal-supporting .nudge-chip { padding: 4px 10px; font-size: 0.8125rem; }
+  .cal-supporting .m3-progress { gap: 8px; }
+  .cal-supporting .week-clients { gap: 4px 12px; font-size: 0.8125rem; }
+  .cal-supporting .cal-hint { font-size: 0.6875rem; line-height: 16px; }
+}
 /* #542: the week-over-week delta's trend icon rides the muted label baseline
    at label size — the same 14px treatment the Stripe paid chip's icon gets. */
 .cal-summary { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; }

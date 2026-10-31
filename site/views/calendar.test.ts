@@ -767,7 +767,7 @@ describe("calendar pane hint (#766)", () => {
     /* #781: both variants render unconditionally — the server still branches
        on nothing viewport-specific; the client picks by strip width. */
     expect(hint![0]).toBe(
-      '<p class="muted tiny cal-hint"><span class="cal-hint-grid">Drag across the calendar to log time. Click an entry to edit it.</span><span class="cal-hint-agenda">Tap + on a day to log time. Tap an entry to edit it.</span></p>'
+      '<p class="muted tiny cal-hint"><span class="cal-hint-grid">Drag across the calendar to log time. Click an entry to edit it.</span><span class="cal-hint-agenda">Tap + to log time, tap an entry to edit.</span></p>'
     );
   });
 });
@@ -1097,5 +1097,24 @@ describe("calendar entry tap-vs-scroll (#946)", () => {
     const src = await Bun.file("site/views/calendar.ts").text();
     const h = downHandler(src);
     expect(h).toContain("addEventListener('pointercancel',tapCancel)");
+  });
+});
+
+describe("mobile week-summary compaction (#945)", () => {
+  test("narrow viewports get a compacted summary so the day list has room", async () => {
+    const css = await Bun.file("site/static/style.css").text();
+    const block = css.match(/@media\s*\(max-width:\s*839px\)\s*\{[^}]*\.cal-supporting[^}]*\}/);
+    expect(block).not.toBeNull();
+    expect(css).toMatch(/@media\s*\(max-width:\s*839px\)[\s\S]*?\.cal-supporting\s*\{[^}]*gap:\s*6px/);
+    /* Hint stays visible but compact — never display:none. */
+    expect(css).toMatch(/@media\s*\(max-width:\s*839px\)[\s\S]*?\.cal-supporting\s+\.cal-hint\s*\{[^}]*font-size:\s*0\.6875rem/);
+    expect(css).not.toMatch(/\.cal-supporting\s+\.cal-hint\s*\{[^}]*display:\s*none/);
+    /* CTA, progress, and clients legend are tightened. */
+    expect(css).toMatch(/@media\s*\(max-width:\s*839px\)[\s\S]*?\.cal-supporting\s+\.nudge-chip\s*\{[^}]*padding:\s*4px 10px/);
+    expect(css).toMatch(/@media\s*\(max-width:\s*839px\)[\s\S]*?\.cal-supporting\s+\.week-clients\s*\{[^}]*gap:\s*4px 12px/);
+  });
+  test("agenda hint text is the short mobile version", async () => {
+    const src = await Bun.file("site/views/calendar.ts").text();
+    expect(src).toContain("Tap + to log time, tap an entry to edit.");
   });
 });
