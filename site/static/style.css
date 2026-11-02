@@ -942,16 +942,21 @@ body.app-fixed .md-nav-rail { position: static; height: auto; }
   .pane-supporting { flex: 0 0 var(--layout-supporting-pane); }
 }
 /* ---------------- calendar supporting pane (M3 canonical, #67) ----------------
- * The week grid is the primary content, the week summary is supplementary —
- * the same canonical layout as the timer page (840px breakpoint; supporting
- * pane 360px at expanded, 412px at large/XL via --layout-supporting-pane).
- * <840px: single column, the summary keeps its position above the grid (its
- * long-standing spot; the grid is an internally-scrolling 24h surface, so the
- * spec's below-the-fold placement would bury the summary and its invoice CTA).
- * ≥840px: the summary trails beside the grid, which takes the freed vertical
- * space. #347: the week-nav lives at the top of the summary aside, so the
- * grid is just summary + grid areas; DOM order aside → grid stacks the
- * summary above the grid on narrow screens without a wrapper. */
+ * The week grid is the primary content, the week summary is supplementary.
+ * The summary keeps its position above the grid (its long-standing spot; the
+ * grid is an internally-scrolling 24h surface, so below-the-fold placement
+ * would bury the summary and its invoice CTA) until the viewport is wide
+ * enough for the strip to hold its grid minimum beside the pane. The strip
+ * falls back to the agenda at 639px (#580), and beside the rail, margins,
+ * gap, and the 412px pane the strip only clears that floor from 1280px up —
+ * so the side-by-side layout starts at 1280px (#1077). Below it, a side rail
+ * squeezes the strip under 639px at ordinary laptop widths and the grid
+ * flips to the phone agenda; at the old 840px start it flipped back and
+ * forth across a single resize (grid at 839, agenda 900–1150, grid at 1199,
+ * agenda again at 1200 when the pane widened). #347: the week-nav lives at
+ * the top of the summary aside, so the grid is just summary + grid areas;
+ * DOM order aside → grid stacks the summary above the grid on narrow
+ * screens without a wrapper. */
 .cal-pane-layout { display: grid; flex: 1; min-height: 0; min-width: 0;
   grid-template-columns: minmax(0, 1fr);
   grid-template-areas: "summary" "grid";
@@ -980,7 +985,7 @@ body.app-fixed .md-nav-rail { position: static; height: auto; }
 .cal-summary .nudge-chip--solo { grid-row: 1; grid-column: 2; justify-self: end; align-self: center; margin: 0; }
 .cal-summary .cal-delta svg { width: 14px; height: 14px; vertical-align: -2px; margin-right: 2px; }
 .cal-pane-layout .cal-carousel { grid-area: grid; }
-@media (min-width: 840px) {
+@media (min-width: 1280px) {
   .cal-pane-layout { grid-template-columns: minmax(0, 1fr) var(--layout-supporting-pane);
     grid-template-areas: "grid summary"; grid-template-rows: minmax(0, 1fr); column-gap: var(--layout-pane-gap); }
   .cal-supporting { margin: 8px 0 0; min-height: 0; overflow-y: auto; }
