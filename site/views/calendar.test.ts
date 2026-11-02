@@ -1122,8 +1122,9 @@ describe("mobile week-summary compaction (#945)", () => {
 describe("calendar summary pane breakpoint (#1077)", () => {
   test("summary trails beside the grid only from 1280px up", async () => {
     const css = await Bun.file("site/static/style.css").text();
-    /* Side-by-side lives under 1280px: the first width where the strip
-       still clears its 639px grid floor beside the 412px pane. */
+    /* Side-by-side starts at 1280px: beside the 412px pane the strip
+       crosses its 639px grid floor around 1231px, and 1280 is the chosen
+       breakpoint above that crossing. */
     expect(css).toMatch(/@media\s*\(min-width:\s*1280px\)\s*\{[^}]*\.cal-pane-layout\s*\{[^}]*grid-template-areas:\s*"grid summary"/);
     /* No 840px block may carry the calendar pane (the timer page's own
        .pane-layout keeps its separate 840px rule — this is scoped to

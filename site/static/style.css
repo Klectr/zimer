@@ -947,9 +947,10 @@ body.app-fixed .md-nav-rail { position: static; height: auto; }
  * grid is an internally-scrolling 24h surface, so below-the-fold placement
  * would bury the summary and its invoice CTA) until the viewport is wide
  * enough for the strip to hold its grid minimum beside the pane. The strip
- * falls back to the agenda at 639px (#580), and beside the rail, margins,
- * gap, and the 412px pane the strip only clears that floor from 1280px up —
- * so the side-by-side layout starts at 1280px (#1077). Below it, a side rail
+ * falls back to the agenda at 639px (#580); beside the rail, margins, gap,
+ * and the 412px pane it crosses that floor around 1231px, and the
+ * side-by-side layout starts at 1280px (#1077), the next standard
+ * breakpoint up, with margin to spare. Below it, a side rail
  * squeezes the strip under 639px at ordinary laptop widths and the grid
  * flips to the phone agenda; at the old 840px start it flipped back and
  * forth across a single resize (grid at 839, agenda 900–1150, grid at 1199,
