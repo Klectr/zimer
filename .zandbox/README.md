@@ -71,9 +71,15 @@ From the project root:
 bun run .zandbox/server.ts
 ```
 
-The server binds 127.0.0.1 only. `/` renders every story; `/canvas/<id>`
-renders one story bare for isolated viewing; a story that throws renders an
-error cell on the index instead of taking the lab down.
+The server binds 127.0.0.1 only. The UI follows Storybook's shape: a left
+sidebar lists every story grouped by its group name; selecting one shows it
+alone in the stage. `/` opens the first story; `/story/<id>` is that story's
+shareable URL (the sidebar swaps the stage in place via HTMX when HTMX is
+reachable, and the links work as plain page loads when it is not);
+`/story/<id>/fragment` is the stage-only response HTMX swaps in;
+`/canvas/<id>` renders one story bare, no chrome, for full isolation. A
+story that throws renders an error cell in the stage instead of taking the
+lab down.
 
 ## Rules for stories
 
