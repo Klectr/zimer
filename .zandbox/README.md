@@ -9,6 +9,28 @@ Zandbox is developed inside the Zimer repo under this `.zandbox/` directory,
 deliberately self-contained so the directory can be lifted into its own repo
 unchanged. The engine imports nothing from the host project.
 
+## Initializing a project
+
+From a project root, run the CLI that ships inside the engine:
+
+```
+bun run .zandbox/cli.ts init
+```
+
+(Once Zandbox lives in its own repo, that same CLI is what a project calls
+to set itself up; in a project that vendors the engine, the in-repo copy is
+the CLI.) Init writes only host-side files and never overwrites:
+
+- `.zandbox/` — copied in when the CLI runs from outside the project
+  (skipped when the project's own copy runs).
+- `zandbox.config.ts` — a starter config registering one example story.
+- `stories/example.stories.ts` — a welcome story proving the lab works;
+  replace it with real component stories.
+- `package.json` — gains `lab` and `zandbox` scripts (existing scripts are
+  kept).
+
+If `zandbox.config.ts` already exists, init refuses and changes nothing.
+
 ## The contract
 
 A project adopts Zandbox with one file at its root, `zandbox.config.ts`,
