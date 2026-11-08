@@ -26,8 +26,7 @@ the CLI.) Init writes only host-side files and never overwrites:
 - `zandbox.config.ts` — a starter config registering one example story.
 - `stories/example.stories.ts` — a welcome story proving the lab works;
   replace it with real component stories.
-- `package.json` — gains `lab` and `zandbox` scripts (existing scripts are
-  kept).
+- `package.json` — gains a `zandbox` script (existing scripts are kept).
 
 If `zandbox.config.ts` already exists, init refuses and changes nothing.
 
