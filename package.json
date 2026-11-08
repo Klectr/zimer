@@ -3,7 +3,8 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "bun run ./site/server.ts"
+    "dev": "bun run ./site/server.ts",
+    "lab": "bun run ./scripts/lab.ts"
   },
   "devDependencies": {
     "@types/bun": "latest"
