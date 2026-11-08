@@ -62,14 +62,13 @@ function init(): void {
   if (existsSync(pkgPath)) {
     const pkg = JSON.parse(readFileSync(pkgPath, "utf8")) as { scripts?: Record<string, string> };
     pkg.scripts ??= {};
-    pkg.scripts.lab ??= "bun run ./.zandbox/server.ts";
     pkg.scripts.zandbox ??= "bun run ./.zandbox/server.ts";
     writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
-    copied.push("package.json scripts (lab, zandbox)");
+    copied.push("package.json script (zandbox)");
   }
 
   console.log(`Zandbox initialized: ${copied.join(", ")}`);
-  console.log("Next: bun run lab — then map your stylesheet in zandbox.config.ts (assets) and point designMd at your DESIGN.md if you have one.");
+  console.log("Next: bun run zandbox — then map your stylesheet in zandbox.config.ts (assets) and point designMd at your DESIGN.md if you have one.");
 }
 
 const command = process.argv[2];
