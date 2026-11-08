@@ -1,4 +1,4 @@
-import type { Story } from "../zandbox/story";
+import type { Story } from "../.zandbox/story";
 import { card } from "../site/ui/card";
 import { button } from "../site/ui/button";
 import { statusChip } from "../site/ui/status-chip";

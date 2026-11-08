@@ -1,4 +1,4 @@
-import type { Story } from "../zandbox/story";
+import type { Story } from "../.zandbox/story";
 import { statusChip } from "../site/ui/status-chip";
 
 export const statusChipStories: Story[] = [

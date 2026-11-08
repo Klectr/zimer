@@ -1,4 +1,4 @@
-import type { Story } from "../zandbox/story";
+import type { Story } from "../.zandbox/story";
 import { selectField, textField } from "../site/ui/field";
 import { button } from "../site/ui/button";
 
