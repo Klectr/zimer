@@ -59,18 +59,43 @@ for (const s of STORIES) {
 }
 
 const LAB_CSS = `
-  :root{--zb-border:rgba(127,127,127,.35)}
+  :root{--zb-border:rgba(127,127,127,.35);--zb-side-bg:#101012;--zb-hover:rgba(127,127,127,.14);--zb-active:rgba(127,127,127,.22)}
+  html,body{height:100%}
   body{margin:0}
-  .zb-wrap{max-width:1080px;margin:0 auto;padding:24px}
-  .zb-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:6px}
-  .zb-head h1{font-size:22px;margin:0}
-  .zb-head span{opacity:.6;font-size:13px}
-  .zb-nav{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 22px}
-  .zb-nav a{font-size:13px;padding:5px 11px;border:1px solid var(--zb-border);border-radius:999px;color:inherit;text-decoration:none}
-  .zb-story{margin-bottom:30px}
-  .zb-story h2{font-size:15px;margin:0 0 4px}
-  .zb-story h2 span{opacity:.55;font-weight:400}
+  .zb-shell{display:flex;min-height:100vh}
+  .zb-side{width:264px;flex:none;background:var(--zb-side-bg);border-right:1px solid var(--zb-border);padding:18px 12px;position:sticky;top:0;height:100vh;overflow-y:auto;box-sizing:border-box}
+  .zb-brand{font-size:17px;font-weight:600;padding:0 10px}
+  .zb-brand-sub{font-size:12px;opacity:.55;padding:2px 10px 14px}
+  .zb-group{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;opacity:.55;padding:14px 10px 5px}
+  .zb-item{display:block;padding:6px 10px;border-radius:6px;color:inherit;text-decoration:none;font-size:14px}
+  .zb-item:hover{background:var(--zb-hover)}
+  .zb-item.is-active{background:var(--zb-active);font-weight:600}
+  .zb-main{flex:1;min-width:0;padding:24px 28px;box-sizing:border-box}
+  .zb-stage-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+  .zb-stage-head h2{font-size:16px;margin:0}
+  .zb-stage-head .zb-id{font-size:12px;opacity:.5;font-family:ui-monospace,Menlo,Consolas,monospace}
+  .zb-stage-head a{font-size:12px;margin-left:auto;color:inherit;opacity:.75}
   .zb-frame{border:1px dashed var(--zb-border);border-radius:12px;padding:20px}
+  @media (max-width:760px){
+    .zb-shell{flex-direction:column}
+    .zb-side{width:auto;height:auto;position:static}
+    .zb-main{padding:18px}
+  }
+`;
+
+const NAV_SCRIPT = `
+  document.addEventListener("click", (e) => {
+    const a = e.target.closest(".zb-item");
+    if (!a) return;
+    document.querySelectorAll(".zb-item.is-active").forEach((el) => el.classList.remove("is-active"));
+    a.classList.add("is-active");
+  });
+  window.addEventListener("popstate", () => {
+    const id = location.pathname.match(/\\/story\\/([\\w-]+)/)?.[1];
+    if (!id) return;
+    document.querySelectorAll(".zb-item").forEach((el) =>
+      el.classList.toggle("is-active", el.getAttribute("href") === "/story/" + id));
+  });
 `;
 
 const ASSET_TYPES: Record<string, string> = {
@@ -121,39 +146,60 @@ ${body}
 </html>`;
 }
 
-function indexPage(): string {
-  const nav = STORIES.map(
-    (s) => `<a href="#${esc(s.id)}">${esc(s.group)} · ${esc(s.title)}</a>`,
-  ).join("");
-  const sections = STORIES.map((s) => {
-    let body: string;
-    try {
-      body = s.render();
-    } catch (err) {
-      body = `<p style="color:#f87171">Story failed to render: ${esc(err instanceof Error ? err.message : String(err))}</p>`;
-    }
-    return (
-      `<section class="zb-story" id="${esc(s.id)}"><h2>${esc(s.group)} — ${esc(s.title)} ` +
-      `<span><a href="/canvas/${esc(s.id)}">open canvas</a></span></h2>` +
-      `<div class="zb-frame">${body}</div></section>`
-    );
-  }).join("\n");
+function renderStory(story: Story): string {
+  try {
+    return story.render();
+  } catch (err) {
+    return `<p style="color:#f87171">Story failed to render: ${esc(err instanceof Error ? err.message : String(err))}</p>`;
+  }
+}
+
+function sidebar(activeId: string): string {
+  const groups = new Map<string, Story[]>();
+  for (const s of STORIES) {
+    const list = groups.get(s.group) ?? [];
+    list.push(s);
+    groups.set(s.group, list);
+  }
+  const nav = [...groups.entries()]
+    .map(
+      ([group, stories]) =>
+        `<div class="zb-group">${esc(group)}</div>` +
+        stories
+          .map(
+            (s) =>
+              `<a class="zb-item${s.id === activeId ? " is-active" : ""}" href="/story/${esc(s.id)}" ` +
+              `hx-get="/story/${esc(s.id)}/fragment" hx-target="#zb-stage-wrap" hx-push-url="/story/${esc(s.id)}">${esc(s.title)}</a>`,
+          )
+          .join(""),
+    )
+    .join("");
+  return (
+    `<aside class="zb-side"><div class="zb-brand">${esc(NAME)}</div>` +
+    `<div class="zb-brand-sub">dev only · fictional data</div>${nav}</aside>`
+  );
+}
+
+function stageFragment(story: Story): string {
+  return (
+    `<div class="zb-stage-head"><h2>${esc(story.group)} — ${esc(story.title)}</h2>` +
+    `<span class="zb-id">${esc(story.id)}</span>` +
+    `<a href="/canvas/${esc(story.id)}">open bare canvas</a></div>` +
+    `<div class="zb-frame">${renderStory(story)}</div>`
+  );
+}
+
+function shellPage(active: Story): string {
   return page(
-    "Components",
-    `<div class="zb-wrap"><div class="zb-head"><h1>${esc(NAME)}</h1>` +
-      `<span>dev only · fictional data · styles: the project's own assets</span></div>` +
-      `<nav class="zb-nav">${nav}</nav>${sections}</div>`,
+    `${active.group} — ${active.title}`,
+    `<div class="zb-shell">${sidebar(active.id)}` +
+      `<main class="zb-main"><div id="zb-stage-wrap">${stageFragment(active)}</div></main></div>` +
+      `<script>${NAV_SCRIPT}</script>`,
   );
 }
 
 function canvasPage(story: Story): string {
-  let body: string;
-  try {
-    body = story.render();
-  } catch (err) {
-    body = `<p style="color:#f87171">Story failed to render: ${esc(err instanceof Error ? err.message : String(err))}</p>`;
-  }
-  return page(`${story.group} — ${story.title}`, `<div style="padding:20px">${body}</div>`);
+  return page(`${story.group} — ${story.title}`, `<div style="padding:20px">${renderStory(story)}</div>`);
 }
 
 const server = Bun.serve({
@@ -162,7 +208,19 @@ const server = Bun.serve({
   fetch(req) {
     const url = new URL(req.url);
     const html = { "content-type": "text/html; charset=utf-8" };
-    if (url.pathname === "/") return new Response(indexPage(), { headers: html });
+    if (url.pathname === "/") {
+      if (STORIES.length === 0) return new Response("No stories registered", { headers: html });
+      return new Response(shellPage(STORIES[0]), { headers: html });
+    }
+    const storyMatch = url.pathname.match(/^\/story\/([\w-]+)(\/fragment)?$/);
+    if (storyMatch) {
+      const story = STORIES.find((s) => s.id === storyMatch[1]);
+      if (story) {
+        return storyMatch[2]
+          ? new Response(stageFragment(story), { headers: html })
+          : new Response(shellPage(story), { headers: html });
+      }
+    }
     const asset = (cfg.assets ?? {})[url.pathname];
     if (asset) {
       try {
