@@ -1,5 +1,11 @@
 # Design system — Zimer
 
+> **Superseded.** The canonical design spec is now `DESIGN.md` at the repo
+> root (LobeHub design system with Zimer's selected colors). This document
+> records the previous Material 3 system and stays only as history and as
+> the reference for the locked-spec tests that still pin current values.
+> Do not extend it; new UI work follows DESIGN.md.
+
 Material 3, dark theme. Everything below is grounded in
 `site/static/style.css` — extend the tokens there, don't invent new ones.
 
