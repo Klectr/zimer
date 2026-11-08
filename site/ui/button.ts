@@ -1,5 +1,5 @@
 import { esc } from "../lib/format";
-import type { Story } from "./story";
+import type { Story } from "../../zandbox/story";
 
 export type ButtonVariant = "filled" | "tonal" | "text";
 
