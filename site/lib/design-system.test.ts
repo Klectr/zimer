@@ -178,3 +178,76 @@ describe("changelog code spans (#873)", () => {
     expect(rule.get("white-space")).toBe("nowrap");
   });
 });
+
+describe("DESIGN.md token layer (#1092)", () => {
+  function rootTokens(): Map<string, string> {
+    const merged = new Map<string, string>();
+    for (const block of css.matchAll(/:root\s*\{([^}]*)\}/g)) {
+      for (const [name, value] of declarations(block[1])) merged.set(name, value);
+    }
+    return merged;
+  }
+
+  test("every semantic token is defined with its DESIGN.md value", () => {
+    const tokens = rootTokens();
+    const expected: Record<string, string> = {
+      "--color-primary": "var(--primary)",
+      "--color-success": "#34d399",
+      "--color-warning": "#fbbf24",
+      "--color-error": "#f87171",
+      "--color-info": "#60a5fa",
+      "--color-text": "#f5f5f4",
+      "--color-text-secondary": "#a1a1aa",
+      "--color-text-tertiary": "#71717a",
+      "--color-text-quaternary": "#52525b",
+      "--color-bg-layout": "#08090a",
+      "--color-bg-container": "#0d0d0f",
+      "--color-bg-elevated": "#16171a",
+      "--color-bg-spotlight": "#1e1f23",
+      "--color-border": "rgba(255, 255, 255, 0.14)",
+      "--color-border-secondary": "rgba(255, 255, 255, 0.08)",
+      "--color-fill": "rgba(255, 255, 255, 0.10)",
+      "--color-fill-secondary": "rgba(255, 255, 255, 0.06)",
+      "--color-fill-tertiary": "rgba(255, 255, 255, 0.04)",
+      "--color-fill-quaternary": "rgba(255, 255, 255, 0.02)",
+      "--font-size-sm": "12px",
+      "--font-size": "14px",
+      "--font-size-lg": "16px",
+      "--font-size-xl": "20px",
+      "--font-size-heading-1": "38px",
+      "--font-size-heading-2": "30px",
+      "--font-size-heading-3": "24px",
+      "--font-size-heading-4": "20px",
+      "--font-size-heading-5": "16px",
+      "--font-weight-strong": "600",
+      "--spacing-xxs": "4px",
+      "--spacing-xs": "8px",
+      "--spacing-sm": "12px",
+      "--spacing": "16px",
+      "--spacing-md": "20px",
+      "--spacing-lg": "24px",
+      "--spacing-xl": "32px",
+      "--radius-xs": "4px",
+      "--radius-sm": "6px",
+      "--radius": "8px",
+      "--radius-lg": "12px",
+      "--control-height-sm": "28px",
+      "--control-height": "36px",
+      "--control-height-lg": "40px",
+      "--box-shadow-tertiary": "0 3px 1px -1px rgba(0, 0, 0, 0.2)",
+      "--box-shadow-secondary": "0 8px 16px -4px rgba(0, 0, 0, 0.35)",
+      "--box-shadow": "0 20px 20px -8px rgba(0, 0, 0, 0.45)",
+    };
+    for (const [name, value] of Object.entries(expected)) {
+      expect(tokens.get(name)).toBe(value);
+    }
+    expect(tokens.get("--font-family")).toContain("Geist");
+    expect(tokens.get("--font-family-code")).toContain("Geist Mono");
+  });
+
+  test("the layer is complete: no DESIGN.md color is missing from the pins", () => {
+    const tokens = rootTokens();
+    const colorNames = [...tokens.keys()].filter((k) => k.startsWith("--color-"));
+    expect(colorNames.length).toBe(19);
+  });
+});
