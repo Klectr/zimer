@@ -33,6 +33,15 @@ default-exporting a `ZandboxConfig` (see `.zandbox/config.ts`):
   env, then config, then 8935. HTMX defaults to the CDN build the host app
   uses.
 
+## Tests
+
+The engine's tests live inside `.zandbox/` with the engine and belong to
+Zandbox itself: they run in Zandbox's own repo, not in a host project's
+suite. Host test runners that skip dot-directories (Bun's scanner does)
+therefore never pick them up — that is the intended boundary, not a gap.
+Run them from the project root with an explicit path:
+`bun test ./.zandbox/`.
+
 ## Running
 
 From the project root:
