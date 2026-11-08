@@ -1,4 +1,4 @@
-import type { ZandboxConfig } from "./zandbox/config";
+import type { ZandboxConfig } from "./.zandbox/config";
 import { buttonStories } from "./stories/button.stories";
 
 const config: ZandboxConfig = {
