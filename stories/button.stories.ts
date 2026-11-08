@@ -1,4 +1,4 @@
-import type { Story } from "../zandbox/story";
+import type { Story } from "../.zandbox/story";
 import { button } from "../site/ui/button";
 
 export const buttonStories: Story[] = [

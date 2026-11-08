@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "bun run ./site/server.ts",
-    "lab": "bun run ./zandbox/server.ts",
-    "zandbox": "bun run ./zandbox/server.ts"
+    "lab": "bun run ./.zandbox/server.ts",
+    "zandbox": "bun run ./.zandbox/server.ts"
   },
   "devDependencies": {
     "@types/bun": "latest"
