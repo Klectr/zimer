@@ -15,11 +15,13 @@ A project adopts Zandbox with one file at its root, `zandbox.config.ts`,
 default-exporting a `ZandboxConfig` (see `zandbox/config.ts`):
 
 - `stories` — the registry: an array of `Story` objects
-  (`{ id, group, title, render }`, see `zandbox/story.ts`). Components export
-  their stories colocated (a component file exports its component function
-  plus a `<name>Stories` array); the config gathers them. Story ids are
-  lowercase letters, digits, and dashes, and must be unique — the server
-  throws at startup otherwise.
+  (`{ id, group, title, render }`, see `zandbox/story.ts`). Stories live in
+  their own files, separate from the components they showcase — Storybook's
+  model: a project keeps them in a `stories/` directory as
+  `<name>.stories.ts` files that import the components; component files
+  contain no story code and never import Zandbox. The config gathers the
+  story arrays. Story ids are lowercase letters, digits, and dashes, and
+  must be unique — the server throws at startup otherwise.
 - `assets` — a map of URL path → project-relative file path. These are the
   project's own static files (its stylesheet, its elements script), served
   as-is so stories render with production styling.

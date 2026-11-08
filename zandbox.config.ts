@@ -1,5 +1,5 @@
 import type { ZandboxConfig } from "./zandbox/config";
-import { buttonStories } from "./site/ui/button";
+import { buttonStories } from "./stories/button.stories";
 
 const config: ZandboxConfig = {
   name: "Zandbox",
