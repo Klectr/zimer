@@ -1,6 +1,4 @@
 import { esc } from "../lib/format";
-import type { Story } from "../../zandbox/story";
-import { button } from "./button";
 
 export type TextFieldType = "text" | "email" | "number" | "date" | "time" | "tel" | "url" | "password" | "search";
 
@@ -55,46 +53,3 @@ export function selectField(opts: SelectFieldOptions): string {
     `<label for="${esc(opts.id)}">${esc(opts.label)}</label></div>`
   );
 }
-
-export const fieldStories: Story[] = [
-  {
-    id: "field-text",
-    group: "Field",
-    title: "Text fields",
-    render: () =>
-      `<div style="display:grid;gap:16px;max-width:420px">` +
-      textField({ id: "f-client", label: "Client name", name: "name" }) +
-      textField({ id: "f-email", label: "Email", name: "email", type: "email", value: "billing@northwind.example", autocomplete: "email" }) +
-      textField({ id: "f-rate", label: "Hourly rate", name: "rate", type: "number", value: "85", required: true }) +
-      `</div>`,
-  },
-  {
-    id: "field-select",
-    group: "Field",
-    title: "Select field",
-    render: () =>
-      `<div style="display:grid;gap:16px;max-width:420px">` +
-      selectField({
-        id: "f-project",
-        label: "Project",
-        name: "project",
-        value: "site",
-        options: [
-          { value: "", label: "No project" },
-          { value: "site", label: "Website redesign" },
-          { value: "support", label: "Support retainer" },
-        ],
-      }) +
-      `</div>`,
-  },
-  {
-    id: "field-in-form",
-    group: "Field",
-    title: "In a form (form sits at the top)",
-    render: () =>
-      `<form style="display:grid;gap:16px;max-width:420px">` +
-      textField({ id: "f-new-client", label: "New client", name: "name", required: true }) +
-      `<div>` + button({ label: "Add client", type: "submit" }) + `</div>` +
-      `</form>`,
-  },
-];

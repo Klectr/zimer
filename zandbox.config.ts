@@ -1,8 +1,8 @@
 import type { ZandboxConfig } from "./zandbox/config";
-import { buttonStories } from "./site/ui/button";
-import { cardStories } from "./site/ui/card";
-import { fieldStories } from "./site/ui/field";
-import { statusChipStories } from "./site/ui/status-chip";
+import { buttonStories } from "./stories/button.stories";
+import { cardStories } from "./stories/card.stories";
+import { fieldStories } from "./stories/field.stories";
+import { statusChipStories } from "./stories/status-chip.stories";
 
 const config: ZandboxConfig = {
   name: "Zandbox",

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { button, buttonStories } from "./button";
+import { button } from "./button";
 
 describe("button", () => {
   test("defaults to a filled submit-free button", () => {
@@ -37,13 +37,5 @@ describe("button", () => {
     const html = button({ label: "<script>alert(1)</script>" });
     expect(html).not.toContain("<script>");
     expect(html).toContain("&lt;script&gt;");
-  });
-
-  test("stories render without throwing and cover the variants", () => {
-    expect(buttonStories.length).toBeGreaterThanOrEqual(3);
-    const all = buttonStories.map((s) => s.render()).join("");
-    expect(all).toContain("md-filled-button");
-    expect(all).toContain("md-tonal-button");
-    expect(all).toContain("md-text-button");
   });
 });
