@@ -23,10 +23,11 @@ export function zinvoiceRow(opts: ZinvoiceRowOptions): string {
       : "";
   const cls = `ui-row${opts.selected ? " selected" : ""}${opts.className ? ` ${opts.className}` : ""}`;
   const label = opts.ariaLabel ? ` aria-label="${esc(opts.ariaLabel)}"` : "";
+  const current = opts.selected ? ` aria-current="true"` : "";
   const client = opts.clientHtml ?? esc(opts.client);
   const sideMeta = opts.meta ? `<div class="ui-row-meta">${esc(opts.meta)}</div>` : "";
   return (
-    `<a href="${esc(opts.href)}" class="${cls}"${label}>` +
+    `<a href="${esc(opts.href)}" class="${cls}"${label}${current}>` +
     `<div class="ui-row-main"><span class="ui-row-title">${esc(opts.number)}</span>` +
     `<div class="ui-row-meta">${client}</div></div>` +
     statusChip(opts.status) +
@@ -95,9 +96,10 @@ export function clientRow(opts: ClientRowOptions): string {
   const chevron = opts.chevron ? `<span class="ui-row-chevron" aria-hidden="true">${icon("chevron_right")}</span>` : "";
   const main = `<div class="ui-row-main"><span class="ui-row-title">${esc(opts.name)}</span>${meta}</div>`;
   const cls = `ui-row${opts.selected ? " selected" : ""}`;
+  const current = opts.selected ? ` aria-current="true"` : "";
   if (opts.href) {
     const label = opts.ariaLabel ? ` aria-label="${esc(opts.ariaLabel)}"` : "";
-    return `<a class="${cls} client-row-hit" href="${esc(opts.href)}"${label}>${lead}${main}${actions}${chevron}</a>`;
+    return `<a class="${cls} client-row-hit" href="${esc(opts.href)}"${label}${current}>${lead}${main}${actions}${chevron}</a>`;
   }
-  return `<div class="${cls}">${lead}${main}${actions}${chevron}</div>`;
+  return `<div class="${cls}"${current}>${lead}${main}${actions}${chevron}</div>`;
 }
