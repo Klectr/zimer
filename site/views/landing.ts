@@ -6,11 +6,15 @@
  *  #1098 rebuild: a marketing surface in the suite's landing language
  *  (hero-glow wash, split hero with the mascot, the product shown
  *  working in a window vignette, demo-led cards, one closing band),
- *  built on the Lobe token scales. The window and card figures are
- *  depictions composed from fictional fixture data (the same world as
- *  the Zandbox stories); the timers in them tick via the inline
- *  script at the foot of the page. Copy stays short and within the
- *  shipped offer: $12/mo + 14-day trial, self-host free forever. */
+ *  built on the Lobe token scales. #1110: the layout system is the
+ *  Zandbox landing's (body-level wash, one container, sticky frosted
+ *  header, width-sized hero art, full-width window, bordered blocks);
+ *  copy, palette, and figures are Zimer's own. The window and card
+ *  figures are depictions composed from fictional fixture data (the
+ *  same world as the Zandbox stories); the timers in them tick via
+ *  the inline script at the foot of the page. Copy stays short and
+ *  within the shipped offer: $12/mo + 14-day trial, self-host free
+ *  forever. */
 
 import { linkButton } from "../ui/button.ts";
 import { logoLockup } from "../ui/logo-lockup.ts";
@@ -83,6 +87,17 @@ function demoCard(title: string, body: string, fig: string): string {
   return `<article class="ui-landing-card"><h3>${title}</h3><p>${body}</p>${fig}</article>`;
 }
 
+const REVEAL_SCRIPT = `<script>
+(function () {
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) {
+      if (en.isIntersecting) { en.target.classList.add("in"); io.unobserve(en.target); }
+    });
+  }, { threshold: 0.12 });
+  document.querySelectorAll(".ui-landing-reveal").forEach(function (el) { io.observe(el); });
+})();
+</script>`;
+
 const TICK_SCRIPT = `<script>
 (function () {
   var t0 = Date.now();
@@ -141,11 +156,14 @@ export function createLandingViews(posthogHead?: () => string) {
   ${posthogHead ? posthogHead() : ""}
   </head>
   <body class="ui-landing-body">
-  <main class="page-landing">
+  <script>document.documentElement.classList.add("js")</script>
   <header class="ui-landing-top">
+  <div class="ui-landing-top-in">
   ${logoLockup()}
   ${linkButton({ label: "Sign in", href: "/login" })}
+  </div>
   </header>
+  <main class="page-landing">
   <section class="ui-landing-hero">
   <div>
   ${tag({ label: "Time tracking to zinvoicing", dot: true })}
@@ -156,12 +174,12 @@ export function createLandingViews(posthogHead?: () => string) {
   <div class="ui-landing-hero-art ui-landing-arrive ui-landing-arrive-2">${MASCOT}</div>
   </section>
   ${WINDOW}
-  <section class="ui-landing-section">
+  <section class="ui-landing-section ui-landing-reveal">
   <h2 class="ui-landing-title">Everything from first tap to paid</h2>
   <p class="ui-landing-sub">One app for the whole loop: track the time, send the Zinvoice, watch the money land.</p>
   <div class="ui-landing-cards">${cards}</div>
   </section>
-  <section class="ui-landing-join" id="pricing">
+  <section class="ui-landing-join ui-landing-reveal" id="pricing">
   <h2 class="ui-landing-title">Start with your next job</h2>
   <p class="ui-landing-join-copy">Hosted at $12/month flat with a 14-day free trial, or self-host it free forever. No seats, no meters, no per-client pricing. Cancel anytime, and your data goes with you. On hosted, your data is never sold, never shared with advertisers, and never used to track you around the web.</p>
   <div class="ui-landing-join-btns">${linkButton({ label: "Start free trial", href: "/signup", variant: "primary", size: "lg" })}${linkButton({ label: "View on GitHub", href: "https://github.com/Klectr/zimer", external: true, size: "lg" })}${linkButton({ label: "Changelog", href: "/changelog", size: "lg" })}</div>
@@ -172,6 +190,7 @@ export function createLandingViews(posthogHead?: () => string) {
   </footer>
   </main>
   ${TICK_SCRIPT}
+  ${REVEAL_SCRIPT}
   </body>
   </html>`;
   }
