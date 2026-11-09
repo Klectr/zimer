@@ -7,6 +7,7 @@ import { tokenStories } from "./stories/tokens.stories";
 import { iconButtonStories } from "./stories/icon-button.stories";
 import { shellStories } from "./stories/shell.stories";
 import { dataStories } from "./stories/data.stories";
+import { calendarStories } from "./stories/calendar.stories";
 
 const config: ZandboxConfig = {
   name: "Zandbox",
@@ -18,6 +19,7 @@ const config: ZandboxConfig = {
     ...iconButtonStories,
     ...shellStories,
     ...dataStories,
+    ...calendarStories,
     ...tokenStories,
   ],
   assets: {
