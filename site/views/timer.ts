@@ -264,6 +264,10 @@ export function createTimerViews(deps: TimerViewDeps) {
               var d=new Date();
               var sub=document.querySelector('.ui-app-head .ui-app-sub');
               if(sub)sub.textContent=d.toLocaleDateString([],{weekday:'long',month:'short',day:'numeric'})+" — here's your day so far.";
+              var hr=d.getHours();var greet=hr<12?"Good morning":hr<17?"Good afternoon":"Good evening";
+              var ttl=document.querySelector('.ui-app-head .ui-app-title');
+              if(ttl)ttl.textContent=greet;
+              document.title=greet+" · Zimer";
               /* #299: point "Invoice this week" at the client-local week (Sun–Sat),
                  matching the calendar's week convention. Server can't know the tz. */
               var inv=document.getElementById('invoice-week');
