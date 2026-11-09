@@ -112,13 +112,13 @@ function buildTenantTree(bundle: DbBundle, dbPath: string): WebTenant & ApiTenan
   const {
     getInvoice, invoiceTotals, nextInvoiceNumber, stripeLinkFor,
     unbilledEntries, groupToLineItems, clientRestFrom, unbilledByClient,
-    projectOptions, projectOptionRows, m3ProgressBar, weekTargetBar,
+    projectOptions, projectOptionRows, weekTargetBar,
     ensurePublicToken, getPublicToken, mintPublicToken,
   } = createDomain({ db, qInvoice, qInvoiceItems, TOKEN });
 
   const { timerPartial, todayPartial, todayStatsPartial, dashboardPage } = createTimerViews({
     db, qRunning, qRange, layout, demoBanner, projectOptions, projectOptionRows,
-    revenueTotals, revenueMonthly, revenueByClient, revenueOverdue, m3ProgressBar,
+    revenueTotals, revenueMonthly, revenueByClient, revenueOverdue,
     dayTargetSecs: () => dayTargetSecs(db), /* #908: per-request read of the user's setting */
   });
   const { weekInner, weekStrip, weekGrid, calendarPage, editPage, editEntryDialog } = createCalendarViews({
