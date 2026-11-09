@@ -4,6 +4,7 @@ import { esc } from "./esc";
 import type { Story } from "./story";
 import type { ZandboxConfig } from "./config";
 import { parseDesignTokens } from "./design-tokens";
+import { VERSION } from "./version";
 
 const ROOT = process.cwd();
 let cfgModule: { default?: unknown };
@@ -281,8 +282,6 @@ function handle(req: Request): Response {
     }
     return new Response("Not found", { status: 404, headers: { "content-type": "text/plain; charset=utf-8" } });
 }
-
-const VERSION = "0.1.0";
 
 const server = Bun.serve({
   hostname: "127.0.0.1",
