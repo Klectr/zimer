@@ -6,6 +6,8 @@
  *  skipped, and non-Tab keys ignored.
  */
 import { afterEach, describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 const g = globalThis as any;
 g.window = {};
@@ -211,6 +213,14 @@ afterEach(async () => {
 });
 
 describe("tkConfirm", () => {
+  test("the destructive OK button's runtime class keeps its error-color rule", () => {
+    tkConfirm("Delete this entry?");
+    const { ok } = dlgParts(lastScrim());
+    expect(ok.className).toBe("md-text-button danger");
+    const css = readFileSync(join(import.meta.dir, "style.css"), "utf8");
+    expect(css).toContain(".md-text-button.danger");
+  });
+
   test("renders the message as headline and focuses Cancel", () => {
     tkConfirm("Delete this entry?");
     const scrim = lastScrim();
