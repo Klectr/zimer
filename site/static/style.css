@@ -735,14 +735,7 @@ body {
 .md-headline-small { font-size: 1.5rem; line-height: 32px; font-weight: 400; letter-spacing: 0; }
 .md-title-large { font-size: 1.375rem; line-height: 28px; font-weight: 400; }
 .md-title-medium { font-size: 1rem; line-height: 24px; font-weight: 500; letter-spacing: 0.15px; }
-.md-title-small { font-size: 0.875rem; line-height: 20px; font-weight: 500; letter-spacing: 0.1px; }
 .md-body-medium { font-size: 0.875rem; line-height: 20px; letter-spacing: 0.25px; }
-.md-label-large { font-size: 0.875rem; line-height: 20px; font-weight: 500; letter-spacing: 0.1px; }
-.md-label-medium { font-size: 0.75rem; line-height: 16px; font-weight: 500; letter-spacing: 0.5px; }
-/* #871: calendar.ts's agenda time range referenced .md-label-small but no rule
-   existed — it fell back to inherited body size next to the defined
-   .md-label-medium duration. M3 Label Small: 11sp/16sp, 500, 0.5 tracking. */
-.md-label-small { font-size: 0.6875rem; line-height: 16px; font-weight: 500; letter-spacing: 0.5px; }
 
 .muted { color: var(--md-sys-color-on-surface-variant); }
 .tiny { font-size: 0.75rem; }
@@ -902,7 +895,6 @@ main:focus { outline: none; }
 .md-filled-button { background: var(--md-sys-color-primary); color: var(--md-sys-color-on-primary); }
 .md-tonal-button { background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container); }
 .md-text-button { background: transparent; color: var(--md-sys-color-primary); padding: 0 16px; }
-.md-text-button.danger { color: var(--md-sys-color-error); }
 
 /* ---------------- icons (inline SVG, M3 outlined 24px) ---------------- */
 .md-filled-button svg, .md-tonal-button svg, .md-text-button svg {
@@ -1180,25 +1172,7 @@ input[type="number"] {
 .ui-color-control input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
 .ui-color-control input[type="color"]::-moz-color-swatch { border: none; border-radius: 50%; }
 
-/* ---------------- lists (expressive: rounded, inset dividers) ---------------- */
-.md-list {
-  list-style: none;
-  margin: 0 0 16px;
-  padding: 8px 0;
-  background: var(--md-sys-color-surface-container-low);
-  border-radius: var(--md-sys-shape-corner-large);
-}
-.md-list-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 72px;
-  padding: 8px 8px 8px 16px;
-}
-/* #362: no hard dividers between list rows — separation by whitespace and
-   tonal cards, matching the Manage segmented list since #271. */
-.md-list-item-content { flex: 1; min-width: 0; }
-
+/* ---------------- lists ---------------- */
 /* Entry row motion (#46): enter with fade+rise and per-row stagger
    (animation-delay rendered inline by entryRow); exit collapses during
    the delete swap:220ms so siblings glide instead of jumping.
@@ -1234,38 +1208,6 @@ input[type="number"] {
   padding-top: 0;
   padding-bottom: 0;
   overflow: hidden;
-}
-.md-list-item-headline {
-  font-size: 1rem;
-  line-height: 24px;
-  letter-spacing: 0.5px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.md-list-item-supporting {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  font-size: 0.875rem;
-  line-height: 20px;
-  letter-spacing: 0.25px;
-  color: var(--md-sys-color-on-surface-variant);
-  margin-top: 2px;
-}
-.md-list-item-trailing {
-  display: flex;
-  align-items: center;
-  gap: 0;
-  flex: none;
-}
-.md-list-item-trailing .dur {
-  font-size: 0.875rem;
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-  margin-right: 4px;
-  white-space: nowrap;
 }
 /* #473: repeat is a mini-form in the row's trailing area — keep it inline
    with the icon buttons and strip the UA form margin. */
@@ -1749,13 +1691,7 @@ body.app-fixed .cal-gutter-spacer {
    the #week section is swapped, so saving an entry never replays the page. */
 #week.no-enter [data-enter],
 #week.no-enter .nudge-chip,
-#week.no-enter .cal-day,
-#week.no-enter .m3-progress-fill,
-#week.no-enter .m3-progress-fill-wrap { animation: none !important; }
-/* #263: .m3-progress-fill-wave is deliberately NOT in the list above — the
-   ripple is a perpetual 1.6s loop, not a load-entrance animation, and the
-   no-enter class is never removed after a swap. Suppressing it here froze the
-   wave permanently after the first week-nav swap or entry save. */
+#week.no-enter .cal-day { animation: none !important; }
 /* One-time highlight on the entry that was just created/updated. */
 .cal-entry.cal-flash { animation: cal-flash 1.2s var(--motion-easing-standard); }
 @keyframes cal-flash {
@@ -1814,7 +1750,6 @@ body.app-fixed .cal-gutter-spacer {
 #cal-dur { white-space: nowrap; flex-shrink: 0; align-self: center; font-size: var(--font-size); font-weight: 500; }
 .cal-dialog-actions { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
 .cal-spacer { flex: 1; }
-.md-text-button.danger { color: var(--md-sys-color-error); }
 
 /* Issue #245: settings modal — same scrim/dialog motion pattern as the
    calendar dialog, with a header row (title + close) and a scrollable body. */
@@ -2322,12 +2257,10 @@ body.app-fixed .cal-gutter-spacer {
    fill with a one-pass sheen. The grow-in sweep (#44) is kept, `no-enter`
    still suppresses it, and the ripple/sheen only run with motion allowed.
    Instances: the calendar's 40h week bar and the timer page's 8h today bar. */
-.m3-progress { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 /* Instance spacing: the calendar's 40h week bar and the timer page's 8h today bar. */
 .week-target { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 2px 0 14px; }
 .week-target .ui-progress { flex: 1; min-width: 120px; }
 .week-target .ui-row-meta { margin-top: 0; white-space: nowrap; }
-.today-target { margin: 0 0 12px; }
 .m3-progress-track { flex: 1; min-width: 120px; height: 14px; display: flex; align-items: center; gap: 4px; }
 .m3-progress-fill-wrap { height: 100%; overflow: hidden; border-radius: 999px; transition: width 300ms;
   animation: m3-progress-fill var(--motion-duration-medium4) var(--motion-easing-emphasized-decelerate) var(--motion-duration-short2) backwards; }
@@ -2360,7 +2293,6 @@ body.app-fixed .cal-gutter-spacer {
   100% { opacity: 0; transform: translateX(380%); }
 }
 @keyframes m3-progress-fill { from { width: 0; } }
-.m3-progress-label { white-space: nowrap; }
 /* Collection progress bar under each revenue "By client" row (#89). */
 .rev-collection { margin-top: 8px; }
 /* The today bar lives inside #today-list, which HTMX re-renders on every
