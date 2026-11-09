@@ -213,6 +213,6 @@ export function entryToJson(e: Entry) {
  *  --c custom properties (both resolve at use time). */
 export function schemeColor(color: string | null | undefined): string | null | undefined {
   if (typeof color === "string" && color.toLowerCase() === "#f2c14e")
-    return "var(--md-sys-color-primary)";
+    return "var(--color-primary)";
   return color;
 }
