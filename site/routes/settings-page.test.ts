@@ -9,7 +9,7 @@ import { createDb } from "../db.ts";
 import { createWebRouter } from "./web.ts";
 import { createManageViews } from "../views/manage.ts";
 
-function setup() {
+function setup(billingSectionHtml?: (req: Request) => string) {
   const db = createDb(mkdtempSync(join(tmpdir(), "tk-settings-"))).db;
   /* Mark the layout so the test can tell the bare fragment from the full page. */
   const views = createManageViews({ db, layout: (t: string, b: string) => `<!DOCTYPE html><title>${t}</title>${b}`, unbilledByClient: () => [] });
@@ -61,6 +61,7 @@ function setup() {
     invoicePdf: () => new Uint8Array(), stripeConfigured: () => false,
     workspaceEmpty: () => false, demoIds: () => [], seedDemoData: () => {},
     removeDemoData: () => {}, entryToJson: (e: any) => e,
+    billingSectionHtml,
   });
   return { handleWeb };
 }
@@ -80,6 +81,18 @@ describe("settings page (#693)", () => {
     const body = await res!.text();
     expect(body).toContain('id="biz-profile"');
     expect(body).not.toContain("<!DOCTYPE html>");
+  });
+
+  /* #1121: the hosted Billing section joins the body when the dep is
+     wired (server.ts passes it in hosted mode) — pinned here so the
+     composition can't silently unwire. */
+  test("billing section lands between the theme and updates sections", async () => {
+    const { handleWeb } = setup(() => `<section id="billing-marker">BILLING</section>`);
+    const res = await getSettings(handleWeb, true);
+    const body = await res!.text();
+    const at = (needle: string) => body.indexOf(needle);
+    expect(at('id="billing-marker"')).toBeGreaterThan(at('id="theme-section"'));
+    expect(at('id="billing-marker"')).toBeLessThan(at('id="update-section"'));
   });
 
   test("direct visit gets the full app layout", async () => {
