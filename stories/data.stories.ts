@@ -56,6 +56,7 @@ export const dataStories: Story[] = [
           zinvoiceRow({ number: "INV-0042", client: "Northwind Legal", status: "sent", overdueDays: 12, amount: "$2,550.00", meta: "Due Oct 27", href: "/invoices?invoice=1042" }) +
           zinvoiceRow({ number: "INV-0041", client: "Bluefin Bakery", status: "paid", amount: "$902.50", meta: "Paid Oct 28", href: "/invoices?invoice=1041" }) +
           zinvoiceRow({ number: "INV-0043", client: "Harbor Dental", status: "draft", amount: "$1,827.00", meta: "Not sent", href: "/invoices?invoice=1043" }) +
+          zinvoiceRow({ number: "INV-0044", client: "", clientHtml: "<em>No client</em> · due Nov 12", status: "sent", amount: "$310.00", meta: "", href: "/invoices?invoice=1044", ariaLabel: "View zinvoice INV-0044", selected: true, className: "inv-row-hit" }) +
           `</div>`,
       ),
   },

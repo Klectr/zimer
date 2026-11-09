@@ -6,6 +6,13 @@ const css = readFileSync(join(import.meta.dir, "../static/style.css"), "utf8");
 
 const INLINE_SET_VARS = ["--cal-hour", "--dot"];
 
+describe("legacy snapshot compat", () => {
+  test("the sheet table rules keep their .md-table aliases for frozen snapshots (#301)", () => {
+    expect(css).toContain(".invoice-sheet .md-table");
+    expect(css).toContain(".template-modern .md-table");
+  });
+});
+
 describe("style.css token references", () => {
   test("every var() reference resolves to a definition (or an inline-set legacy var)", () => {
     const defs = new Set([...css.matchAll(/(--[\w-]+)\s*:/g)].map((m) => m[1]));

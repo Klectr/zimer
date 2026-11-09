@@ -10,11 +10,6 @@ export function esc(s: string | null | undefined): string {
     .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 
-export function statusPill(status: string): string {
-  const label = status[0].toUpperCase() + status.slice(1);
-  return `<span class="pill pill-${esc(status)}">${esc(label)}</span>`;
-}
-
 /** #330: "Invoiced" / "Draft" mark for time entries attached to an invoice.
  *  Returns null when the entry isn't on any invoice. Draft-attached time can
  *  still be freed (deleting the draft), so it gets the quieter treatment. */

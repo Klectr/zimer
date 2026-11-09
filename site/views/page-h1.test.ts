@@ -71,7 +71,6 @@ function invoicePages() {
     stripeConfigured: () => false,
     nextInvoiceNumber: () => "INV-0001",
     invoiceTotals: () => ({ subtotal: 0, tax: 0, total: 0 }),
-    statusPill: (s: string) => `<span class="pill">${s}</span>`,
     isOverdue: () => false,
     unbilledByClient: () => [],
   } as any);
@@ -119,11 +118,13 @@ describe("page-level h1 (#701)", () => {
   test("manage page h1 carries the ui title class (migrated in #1105)", () => {
     expect(managePages().manage).toContain('<h1 class="ui-page-title">Clients</h1>');
   });
+  test("zinvoices page h1s carry the ui title class (migrated in #1108)", () => {
+    expect(invoicePages().list).toContain('<h1 class="ui-page-title">Zinvoices</h1>');
+    expect(invoicePages().form).toContain('<h1 class="ui-page-title">New zinvoice</h1>');
+  });
   test("promoted headings keep their M3 classes (no visual change)", () => {
     for (const html of [
       calendarWeekHtml(),
-      invoicePages().list,
-      invoicePages().form,
     ]) {
       expect(html).toContain('<h1 class="md-headline-small">');
     }

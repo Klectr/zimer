@@ -19,6 +19,7 @@ import { THEMES, themeCss, themeKey } from "../lib/theme.ts"; /* #884 */
 import type { AccountsDb } from "../lib/accounts.ts"; /* #732 */
 import { findTenantByPublicToken } from "../lib/tenants.ts"; /* #741 */
 import { countProofs, deleteProof, getProof, insertProof, listProofs, sanitizeFilename, validateProofFile, PROOF_MAX_BYTES, PROOF_MAX_PER_INVOICE } from "../lib/payment_proofs.ts"; /* #956 */
+import { textField } from "../ui/field.ts";
 
 /* #733: everything derived from one tenant's SQLite bundle. Resolved per
    request from the session (session → user → tenant tree, cached by user
@@ -465,8 +466,8 @@ export function createWebRouter(deps: WebDeps) {
               if (restFrom) from = restFrom;
             }
             const to = todayStr();
-            return html(`<div class="md-text-field filled"><input type="date" id="inv-from" name="from" value="${esc(from)}" required placeholder=" "><label>From</label></div>
-            <div class="md-text-field filled"><input type="date" id="inv-to" name="to" value="${esc(to)}" required placeholder=" "><label>To</label></div>`);
+            return html(textField({ id: "inv-from", label: "From", name: "from", type: "date", value: from, required: true })
+            + textField({ id: "inv-to", label: "To", name: "to", type: "date", value: to, required: true }));
           }
           if (path === "/timer/start" && method === "POST") {
             if (qRunning.get()) return html(timerPartial(), 409);
@@ -904,7 +905,7 @@ export function createWebRouter(deps: WebDeps) {
             internal_notes: String(form.get("internal_notes") || ""),
           };
           if (!p.client_id || !p.from || !p.to) {
-            if (isHtmx(req)) return html(`<div class="md-card form-card"><p class="error">Pick a client and a date range first.</p></div>`, 400); // #71
+            if (isHtmx(req)) return html(`<div class="ui-card form-card"><p class="error">Pick a client and a date range first.</p></div>`, 400); // #71
             return html(invoiceNewPage(p), 400);
           }
           const entries = unbilledEntries(Number(p.client_id), p.from + "T00:00:00", p.to + "T00:00:00");

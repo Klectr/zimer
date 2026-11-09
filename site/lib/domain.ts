@@ -193,7 +193,7 @@ export function createDomain(deps: DomainDeps) {
     });
   }
 
-  /* Milestone 20: statusPill lives in lib/format.ts. */
+  /* Milestone 20: the invoice status chip lives in ui/status-chip.ts. */
 
   /* Milestone 20: auth lives in lib/auth.ts. */
 
