@@ -1264,25 +1264,6 @@ input[type="number"] {
    with the icon buttons and strip the UA form margin. */
 .repeat-form { display: inline-flex; margin: 0; }
 
-/* ---------------- chips (32dp, 8dp radius, outline-variant) ---------------- */
-.md-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 32px;
-  padding: 0 12px;
-  border: 1px solid var(--md-sys-color-outline-variant);
-  border-radius: var(--md-sys-shape-corner-small);
-  font-size: 0.75rem;
-  font-weight: 500;
-  letter-spacing: 0.5px;
-  color: var(--md-sys-color-on-surface-variant);
-  white-space: nowrap;
-}
-.md-chip .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
-/* chip icons (e.g. the paid-date chip) render at M3's 18px chip icon size. */
-.md-chip svg { width: 18px; height: 18px; flex: none; }
-
 /* ---------------- timer ---------------- */
 /* HTMX swap choreography (#45): outgoing card sinks/fades during the
    swap:200ms delay; incoming card rises/fades in from .htmx-settling. */
@@ -2079,11 +2060,11 @@ body.app-fixed .cal-gutter-spacer {
 .page-head-invoices .page-head-actions .btn-label-short { display: none; }
 @media (max-width: 599px) {
   .page-head-invoices { margin-bottom: 4px; gap: 8px; }
-  .page-head-invoices h1.md-headline-small { font-size: 1.375rem; line-height: 1.75rem; }
+  .page-head-invoices h1.ui-page-title { font-size: 1.375rem; line-height: 1.75rem; }
   .page-head-invoices .page-head-actions .btn-label { display: none; }
   .page-head-invoices .page-head-actions .btn-label-short { display: inline; }
-  .page-head-invoices .page-head-actions .md-text-button { padding: 0 12px; min-width: 40px; }
-  .page-head-invoices .page-head-actions .md-filled-button { padding: 0 16px; }
+  .page-head-invoices .page-head-actions .ui-btn-ghost { padding: 0 12px; min-width: 40px; }
+  .page-head-invoices .page-head-actions .ui-btn-primary { padding: 0 16px; }
   #inv-outstanding { margin: 8px 0 4px; font-size: 0.875rem; }
   .unbilled-head { margin-top: var(--spacing-sm); }
 }
@@ -2134,31 +2115,55 @@ body.app-fixed .cal-gutter-spacer {
 @media (max-width: 560px) { .two-field { grid-template-columns: 1fr; } }
 
 .table-wrap { overflow-x: auto; margin: 0 -4px; padding: 0 4px; }
-.inv-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
-.inv-table th, .inv-table td { text-align: left; padding: 10px 8px; }
-.inv-table th.num, .inv-table td.num { text-align: right; white-space: nowrap; }
-.inv-table thead th { color: var(--md-sys-color-on-surface-variant); font-weight: 500; font-size: 0.75rem;
+/* The invoice sheet's table is .inv-table; every rule is dual-selected with
+   .md-table because frozen pre-migration snapshots (#301) still carry the
+   old class and are served verbatim forever. Do not drop the aliases. */
+.inv-table,
+  .md-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+.inv-table th, .inv-table td,
+  .md-table th,
+  .md-table td { text-align: left; padding: 10px 8px; }
+.inv-table th.num, .inv-table td.num,
+  .md-table th.num,
+  .md-table td.num { text-align: right; white-space: nowrap; }
+.inv-table thead th,
+  .md-table thead th { color: var(--md-sys-color-on-surface-variant); font-weight: 500; font-size: 0.75rem;
   letter-spacing: 0.4px; text-transform: uppercase; }
-.inv-table tbody tr { background: var(--md-sys-color-surface-container-low); }
-.inv-table tbody tr + tr { border-top: 8px solid transparent; background-clip: padding-box; }
-.inv-table tbody td:first-child { border-radius: 12px 0 0 12px; }
-.inv-table tbody td:last-child { border-radius: 0 12px 12px 0; }
-.inv-table tfoot td { padding: 6px 8px; color: var(--md-sys-color-on-surface-variant); }
-.inv-table tfoot tr.grand td { color: var(--md-sys-color-on-surface); font-weight: 700; font-size: 1rem;
+.inv-table tbody tr,
+  .md-table tbody tr { background: var(--md-sys-color-surface-container-low); }
+.inv-table tbody tr + tr,
+  .md-table tbody tr + tr { border-top: 8px solid transparent; background-clip: padding-box; }
+.inv-table tbody td:first-child,
+  .md-table tbody td:first-child { border-radius: 12px 0 0 12px; }
+.inv-table tbody td:last-child,
+  .md-table tbody td:last-child { border-radius: 0 12px 12px 0; }
+.inv-table tfoot td,
+  .md-table tfoot td { padding: 6px 8px; color: var(--md-sys-color-on-surface-variant); }
+.inv-table tfoot tr.grand td,
+  .md-table tfoot tr.grand td { color: var(--md-sys-color-on-surface); font-weight: 700; font-size: 1rem;
   padding-top: 10px; }
 /* #366: the 5-column invoice table must fit a 390px phone with the Amount
    column visible — no hiding it behind a scroll. Compact the table chrome
    below 480px; the .table-wrap inner scroll stays as the fallback for
    unusually wide data. Print is untouched. */
 @media (max-width: 480px) {
-  .inv-table { font-size: 0.8125rem; }
-  .inv-table th, .inv-table td { padding: 8px 6px; }
-  .inv-table thead th { font-size: 0.6875rem; letter-spacing: 0; }
-  .inv-table tfoot td { padding: 6px; }
-  .inv-table td.desc { overflow-wrap: anywhere; }
+  .inv-table,
+  .md-table { font-size: 0.8125rem; }
+  .inv-table th, .inv-table td,
+  .md-table th,
+  .md-table td { padding: 8px 6px; }
+  .inv-table thead th,
+  .md-table thead th { font-size: 0.6875rem; letter-spacing: 0; }
+  .inv-table tfoot td,
+  .md-table tfoot td { padding: 6px; }
+  .inv-table td.desc,
+  .md-table td.desc { overflow-wrap: anywhere; }
   /* the DESCRIPTION header is one long word — let it break too, otherwise
      its min-content alone keeps the column (and the table) too wide. */
-  .inv-table th:nth-child(2) { overflow-wrap: anywhere; }
+  .inv-table th:nth-child(2),
+  otherwise
+     its min-content alone keeps the column (and the table) too wide. */
+  .md-table th:nth-child(2) { overflow-wrap: anywhere; }
 }
 /* #366, continued: on phones the invoice document's line items stack instead
    of squeezing into five columns — description on its own line, then a muted
@@ -2166,12 +2171,16 @@ body.app-fixed .cal-gutter-spacer {
    visually hidden (kept for assistive tech); tfoot becomes label/amount rows.
    Print and desktop keep the full table. */
 @media (max-width: 480px) {
-  .invoice-sheet .inv-table thead {
+  .invoice-sheet .inv-table thead,
+  .invoice-sheet .md-table thead {
     position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%);
   }
   .invoice-sheet .inv-table,
   .invoice-sheet .inv-table tbody,
-  .invoice-sheet .inv-table tfoot { display: block; }
+  .invoice-sheet .inv-table tfoot,
+  .invoice-sheet .md-table,
+  .invoice-sheet .md-table tbody,
+  .invoice-sheet .md-table tfoot { display: block; }
   /* #656: the Issued/Due/Billing-period line clips off the right edge on
      phones — stack it instead. Separators are hidden in the stack; frozen
      pre-#656 snapshots (literal middots, no sep spans) degrade to the same
@@ -2182,43 +2191,68 @@ body.app-fixed .cal-gutter-spacer {
   .invoice-sheet .inv-dates-line .inv-date { white-space: normal; }
   .invoice-sheet .inv-dates-line .inv-date-sep { display: none; }
   .invoice-sheet .inv-table tbody tr,
-  .invoice-sheet.template-modern .inv-table tbody tr {
+  .invoice-sheet.template-modern .inv-table tbody tr,
+  .invoice-sheet .md-table tbody tr,
+  .invoice-sheet.template-modern .md-table tbody tr {
     display: flex; flex-wrap: wrap; align-items: baseline;
     background: var(--md-sys-color-surface-container-low);
     border-radius: 12px; padding: 16px; margin: 0 0 12px;
   }
-  .invoice-sheet .inv-table tbody tr + tr { border-top: 0; }
-  .invoice-sheet .inv-table tbody td { padding: 0; }
+  .invoice-sheet .inv-table tbody tr + tr,
+  .invoice-sheet .md-table tbody tr + tr { border-top: 0; }
+  .invoice-sheet .inv-table tbody td,
+  .invoice-sheet .md-table tbody td { padding: 0; }
   .invoice-sheet .inv-table tbody td:first-child,
-  .invoice-sheet .inv-table tbody td:last-child { border-radius: 0; }
-  .invoice-sheet .inv-table td.desc { flex: 1 1 100%; order: -1; font-size: 0.9375rem; font-weight: 600; margin-bottom: 8px; }
-  .invoice-sheet .inv-table td.inv-date:empty { display: none; }
+  .invoice-sheet .inv-table tbody td:last-child,
+  .invoice-sheet .md-table tbody td:first-child,
+  .invoice-sheet .md-table tbody td:last-child { border-radius: 0; }
+  .invoice-sheet .inv-table td.desc,
+  .invoice-sheet .md-table td.desc { flex: 1 1 100%; order: -1; font-size: 0.9375rem; font-weight: 600; margin-bottom: 8px; }
+  .invoice-sheet .inv-table td.inv-date:empty,
+  .invoice-sheet .md-table td.inv-date:empty { display: none; }
   /* #656: the date range gets its own row instead of crowding into the
      hours × rate meta line. */
-  .invoice-sheet .inv-table td.inv-date {
+  .invoice-sheet .inv-table td.inv-date,
+  /* #656: the date range gets its own row instead of crowding into the
+     hours × rate meta line. */
+  .invoice-sheet .md-table td.inv-date {
     flex: 1 1 100%; display: block; font-size: 0.8125rem;
     color: var(--md-sys-color-on-surface-variant); margin-bottom: 6px;
   }
-  .invoice-sheet .inv-table td.inv-date::after { content: none; }
+  .invoice-sheet .inv-table td.inv-date::after,
+  .invoice-sheet .md-table td.inv-date::after { content: none; }
   .invoice-sheet .inv-table td.inv-hours,
-  .invoice-sheet .inv-table td.inv-rate {
+  .invoice-sheet .inv-table td.inv-rate,
+  .invoice-sheet .md-table td.inv-hours,
+  .invoice-sheet .md-table td.inv-rate {
     display: inline; font-size: 0.8125rem; color: var(--md-sys-color-on-surface-variant);
   }
-  .invoice-sheet .inv-table td.inv-hours::after { content: " hrs\00a0×\00a0"; }
+  .invoice-sheet .inv-table td.inv-hours::after,
+  .invoice-sheet .md-table td.inv-hours::after { content: " hrs\00a0×\00a0"; }
   /* #679: the singular hour reads "1 hr × …", not "1 hrs × …". */
-  .invoice-sheet .inv-table td.inv-hours.inv-hours-1::after { content: " hr\00a0×\00a0"; }
-  .invoice-sheet .inv-table td.inv-amount {
+  .invoice-sheet .inv-table td.inv-hours.inv-hours-1::after,
+  not "1 hrs × …". */
+  .invoice-sheet .md-table td.inv-hours.inv-hours-1::after { content: " hr\00a0×\00a0"; }
+  .invoice-sheet .inv-table td.inv-amount,
+  .invoice-sheet .md-table td.inv-amount {
     margin-left: auto; font-size: 0.9375rem; font-weight: 700; white-space: nowrap;
   }
-  .invoice-sheet .inv-table tfoot tr { display: flex; justify-content: space-between; }
-  .invoice-sheet .inv-table tfoot td { padding: 4px 0; }
-  .invoice-sheet .inv-table tfoot tr.grand td { padding-top: 8px; }
+  .invoice-sheet .inv-table tfoot tr,
+  .invoice-sheet .md-table tfoot tr { display: flex; justify-content: space-between; }
+  .invoice-sheet .inv-table tfoot td,
+  .invoice-sheet .md-table tfoot td { padding: 4px 0; }
+  .invoice-sheet .inv-table tfoot tr.grand td,
+  .invoice-sheet .md-table tfoot tr.grand td { padding-top: 8px; }
   /* the cream total bar: paint it on the row, not the cells, so the flex
      space-between doesn't split it into two chips. */
-  .invoice-sheet.template-modern .inv-table tfoot tr.grand {
+  .invoice-sheet.template-modern .inv-table tfoot tr.grand,
+  so the flex
+     space-between doesn't split it into two chips. */
+  .invoice-sheet.template-modern .md-table tfoot tr.grand {
     background: #fdf3dd; border-radius: 8px; padding: 6px 12px; margin-top: 4px;
   }
-  .invoice-sheet.template-modern .inv-table tfoot tr.grand td { background: none; border-radius: 0; }
+  .invoice-sheet.template-modern .inv-table tfoot tr.grand td,
+  .invoice-sheet.template-modern .md-table tfoot tr.grand td { background: none; border-radius: 0; }
 }
 .cell-input { width: 100%; background: var(--md-sys-color-surface-container-highest); color: inherit;
   border: none; border-radius: 8px; padding: 8px 10px; font: inherit; }
@@ -2411,18 +2445,29 @@ body.app-fixed .cal-gutter-spacer {
 .inv-modern-parties { display: flex; gap: 40px; margin: 0 0 20px; }
 .inv-modern-label { font-size: 0.6875rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
   color: var(--md-sys-color-on-surface-variant); margin-bottom: 6px; }
-.template-modern .inv-table thead th { background: #1c1c1f; color: #fff; font-weight: 700; font-size: 0.6875rem;
+.template-modern .inv-table thead th,
+  .template-modern .md-table thead th { background: #1c1c1f; color: #fff; font-weight: 700; font-size: 0.6875rem;
   letter-spacing: 1.5px; text-transform: uppercase; }
-.template-modern .inv-table thead th:first-child { border-radius: 8px 0 0 8px; }
-.template-modern .inv-table thead th:last-child { border-radius: 0 8px 8px 0; }
-.template-modern .inv-table tbody tr { background: transparent; }
-.template-modern .inv-table tbody tr:nth-child(even) { background: rgba(127,127,127,.12); }
-.template-modern .inv-table tbody tr + tr { border-top: none; }
-.template-modern .inv-table tbody td:first-child { border-radius: 0; }
-.template-modern .inv-table tbody td:last-child { border-radius: 0; }
-.template-modern .inv-table tfoot tr.grand td { background: #fdf3dd; color: #1c1c1f; font-size: 1.125rem; }
-.template-modern .inv-table tfoot tr.grand td:first-child { border-radius: 8px 0 0 8px; }
-.template-modern .inv-table tfoot tr.grand td:last-child { border-radius: 0 8px 8px 0; }
+.template-modern .inv-table thead th:first-child,
+  .template-modern .md-table thead th:first-child { border-radius: 8px 0 0 8px; }
+.template-modern .inv-table thead th:last-child,
+  .template-modern .md-table thead th:last-child { border-radius: 0 8px 8px 0; }
+.template-modern .inv-table tbody tr,
+  .template-modern .md-table tbody tr { background: transparent; }
+.template-modern .inv-table tbody tr:nth-child(even),
+  .template-modern .md-table tbody tr:nth-child(even) { background: rgba(127,127,127,.12); }
+.template-modern .inv-table tbody tr + tr,
+  .template-modern .md-table tbody tr + tr { border-top: none; }
+.template-modern .inv-table tbody td:first-child,
+  .template-modern .md-table tbody td:first-child { border-radius: 0; }
+.template-modern .inv-table tbody td:last-child,
+  .template-modern .md-table tbody td:last-child { border-radius: 0; }
+.template-modern .inv-table tfoot tr.grand td,
+  .template-modern .md-table tfoot tr.grand td { background: #fdf3dd; color: #1c1c1f; font-size: 1.125rem; }
+.template-modern .inv-table tfoot tr.grand td:first-child,
+  .template-modern .md-table tfoot tr.grand td:first-child { border-radius: 8px 0 0 8px; }
+.template-modern .inv-table tfoot tr.grand td:last-child,
+  .template-modern .md-table tfoot tr.grand td:last-child { border-radius: 0 8px 8px 0; }
 
 /* ---------------- Share & collect (invoice detail, #229) ---------------- */
 .share-lines { margin: 28px 0 8px; }
@@ -2487,11 +2532,16 @@ body.app-fixed .cal-gutter-spacer {
   main { max-width: none; padding: 0; }
   .invoice-sheet { box-shadow: none; background: #fff; color: #111; max-width: none; }
   .invoice-sheet .muted { color: #555; }
-  .inv-table tbody tr { background: #f5f5f5; }
-  .inv-table tbody tr + tr { border-top-color: #fff; }
-  .inv-table th { color: #555; }
-  .inv-table tfoot td { color: #333; }
-  .inv-table tfoot tr.grand td { color: #000; }
+  .inv-table tbody tr,
+  .md-table tbody tr { background: #f5f5f5; }
+  .inv-table tbody tr + tr,
+  .md-table tbody tr + tr { border-top-color: #fff; }
+  .inv-table th,
+  .md-table th { color: #555; }
+  .inv-table tfoot td,
+  .md-table tfoot td { color: #333; }
+  .inv-table tfoot tr.grand td,
+  .md-table tfoot tr.grand td { color: #000; }
   .ui-chip { border: 1px solid #999; background: #fff !important; color: #111 !important; }
   .inv-notes { color: #333; }
 }
