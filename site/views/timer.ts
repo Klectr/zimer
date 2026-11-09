@@ -5,7 +5,7 @@
  *  slices, so every call site keeps working unchanged. */
 
 import type { Database, Statement } from "bun:sqlite";
-import { addDays, dayBounds, durationSeconds, entryInvoiceMark, entryIsLocked, esc, fmtDur, money, schemeColor, todayStr } from "../lib/format.ts";
+import { addDays, dayBounds, durationSeconds, entryInvoiceMark, entryIsLocked, esc, fmtDur, money, schemeColor, sundayOf, todayStr } from "../lib/format.ts";
 import { icon } from "../lib/icons.ts";
 import { timerPanel } from "../ui/timer-display.ts";
 import { card } from "../ui/card.ts";
@@ -193,16 +193,18 @@ export function createTimerViews(deps: TimerViewDeps) {
   /* #1121: the mock's stat-card row above the panes — today vs the
      daily target, the Sun–Sat week vs five days of target, and unbilled
      value with the #328 per-entry 5-minute round-up the Zinvoices page
-     uses. Figures use the server day; the today list below corrects to
-     the client's day on load (#255). */
-  function statRow(): string {
+     uses. The dashboard's initial render uses the server day; the
+     #today-stats region re-fetches with the client's bounds on load
+     (#255), and again on every timer start/stop. */
+  function statRow(from?: string, to?: string, weekFrom?: string, weekTo?: string): string {
     const target = dayTargetSecs();
-    const [tf, tt] = dayBounds(todayStr());
+    const [tf, tt] = from && to ? [from, to] : dayBounds(todayStr());
     const todayEntries = qRange.all(tf, tt) as Entry[];
     const todaySecs = todayEntries.reduce((a, e) => a + durationSeconds(e.start_time, e.end_time), 0);
-    const sun = addDays(todayStr(), -new Date(`${todayStr()}T12:00:00Z`).getUTCDay());
-    const [wf] = dayBounds(sun);
-    const [wt] = dayBounds(addDays(sun, 7));
+    const sun = sundayOf(todayStr());
+    const [dwf] = dayBounds(sun);
+    const [dwt] = dayBounds(addDays(sun, 7));
+    const [wf, wt] = weekFrom && weekTo ? [weekFrom, weekTo] : [dwf, dwt];
     const weekEntries = qRange.all(wf, wt) as Entry[];
     const weekSecs = weekEntries.reduce((a, e) => a + durationSeconds(e.start_time, e.end_time), 0);
     const weekClients = new Set(weekEntries.map(e => e.client_name).filter(Boolean)).size;
@@ -228,12 +230,19 @@ export function createTimerViews(deps: TimerViewDeps) {
       `</div>`;
   }
 
+  /* #1121: the stat row as a partial — the client passes its own day and
+     week bounds (#255 pattern, same as /partial/today) so the figures
+     agree with the today list below them in every timezone. */
+  function todayStatsPartial(from?: string, to?: string, weekFrom?: string, weekTo?: string): string {
+    return statRow(from, to, weekFrom, weekTo);
+  }
+
   function dashboardPage(): string {
     const dateSub = new Intl.DateTimeFormat("en-US", { weekday: "long", month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(`${todayStr()}T12:00:00Z`));
     return layout("Today", `
       ${demoBanner(db)}
       ${appHeader({ title: "Today", sub: `${dateSub} — here's your day so far.`, actions: linkButton({ label: "Zinvoice this week", href: "/invoices/new", icon: "receipt", id: "invoice-week" }) })}
-      ${statRow()}
+      <div id="today-stats" hx-get="/partial/today-stats" hx-trigger="load, timer-updated from:body">${statRow()}</div>
       <div class="pane-layout">
         <section class="pane-focus" data-enter="2" aria-label="Zimer and today's entries">
           ${timerPartial()}
@@ -264,6 +273,10 @@ export function createTimerViews(deps: TimerViewDeps) {
               var s=new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime();
               var from=new Date(s).toISOString(), to=new Date(s+864e5).toISOString();
               el.setAttribute('hx-get','/partial/today?from='+encodeURIComponent(from)+'&to='+encodeURIComponent(to));
+              var stats=document.getElementById('today-stats');
+              if(stats){var wsun=new Date(d.getFullYear(),d.getMonth(),d.getDate()-d.getDay());
+                var wend=new Date(wsun.getFullYear(),wsun.getMonth(),wsun.getDate()+7);
+                stats.setAttribute('hx-get','/partial/today-stats?from='+encodeURIComponent(from)+'&to='+encodeURIComponent(to)+'&wfrom='+encodeURIComponent(wsun.toISOString())+'&wto='+encodeURIComponent(wend.toISOString()));}
               window.__tkFmtTimes=function(root){
                 var els=(root||document).querySelectorAll('[data-ts]');
                 for(var i=0;i<els.length;i++){var t=els[i];
@@ -377,5 +390,5 @@ export function createTimerViews(deps: TimerViewDeps) {
       </div>`;
   }
 
-  return { entryRow, timerPartial, todayPartial, dashboardPage, revenueSection };
+  return { entryRow, timerPartial, todayPartial, todayStatsPartial, dashboardPage, revenueSection };
 }

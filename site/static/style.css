@@ -2368,7 +2368,7 @@ body.app-fixed .cal-gutter-spacer {
 
 /* ---------------- print ---------------- */
 @media print {
-  .ui-side, .ui-mobile-head, .ui-mobile-nav, .nav-drawer-scrim, .trial-banner, .no-print, .page-head { display: none !important; }
+  .ui-side, .ui-mobile-head, .ui-mobile-nav, .nav-drawer-scrim, .trial-banner, .no-print, .page-head, .ui-app-head, .ui-stat-row { display: none !important; }
   .invoice-list-pane { display: none !important; } /* #364: print only the invoice document */
   .invoice-list-detail { display: block; }
   .invoice-detail-pane { overflow: visible; }

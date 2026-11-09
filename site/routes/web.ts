@@ -39,6 +39,7 @@ export interface WebTenant {
   dashboardPage: () => string;
   timerPartial: () => string;
   todayPartial: (from?: string, to?: string) => string;
+  todayStatsPartial: (from?: string, to?: string, weekFrom?: string, weekTo?: string) => string;
   weekInner: (weekStr?: string, tz?: string) => string;
   weekStrip: (weekStr?: string, tz?: string) => string;
   calendarPage: (week?: string) => string;
@@ -426,7 +427,7 @@ export function createWebRouter(deps: WebDeps) {
           const {
             db, dbPath, qRunning, qOne, qRange, qInvoice, qInvoices,
             notFoundPage, errorPage,
-            dashboardPage, timerPartial, todayPartial, weekInner, weekStrip,
+            dashboardPage, timerPartial, todayPartial, todayStatsPartial, weekInner, weekStrip,
             calendarPage, editPage, editEntryDialog, managePage, clientSelection, clientDetailBody, clientListOob, bizProfileSection, dailyTargetSection, clientSettingsForm, settingsPage, themeSectionHtml, invoicesPage, invoiceNewPage,
             defaultNewInvParams, invoiceStep2, invoiceDetailBody, invoiceListOob, invoiceDoc, publicInvoicePage,
             getInvoice, invoiceTotals,
@@ -453,6 +454,19 @@ export function createWebRouter(deps: WebDeps) {
             const iso = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:?\d{2})$/;
             const ok = iso.test(from) && iso.test(to) && !isNaN(Date.parse(from)) && !isNaN(Date.parse(to));
             return html(ok ? todayPartial(from, to) : todayPartial());
+          }
+          /* #1121: the dashboard stat row with the client's day + week
+             bounds, validated the same way; each pair falls back to the
+             server's bounds independently. */
+          if (path === "/partial/today-stats" && method === "GET") {
+            const iso = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:?\d{2})$/;
+            const pair = (a: string, b: string) => iso.test(a) && iso.test(b) && !isNaN(Date.parse(a)) && !isNaN(Date.parse(b));
+            const from = url.searchParams.get("from") || "", to = url.searchParams.get("to") || "";
+            const wfrom = url.searchParams.get("wfrom") || "", wto = url.searchParams.get("wto") || "";
+            const dayOk = pair(from, to), weekOk = pair(wfrom, wto);
+            return html(todayStatsPartial(
+              dayOk ? from : undefined, dayOk ? to : undefined,
+              weekOk ? wfrom : undefined, weekOk ? wto : undefined));
           }
           /* #328: "invoice the rest" for the new-invoice client picker — returns the
              #inv-range fields with from/to filled from the client's billing
