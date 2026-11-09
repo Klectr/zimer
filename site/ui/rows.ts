@@ -48,6 +48,8 @@ export interface EntryRowOptions {
   dot?: string;
   running?: boolean;
   actions?: string;
+  href?: string;
+  trailing?: string;
 }
 
 export function entryRow(opts: EntryRowOptions): string {
@@ -59,11 +61,14 @@ export function entryRow(opts: EntryRowOptions): string {
   const attrs = opts.attrs ? ` ${opts.attrs}` : "";
   const dot = opts.dot ? `<span class="ui-row-dot" style="background:${esc(opts.dot)}" aria-hidden="true"></span>` : "";
   const meta = opts.metaHtml ? `<div class="ui-row-meta">${opts.metaHtml}</div>` : `<div class="ui-row-meta">${esc(opts.meta ?? "")}</div>`;
+  const cls = `ui-row${opts.running ? " is-running" : ""}`;
+  const open = opts.href ? `<a class="${cls}"${id}${attrs} href="${esc(opts.href)}">` : `<div class="${cls}"${id}${attrs}>`;
+  const close = opts.href ? `</a>` : `</div>`;
   return (
-    `<div class="ui-row${opts.running ? " is-running" : ""}"${id}${attrs}>` +
+    open +
     `<div class="ui-row-main"><span class="ui-row-title">${dot}${esc(opts.title)}</span>${mark}` +
     `${meta}</div>` +
-    `<div class="ui-row-side"><span class="ui-row-amount"${live}>${esc(opts.duration)}</span>${amount}</div>${actions}</div>`
+    `<div class="ui-row-side"><span class="ui-row-amount"${live}>${esc(opts.duration)}</span>${amount}</div>${actions}${opts.trailing ?? ""}${close}`
   );
 }
 

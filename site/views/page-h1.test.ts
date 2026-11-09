@@ -38,7 +38,6 @@ function timerPage(): string {
     revenueMonthly: () => [],
     revenueByClient: () => [],
     revenueOverdue: () => [],
-    m3ProgressBar: () => "",
     dayTargetSecs: () => 8 * 3600,
   };
   return createTimerViews(deps as any).dashboardPage();

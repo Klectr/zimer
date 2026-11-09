@@ -34,7 +34,6 @@ const baseDeps = {
   revenueMonthly: () => [],
   revenueByClient: () => [],
   revenueOverdue: () => [],
-  m3ProgressBar: () => "",
   dayTargetSecs: () => 8 * 3600, /* #908: per-request getter */
 };
 
@@ -485,7 +484,6 @@ describe("today pacing bar follows the daily target (#908)", () => {
     const deps = {
       ...baseDeps,
       dayTargetSecs: () => targetSecs,
-      m3ProgressBar: (_p: number, _m: boolean, label: string) => label,
     };
     return createTimerViews(deps as any).todayPartial();
   }

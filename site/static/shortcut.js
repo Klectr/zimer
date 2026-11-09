@@ -7,17 +7,36 @@
       /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName || ""));
   }
 
+  /* The shared toast renders the ui toast component's markup (site/ui/toast.ts):
+     tinted icon chip + title, tone carried by the chip and the role. Icon
+     geometry mirrors site/lib/icons.ts (check / alert / info). */
+  const TOAST_ICONS = {
+    success: '<polyline points="20 6 9 17 4 12"/>',
+    error: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+    info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+  };
+  function toastIcon(tone) {
+    return '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      TOAST_ICONS[tone] + "</svg>";
+  }
+  function escHtml(s) {
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
   let snackTimer = null;
-  function snackbar(msg) {
-    let bar = document.getElementById("tk-snackbar");
+  function snackbar(msg, tone) {
+    tone = TOAST_ICONS[tone] ? tone : "success";
+    let bar = document.getElementById("tk-toast");
     if (!bar) {
       bar = document.createElement("div");
-      bar.id = "tk-snackbar";
-      bar.className = "tk-snackbar";
-      bar.setAttribute("role", "status");
+      bar.id = "tk-toast";
       document.body.appendChild(bar);
     }
-    bar.textContent = msg;
+    bar.className = "ui-toast ui-toast-" + tone + " ui-toast-live";
+    bar.setAttribute("role", tone === "error" ? "alert" : "status");
+    bar.innerHTML =
+      '<span class="ui-toast-chip">' + toastIcon(tone) + "</span>" +
+      '<div><div class="ui-toast-title">' + escHtml(msg) + "</div></div>";
     bar.classList.add("show");
     clearTimeout(snackTimer);
     snackTimer = setTimeout(() => bar.classList.remove("show"), 3000);
@@ -63,7 +82,7 @@
       if (window.zimerTrack) window.zimerTrack(running ? "timer_stopped" : "timer_started");
       snackbar(running ? "Zimer stopped" : "Zimer started — press t to stop");
     } catch (e) {
-      snackbar("Couldn't toggle the timer");
+      snackbar("Couldn't toggle the timer", "error");
     } finally {
       toggling = false;
     }

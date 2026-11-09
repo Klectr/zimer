@@ -6,7 +6,7 @@
 import type { Statement } from "bun:sqlite";
 import { esc } from "../lib/format.ts";
 import { icon, logo } from "../lib/icons.ts";
-import { appSidebar, type NavItem } from "../ui/app-sidebar.ts";
+import { appSidebar, navItemsHtml, type NavItem } from "../ui/app-sidebar.ts";
 import { logoLockup } from "../ui/logo-lockup.ts";
 import { iconButton } from "../ui/icon-button.ts";
 import { button, linkButton } from "../ui/button.ts";
@@ -151,7 +151,7 @@ export function createLayoutViews(qRunning: Statement, themeCss?: () => string, 
     </div>
   </div>
   <nav class="ui-mobile-nav" aria-label="Primary">
-    ${navItems.slice(0, 4).map((d) => `<a href="${d.href}" class="ui-navitem${active === d.key ? " is-active" : ""}"${active === d.key ? ` aria-current="page"` : ""}>${icon(d.icon)}<span>${d.label}</span></a>`).join("")}
+    ${navItemsHtml({ items: navItems.slice(0, 4), active: active ?? "" })}
   </nav>
   ${/* #355: the settings scrim is a direct body child — inside the app bar it
        would be trapped in the header's stacking context and paint below the
@@ -368,6 +368,7 @@ function settingsDialog(): string {
     var open_=false, focusOnSwap=false, opener=menuItem;
     function open(){
       open_=true;
+      body.innerHTML='<p class="muted">Loading…</p>';
       scrim.hidden=false; void scrim.offsetWidth; scrim.classList.add('open');
       /* Fresh form on every open — the profile may have changed elsewhere. */
       focusOnSwap=true;
@@ -403,7 +404,7 @@ function settingsDialog(): string {
       open();
     });
     /* #247: visible save confirmation — the form re-renders silently, so
-       announce success with the shared M3 snackbar. Delegated on body so it
+       announce success with the shared ui toast. Delegated on body so it
        survives the #biz-profile outerHTML swap. */
     document.body.addEventListener('htmx:afterRequest',function(e){
       var elt=e.detail.elt;
@@ -431,6 +432,7 @@ function entryDialog(): string {
     var open_=false, opener=null;
     function open(id){
       open_=true; opener=document.activeElement;
+      body.innerHTML='<p class="muted">Loading…</p>';
       scrim.hidden=false; void scrim.offsetWidth; scrim.classList.add('open');
       htmx.ajax('GET','/entries/'+id+'/edit','#entry-dialog-body');
       document.addEventListener('keydown',onKey,true);
