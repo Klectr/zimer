@@ -7,7 +7,7 @@ export interface CardOptions {
 }
 
 export function card(opts: CardOptions): string {
-  const cls = "md-card" + (opts.tracking ? " tracking" : "");
+  const cls = "ui-card" + (opts.tracking ? " tracking" : "");
   const id = opts.id ? ` id="${esc(opts.id)}"` : "";
   return `<div class="${cls}"${id}>${opts.content}</div>`;
 }

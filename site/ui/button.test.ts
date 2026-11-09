@@ -2,27 +2,32 @@ import { describe, expect, test } from "bun:test";
 import { button } from "./button";
 
 describe("button", () => {
-  test("defaults to a filled submit-free button", () => {
-    const html = button({ label: "Send Zinvoice" });
+  test("defaults to the default (surface) variant, submit-free", () => {
+    const html = button({ label: "Save draft" });
     expect(html).toContain('type="button"');
-    expect(html).toContain('class="md-filled-button"');
-    expect(html).toContain(">Send Zinvoice</button>");
+    expect(html).toContain('class="ui-btn"');
+    expect(html).toContain(">Save draft</button>");
   });
 
-  test("maps variants to the app's button classes", () => {
-    expect(button({ label: "A", variant: "tonal" })).toContain('class="md-tonal-button"');
-    expect(button({ label: "A", variant: "text" })).toContain('class="md-text-button"');
+  test("maps variants to the ui button classes", () => {
+    expect(button({ label: "A", variant: "primary" })).toContain('class="ui-btn ui-btn-primary"');
+    expect(button({ label: "A", variant: "ghost" })).toContain('class="ui-btn ui-btn-ghost"');
   });
 
-  test("danger adds the danger modifier on the text variant", () => {
-    expect(button({ label: "Delete", variant: "text", danger: true })).toContain(
-      'class="md-text-button danger"',
+  test("danger is styled on every variant (solid error on primary)", () => {
+    expect(button({ label: "Delete", danger: true })).toContain('class="ui-btn ui-btn-danger"');
+    expect(button({ label: "Delete", variant: "ghost", danger: true })).toContain(
+      'class="ui-btn ui-btn-ghost ui-btn-danger"',
+    );
+    expect(button({ label: "Delete", variant: "primary", danger: true })).toContain(
+      'class="ui-btn ui-btn-primary ui-btn-danger"',
     );
   });
 
-  test("danger throws on variants that have no danger styling", () => {
-    expect(() => button({ label: "Delete", danger: true })).toThrow("danger");
-    expect(() => button({ label: "Delete", variant: "tonal", danger: true })).toThrow("danger");
+  test("sizes add the size class; md is the unclassed default", () => {
+    expect(button({ label: "A", size: "sm" })).toContain('class="ui-btn ui-btn-sm"');
+    expect(button({ label: "A", size: "lg" })).toContain('class="ui-btn ui-btn-lg"');
+    expect(button({ label: "A", size: "md" })).toContain('class="ui-btn"');
   });
 
   test("disabled renders the disabled attribute", () => {

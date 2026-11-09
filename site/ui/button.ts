@@ -1,10 +1,12 @@
 import { esc } from "../lib/format";
 
-export type ButtonVariant = "filled" | "tonal" | "text";
+export type ButtonVariant = "primary" | "default" | "ghost";
+export type ButtonSize = "sm" | "md" | "lg";
 
 export interface ButtonOptions {
   label: string;
   variant?: ButtonVariant;
+  size?: ButtonSize;
   danger?: boolean;
   disabled?: boolean;
   type?: "button" | "submit";
@@ -12,17 +14,17 @@ export interface ButtonOptions {
 }
 
 const VARIANT_CLASS: Record<ButtonVariant, string> = {
-  filled: "md-filled-button",
-  tonal: "md-tonal-button",
-  text: "md-text-button",
+  primary: "ui-btn ui-btn-primary",
+  default: "ui-btn",
+  ghost: "ui-btn ui-btn-ghost",
 };
 
 export function button(opts: ButtonOptions): string {
-  const variant = opts.variant ?? "filled";
-  if (opts.danger && variant !== "text") {
-    throw new Error(`button: danger is only styled for the text variant (got ${variant})`);
-  }
-  const cls = VARIANT_CLASS[variant] + (opts.danger ? " danger" : "");
+  const variant = opts.variant ?? "default";
+  let cls = VARIANT_CLASS[variant];
+  if (opts.size === "sm") cls += " ui-btn-sm";
+  if (opts.size === "lg") cls += " ui-btn-lg";
+  if (opts.danger) cls += " ui-btn-danger";
   const id = opts.id ? ` id="${esc(opts.id)}"` : "";
   const disabled = opts.disabled ? " disabled" : "";
   return `<button type="${esc(opts.type ?? "button")}" class="${cls}"${id}${disabled}>${esc(opts.label)}</button>`;

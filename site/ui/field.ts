@@ -8,6 +8,7 @@ export interface TextFieldOptions {
   name?: string;
   type?: TextFieldType;
   value?: string;
+  placeholder?: string;
   required?: boolean;
   autocomplete?: string;
 }
@@ -15,12 +16,13 @@ export interface TextFieldOptions {
 export function textField(opts: TextFieldOptions): string {
   const name = opts.name ? ` name="${esc(opts.name)}"` : "";
   const value = opts.value != null ? ` value="${esc(opts.value)}"` : "";
+  const placeholder = opts.placeholder ? ` placeholder="${esc(opts.placeholder)}"` : "";
   const required = opts.required ? " required" : "";
   const autocomplete = opts.autocomplete ? ` autocomplete="${esc(opts.autocomplete)}"` : "";
   return (
-    `<div class="md-text-field">` +
-    `<input type="${esc(opts.type ?? "text")}" id="${esc(opts.id)}"${name}${value}${required}${autocomplete} placeholder=" ">` +
-    `<label for="${esc(opts.id)}">${esc(opts.label)}</label></div>`
+    `<div class="ui-field">` +
+    `<label class="ui-field-label" for="${esc(opts.id)}">${esc(opts.label)}</label>` +
+    `<input class="ui-input" type="${esc(opts.type ?? "text")}" id="${esc(opts.id)}"${name}${value}${placeholder}${required}${autocomplete}></div>`
   );
 }
 
@@ -48,8 +50,8 @@ export function selectField(opts: SelectFieldOptions): string {
     )
     .join("");
   return (
-    `<div class="md-text-field filled">` +
-    `<select id="${esc(opts.id)}"${name}${required} aria-label="${esc(opts.label)}">${options}</select>` +
-    `<label for="${esc(opts.id)}">${esc(opts.label)}</label></div>`
+    `<div class="ui-field">` +
+    `<label class="ui-field-label" for="${esc(opts.id)}">${esc(opts.label)}</label>` +
+    `<select class="ui-input ui-select" id="${esc(opts.id)}"${name}${required}>${options}</select></div>`
   );
 }
