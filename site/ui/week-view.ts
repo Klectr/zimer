@@ -7,6 +7,7 @@ export interface WeekEntry {
   duration: string;
   running?: boolean;
   invoiced?: boolean;
+  attrs?: string;
 }
 
 export interface WeekDay {
@@ -15,11 +16,14 @@ export interface WeekDay {
   total: string;
   isToday?: boolean;
   logHref?: string;
+  date?: string;
+  addHtml?: string;
   entries: WeekEntry[];
 }
 
 export interface WeekViewOptions {
   days: WeekDay[];
+  agendaOnly?: boolean;
 }
 
 const MAX_GRID_ENTRIES = 4;
@@ -28,7 +32,7 @@ function dayHead(day: WeekDay): string {
   const dot = day.isToday ? `<span class="ui-day-dot"></span>` : "";
   return (
     `<div class="ui-day-head"><span class="ui-day-name">${esc(day.weekday)} ${esc(day.dateLabel)}</span>${dot}` +
-    `<span class="ui-day-total">${esc(day.total)}</span></div>`
+    `<span class="ui-day-total">${esc(day.total)}</span>${day.addHtml ?? ""}</div>`
   );
 }
 
@@ -62,14 +66,18 @@ function agendaDay(day: WeekDay): string {
               duration: e.duration,
               running: e.running,
               mark: e.invoiced ? "Zinvoiced" : undefined,
+              attrs: e.attrs,
             }),
           )
           .join("") +
         `</div>`;
-  return `<section class="ui-agenda-day">${dayHead(day)}${entries}</section>`;
+  return `<section class="ui-agenda-day"${day.date ? ` data-date="${esc(day.date)}"` : ""}>${dayHead(day)}${entries}</section>`;
 }
 
 export function weekView(opts: WeekViewOptions): string {
+  if (opts.agendaOnly) {
+    return `<div class="ui-week ui-week-agenda-only"><div class="ui-week-agenda">${opts.days.map(agendaDay).join("")}</div></div>`;
+  }
   return (
     `<div class="ui-week"><div class="ui-week-grid">${opts.days.map(gridDay).join("")}</div>` +
     `<div class="ui-week-agenda">${opts.days.map(agendaDay).join("")}</div></div>`

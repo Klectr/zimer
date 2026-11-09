@@ -38,6 +38,7 @@ export function zinvoiceRow(opts: ZinvoiceRowOptions): string {
 
 export interface EntryRowOptions {
   id?: string;
+  attrs?: string;
   title: string;
   meta?: string;
   metaHtml?: string;
@@ -55,10 +56,11 @@ export function entryRow(opts: EntryRowOptions): string {
   const live = opts.running ? ` data-live-duration` : "";
   const actions = opts.actions ? `<span class="ui-row-actions">${opts.actions}</span>` : "";
   const id = opts.id ? ` id="${esc(opts.id)}"` : "";
+  const attrs = opts.attrs ? ` ${opts.attrs}` : "";
   const dot = opts.dot ? `<span class="ui-row-dot" style="background:${esc(opts.dot)}" aria-hidden="true"></span>` : "";
   const meta = opts.metaHtml ? `<div class="ui-row-meta">${opts.metaHtml}</div>` : `<div class="ui-row-meta">${esc(opts.meta ?? "")}</div>`;
   return (
-    `<div class="ui-row${opts.running ? " is-running" : ""}"${id}>` +
+    `<div class="ui-row${opts.running ? " is-running" : ""}"${id}${attrs}>` +
     `<div class="ui-row-main"><span class="ui-row-title">${dot}${esc(opts.title)}</span>${mark}` +
     `${meta}</div>` +
     `<div class="ui-row-side"><span class="ui-row-amount"${live}>${esc(opts.duration)}</span>${amount}</div>${actions}</div>`
