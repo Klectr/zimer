@@ -52,7 +52,7 @@ describe("calendar entry aria-label (#479)", () => {
       qRange: stubQuery(),
       entrySelect: "SELECT",
       layout: (_t: string, b: string) => b,
-      projectOptions: () => "",
+      projectOptionRows: () => [],
       weekTargetBar: () => "",
       calHourPx: 64,
     } as any);
@@ -69,7 +69,7 @@ describe("calendar entry aria-label (#479)", () => {
       qRange: stubQuery(),
       entrySelect: "SELECT",
       layout: (_t: string, b: string) => b,
-      projectOptions: () => "",
+      projectOptionRows: () => [],
       weekTargetBar: () => "",
       calHourPx: 64,
     } as any);
@@ -117,7 +117,7 @@ describe("week-nav tooltips (#486)", () => {
       qRange: stubQuery(),
       entrySelect: "SELECT",
       layout: (_t: string, b: string) => b,
-      projectOptions: () => "",
+      projectOptionRows: () => [],
       weekTargetBar: () => "",
       calHourPx: 64,
     } as any);
@@ -152,7 +152,7 @@ describe("calendar nav edge tooltips (#554, #572)", () => {
       qRange: stubQuery(),
       entrySelect: "SELECT",
       layout: (_t: string, b: string) => b,
-      projectOptions: () => "",
+      projectOptionRows: () => [],
       weekTargetBar: () => "",
       calHourPx: 64,
     } as any);
@@ -190,7 +190,7 @@ describe("calendar week carousel (#572)", () => {
       qRange: stubQuery(),
       entrySelect: "SELECT",
       layout: (_t: string, b: string) => b,
-      projectOptions: () => "",
+      projectOptionRows: () => [],
       weekTargetBar: () => "",
       calHourPx: 64,
     } as any);
@@ -278,7 +278,7 @@ describe("calendar entry invoiced-mark tooltip (#500)", () => {
       qRange: stubQuery(),
       entrySelect: "SELECT",
       layout: (_t: string, b: string) => b,
-      projectOptions: () => "",
+      projectOptionRows: () => [],
       weekTargetBar: () => "",
       calHourPx: 64,
     } as any);
@@ -346,7 +346,7 @@ describe("calendar week-only carousel (#572)", () => {
       qRange: qr,
       entrySelect: "SELECT",
       layout: (_t: string, b: string) => b,
-      projectOptions: () => "",
+      projectOptionRows: () => [],
       weekTargetBar: () => "",
       calHourPx: 64,
     } as any);
@@ -473,7 +473,7 @@ describe("week summary delta (#524)", () => {
       qRange: { get: (..._a: unknown[]) => ({ n: 1 }), all: (..._a: unknown[]) => prevRows },
       entrySelect: "SELECT",
       layout: (_t: string, b: string) => b,
-      projectOptions: () => "",
+      projectOptionRows: () => [],
       weekTargetBar: () => "",
       calHourPx: 64,
     } as any);
@@ -565,7 +565,7 @@ describe("calendar dialog description suggestions (#578)", () => {
       qRange: null,
       entrySelect: "SELECT",
       layout: (_t: string, b: string) => b,
-      projectOptions: () => "",
+      projectOptionRows: () => [],
       weekTargetBar: () => "",
       calHourPx: 64,
     } as any);
@@ -605,7 +605,7 @@ describe("calendar dialog placement (#669)", () => {
       qRange: { get: (..._a: unknown[]) => ({ n: 1 }), all: (..._a: unknown[]) => [] },
       entrySelect: "SELECT",
       layout: (_t: string, b: string) => b,
-      projectOptions: () => "",
+      projectOptionRows: () => [],
       weekTargetBar: () => "",
       calHourPx: 64,
     } as any);
@@ -683,7 +683,7 @@ describe("edit-entry floating labels (#709)", () => {
       qRange: { get: () => ({ n: 1 }), all: () => [] },
       entrySelect: "SELECT",
       layout: (_t: string, b: string) => b,
-      projectOptions: () => "",
+      projectOptionRows: () => [],
       weekTargetBar: () => "",
       calHourPx: 64,
     } as any);
@@ -715,7 +715,7 @@ describe("entry edit dialog fragment (#903)", () => {
       qRange: { get: () => ({ n: 1 }), all: () => [] },
       entrySelect: "SELECT",
       layout: (_t: string, b: string) => b,
-      projectOptions: () => "",
+      projectOptionRows: () => [],
       weekTargetBar: () => "",
       calHourPx: 64,
     } as any);
@@ -747,7 +747,7 @@ describe("entry edit dialog fragment (#903)", () => {
       qRange: { get: () => ({ n: 1 }), all: () => [] },
       entrySelect: "SELECT",
       layout: (_t: string, b: string) => b,
-      projectOptions: () => "",
+      projectOptionRows: () => [],
       weekTargetBar: () => "",
       calHourPx: 64,
     } as any);
@@ -775,7 +775,7 @@ describe("calendar pane hint (#766)", () => {
       qRange: stubQuery(),
       entrySelect: "SELECT",
       layout: (_t: string, b: string) => b,
-      projectOptions: () => "",
+      projectOptionRows: () => [],
       weekTargetBar: () => "",
       calHourPx: 64,
     } as any);
@@ -816,7 +816,7 @@ describe("calendar slot theme color (#841)", () => {
       qRange: stubQuery(),
       entrySelect: "SELECT",
       layout: (_t: string, b: string) => b,
-      projectOptions: () => "",
+      projectOptionRows: () => [],
       weekTargetBar: () => "",
       calHourPx: 64,
     } as any);
@@ -1003,7 +1003,7 @@ describe("calendar top-edge rounding (#853)", () => {
       qRange: stubQuery(),
       entrySelect: "SELECT",
       layout: (_t: string, b: string) => b,
-      projectOptions: () => "",
+      projectOptionRows: () => [],
       weekTargetBar: () => "",
       calHourPx: 64,
     } as any);
@@ -1056,7 +1056,7 @@ describe("calendar midnight lane cap (#857)", () => {
       qRange: stubQuery(),
       entrySelect: "SELECT",
       layout: (_t: string, b: string) => b,
-      projectOptions: () => "",
+      projectOptionRows: () => [],
       weekTargetBar: () => "",
       calHourPx: 64,
     } as any);
@@ -1152,5 +1152,43 @@ describe("calendar summary pane breakpoint (#1077)", () => {
     expect(css).not.toMatch(/@media\s*\(min-width:\s*840px\)\s*\{[^}]*\.cal-pane-layout/);
     /* The stacked default (summary above grid) remains the base layout. */
     expect(css).toMatch(/\.cal-pane-layout\s*\{[^}]*grid-template-areas:\s*"summary" "grid"/);
+  });
+});
+
+/** #1121: both calendar project pickers render through selectField,
+ *  fed by projectOptionRows — the quick-create dialog's cal-project and
+ *  the edit form's ee-project (selected + locked-disabled states). */
+describe("calendar project pickers (#1121)", () => {
+  const rows = [{ id: 5, name: "Website", client: "Acme" }, { id: 6, name: "Admin", client: null }];
+  function viewsFor(entry: any) {
+    const stub = () => ({ get: () => entry, all: () => [], run: () => {} });
+    const db = { query: () => stub() } as unknown as Database;
+    return createCalendarViews({
+      db, qOne: stub() as unknown as Statement, qRange: stub() as unknown as Statement,
+      entrySelect: "SELECT", layout: (_t: string, b: string) => b,
+      projectOptionRows: () => rows, weekTargetBar: () => "", calHourPx: 64,
+    } as any);
+  }
+  const baseEntry = {
+    id: 11, description: "Work", project_id: 5, project_name: "Website",
+    client_name: "Acme", client_color: null, invoice_id: null,
+    invoice_number: null, invoice_status: null,
+    start_time: "2026-09-21T15:00:00.000Z", end_time: "2026-09-21T16:00:00.000Z",
+  };
+
+  test("quick-create dialog picker is a selectField with row labels", () => {
+    const html = viewsFor(baseEntry).calendarPage();
+    expect(html).toContain('<select class="ui-input ui-select" id="cal-project"><option value="">No project</option><option value="5">Website (Acme)</option><option value="6">Admin</option></select>');
+  });
+
+  test("edit picker carries the entry's project as selected", () => {
+    const html = viewsFor(baseEntry).editEntryDialog(11)!;
+    expect(html).toContain('<select class="ui-input ui-select" id="ee-project" name="project_id">');
+    expect(html).toContain('<option value="5" selected>Website (Acme)</option>');
+  });
+
+  test("edit picker is disabled for invoiced (locked) entries", () => {
+    const html = viewsFor({ ...baseEntry, invoice_id: 42, invoice_status: "sent" }).editEntryDialog(11)!;
+    expect(html).toContain('<select class="ui-input ui-select" id="ee-project" name="project_id" disabled>');
   });
 });

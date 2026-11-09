@@ -107,6 +107,14 @@ describe("selectField option data attributes", () => {
   });
 });
 
+describe("selectField disabled", () => {
+  test("disabled lands on the select (#1121)", () => {
+    const html = selectField({ id: "p", label: "Project", options: [{ value: "1", label: "Website" }], disabled: true });
+    expect(html).toContain('<select class="ui-input ui-select" id="p" disabled>');
+    expect(selectField({ id: "p", label: "Project", options: [] })).not.toContain("disabled");
+  });
+});
+
 describe("selectField className", () => {
   test("extra class lands on the select for behavior hooks", () => {
     const html = selectField({ id: "t", label: "Terms", options: [{ value: "a", label: "A" }], className: "terms-select" });
