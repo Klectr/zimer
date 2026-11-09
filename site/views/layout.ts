@@ -128,9 +128,8 @@ export function createLayoutViews(qRunning: Statement, themeCss?: () => string, 
        worker (scoped to /static/) makes static assets resilient and satisfies
        the installability check. Registration is a no-op when unsupported. -->
   <link rel="manifest" href="/static/manifest.webmanifest">
-  <meta name="theme-color" content="#131318">
+  <meta name="theme-color" content="#08090a">
   <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("/static/sw.js").catch(function(){});}</script>
-  <script src="/static/motion.js" defer></script>
   <script src="/static/shortcut.js" defer></script>
   <script src="/static/terms.js" defer></script>
   <script src="/static/dialog.js" defer></script>
@@ -176,7 +175,6 @@ export function createLayoutViews(qRunning: Statement, themeCss?: () => string, 
   <link rel="stylesheet" href="/static/style.css">
   <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32.png">
   <link rel="apple-touch-icon" href="/static/alien-180.png">
-  <script src="/static/motion.js" defer></script>
   </head>
   <body>
   <main class="page-public-invoice">
