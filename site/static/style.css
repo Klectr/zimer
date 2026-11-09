@@ -2109,9 +2109,9 @@ body.app-fixed .cal-gutter-spacer {
 /* #303: public changelog shares the minimal public chrome. */
 /* #1137: the public doc pages sit on the ui layout surface, not the
    legacy body tokens. */
-.page-public, .page-public-invoice { background: var(--color-bg-layout); color: var(--color-text); min-height: 100vh; }
+.page-public, .page-public-invoice { background: var(--color-bg-layout); color: var(--color-text); min-height: 100vh; min-height: 100dvh; }
 .page-public a { color: var(--color-primary); }
-.page-public .muted { color: var(--color-text-secondary); }
+.page-public .muted, .page-public-invoice .muted { color: var(--color-text-secondary); }
 .page-changelog { max-width: 640px; margin: 0 auto; padding: 32px 24px 48px; }
 .changelog-title { display: flex; align-items: center; gap: 12px; margin-bottom: 8px;
   color: var(--color-primary); } /* branded pumpkin */
@@ -2360,6 +2360,9 @@ body.app-fixed .cal-gutter-spacer {
   .invoice-detail-pane { overflow: visible; }
   body { background: #fff; color: #111; }
   body.app { background: #fff; }
+  /* #1137: the public doc mains declare their own dark colors — reset
+     them for paper or the text prints near-white on white. */
+  .page-public, .page-public-invoice { background: #fff; color: #111; min-height: 0; }
   /* #1119: flatten the shell for print — the content column prints alone. */
   body.app .ui-shell { display: block; }
   main { max-width: none; padding: 0; }
