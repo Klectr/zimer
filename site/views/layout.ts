@@ -5,7 +5,11 @@
 
 import type { Statement } from "bun:sqlite";
 import { esc } from "../lib/format.ts";
-import { ICONS, icon, logo } from "../lib/icons.ts";
+import { icon, logo } from "../lib/icons.ts";
+import { appSidebar, type NavItem } from "../ui/app-sidebar.ts";
+import { logoLockup } from "../ui/logo-lockup.ts";
+import { iconButton } from "../ui/icon-button.ts";
+import { button, linkButton } from "../ui/button.ts";
 import { TRIAL_NUDGE_DAYS, trialDaysLeft, type Billing } from "../lib/billing.ts";
 
 /** #928: PostHog product analytics snippet. Rendered in <head> only when
@@ -63,11 +67,11 @@ export function trialBannerHtml(opts: {
   if (daysLeft === null || daysLeft > TRIAL_NUDGE_DAYS) return "";
   const when = daysLeft === 1 ? "tomorrow" : `in ${daysLeft} days`;
   return `<div class="trial-banner" id="trial-banner" role="region" aria-label="Trial expiring soon">
-    <p class="md-body-medium trial-banner-text">Your trial ends ${when} — subscribe to keep Zimer running.</p>
+    <p class="trial-banner-text">Your trial ends ${when} — subscribe to keep Zimer running.</p>
     <form class="trial-banner-cta" method="POST" action="/billing/checkout">
-      <button class="md-filled-button" type="submit">Subscribe · $12/month</button>
+      <button class="ui-btn ui-btn-primary" type="submit">Subscribe · $12/month</button>
     </form>
-    <button class="md-icon-button" type="button" data-trial-banner-close aria-label="Dismiss trial reminder">${icon("close")}</button>
+    <button class="ui-icon-btn" type="button" data-trial-banner-close aria-label="Dismiss trial reminder">${icon("close")}</button>
   </div>
   <script>(function(){
     var KEY="zimer-trial-banner-dismissed", el=document.getElementById("trial-banner");
@@ -87,25 +91,24 @@ export function createLayoutViews(qRunning: Statement, themeCss?: () => string, 
      wins over the :root defaults. Always rendered (with the default theme's
      values when unset) so a theme POST can live-swap it via OOB by id. */
   const themeStyle = () => `<style id="theme-style">${themeCss ? themeCss() : ""}</style>`;
-  /* #354: M3 navigation per window size class. The four destinations live in
-     a bottom navigation bar on compact (<600px) or a collapsed leading
-     navigation rail on medium+ (600px+), never both. The app bar keeps the
-     brand mark and account actions only. Labels are one word
-     ("Clients", not "Clients & projects") per the rail/bar guidelines. */
-  const dests = [
-    { href: "/", label: "Zimer", key: "timer", ic: "timer" as const },
-    { href: "/calendar", label: "Calendar", key: "calendar", ic: "calendar" as const },
-    { href: "/invoices", label: "Zinvoices", key: "invoices", ic: "receipt" as const },
-    { href: "/manage", label: "Clients", key: "manage", ic: "group" as const },
+  /* #1119: the mocked ui sidebar frame — destinations as horizontal
+     icon+label rows in the sidebar (600px+), a bottom bar on compact
+     (<600px), never both. Settings joins the sidebar destinations (the
+     mock's fifth row, linking the full settings page); the settings
+     dialog keeps its own openers in the sidebar footer and the drawer.
+     Labels are one word ("Clients", not "Clients & projects"). */
+  const navItems: NavItem[] = [
+    { key: "timer", href: "/", label: "Zimer", icon: "timer" },
+    { key: "calendar", href: "/calendar", label: "Calendar", icon: "calendar" },
+    { key: "invoices", href: "/invoices", label: "Zinvoices", icon: "receipt" },
+    { key: "manage", href: "/manage", label: "Clients", icon: "group" },
+    { key: "settings", href: "/settings", label: "Settings", icon: "settings" },
   ];
-  function layout(title: string, body: string, active?: "timer" | "calendar" | "manage" | "invoices", fixed?: boolean): string {
+  function layout(title: string, body: string, active?: "timer" | "calendar" | "manage" | "invoices" | "settings", fixed?: boolean): string {
     /* #444: the site-wide tab ticker (shortcut.js) needs the start instant
        of the running timer — the start form can't know it on a cold load. */
     const running = qRunning.get() as { start_time?: string } | null;
     const startAttr = running?.start_time ? ` data-timer-start="${esc(running.start_time)}"` : "";
-    const dest = (d: (typeof dests)[number], cls: string) =>
-      `<a href="${d.href}" class="${cls}${active === d.key ? " active" : ""}"${active === d.key ? ` aria-current="page"` : ""}>` +
-      `<span class="nav-pill">${icon(d.ic as keyof typeof ICONS)}</span><span class="nav-label">${d.label}</span></a>`;
     /* #928: render the PostHog snippet once; the analytics.js helper only
        loads when the snippet is present. */
     const phHead = posthogHead ? posthogHead() : "";
@@ -134,27 +137,23 @@ export function createLayoutViews(qRunning: Statement, themeCss?: () => string, 
   ${phHead ? `<script src="/static/analytics.js" defer></script>` : ""}
   </head>
   <body class="app${fixed ? " app-fixed" : ""}" data-timer-running="${running ? 1 : 0}"${startAttr}>
-  <!-- #511: skip link — keyboard users jump past the app bar and nav straight to content. -->
+  <!-- #511: skip link — keyboard users jump past the shell straight to content. -->
   <a class="skip-link" href="#main">Skip to content</a>
-  <!-- #387: the app bar and nav rail sit chromeless on the page background;
-       the rounded surface sheet wraps only the content column. -->
-  <header class="md-top-app-bar" data-enter="1">
-    <span class="md-top-app-bar-title">${logo(34)}</span>
-    <span class="md-top-app-bar-spacer"></span>
-    ${appBarActions()}
-  </header>
-  ${/* #923: trial-expiry nudge — full-width strip between the app bar and
-       the page chrome; the thunk resolves the hosted trial state per user. */ trialBanner ? trialBanner() : ""}
-  <div class="app-chrome">
-    <nav class="md-nav-rail" aria-label="Primary">
-      ${dests.map(d => dest(d, "md-rail-item")).join("")}
-    </nav>
-    <div class="app-sheet">
+  <div class="ui-shell">
+    ${appSidebar({ items: navItems, active: active ?? "", footer: shellActions() })}
+    <div class="ui-shell-main">
+      <header class="ui-mobile-head" data-enter="1">
+        ${logoLockup()}
+        <button class="ui-icon-btn" id="appbar-menu-btn" type="button"
+          aria-label="Open menu" aria-haspopup="dialog">${icon("menu")}</button>
+      </header>
+      ${/* #923: trial-expiry nudge — strip at the top of the content column;
+           the thunk resolves the hosted trial state per user. */ trialBanner ? trialBanner() : ""}
       <main id="main" tabindex="-1"${active ? ` class="page-${active}"` : ""}>${body}</main>
     </div>
   </div>
-  <nav class="md-bottom-nav" aria-label="Primary">
-    ${dests.map(d => dest(d, "md-bar-item")).join("")}
+  <nav class="ui-mobile-nav" aria-label="Primary">
+    ${navItems.slice(0, 4).map((d) => `<a href="${d.href}" class="ui-navitem${active === d.key ? " is-active" : ""}"${active === d.key ? ` aria-current="page"` : ""}>${icon(d.icon)}<span>${d.label}</span></a>`).join("")}
   </nav>
   ${/* #355: the settings scrim is a direct body child — inside the app bar it
        would be trapped in the header's stacking context and paint below the
@@ -192,14 +191,14 @@ export function createLayoutViews(qRunning: Statement, themeCss?: () => string, 
   function notFoundPage(authed: boolean): string {
     const body = `
       <div class="error-page">
-        <h1 class="md-headline-small">Page not found</h1>
+        <h1 class="ui-page-title">Page not found</h1>
         <p class="muted">The page you&rsquo;re looking for doesn&rsquo;t exist or was moved.</p>
         ${authed ? `
         <div class="error-actions">
-          <a class="md-filled-button" href="/">Zimer</a>
-          <a class="md-text-button" href="/calendar">Calendar</a>
-          <a class="md-text-button" href="/invoices">Zinvoices</a>
-          <a class="md-text-button" href="/manage">Clients</a>
+          ${linkButton({ label: "Zimer", href: "/", variant: "primary" })}
+          ${linkButton({ label: "Calendar", href: "/calendar", variant: "ghost" })}
+          ${linkButton({ label: "Zinvoices", href: "/invoices", variant: "ghost" })}
+          ${linkButton({ label: "Clients", href: "/manage", variant: "ghost" })}
         </div>` : ""}
       </div>`;
     if (authed) return layout("Page not found", body);
@@ -211,11 +210,11 @@ export function createLayoutViews(qRunning: Statement, themeCss?: () => string, 
   function errorPage(authed: boolean): string {
     const body = `
       <div class="error-page">
-        <h1 class="md-headline-small">Something went wrong</h1>
+        <h1 class="ui-page-title">Something went wrong</h1>
         <p class="muted">An unexpected error occurred. Please try again.</p>
         <div class="error-actions">
-          <button class="md-tonal-button" onclick="history.back()">Go back</button>
-          <a class="md-filled-button" href="/">Zimer</a>
+          ${button({ label: "Go back", attrs: 'onclick="history.back()"' })}
+          ${linkButton({ label: "Zimer", href: "/", variant: "primary" })}
         </div>
       </div>`;
     if (authed) return layout("Something went wrong", body);
@@ -230,7 +229,7 @@ export function createLayoutViews(qRunning: Statement, themeCss?: () => string, 
     const body = `
       <div class="error-page">
         <div class="error-mark">${logo(40)}</div>
-        <h1 class="md-headline-small">This zinvoice doesn&rsquo;t exist.</h1>
+        <h1 class="ui-page-title">This zinvoice doesn&rsquo;t exist.</h1>
         <p class="muted">The link you followed doesn&rsquo;t match any zinvoice. Check the address, or ask the sender for a fresh link.</p>
       </div>`;
     return publicShell("Zinvoice not found", body);
@@ -241,7 +240,7 @@ export function createLayoutViews(qRunning: Statement, themeCss?: () => string, 
     const body = `
       <div class="error-page">
         <div class="error-mark">${logo(40)}</div>
-        <h1 class="md-headline-small">Too many requests.</h1>
+        <h1 class="ui-page-title">Too many requests.</h1>
         <p class="muted">Please slow down and try again in a bit.</p>
       </div>`;
     return publicShell("Too many requests", body);
@@ -252,25 +251,21 @@ export function createLayoutViews(qRunning: Statement, themeCss?: () => string, 
 
 /** Issue #654: the hamburger account menu (#155) is gone — Triston wanted the
     four global actions visible instead of two taps deep. Settings, Export
-    entries CSV, Download backup, and Log out are now icon buttons on the
-    right side of the top app bar on every page. Tooltips (data-tip) replace
+    entries CSV, Download backup, and Log out are icon buttons in the
+    sidebar footer on every page (#1119). Tooltips (data-tip) replace
     the menu's text labels; the settings dialog still opens from the cog.
     #949: on compact screens the icon row gives way to a hamburger that opens
     the labeled navigation drawer (navDrawer below) — tooltips don't exist on
     touch, so the four actions get text labels there instead. */
-function appBarActions(): string {
-  return `<button class="md-icon-button app-bar-menu-btn" id="appbar-menu-btn" type="button"
-      aria-label="Open menu" aria-haspopup="dialog">${icon("menu")}</button>
-  <div class="app-bar-actions">
-    <button class="md-icon-button tip-right" id="appbar-settings-btn" type="button"
-      data-tip="Settings" aria-label="Settings">${icon("settings")}</button>
-    <a class="md-icon-button tip-right" href="/export/entries.csv" download
+function shellActions(): string {
+  return `<div class="ui-shell-actions">
+    ${iconButton({ icon: "settings", label: "Settings", id: "appbar-settings-btn" })}
+    <a class="ui-icon-btn" href="/export/entries.csv" download
       data-tip="Export entries CSV" aria-label="Export entries CSV">${icon("table")}</a>
-    <a class="md-icon-button tip-right" href="/backup" download
+    <a class="ui-icon-btn" href="/backup" download
       data-tip="Download backup" aria-label="Download backup">${icon("database")}</a>
-    <form method="POST" action="/logout" class="app-bar-logout">
-      <button class="md-icon-button tip-right" type="submit"
-        data-tip="Log out" aria-label="Log out">${icon("logout")}</button>
+    <form method="POST" action="/logout" class="ui-shell-logout">
+      ${iconButton({ icon: "logout", label: "Log out", type: "submit" })}
     </form>
   </div>`;
 }
@@ -357,10 +352,10 @@ function settingsDialog(): string {
   return `<div class="cal-scrim" id="settings-scrim" hidden>
     <div class="settings-dialog" role="dialog" aria-modal="true" aria-labelledby="settings-dialog-title">
       <div class="settings-dialog-head">
-        <h2 class="md-headline-small" id="settings-dialog-title">Settings</h2>
-        <button class="md-icon-button" id="settings-close" type="button" aria-label="Close settings">${icon("close")}</button>
+        <h2 class="ui-dialog-title" id="settings-dialog-title">Settings</h2>
+        <button class="ui-icon-btn" id="settings-close" type="button" aria-label="Close settings">${icon("close")}</button>
       </div>
-      <div id="settings-body"><p class="muted md-body-medium">Loading…</p></div>
+      <div id="settings-body"><p class="muted">Loading…</p></div>
     </div>
   </div>
   <script>(function(){
@@ -429,7 +424,7 @@ function settingsDialog(): string {
 function entryDialog(): string {
   return `<div class="cal-scrim" id="entry-scrim" hidden>
     <div class="cal-dialog" role="dialog" aria-modal="true" aria-labelledby="entry-dialog-title">
-      <div id="entry-dialog-body"><p class="muted md-body-medium">Loading…</p></div>
+      <div id="entry-dialog-body"><p class="muted">Loading…</p></div>
     </div>
   </div>
   <script>(function(){
@@ -477,4 +472,3 @@ function entryDialog(): string {
     });
   })();</script>`;
 }
-
