@@ -85,6 +85,62 @@ describe("layout lazy dialogs reset their body on open (#1177)", () => {
   });
 });
 
+/** #1189: a lazy load that lands after a close/reopen for another record
+ *  must not swap in — each opener bumps a load generation, the request is
+ *  stamped with it, and a stale stamp is dropped at beforeSwap. */
+describe("layout lazy dialogs drop stale loads (#1189)", () => {
+  test("settings opener bumps the load generation before the fragment load", () => {
+    const { layout } = createLayoutViews(noRunning);
+    const body = layout("T", "body");
+    const script = body.indexOf("getElementById('settings-body')");
+    const open = body.indexOf("function open(){", script);
+    const bump = body.indexOf("loadGen++;", open);
+    const load = body.indexOf("htmx.ajax('GET','/settings','#settings-body');", open);
+    expect(open).toBeGreaterThan(-1);
+    expect(bump).toBeGreaterThan(open);
+    expect(load).toBeGreaterThan(bump);
+  });
+
+  test("settings loads are stamped at request time and dropped before swap when stale", () => {
+    const { layout } = createLayoutViews(noRunning);
+    const body = layout("T", "body");
+    expect(body).toContain("e.detail.xhr.tkSettingsGen=loadGen;");
+    expect(body).toContain("if(g!=null&&g!==loadGen) e.detail.shouldSwap=false;");
+  });
+
+  test("entry opener bumps the load generation before the fragment load", () => {
+    const { layout } = createLayoutViews(noRunning);
+    const body = layout("T", "body");
+    const script = body.indexOf("getElementById('entry-dialog-body')");
+    const open = body.indexOf("function open(id){", script);
+    const bump = body.indexOf("loadGen++;", open);
+    const load = body.indexOf("htmx.ajax('GET','/entries/'+id+'/edit','#entry-dialog-body');", open);
+    expect(open).toBeGreaterThan(-1);
+    expect(bump).toBeGreaterThan(open);
+    expect(load).toBeGreaterThan(bump);
+  });
+
+  test("entry loads are stamped at request time and dropped before swap when stale", () => {
+    const { layout } = createLayoutViews(noRunning);
+    const body = layout("T", "body");
+    expect(body).toContain("e.detail.xhr.tkEntryGen=loadGen;");
+    expect(body).toContain("if(g!=null&&g!==loadGen) e.detail.shouldSwap=false;");
+  });
+
+  test("both dialogs bump the load generation on close too", () => {
+    const { layout } = createLayoutViews(noRunning);
+    const body = layout("T", "body");
+    const sScript = body.indexOf("getElementById('settings-body')");
+    const sClose = body.indexOf("function close(refocus){", sScript);
+    expect(sClose).toBeGreaterThan(-1);
+    expect(body.indexOf("loadGen++;", sClose)).toBeGreaterThan(sClose);
+    const eScript = body.indexOf("getElementById('entry-dialog-body')");
+    const eClose = body.indexOf("function closeDialog(refocus){", eScript);
+    expect(eClose).toBeGreaterThan(-1);
+    expect(body.indexOf("loadGen++;", eClose)).toBeGreaterThan(eClose);
+  });
+});
+
 /** #923: trial-expiry nudge banner — pure view logic + layout wiring. */
 
 const DAY = 86400000;

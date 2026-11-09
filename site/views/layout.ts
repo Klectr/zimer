@@ -366,8 +366,9 @@ function settingsDialog(): string {
     var menuBtn=document.getElementById('appbar-menu-btn');
     if(!scrim||!body||!closeBtn||!menuItem) return;
     var open_=false, focusOnSwap=false, opener=menuItem;
+    var loadGen=0;
     function open(){
-      open_=true;
+      open_=true; loadGen++;
       body.innerHTML='<p class="muted">Loading…</p>';
       scrim.hidden=false; void scrim.offsetWidth; scrim.classList.add('open');
       /* Fresh form on every open — the profile may have changed elsewhere. */
@@ -376,7 +377,7 @@ function settingsDialog(): string {
       document.addEventListener('keydown',onKey,true);
     }
     function close(refocus){
-      if(!open_) return; open_=false; focusOnSwap=false;
+      if(!open_) return; open_=false; focusOnSwap=false; loadGen++;
       scrim.classList.remove('open');
       document.removeEventListener('keydown',onKey,true);
       var done=false, finish=function(){ if(done) return; done=true; scrim.hidden=true; };
@@ -392,6 +393,18 @@ function settingsDialog(): string {
     body.addEventListener('htmx:afterSwap',function(){
       if(!focusOnSwap) return; focusOnSwap=false;
       var f=body.querySelector('input'); if(f) f.focus();
+    });
+    document.body.addEventListener('htmx:beforeRequest',function(e){
+      var cfg=e.detail.requestConfig||{};
+      var pi=e.detail.pathInfo||{};
+      if(e.detail.target===body&&(cfg.verb||'').toLowerCase()==='get'&&(pi.requestPath||cfg.path||'')==='/settings')
+        e.detail.xhr.tkSettingsGen=loadGen;
+    });
+    body.addEventListener('htmx:beforeSwap',function(e){
+      var cfg=e.detail.requestConfig||{};
+      if((cfg.verb||'').toLowerCase()!=='get') return;
+      var g=e.detail.xhr?e.detail.xhr.tkSettingsGen:null;
+      if(g!=null&&g!==loadGen) e.detail.shouldSwap=false;
     });
     scrim.addEventListener('pointerdown',function(e){ if(e.target===scrim) close(false); });
     closeBtn.addEventListener('click',function(){ close(true); });
@@ -430,15 +443,16 @@ function entryDialog(): string {
     var body=document.getElementById('entry-dialog-body');
     if(!scrim||!body) return;
     var open_=false, opener=null;
+    var loadGen=0;
     function open(id){
-      open_=true; opener=document.activeElement;
+      open_=true; opener=document.activeElement; loadGen++;
       body.innerHTML='<p class="muted">Loading…</p>';
       scrim.hidden=false; void scrim.offsetWidth; scrim.classList.add('open');
       htmx.ajax('GET','/entries/'+id+'/edit','#entry-dialog-body');
       document.addEventListener('keydown',onKey,true);
     }
     function closeDialog(refocus){
-      if(!open_) return; open_=false;
+      if(!open_) return; open_=false; loadGen++;
       scrim.classList.remove('open');
       document.removeEventListener('keydown',onKey,true);
       var done=false, finish=function(){ if(done) return; done=true; scrim.hidden=true; };
@@ -453,6 +467,18 @@ function entryDialog(): string {
     /* focus the first field once the form lands */
     body.addEventListener('htmx:afterSwap',function(){
       var f=body.querySelector('input:not([disabled]),select:not([disabled])'); if(f) f.focus();
+    });
+    document.body.addEventListener('htmx:beforeRequest',function(e){
+      var cfg=e.detail.requestConfig||{};
+      var pi=e.detail.pathInfo||{};
+      if(e.detail.target===body&&(cfg.verb||'').toLowerCase()==='get'&&/^\/entries\/[^/]+\/edit$/.test(pi.requestPath||cfg.path||''))
+        e.detail.xhr.tkEntryGen=loadGen;
+    });
+    body.addEventListener('htmx:beforeSwap',function(e){
+      var cfg=e.detail.requestConfig||{};
+      if((cfg.verb||'').toLowerCase()!=='get') return;
+      var g=e.detail.xhr?e.detail.xhr.tkEntryGen:null;
+      if(g!=null&&g!==loadGen) e.detail.shouldSwap=false;
     });
     scrim.addEventListener('pointerdown',function(e){ if(e.target===scrim) closeDialog(false); });
     /* edit buttons + the dialog's own close/cancel — delegated so today-list
