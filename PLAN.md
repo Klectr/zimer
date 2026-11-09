@@ -37,7 +37,7 @@ whatever URL you self-host (localhost, home server, VPS — runtime host permiss
 
 ## API contract (all under `/api`, Bearer token)
 
-- `GET /api/status` → `{ running: entry | null }`
+- `GET /api/status` → `{ running: entry | null }`; while a timer runs, the entry also carries `client_rate` (null when the entry has no client) and the payload adds `today_seconds` — tracked seconds in the caller's day window (`?from=ISO&to=ISO`, #255-style; the server's day when absent/invalid)
 - `POST /api/timer/start` `{ description?, project_id? }` → `201 entry` (`409` if one running)
 - `POST /api/timer/stop` → `200 entry` (`404` if none running)
 - `GET /api/entries?from=ISO&to=ISO` → `entry[]` (each with `duration_seconds`)
