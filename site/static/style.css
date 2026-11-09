@@ -404,7 +404,7 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .ui-hero-sub { font-size: var(--font-size-lg); line-height: var(--line-height); color: var(--color-text-secondary); max-width: 520px; margin: 0 auto var(--spacing-lg); }
 .ui-hero-actions { display: flex; justify-content: center; gap: var(--spacing-sm); flex-wrap: wrap; }
 .ui-hero-note { font-size: var(--font-size-sm); color: var(--color-text-tertiary); margin-top: var(--spacing-sm); }
-.ui-hero-product { max-width: 760px; margin: var(--spacing-xl) auto 0; text-align: left; }
+.ui-hero-product { max-width: 760px; margin: var(--spacing-xl) auto 0; text-align: left; animation: content-enter var(--motion-duration-medium3) var(--motion-easing-emphasized-decelerate) backwards; animation-delay: 120ms; }
 .ui-hero-mascot-wrap { position: relative; display: flex; justify-content: center; }
 .ui-hero-mascot-wrap::before { content: ""; position: absolute; inset: 8% 22%; border-radius: 50%; background: radial-gradient(closest-side, rgba(251, 146, 60, 0.22), rgba(251, 146, 60, 0) 72%); pointer-events: none; }
 .ui-hero-mascot { position: relative; width: min(320px, 72vw); height: auto; }
@@ -419,9 +419,14 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 @media (min-width: 1200px) { .ui-landing-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 .ui-landing-plans { display: grid; gap: var(--spacing-sm); margin-top: var(--spacing-lg); }
 @media (min-width: 840px) { .ui-landing-plans { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--spacing-md); } }
+@media (max-width: 599px) {
+  .ui-hero-mascot-wrap { display: none; }
+  .ui-landing-top { margin-bottom: var(--spacing-sm); }
+  .ui-landing-section { margin-top: 28px; }
+}
 .ui-landing-foot { margin-top: clamp(40px, 8vw, 80px); text-align: center; }
-.ui-landing-foot-links { margin: 0; line-height: 1.9; }
-.ui-landing-foot-links a, .ui-landing-support a { display: inline-block; padding: 10px 4px; }
+.ui-landing-foot-links { margin: 0; line-height: var(--line-height-sm); }
+.ui-landing-foot-links a, .ui-landing-support a { display: inline-block; padding: var(--spacing-xs) var(--spacing-xxs); }
 .ui-landing-support { margin: var(--spacing-xs) 0 0; }
 .ui-landing-foot a { color: var(--color-text-secondary); }
 .ui-landing-foot a:hover { color: var(--color-text); }
@@ -2255,13 +2260,6 @@ body.app-fixed .cal-gutter-spacer {
 .page-landing { max-width: 1080px; margin: 0 auto;
   padding: clamp(24px, 7vw, 40px) var(--layout-body-margin) clamp(40px, 9vw, 56px); }
 
-@media (max-width: 599px) {
-  .landing-topbar { margin-bottom: 12px; }
-  .landing-hero { gap: 20px; }
-  .landing-hero-visual { display: none; }
-  .landing-section { margin-top: 28px; }
-}
-
 /* Reusable M3 Expressive determinate progress bar, ported from
    homeschool-planner's dashboard (#85). The pumpkin fill is wave-masked and
    ripples while under the target; once the target is met it settles to a flat
@@ -2667,6 +2665,5 @@ body.app-fixed .cal-gutter-spacer {
 }
 
 /* #753: Zimer mascot placements — subtle, never competing with CTAs. */
-.landing-mascot { display: block; width: min(280px, 64vw); height: auto; margin: 0 auto 4px; }
 .empty-mascot { width: 132px; height: auto; }
 .demo-banner .demo-mascot { flex: none; width: 44px; height: 44px; }
