@@ -11,20 +11,23 @@ const KIND_TAG: Record<ChangelogKind, { label: string; tone: TagTone }> = {
 
 export interface ChangelogEntry {
   date: string;
-  kind: ChangelogKind;
-  body: string;
+  kind?: ChangelogKind;
+  body?: string;
+  items?: string[];
 }
 
 export function changelogList(entries: ChangelogEntry[]): string {
   if (!entries.length) return `<p class="ui-empty-note">Nothing shipped yet.</p>`;
   const items = entries
     .map((e) => {
-      const k = KIND_TAG[e.kind];
-      return (
-        `<div class="ui-changelog-entry">` +
-        `<div class="ui-changelog-head"><span class="ui-changelog-date">${esc(e.date)}</span>${tag({ label: k.label, tone: k.tone })}</div>` +
-        `<p class="ui-changelog-body">${esc(e.body)}</p></div>`
-      );
+      const k = e.kind ? KIND_TAG[e.kind] : undefined;
+      const head =
+        `<div class="ui-changelog-head"><span class="ui-changelog-date">${esc(e.date)}</span>` +
+        `${k ? tag({ label: k.label, tone: k.tone }) : ""}</div>`;
+      const body = e.items
+        ? `<div class="ui-changelog-body"><ul>${e.items.map((i) => `<li>${i}</li>`).join("")}</ul></div>`
+        : `<p class="ui-changelog-body">${esc(e.body ?? "")}</p>`;
+      return `<div class="ui-changelog-entry">${head}${body}</div>`;
     })
     .join("");
   return `<div class="ui-changelog">${items}</div>`;
