@@ -67,7 +67,7 @@ function fmtDur(totalSecs) {
 function renderRunTags(running, todaySeconds) {
   const tags = [];
   const rate = running.client_rate;
-  if (rate) tags.push(`<span class="ui-tag ui-tag-primary">${rate % 1 === 0 ? `$${rate}` : `$${rate.toFixed(2)}`}/hr</span>`);
+  if (rate) tags.push(`<span class="ui-tag ui-tag-primary">$${rate}/hr</span>`);
   if (typeof todaySeconds === "number") tags.push(`<span class="ui-tag ui-tag-neutral">Today ${fmtDur(todaySeconds)}</span>`);
   $("run-tags").innerHTML = tags.join("");
   $("run-tags").classList.toggle("hidden", tags.length === 0);
