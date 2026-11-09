@@ -7,6 +7,8 @@ import { button } from "../site/ui/button";
 
 const DEMO_SCRIPT = `<script>
 (function () {
+  if (window.__zbDialogDemo) return;
+  window.__zbDialogDemo = true;
   var lastOpener = null;
   function openDialog(scrim, opener) {
     lastOpener = opener;
@@ -18,15 +20,14 @@ const DEMO_SCRIPT = `<script>
     scrim.hidden = true;
     if (lastOpener) lastOpener.focus();
   }
-  document.querySelectorAll("[data-open-dialog]").forEach(function (btn) {
-    btn.addEventListener("click", function () {
-      openDialog(document.getElementById(btn.getAttribute("data-open-dialog")), btn);
-    });
-  });
-  document.querySelectorAll(".ui-scrim").forEach(function (scrim) {
-    scrim.addEventListener("click", function (e) {
-      if (e.target === scrim || e.target.closest("[data-close]")) closeDialog(scrim);
-    });
+  document.addEventListener("click", function (e) {
+    var opener = e.target.closest("[data-open-dialog]");
+    if (opener) {
+      openDialog(document.getElementById(opener.getAttribute("data-open-dialog")), opener);
+      return;
+    }
+    var scrim = e.target.closest(".ui-scrim");
+    if (scrim && (e.target === scrim || e.target.closest("[data-close]"))) closeDialog(scrim);
   });
   document.addEventListener("keydown", function (e) {
     if (e.key === "Escape") document.querySelectorAll(".ui-scrim:not([hidden])").forEach(closeDialog);
@@ -60,8 +61,9 @@ export const feedbackStories: Story[] = [
   {
     id: "feedback-dialog-open",
     group: "Feedback",
-    title: "Confirm dialog (shown open)",
+    title: "Confirm dialog (trigger + closable)",
     render: () =>
+      `<button type="button" class="ui-btn ui-btn-danger" data-open-dialog="demo-confirm-open">Delete draft…</button>` +
       confirmDialog({
         id: "demo-confirm-open",
         title: "Delete draft Zinvoice?",
@@ -69,7 +71,8 @@ export const feedbackStories: Story[] = [
         confirmLabel: "Delete draft",
         danger: true,
         open: true,
-      }),
+      }) +
+      DEMO_SCRIPT,
   },
   {
     id: "feedback-toasts",

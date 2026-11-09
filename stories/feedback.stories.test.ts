@@ -9,4 +9,14 @@ describe("feedback stories", () => {
     expect(all).toContain("ui-menu");
     expect(all).toContain("ui-empty");
   });
+
+  test("every dialog story ships a trigger and the close wiring", () => {
+    const dialogStories = feedbackStories.filter((s) => s.id.startsWith("feedback-dialog"));
+    for (const story of dialogStories) {
+      const html = story.render();
+      expect(html).toContain("data-open-dialog");
+      expect(html).toContain("__zbDialogDemo");
+      expect(html).toContain("data-close");
+    }
+  });
 });
