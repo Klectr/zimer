@@ -305,7 +305,7 @@ export function createTimerViews(deps: TimerViewDeps) {
   function revenueCards(): string {
     const t = revenueTotals();
     const stat = (label: string, val: number, cls = "") => card({ content:
-      `<div><div class="ui-stat-label">${label}</div><div class="ui-stat-value${cls ? ` ${cls}` : ""}">${money(val)}</div></div>` });
+      statBlock({ label, value: money(val), ...(cls ? { valueClass: cls } : {}) }) });
     return `<div class="ui-rev-cards">
       ${stat("Zinvoiced", t.invoiced)}
       ${stat("Paid", t.paid, "ui-rev-paid")}
@@ -349,13 +349,13 @@ export function createTimerViews(deps: TimerViewDeps) {
     const title = `<div class="ui-block-title">Needs attention</div>`;
     if (!overdue.length)
       return card({ content: `${title}<p class="ui-note">All caught up — nothing overdue.</p>` });
-    const rows = overdue.map(o => `
-      <a class="ui-row" href="/invoices?invoice=${o.id}">
-        <div class="ui-row-main"><span class="ui-row-title">${esc(o.client_name || "Unknown")}</span>
-        <div class="ui-row-meta">${esc(o.number)} · Due ${esc(o.due_date || "")}</div></div>
-        <div class="ui-row-side"><span class="ui-row-amount">${money(o.total)}</span></div>
-        <span class="ui-attn-chip" data-bucket="${esc(o.bucket)}">${o.days_past_due}d overdue</span>
-      </a>`).join("");
+    const rows = overdue.map(o => uiEntryRow({
+      title: o.client_name || "Unknown",
+      meta: `${o.number} · Due ${o.due_date || ""}`,
+      duration: money(o.total),
+      href: `/invoices?invoice=${o.id}`,
+      trailing: `<span class="ui-attn-chip" data-bucket="${esc(o.bucket)}">${o.days_past_due}d overdue</span>`,
+    })).join("");
     return card({ content: `${title}${rows}` });
   }
 
