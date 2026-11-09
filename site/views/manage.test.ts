@@ -186,7 +186,7 @@ describe("manage labels (#827)", () => {
     const html = views.bizProfileSection();
     for (const id of ["bp-business_name", "bp-business_email", "bp-business_address", "bp-terms"]) {
       expect(html).toContain(`id="${id}"`);
-      expect(html).toContain(`<label for="${id}">`);
+      expect(html).toContain(`<label class="ui-field-label" for="${id}"`);
     }
   });
 });

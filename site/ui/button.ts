@@ -1,4 +1,5 @@
 import { esc } from "../lib/format";
+import { icon, logo } from "../lib/icons";
 
 export type ButtonVariant = "primary" | "default" | "ghost";
 export type ButtonSize = "sm" | "md" | "lg";
@@ -13,6 +14,8 @@ export interface ButtonOptions {
   type?: "button" | "submit";
   id?: string;
   attrs?: string;
+  icon?: string;
+  spinner?: boolean;
 }
 
 const VARIANT_CLASS: Record<ButtonVariant, string> = {
@@ -50,5 +53,7 @@ export function button(opts: ButtonOptions): string {
   const id = opts.id ? ` id="${esc(opts.id)}"` : "";
   const disabled = opts.disabled ? " disabled" : "";
   const attrs = opts.attrs ? ` ${opts.attrs}` : "";
-  return `<button type="${esc(opts.type ?? "button")}" class="${cls}"${id}${disabled}${attrs}>${esc(opts.label)}</button>`;
+  const iconHtml = opts.icon ? icon(opts.icon) : "";
+  const spinnerHtml = opts.spinner ? `<span class="btn-spinner" aria-hidden="true">${logo(24, true)}</span>` : "";
+  return `<button type="${esc(opts.type ?? "button")}" class="${cls}"${id}${disabled}${attrs}>${iconHtml}${spinnerHtml}${esc(opts.label)}</button>`;
 }

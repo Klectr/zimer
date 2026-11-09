@@ -65,3 +65,36 @@ describe("selectField", () => {
     expect(html).toContain("a&quot;b");
   });
 });
+
+describe("textField affixes and numeric attrs", () => {
+  test("suffix renders inside the input wrap and numeric attrs land", () => {
+    const html = textField({ id: "dt", label: "Daily hours target", name: "day_target_hours", type: "number", value: "8", suffix: "hr", min: "1", max: "24", step: "0.5", inputmode: "decimal" });
+    expect(html).toContain('class="ui-input-wrap"');
+    expect(html).toContain('<span class="ui-affix ui-affix-suffix">hr</span>');
+    expect(html).toContain('min="1"');
+    expect(html).toContain('max="24"');
+    expect(html).toContain('step="0.5"');
+    expect(html).toContain('inputmode="decimal"');
+  });
+  test("prefix and suffix can combine; no affix means no wrap", () => {
+    const both = textField({ id: "r", label: "Hourly rate", prefix: "$", suffix: "/hr" });
+    expect(both).toContain('<span class="ui-affix ui-affix-prefix">$</span>');
+    expect(both).toContain('<span class="ui-affix ui-affix-suffix">/hr</span>');
+    expect(textField({ id: "p", label: "Plain" })).not.toContain("ui-input-wrap");
+  });
+});
+
+describe("selectField option descriptions", () => {
+  test("desc rides on the option as data-desc for live helper text", () => {
+    const html = selectField({ id: "t", label: "Terms", options: [{ value: "net15", label: "Net 15", desc: "Due 15 days after issue." }, { value: "due", label: "Due on receipt" }], value: "net15" });
+    expect(html).toContain('data-desc="Due 15 days after issue."');
+    expect(html).toContain('<option value="due">Due on receipt</option>');
+  });
+});
+
+describe("selectField className", () => {
+  test("extra class lands on the select for behavior hooks", () => {
+    const html = selectField({ id: "t", label: "Terms", options: [{ value: "a", label: "A" }], className: "terms-select" });
+    expect(html).toContain('class="ui-input ui-select terms-select"');
+  });
+});

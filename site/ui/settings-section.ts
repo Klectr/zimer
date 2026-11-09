@@ -6,14 +6,17 @@ export interface SettingsSectionOptions {
   hint?: string;
   bodyHtml: string;
   actionsHtml?: string;
+  id?: string;
+  level?: 2 | 3;
 }
 
 export function settingsSection(opts: SettingsSectionOptions): string {
   const hint = opts.hint ? `<p class="ui-section-hint">${esc(opts.hint)}</p>` : "";
   const actions = opts.actionsHtml ? `<div class="ui-section-actions">${opts.actionsHtml}</div>` : "";
+  const tag = opts.level === 2 ? "h2" : "h3";
   const inner =
-    `<div class="ui-section-head"><h3 class="ui-section-title">${esc(opts.title)}</h3>${hint}</div>` +
+    `<div class="ui-section-head"><${tag} class="ui-section-title">${esc(opts.title)}</${tag}>${hint}</div>` +
     opts.bodyHtml +
     actions;
-  return card({ content: inner });
+  return card({ content: inner, id: opts.id });
 }

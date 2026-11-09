@@ -13,7 +13,9 @@
 
 import { appVersion, appMajor } from "./version.ts";
 import { esc } from "./format.ts";
-import { icon, logo } from "./icons.ts";
+import { settingsSection } from "../ui/settings-section.ts";
+import { button } from "../ui/button.ts";
+import { icon } from "./icons.ts";
 
 const DEFAULT_FEED_URL = "https://invoices.tristonarmstrong.com/releases/feed.json";
 
@@ -141,15 +143,11 @@ export function updateStatusHtml(s: UpdateStatus): string {
 
 /* #340: Updates section in the Settings modal. The check itself is manual. */
 export function updateSectionHtml(): string {
-  return `<section id="update-section">
-      <h2 class="md-headline-small">Updates</h2>
-      <div id="update-status"><div class="status-row">${icon("info")}<div class="status-row-text">
+  const body =
+    `<div id="update-status"><div class="status-row">${icon("info")}<div class="status-row-text">
         <p class="status-row-headline">Zimer v${esc(appVersion())}</p>
         <p class="status-row-supporting">Press the button to check for new releases.</p>
-      </div></div></div>
-      <div class="manage-form-row">
-        <span class="manage-form-spacer"></span>
-        <button id="check-updates-btn" class="md-tonal-button" type="button" hx-post="/check-updates" hx-target="#update-status" hx-swap="innerHTML" hx-disabled-elt="#check-updates-btn">${icon("refresh")}<span class="btn-spinner" aria-hidden="true">${logo(24, true)}</span>Check for updates</button>
-      </div>
-    </section>`;
+      </div></div></div>` +
+    `<div class="ui-settings-actions">${button({ label: "Check for updates", icon: "refresh", spinner: true, attrs: 'id="check-updates-btn" hx-post="/check-updates" hx-target="#update-status" hx-swap="innerHTML" hx-disabled-elt="#check-updates-btn"' })}</div>`;
+  return settingsSection({ level: 2, id: "update-section", title: "Updates", bodyHtml: body });
 }

@@ -9,6 +9,9 @@ import type { PaymentTermsKey } from "../lib/format.ts";
 import { icon } from "../lib/icons.ts";
 import { THEMES, themeKey } from "../lib/theme.ts"; /* #884 */
 import { getMeta } from "../db.ts";
+import { settingsSection } from "../ui/settings-section.ts";
+import { selectField, textField } from "../ui/field.ts";
+import { button } from "../ui/button.ts";
 import { dayTargetSecs } from "../lib/domain.ts"; /* #908: daily target setting */
 
 /* #367: the detail-pane selection. "none" is the pseudo-client holding
@@ -363,31 +366,18 @@ export function createManageViews(deps: ManageViewDeps) {
     const email = getMeta(db, "business_email");
     const address = getMeta(db, "business_address");
     const terms = getMeta(db, "business_payment_terms");
-    const field = (fname: string, label: string, val: string, type = "text") => `
-            <div class="md-text-field">
-              <input type="${type}" id="bp-${fname}" name="${fname}" value="${esc(val)}" placeholder=" " aria-label="${label}">
-              <label for="bp-${fname}">${label}</label>
-            </div>`;
-    return `<section id="biz-profile">
-          <h2 class="md-headline-small">Business profile</h2>
-          <p class="muted" style="margin:0 0 12px">Shown in the <em>From</em> block on zinvoices; the payment terms print on the zinvoice too.</p>
-          <form method="post" action="/business-profile" id="biz-profile-form" class="manage-form" hx-post="/business-profile" hx-target="#biz-profile" hx-swap="outerHTML">
-            ${field("business_name", "Business name", name)}
-            ${field("business_email", "Email", email, "email")}
-            ${field("business_address", "Address", address)}
-            <div class="md-text-field">
-              <select name="business_payment_terms" id="bp-terms" class="terms-select" aria-label="Payment terms">
-                ${termsOptions(terms || null)}
-              </select>
-              <label for="bp-terms">Payment terms</label>
-            </div>
-            <p class="terms-desc muted">${esc(termsDescription(termsKey(null, terms)))}</p>
-            <div class="manage-form-row">
-              <span class="manage-form-spacer"></span>
-              <button class="md-filled-button" type="submit">${icon("save")}Save</button>
-            </div>
-          </form>
-        </section>`;
+    const options = (Object.entries(PAYMENT_TERMS) as [PaymentTermsKey, { label: string; description: string }][])
+      .map(([k, v]) => ({ value: k, label: v.label, desc: v.description }));
+    const body =
+      `<form method="post" action="/business-profile" id="biz-profile-form" class="ui-settings-form" hx-post="/business-profile" hx-target="#biz-profile" hx-swap="outerHTML">` +
+      textField({ id: "bp-business_name", label: "Business name", name: "business_name", value: name }) +
+      textField({ id: "bp-business_email", label: "Email", name: "business_email", type: "email", value: email }) +
+      textField({ id: "bp-business_address", label: "Address", name: "business_address", value: address }) +
+      selectField({ id: "bp-terms", label: "Payment terms", name: "business_payment_terms", options, value: terms, className: "terms-select" }) +
+      `<p class="terms-desc ui-settings-note">${esc(termsDescription(termsKey(null, terms)))}</p>` +
+      `<div class="ui-settings-actions">${button({ label: "Save", type: "submit", variant: "primary", icon: "save" })}</div>` +
+      `</form>`;
+    return settingsSection({ level: 2, id: "biz-profile", title: "Business profile", hint: "Shown in the From block on zinvoices; the payment terms print on the zinvoice too.", bodyHtml: body });
   }
 
   /* #908: daily hours target — the pacing bars on the timer page (Today)
@@ -396,21 +386,12 @@ export function createManageViews(deps: ManageViewDeps) {
      in meta; no migration. */
   function dailyTargetSection(): string {
     const hours = dayTargetSecs(db) / 3600;
-    return `<section id="daily-target">
-          <h2 class="md-headline-small">Daily hours target</h2>
-          <p class="muted" style="margin:0 0 12px">Drives the pacing bars on the timer and calendar pages — the week target is five days at this rate.</p>
-          <form method="post" action="/daily-target" id="daily-target-form" class="manage-form" hx-post="/daily-target" hx-target="#daily-target" hx-swap="outerHTML">
-            <div class="md-text-field has-suffix">
-              <input type="number" id="dt-hours" name="day_target_hours" value="${hours}" min="1" max="24" step="0.5" placeholder=" " aria-label="Daily hours target" inputmode="decimal">
-              <label for="dt-hours">Daily hours target</label>
-              <span class="affix suffix" aria-hidden="true">hr</span>
-            </div>
-            <div class="manage-form-row">
-              <span class="manage-form-spacer"></span>
-              <button class="md-filled-button" type="submit">${icon("save")}Save</button>
-            </div>
-          </form>
-        </section>`;
+    const body =
+      `<form method="post" action="/daily-target" id="daily-target-form" class="ui-settings-form" hx-post="/daily-target" hx-target="#daily-target" hx-swap="outerHTML">` +
+      textField({ id: "dt-hours", label: "Daily hours target", name: "day_target_hours", type: "number", value: String(hours), min: "1", max: "24", step: "0.5", inputmode: "decimal", suffix: "hr" }) +
+      `<div class="ui-settings-actions">${button({ label: "Save", type: "submit", variant: "primary", icon: "save" })}</div>` +
+      `</form>`;
+    return settingsSection({ level: 2, id: "daily-target", title: "Daily hours target", hint: "Drives the pacing bars on the timer and calendar pages — the week target is five days at this rate.", bodyHtml: body });
   }
 
   /* #884: theme section — a row of color dots that re-theme the app's
@@ -421,16 +402,12 @@ export function createManageViews(deps: ManageViewDeps) {
     const current = themeKey(getMeta(db, "theme"));
     const dots = THEMES.map((t) => {
       const selected = t.key === current;
-      return `<button type="button" class="theme-dot${selected ? " selected" : ""}"
+      return `<button type="button" class="ui-theme-dot${selected ? " selected" : ""}"
           style="--dot:${t.primary}" hx-post="/settings/theme" hx-vals='{"theme":"${t.key}"}'
           hx-target="#theme-section" hx-swap="outerHTML"
           aria-label="${t.name} theme" aria-pressed="${selected}">${selected ? icon("check") : ""}</button>`;
     }).join("");
-    return `<section id="theme-section">
-          <h2 class="md-headline-small">Theme</h2>
-          <p class="muted" style="margin:0 0 12px">Pumpkin is the default. Pick any accent.</p>
-          <div class="theme-dots" role="group" aria-label="Accent theme">${dots}</div>
-        </section>`;
+    return settingsSection({ level: 2, id: "theme-section", title: "Theme", hint: "Pumpkin is the default. Pick any accent.", bodyHtml: `<div class="ui-theme-dots" role="group" aria-label="Accent theme">${dots}</div>` });
   }
 
   /* #693: full-page fallback for direct (non-htmx) visits to /settings.
@@ -438,10 +415,10 @@ export function createManageViews(deps: ManageViewDeps) {
   function settingsPage(settingsBody: string): string {
     return layout("Settings", `
       <div class="page-narrow" data-enter="2">
-      <div class="page-head">
-        <h1 class="md-headline-small">Settings</h1>
+      <div class="ui-settings-head">
+        <h1 class="ui-settings-title">Settings</h1>
       </div>
-      <div class="settings-sections">${settingsBody}</div>
+      <div class="ui-settings-stack">${settingsBody}</div>
       </div>`);
   }
 
