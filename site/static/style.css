@@ -1928,32 +1928,39 @@ body.app-fixed .cal-gutter-spacer {
 @media (max-width: 560px) { .two-field { grid-template-columns: 1fr; } }
 
 .table-wrap { overflow-x: auto; margin: 0 -4px; padding: 0 4px; }
-/* The invoice sheet's table is .inv-table; every rule is dual-selected with
-   .md-table because frozen pre-migration snapshots (#301) still carry the
-   old class and are served verbatim forever. Do not drop the aliases. */
+/* The invoice sheet's table: .inv-table is the live class; .md-table is
+   carried only by frozen pre-migration snapshots (#301), which are served
+   verbatim forever. The structural rules stay dual-selected, but since
+   #1133 the DESKTOP VISUALS are forked: .inv-table carries the Lobe table
+   treatment, .md-table keeps the legacy M3 card-row declarations verbatim
+   so frozen documents render exactly as they always have. Do not merge
+   the fork back, and do not drop the .md-table rules. */
 .inv-table,
   .md-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
 .inv-table th, .inv-table td,
   .md-table th,
-  .md-table td { text-align: left; padding: 10px 8px; }
+  .md-table td { text-align: left; }
+.inv-table th, .inv-table td { padding: 8px; }
+.md-table th,
+  .md-table td { padding: 10px 8px; }
 .inv-table th.num, .inv-table td.num,
   .md-table th.num,
   .md-table td.num { text-align: right; white-space: nowrap; }
-.inv-table thead th,
-  .md-table thead th { color: var(--md-sys-color-on-surface-variant); font-weight: 500; font-size: 0.75rem;
+.inv-table thead th { color: var(--color-text-secondary); font-weight: 500; font-size: 0.75rem;
+  border-bottom: 1px solid var(--color-border); }
+.md-table thead th { color: var(--md-sys-color-on-surface-variant); font-weight: 500; font-size: 0.75rem;
   letter-spacing: 0.4px; text-transform: uppercase; }
-.inv-table tbody tr,
-  .md-table tbody tr { background: var(--md-sys-color-surface-container-low); }
-.inv-table tbody tr + tr,
-  .md-table tbody tr + tr { border-top: 8px solid transparent; background-clip: padding-box; }
-.inv-table tbody td:first-child,
-  .md-table tbody td:first-child { border-radius: 12px 0 0 12px; }
-.inv-table tbody td:last-child,
-  .md-table tbody td:last-child { border-radius: 0 12px 12px 0; }
-.inv-table tfoot td,
-  .md-table tfoot td { padding: 6px 8px; color: var(--md-sys-color-on-surface-variant); }
-.inv-table tfoot tr.grand td,
-  .md-table tfoot tr.grand td { color: var(--md-sys-color-on-surface); font-weight: 700; font-size: 1rem;
+.inv-table tbody tr { border-bottom: 1px solid var(--color-border-secondary); }
+.md-table tbody tr { background: var(--md-sys-color-surface-container-low); }
+.md-table tbody tr + tr { border-top: 8px solid transparent; background-clip: padding-box; }
+.md-table tbody td:first-child { border-radius: 12px 0 0 12px; }
+.md-table tbody td:last-child { border-radius: 0 12px 12px 0; }
+.inv-table tfoot td { padding: 6px 8px; color: var(--color-text-secondary); }
+.inv-table tfoot tr:first-child td { border-top: 1px solid var(--color-border); }
+.md-table tfoot td { padding: 6px 8px; color: var(--md-sys-color-on-surface-variant); }
+.inv-table tfoot tr.grand td { color: var(--color-text); font-weight: 700; font-size: 1rem;
+  padding-top: 10px; }
+.md-table tfoot tr.grand td { color: var(--md-sys-color-on-surface); font-weight: 700; font-size: 1rem;
   padding-top: 10px; }
 /* #366: the 5-column invoice table must fit a 390px phone with the Amount
    column visible — no hiding it behind a scroll. Compact the table chrome

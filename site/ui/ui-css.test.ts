@@ -11,6 +11,21 @@ describe("legacy snapshot compat", () => {
     expect(css).toContain(".invoice-sheet .md-table");
     expect(css).toContain(".template-modern .md-table");
   });
+
+  /* #1133: desktop visuals are forked — .md-table (frozen) keeps the M3
+     card-row declarations; .inv-table (live) carries hairline rows. */
+  test("the frozen .md-table keeps its legacy row fill; the live .inv-table is hairline-only", () => {
+    const legacy = css.match(/\.md-table tbody tr \{[^}]*\}/);
+    expect(legacy).not.toBeNull();
+    expect(legacy![0]).toContain("background: var(--md-sys-color-surface-container-low)");
+    const live = css.match(/\.inv-table tbody tr \{[^}]*\}/);
+    expect(live).not.toBeNull();
+    expect(live![0]).toContain("border-bottom: 1px solid var(--color-border-secondary)");
+    expect(live![0]).not.toContain("background");
+    const liveHead = css.match(/\.inv-table thead th \{[^}]*\}/);
+    expect(liveHead).not.toBeNull();
+    expect(liveHead![0]).not.toContain("text-transform");
+  });
 });
 
 describe("style.css token references", () => {
