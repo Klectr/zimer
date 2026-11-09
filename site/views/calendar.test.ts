@@ -59,6 +59,26 @@ describe("calendar entry aria-label (#479)", () => {
     return views.weekInner("2026-09-20", "America/Chicago");
   }
 
+  test("entry dialog actions render ui button classes (no unresolved variant)", () => {
+    const db = {
+      query: (_sql: string) => ({ get: () => ({ n: 1 }), all: () => [] }),
+    } as unknown as Database;
+    const views = createCalendarViews({
+      db,
+      qOne: stubQuery(),
+      qRange: stubQuery(),
+      entrySelect: "SELECT",
+      layout: (_t: string, b: string) => b,
+      projectOptions: () => "",
+      weekTargetBar: () => "",
+      calHourPx: 64,
+    } as any);
+    const html = views.weekGrid();
+    expect(html).not.toContain('class="undefined"');
+    expect(html).toContain('class="ui-btn ui-btn-ghost ui-btn-danger" id="cal-delete" hidden');
+    expect(html).toContain('class="ui-btn ui-btn-primary" id="cal-save"');
+  });
+
   function labelFor(html: string, id: number): string {
     const m = html.match(new RegExp(`data-id="${id}"[^>]*aria-label="([^"]*)"`));
     if (!m) throw new Error(`no cal-entry with data-id=${id}`);
@@ -139,8 +159,8 @@ describe("calendar nav edge tooltips (#554, #572)", () => {
   }
   test("week mode: next-week chevron right-aligns its tooltip", () => {
     const html = views().weekInner("2026-09-20", "America/Chicago");
-    expect(html).toContain('class="md-icon-button tip-right" href="/calendar?week=2026-09-27"');
-    expect(html).not.toContain('class="md-icon-button tip-right" href="/calendar?week=2026-09-13"');
+    expect(html).toContain('class="ui-icon-btn tip-right" href="/calendar?week=2026-09-27"');
+    expect(html).not.toContain('class="ui-icon-btn tip-right" href="/calendar?week=2026-09-13"');
   });
   test("carousel: chevrons step a full week in each direction", () => {
     const html = views().weekInner("2026-09-20", "America/Chicago");
@@ -674,7 +694,7 @@ describe("edit-entry floating labels (#709)", () => {
     const html = editPageHtml();
     for (const id of ["ee-desc", "ee-project", "ee-start", "ee-end"]) {
       expect(html).toContain(`id="${id}"`);
-      expect(html).toContain(`<label for="${id}">`);
+      expect(html).toContain(`<label class="ui-field-label" for="${id}">`);
     }
   });
 });
@@ -715,7 +735,7 @@ describe("entry edit dialog fragment (#903)", () => {
     const html = dialogViews().editEntryDialog(7) as string;
     for (const id of ["ee-desc", "ee-project", "ee-start", "ee-end"]) {
       expect(html).toContain(`id="${id}"`);
-      expect(html).toContain(`<label for="${id}">`);
+      expect(html).toContain(`<label class="ui-field-label" for="${id}">`);
     }
   });
 
