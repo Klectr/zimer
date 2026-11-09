@@ -96,12 +96,16 @@ export function createTimerViews(deps: TimerViewDeps) {
       }
       actions = parts.join("");
     }
+    const amount = e.end_time && e.client_rate
+      ? money((durationSeconds(e.start_time, e.end_time) * e.client_rate) / 3600)
+      : undefined;
     return uiEntryRow({
       id: `entry-${e.id}`,
       title,
       dot: e.client_color ? schemeColor(e.client_color) : undefined,
       metaHtml,
       duration: dur,
+      amount,
       running: !e.end_time,
       actions,
     });
@@ -115,6 +119,11 @@ export function createTimerViews(deps: TimerViewDeps) {
         ? (running.client_name ? `${running.client_name} — ${running.project_name}` : running.project_name)
         : (running.client_name ?? "");
       const context = [projLine, running.description ?? ""].filter(Boolean).join(" · ") || "No description";
+      const rate = running.client_rate ?? 0;
+      const metaHtml = rate > 0
+        ? tag({ label: `${rate % 1 === 0 ? `$${rate}` : money(rate)} / hr`, tone: "primary" }) +
+          `<span class="ui-tag" id="timer-worth" data-rate="${rate}">Worth ${money((durationSeconds(running.start_time, null) * rate) / 3600)}</span>`
+        : "";
       return timerPanel({
         id: "timer-card",
         elapsedId: "elapsed",
@@ -123,11 +132,14 @@ export function createTimerViews(deps: TimerViewDeps) {
         context,
         startedAt: running.start_time,
         elapsed: "…",
+        metaHtml: metaHtml || undefined,
         actionsHtml: button({ label: "Stop", variant: "primary", icon: "stop", attrs: 'hx-post="/timer/stop" hx-target="#timer-card" hx-swap="outerHTML swap:200ms" data-tip="Stop (t)" aria-keyshortcuts="t"' }),
       }) + `
       <script>(function(){var el=document.getElementById('elapsed');if(!el)return;
           if(window.__tkTick){clearInterval(window.__tkTick);window.__tkTick=null;}
           var s=new Date(el.dataset.start).getTime();
+          var st=document.querySelector('#timer-card time[data-ts]');
+          if(st)st.textContent=new Date(st.getAttribute('data-ts')).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
           function fmtDurRow(d){var t=Math.floor(d/1000),
             h=Math.floor(t/3600),m=Math.floor(t%3600/60),sec=t%60;
             if(h>0)return m>0?h+'h '+String(m).padStart(2,'0')+'m':h+'h';
@@ -137,7 +149,9 @@ export function createTimerViews(deps: TimerViewDeps) {
             var h=Math.floor(d/36e5),m=Math.floor(d%36e5/6e4),sec=Math.floor(d%6e4/1e3);
             el.textContent=(h?h+':':'')+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0');
             var row=document.querySelector('#today-list [data-live-duration]');
-            if(row)row.textContent=fmtDurRow(d);}
+            if(row)row.textContent=fmtDurRow(d);
+            var w=document.getElementById('timer-worth');
+            if(w){var r=parseFloat(w.getAttribute('data-rate'))||0;w.textContent='Worth $'+(d/3600000*r).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}}
           tick();window.__tkTick=setInterval(tick,1000);})();</script>`;
     }
     const options = [{ value: "", label: "No project" },

@@ -29,7 +29,11 @@ export interface TimerPanelOptions {
 }
 
 export function timerPanel(opts: TimerPanelOptions): string {
-  const started = opts.startedLabel ? `<span class="ui-timer-started">${esc(opts.startedLabel)}</span>` : "";
+  const started = opts.startedLabel
+    ? `<span class="ui-timer-started">${esc(opts.startedLabel)}</span>`
+    : opts.startedAt
+      ? `<span class="ui-timer-started">Started <time data-ts="${esc(opts.startedAt)}"></time></span>`
+      : "";
   const meta = opts.metaHtml ? `<div class="ui-timer-meta">${opts.metaHtml}</div>` : "";
   const inner =
     `<div class="ui-timer-top">${opts.statusHtml}<span class="ui-timer-context">${esc(opts.context)}</span>${started}</div>` +

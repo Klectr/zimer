@@ -110,3 +110,15 @@ describe("timerPanel ids (#1102)", () => {
     expect(html).toContain('data-start="2026-11-08T09:04:00"');
   });
 });
+
+describe("timerPanel started line (#1121)", () => {
+  test("startedAt without a label renders a client-formatted Started time", () => {
+    const html = timerPanel({ running: true, statusHtml: "S", context: "C", elapsed: "…", startedAt: "2026-11-08T09:04:00", actionsHtml: "A" });
+    expect(html).toContain('Started <time data-ts="2026-11-08T09:04:00"></time>');
+  });
+  test("an explicit label wins over the startedAt line", () => {
+    const html = timerPanel({ running: true, statusHtml: "S", context: "C", elapsed: "…", startedLabel: "Started 9:04 AM", startedAt: "2026-11-08T09:04:00", actionsHtml: "A" });
+    expect(html).toContain("Started 9:04 AM");
+    expect(html).not.toContain("<time data-ts=");
+  });
+});
