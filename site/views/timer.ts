@@ -122,7 +122,7 @@ export function createTimerViews(deps: TimerViewDeps) {
       const rate = running.client_rate ?? 0;
       const metaHtml = rate > 0
         ? tag({ label: `${rate % 1 === 0 ? `$${rate}` : money(rate)} / hr`, tone: "primary" }) +
-          `<span class="ui-tag" id="timer-worth" data-rate="${rate}">Worth ${money((durationSeconds(running.start_time, null) * rate) / 3600)}</span>`
+          `<span class="ui-tag" id="timer-worth" data-rate="${rate}">Worth ${money((durationSeconds(running.start_time, null) * rate) / 3600)} so far</span>`
         : "";
       return timerPanel({
         id: "timer-card",
@@ -151,7 +151,7 @@ export function createTimerViews(deps: TimerViewDeps) {
             var row=document.querySelector('#today-list [data-live-duration]');
             if(row)row.textContent=fmtDurRow(d);
             var w=document.getElementById('timer-worth');
-            if(w){var r=parseFloat(w.getAttribute('data-rate'))||0;w.textContent='Worth $'+(d/3600000*r).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}}
+            if(w){var r=parseFloat(w.getAttribute('data-rate'))||0;w.textContent='Worth $'+(d/3600000*r).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})+' so far';}}
           tick();window.__tkTick=setInterval(tick,1000);})();</script>`;
     }
     const options = [{ value: "", label: "No project" },
