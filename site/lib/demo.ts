@@ -5,6 +5,7 @@
 import type { Database } from "bun:sqlite";
 import { icon } from "./icons.ts";
 import { addDays, termsDays, termsKey } from "./format.ts";
+import { button, linkButton } from "../ui/button.ts";
 
 export function workspaceEmpty(db: Database): boolean {
   const c = (db.query("SELECT COUNT(*) AS n FROM clients").get() as any).n
@@ -132,18 +133,18 @@ export function demoBanner(db: Database): string {
     /* #300: guide the fresh install to a prefilled invoice — the sample week
        lands on the client picker with the range already filled in. */
     const r = demoRange(db);
-    const tryIt = r ? `<a class="md-text-button" href="/invoices/new?from=${r.from}&amp;to=${r.to}">${icon("receipt")}<span>Zinvoice the sample week</span></a>` : "";
+    const tryIt = r ? linkButton({ label: "Zinvoice the sample week", href: `/invoices/new?from=${r.from}&to=${r.to}`, icon: "receipt", variant: "primary", size: "sm" }) : "";
     return `<div class="demo-banner" data-enter="1">
     ${icon("info")}
     <span><strong>Demo data.</strong> This workspace is filled with fictional examples — poke around, then remove them when you're ready.</span>
     ${tryIt}
-    <form method="post" action="/demo/reset" class="inline"><button class="md-text-button" type="submit">Remove demo data</button></form>
+    <form method="post" action="/demo/reset" class="inline">${button({ label: "Remove demo data", type: "submit", variant: "ghost", size: "sm" })}</form>
   </div>`;
   }
   if (workspaceEmpty(db)) return `<div class="demo-banner" data-enter="1">
     <img class="demo-mascot" src="/static/mascot.png" alt="" width="44" height="44">
     <span><strong>New here?</strong> Load a fictional workspace — clients, a week of entries, zinvoices — and try every page in 30 seconds.</span>
-    <form method="post" action="/demo/load" class="inline"><button class="md-text-button" type="submit">Load demo data</button></form>
+    <form method="post" action="/demo/load" class="inline">${button({ label: "Load demo data", type: "submit", variant: "primary", size: "sm" })}</form>
   </div>`;
   return "";
 }
