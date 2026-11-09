@@ -8,6 +8,8 @@ import { addDays, durationSeconds, entryInvoiceMark, entryIsLocked, esc, fmtDur,
 import { icon } from "../lib/icons.ts";
 import { dayTargetSecs } from "../lib/domain.ts"; /* #908: short-day tint follows the user's daily target */
 import { workspaceEmpty } from "../lib/demo.ts"; /* #300: first-run hint */
+import { button, linkButton } from "../ui/button.ts";
+import { textField } from "../ui/field.ts";
 import type { Entry } from "../lib/types.ts";
 
 export interface CalendarViewDeps {
@@ -285,7 +287,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       : "";
     return `<div class="cal-day${isToday ? " today" : ""}${pastShort ? " paced-short" : ""}" style="animation-delay:${animDelay}ms">
       <div class="cal-day-head"${headAttrs}>
-        <div class="md-label-large muted">${esc(wd)}</div>
+        <div class="cal-wd-name">${esc(wd)}</div>
         <div class="cal-day-num${isToday ? " today" : ""}">${d}</div>
       </div>
       <div class="cal-day-col" data-date="${day}"><div class="cal-night cal-night-am" aria-hidden="true">${WAVE_AM}${nightStars(NIGHT_STARS_AM)}</div><div class="cal-night cal-night-pm" aria-hidden="true">${WAVE_PM}${nightStars(NIGHT_STARS_PM)}</div>${entryHtml}${nowLine}</div>
@@ -302,25 +304,25 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     const weekLabel = new Date(sun + "T12:00:00").toLocaleDateString([], { month: "short", day: "numeric" });
     const navTitle = isThisWeek ? "This week" : `Week of ${weekLabel}`;
     const navActions = `
-      ${isThisWeek ? "" : `<a class="md-text-button" href="/calendar" hx-get="/partial/week" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar">Today</a>`}
-      <a class="md-icon-button" href="/calendar?week=${prev}" hx-get="/partial/week?week=${prev}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?week=${prev}" data-slide="prev" data-tip="Previous week" aria-label="Previous week">${icon("chevron_left")}</a>
-      <a class="md-icon-button tip-right" href="/calendar?week=${next}" hx-get="/partial/week?week=${next}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?week=${next}" data-slide="next" data-tip="Next week" aria-label="Next week">${icon("chevron_right")}</a>`;
+      ${isThisWeek ? "" : `<a class="ui-btn ui-btn-ghost" href="/calendar" hx-get="/partial/week" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar">Today</a>`}
+      <a class="ui-icon-btn" href="/calendar?week=${prev}" hx-get="/partial/week?week=${prev}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?week=${prev}" data-slide="prev" data-tip="Previous week" aria-label="Previous week">${icon("chevron_left")}</a>
+      <a class="ui-icon-btn tip-right" href="/calendar?week=${next}" hx-get="/partial/week?week=${next}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?week=${next}" data-slide="next" data-tip="Next week" aria-label="Next week">${icon("chevron_right")}</a>`;
     const showChipAmount = uninvoiced < weekBillable;
     const nudgeChip = uninvoiced > 0 ? `
       <a class="nudge-chip${showChipAmount ? "" : " nudge-chip--solo"}" href="/invoices/new?from=${sun}&to=${addDays(sun, 7)}">
-        ${showChipAmount ? `<span class="md-label-large">${fmtDur(uninvoiced)} not yet zinvoiced</span>` : ""}
+        ${showChipAmount ? `<span>${fmtDur(uninvoiced)} not yet zinvoiced</span>` : ""}
         ${/* #592: the link invoices the VIEWED week, so "this week" lies on
            past/future weeks. Keep it on the current week, "this period"
            everywhere else. */ ""}
-        <span class="md-label-large nudge-go">${icon("receipt")} ${isThisWeek ? "Zinvoice this week" : "Zinvoice this period"}</span>
+        <span class="nudge-go">${icon("receipt")} ${isThisWeek ? "Zinvoice this week" : "Zinvoice this period"}</span>
       </a>` : "";
     const clientStrip = clientRows.length === 0 ? "" : `
       <div class="week-clients">
         ${clientRows.map(c => `
           <span class="week-client">
             <span class="week-client-dot"${c.color ? ` style="background:${esc(schemeColor(c.color))}"` : ""}></span>
-            <span class="md-label-medium">${esc(c.name)}</span>
-            <span class="md-label-medium muted">${fmtDur(c.secs)}</span>
+            <span>${esc(c.name)}</span>
+            <span class="muted">${fmtDur(c.secs)}</span>
           </span>`).join("")}
       </div>`;
     const deltaHtml = (() => {
@@ -341,14 +343,14 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     })();
     return `
       <div class="week-nav">
-        <h1 class="md-headline-small">${esc(navTitle)}</h1>
+        <h1 class="ui-page-title">${esc(navTitle)}</h1>
         <div class="week-nav-actions">
           ${navActions}
         </div>
       </div>
       <div class="cal-summary">
-        <div class="md-headline-small cal-summary-total">${fmtDur(weekTotal)}</div>
-        <div class="md-label-medium muted cal-summary-sub">${fmtDur(weekBillable)} billable${deltaHtml}</div>
+        <div class="ui-page-title cal-summary-total">${fmtDur(weekTotal)}</div>
+        <div class="ui-row-meta cal-summary-sub">${fmtDur(weekBillable)} billable${deltaHtml}</div>
         ${nudgeChip}
       </div>
       ${weekTargetBar(weekTotal)}
@@ -359,8 +361,8 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       <p class="muted tiny cal-hint"><span class="cal-hint-grid">Drag across the calendar to log time. Click an entry to edit it.</span><span class="cal-hint-agenda">Tap + to log time, tap an entry to edit.</span></p>
       ${workspaceEmpty(db) ? `<div class="cal-first-run">
         ${icon("info")}
-        <p class="md-label-large"><strong>New here?</strong> Load fictional sample data to explore the calendar.</p>
-        <form method="post" action="/demo/load" class="inline"><button class="md-text-button" type="submit">Load demo data</button></form>
+        <p><strong>New here?</strong> Load fictional sample data to explore the calendar.</p>
+        <form method="post" action="/demo/load" class="inline">${button({ label: "Load demo data", variant: "ghost", type: "submit" })}</form>
       </div>` : ""}`;
   }
 
@@ -397,18 +399,18 @@ export function createCalendarViews(deps: CalendarViewDeps) {
             data-date="${day}" data-start="${toHM(a)}" data-end="${running ? "" : toHM(Math.min(b, 1439))}"
             data-locked="${locked ? esc(e.invoice_number || "") : ""}"
             tabindex="0" role="button" aria-label="${label}">
-          <span class="cal-ag-time md-label-small muted">${toHM(a)}&ndash;${running ? "now" : toHM(Math.min(b, 1439))}</span>
-          <span class="cal-ag-desc md-body-medium">${e.project_name ? `<strong>${esc(e.project_name)}</strong> · ` : ""}${desc}</span>
-          <span class="cal-ag-dur md-label-medium">${fmtDur(durationSeconds(e.start_time, e.end_time))}</span>
+          <span class="cal-ag-time">${toHM(a)}&ndash;${running ? "now" : toHM(Math.min(b, 1439))}</span>
+          <span class="cal-ag-desc">${e.project_name ? `<strong>${esc(e.project_name)}</strong> · ` : ""}${desc}</span>
+          <span class="cal-ag-dur">${fmtDur(durationSeconds(e.start_time, e.end_time))}</span>
         </div>`;
       }).join("");
       sections.push(`<section class="cal-ag-day${day === today ? " today" : ""}" data-date="${day}">
         <div class="cal-ag-head">
-          <span class="md-title-small">${esc(wdName.slice(0, 3))}</span>
+          <span class="cal-ag-wd">${esc(wdName.slice(0, 3))}</span>
           <span class="cal-ag-num${day === today ? " today" : ""}">${d}</span>
-          ${total > 0 ? `<span class="md-label-medium muted">${fmtDur(total)}</span>` : ""}
+          ${total > 0 ? `<span class="cal-ag-total">${fmtDur(total)}</span>` : ""}
           <span class="cal-spacer"></span>
-          <button class="md-icon-button cal-ag-new" data-ag-new="${day}" aria-label="Log time ${esc(wdName)}">${icon("add")}</button>
+          <button type="button" class="ui-icon-btn cal-ag-new" data-ag-new="${day}" aria-label="Log time ${esc(wdName)}">${icon("add")}</button>
         </div>
         ${rows || `<p class="muted tiny cal-ag-empty">No entries</p>`}
       </section>`);
@@ -500,37 +502,25 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     return `<div class="cal-scrim" id="cal-scrim" hidden>
         <div class="cal-dialog" role="dialog" aria-modal="true" aria-labelledby="cal-dialog-title">
           <div class="cal-dialog-head">
-            <h2 class="md-headline-small" id="cal-dialog-title">New entry</h2>
-            <button class="md-icon-button" id="cal-close" type="button" aria-label="Close dialog">${icon("close")}</button>
+            <h2 class="ui-dialog-title" id="cal-dialog-title">New entry</h2>
+            <button class="ui-icon-btn" id="cal-close" type="button" aria-label="Close dialog">${icon("close")}</button>
           </div>
-          <p class="muted md-body-medium" id="cal-dialog-date"></p>
-          <div class="md-text-field">
-            <input type="text" id="cal-desc" placeholder=" " autocomplete="off" list="tk-desc-suggest-dialog">
-            <label for="cal-desc">Description</label>
-          </div>
+          <p class="muted" id="cal-dialog-date"></p>
+          ${textField({ id: "cal-desc", label: "Description", autocomplete: "off", list: "tk-desc-suggest-dialog" })}
           ${descDatalist()}
-          <div class="md-text-field filled">
-            <select id="cal-project" aria-label="Project"><option value="">No project</option>${projectOptions()}</select>
-            <label for="cal-project">Project</label>
-          </div>
+          <div class="ui-field"><label class="ui-field-label" for="cal-project">Project</label><select class="ui-input ui-select" id="cal-project"><option value="">No project</option>${projectOptions()}</select></div>
           <div class="cal-time-row">
-            <div class="md-text-field filled">
-              <input type="time" id="cal-start" required>
-              <label for="cal-start">Start</label>
-            </div>
-            <div class="md-text-field filled">
-              <input type="time" id="cal-end" required>
-              <label for="cal-end">End</label>
-            </div>
-            <span class="md-title-small" id="cal-dur"></span>
+            ${textField({ id: "cal-start", label: "Start", type: "time", required: true })}
+            ${textField({ id: "cal-end", label: "End", type: "time", required: true })}
+            <span id="cal-dur"></span>
           </div>
           <p class="muted tiny" id="cal-locked" hidden></p>
           <p class="error tiny" id="cal-error" hidden></p>
           <div class="cal-dialog-actions">
-            <button class="md-text-button danger" id="cal-delete" hidden>Delete</button>
+            ${button({ label: "Delete", variant: "danger", id: "cal-delete", attrs: "hidden" })}
             <span class="cal-spacer"></span>
-            <button class="md-text-button" id="cal-cancel">Cancel</button>
-            <button class="md-filled-button" id="cal-save">Save</button>
+            ${button({ label: "Cancel", variant: "ghost", id: "cal-cancel" })}
+            ${button({ label: "Save", variant: "primary", id: "cal-save" })}
           </div>
         </div>
       </div>`;
@@ -1095,22 +1085,10 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       timer-page edit dialog, so both stay in sync (#709 label wiring). */
   function editEntryFields(e: Entry, dis: string): string {
     return `
-        <div class="md-text-field">
-          <input type="text" id="ee-desc" name="description" value="${esc(e.description)}" placeholder=" "${dis}>
-          <label for="ee-desc">Description</label>
-        </div>
-        <div class="md-text-field filled">
-          <select id="ee-project" name="project_id"${dis}><option value="">No project</option>${projectOptions(e.project_id)}</select>
-          <label for="ee-project">Project</label>
-        </div>
-        <div class="md-text-field filled">
-          <input type="datetime-local" id="ee-start" name="start_time" data-iso="${esc(e.start_time)}" required placeholder=" "${dis}>
-          <label for="ee-start">Start</label>
-        </div>
-        <div class="md-text-field filled">
-          <input type="datetime-local" id="ee-end" name="end_time" data-iso="${esc(e.end_time || "")}" placeholder=" "${dis}>
-          <label for="ee-end">End (blank = still running)</label>
-        </div>`;
+        ${textField({ id: "ee-desc", label: "Description", name: "description", value: e.description, attrs: dis ? "disabled" : undefined })}
+        <div class="ui-field"><label class="ui-field-label" for="ee-project">Project</label><select class="ui-input ui-select" id="ee-project" name="project_id"${dis}><option value="">No project</option>${projectOptions(e.project_id)}</select></div>
+        ${textField({ id: "ee-start", label: "Start", name: "start_time", type: "datetime-local", required: true, attrs: `data-iso="${esc(e.start_time)}"${dis}` })}
+        ${textField({ id: "ee-end", label: "End (blank = still running)", name: "end_time", type: "datetime-local", attrs: `data-iso="${esc(e.end_time || "")}"${dis}` })}`;
   }
 
   /** #256: datetime-local inputs are prefilled client-side from the ISO instant
@@ -1123,13 +1101,13 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     const locked = entryIsLocked(e); /* #334: sent/paid time opens read-only */
     const dis = locked ? " disabled" : "";
     return layout(locked ? "Entry" : "Edit entry", `
-      <h2 class="md-headline-small" data-enter="2">${locked ? "Entry" : "Edit entry"}</h2>
-      ${locked ? `<p class="muted md-body-medium">Zinvoiced on ${esc(e.invoice_number || "")} — this time can\u2019t be edited.</p>` : ""}
+      <h2 class="ui-page-title" data-enter="2">${locked ? "Entry" : "Edit entry"}</h2>
+      ${locked ? `<p class="muted">Zinvoiced on ${esc(e.invoice_number || "")} — this time can\u2019t be edited.</p>` : ""}
       <form method="post" action="/entries/${e.id}" class="form" id="edit-entry-form">
         ${editEntryFields(e, dis)}
         <div class="row">
-          ${locked ? "" : `<button class="md-filled-button" type="submit">Save</button>`}
-          <a class="md-text-button" href="/calendar">${locked ? "Back" : "Cancel"}</a>
+          ${locked ? "" : button({ label: "Save", variant: "primary", type: "submit" })}
+          ${linkButton({ label: locked ? "Back" : "Cancel", href: "/calendar", variant: "ghost" })}
         </div>
       </form>
       <script>(function(){
@@ -1162,16 +1140,16 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     const dis = locked ? " disabled" : "";
     return `
       <div class="cal-dialog-head">
-        <h2 class="md-headline-small" id="entry-dialog-title">${locked ? "Entry" : "Edit entry"}</h2>
-        <button class="md-icon-button" data-close-entry type="button" aria-label="Close dialog">${icon("close")}</button>
+        <h2 class="ui-dialog-title" id="entry-dialog-title">${locked ? "Entry" : "Edit entry"}</h2>
+        <button class="ui-icon-btn" data-close-entry type="button" aria-label="Close dialog">${icon("close")}</button>
       </div>
-      ${locked ? `<p class="muted md-body-medium">Zinvoiced on ${esc(e.invoice_number || "")} — this time can\u2019t be edited.</p>` : ""}
+      ${locked ? `<p class="muted">Zinvoiced on ${esc(e.invoice_number || "")} — this time can\u2019t be edited.</p>` : ""}
       <form hx-post="/entries/${e.id}" hx-swap="none" class="form" id="edit-entry-form">
         ${editEntryFields(e, dis)}
         <div class="cal-dialog-actions">
           <span class="cal-spacer"></span>
-          <button class="md-text-button" type="button" data-close-entry>${locked ? "Back" : "Cancel"}</button>
-          ${locked ? "" : `<button class="md-filled-button" type="submit">Save</button>`}
+          ${button({ label: locked ? "Back" : "Cancel", variant: "ghost", attrs: "data-close-entry" })}
+          ${locked ? "" : button({ label: "Save", variant: "primary", type: "submit" })}
         </div>
       </form>
       <script>(function(){

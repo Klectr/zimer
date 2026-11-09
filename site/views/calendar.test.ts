@@ -139,8 +139,8 @@ describe("calendar nav edge tooltips (#554, #572)", () => {
   }
   test("week mode: next-week chevron right-aligns its tooltip", () => {
     const html = views().weekInner("2026-09-20", "America/Chicago");
-    expect(html).toContain('class="md-icon-button tip-right" href="/calendar?week=2026-09-27"');
-    expect(html).not.toContain('class="md-icon-button tip-right" href="/calendar?week=2026-09-13"');
+    expect(html).toContain('class="ui-icon-btn tip-right" href="/calendar?week=2026-09-27"');
+    expect(html).not.toContain('class="ui-icon-btn tip-right" href="/calendar?week=2026-09-13"');
   });
   test("carousel: chevrons step a full week in each direction", () => {
     const html = views().weekInner("2026-09-20", "America/Chicago");
@@ -674,7 +674,7 @@ describe("edit-entry floating labels (#709)", () => {
     const html = editPageHtml();
     for (const id of ["ee-desc", "ee-project", "ee-start", "ee-end"]) {
       expect(html).toContain(`id="${id}"`);
-      expect(html).toContain(`<label for="${id}">`);
+      expect(html).toContain(`<label class="ui-field-label" for="${id}">`);
     }
   });
 });
@@ -715,7 +715,7 @@ describe("entry edit dialog fragment (#903)", () => {
     const html = dialogViews().editEntryDialog(7) as string;
     for (const id of ["ee-desc", "ee-project", "ee-start", "ee-end"]) {
       expect(html).toContain(`id="${id}"`);
-      expect(html).toContain(`<label for="${id}">`);
+      expect(html).toContain(`<label class="ui-field-label" for="${id}">`);
     }
   });
 

@@ -9,6 +9,7 @@ import { addDays, durationSeconds, esc, fmtDur, round2 } from "./format.ts";
 import type { Entry, Invoice, InvoiceItem } from "./types.ts";
 import { createPaymentLink, stripeConfigured } from "../stripe.ts";
 import { getMeta } from "../db.ts";
+import { progressBar } from "../ui/progress.ts";
 
 export interface DomainDeps {
   db: Database;
@@ -243,9 +244,9 @@ export function createDomain(deps: DomainDeps) {
     const pct = Math.min(100, (weekTotalSecs / target) * 100);
     const over = weekTotalSecs >= target;
     return `
-      <div class="m3-progress week-target">
-        ${m3ProgressBar(pct, over, `Weekly hours target, ${target / 3600} hours`)}
-        <div class="md-label-medium muted m3-progress-label">${fmtDur(weekTotalSecs)} / ${fmtDur(target)}${over ? ` · <span class="tiny">over target</span>` : ""}</div>
+      <div class="week-target">
+        ${progressBar({ value: pct, label: `Weekly hours target, ${target / 3600} hours` })}
+        <div class="ui-row-meta">${fmtDur(weekTotalSecs)} / ${fmtDur(target)}${over ? ` · <span class="tiny">over target</span>` : ""}</div>
       </div>`;
   }
 

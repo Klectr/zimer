@@ -1472,7 +1472,7 @@ body.app-fixed .md-nav-rail { position: static; height: auto; }
   grid-template-rows: auto minmax(0, 1fr); }
 .cal-supporting { grid-area: summary; display: flex; flex-direction: column; gap: 14px; margin: 10px 0 12px; min-width: 0; }
 .cal-supporting .week-nav { margin: 0; }
-.cal-supporting .m3-progress, .cal-supporting .week-clients, .cal-supporting .cal-hint { margin: 0; }
+.cal-supporting .week-target, .cal-supporting .week-clients, .cal-supporting .cal-hint { margin: 0; }
 /* #945: on narrow viewports the week summary ("forehead") eats the scroll
    area — compact it so the day list gets substantially more room. Desktop
    is untouched. */
@@ -1481,7 +1481,7 @@ body.app-fixed .md-nav-rail { position: static; height: auto; }
   .cal-supporting .week-nav h1 { font-size: 1.25rem; line-height: 28px; }
   .cal-supporting .cal-summary .md-headline-small { font-size: 1.25rem; line-height: 28px; }
   .cal-supporting .nudge-chip { padding: 4px 10px; font-size: 0.8125rem; }
-  .cal-supporting .m3-progress { gap: 8px; }
+  .cal-supporting .week-target { gap: 8px; }
   .cal-supporting .week-clients { gap: 4px 12px; font-size: 0.8125rem; }
   .cal-supporting .cal-hint { font-size: 0.6875rem; line-height: 16px; }
 }
@@ -1802,8 +1802,8 @@ body.app-fixed .cal-gutter-spacer {
    narrower than the form dialogs. */
 .tk-confirm { width: min(400px, 100%); }
 .cal-time-row { display: flex; gap: 12px; align-items: flex-end; }
-.cal-time-row .md-text-field { flex: 1; min-width: 0; }
-#cal-dur { white-space: nowrap; flex-shrink: 0; align-self: center; }
+.cal-time-row .ui-field { flex: 1; min-width: 0; }
+#cal-dur { white-space: nowrap; flex-shrink: 0; align-self: center; font-size: var(--font-size); font-weight: 500; }
 .cal-dialog-actions { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
 .cal-spacer { flex: 1; }
 .md-text-button.danger { color: var(--md-sys-color-error); }
@@ -2030,7 +2030,7 @@ body.app-fixed .cal-gutter-spacer {
 /* #300: first-run hint inside the calendar supporting pane. */
 .cal-first-run { margin-top: 12px; padding: 12px 14px; border-radius: 12px;
   background: var(--md-sys-color-surface-container); }
-.cal-first-run p { margin: 8px 0; }
+.cal-first-run p { margin: 8px 0; font-size: var(--font-size); font-weight: 500; }
 /* #949: below 600px the in-content demo cards hide — the load/remove action
    lives in the drawer instead (demoDrawerRow). Placed after the base rules
    above so the display:none wins at equal specificity. */
@@ -2320,7 +2320,9 @@ body.app-fixed .cal-gutter-spacer {
    Instances: the calendar's 40h week bar and the timer page's 8h today bar. */
 .m3-progress { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 /* Instance spacing: the calendar's 40h week bar and the timer page's 8h today bar. */
-.week-target { margin: 2px 0 14px; }
+.week-target { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 2px 0 14px; }
+.week-target .ui-progress { flex: 1; min-width: 120px; }
+.week-target .ui-row-meta { margin-top: 0; }
 .today-target { margin: 0 0 12px; }
 .m3-progress-track { flex: 1; min-width: 120px; height: 14px; display: flex; align-items: center; gap: 4px; }
 .m3-progress-fill-wrap { height: 100%; overflow: hidden; border-radius: 999px; transition: width 300ms;
@@ -2364,12 +2366,12 @@ body.app-fixed .cal-gutter-spacer {
 
 /* Per-client week breakdown strip on the calendar. */
 .week-clients { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 0 0 14px; }
-.week-client { display: inline-flex; align-items: center; gap: 8px; }
+.week-client { display: inline-flex; align-items: center; gap: 8px; font-size: var(--font-size-sm); font-weight: 500; }
 .week-client-dot { width: 10px; height: 10px; border-radius: 999px; flex: none;
   background: var(--md-sys-color-surface-container-highest); }
 
 /* Uninvoiced hours nudge chip on the calendar. */
-.nudge-chip { display: inline-flex; align-items: center; gap: 8px; min-height: 48px;
+.nudge-chip { display: inline-flex; align-items: center; gap: 8px; min-height: 48px; font-size: var(--font-size); font-weight: 500;
   align-self: flex-start; /* #week is a flex column; don't stretch full width */
   background: var(--md-sys-color-surface-container-high);
   color: var(--md-sys-color-on-surface);
@@ -2655,9 +2657,12 @@ body.app-fixed .cal-gutter-spacer {
   background: color-mix(in srgb, var(--c, var(--md-sys-color-primary)) 24%, transparent);
   cursor: pointer; }
 .cal-ag-row.invoiced { opacity: .55; } /* match the grid's frozen-record dim */
-.cal-ag-time { white-space: nowrap; flex: none; }
-.cal-ag-desc { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cal-ag-dur { flex: none; }
+.cal-ag-time { white-space: nowrap; flex: none; font-size: var(--font-size-sm); font-weight: 500; color: var(--color-text-secondary); }
+.cal-ag-desc { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--font-size); }
+.cal-ag-dur { flex: none; font-size: var(--font-size-sm); font-weight: 500; }
+.cal-ag-wd { font-size: var(--font-size); font-weight: 500; }
+.cal-ag-total { font-size: var(--font-size-sm); font-weight: 500; color: var(--color-text-secondary); }
+.cal-wd-name { font-size: var(--font-size); font-weight: 500; color: var(--color-text-secondary); }
 .cal-ag-empty { margin: 6px 0 2px; }
 /* #781: the week-summary hint teaches the grid's drag-to-create gesture, but
    on the narrow agenda the gesture is the per-day + button. Both variants

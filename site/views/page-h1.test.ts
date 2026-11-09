@@ -122,11 +122,7 @@ describe("page-level h1 (#701)", () => {
     expect(invoicePages().list).toContain('<h1 class="ui-page-title">Zinvoices</h1>');
     expect(invoicePages().form).toContain('<h1 class="ui-page-title">New zinvoice</h1>');
   });
-  test("promoted headings keep their M3 classes (no visual change)", () => {
-    for (const html of [
-      calendarWeekHtml(),
-    ]) {
-      expect(html).toContain('<h1 class="md-headline-small">');
-    }
+  test("the calendar week heading carries the ui page title (migrated in #1111)", () => {
+    expect(calendarWeekHtml()).toContain('<h1 class="ui-page-title">');
   });
 });
