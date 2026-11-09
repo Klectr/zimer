@@ -829,7 +829,7 @@ describe("calendar slot theme color (#841)", () => {
   }
   test("legacy gold client color renders the theme primary variable", () => {
     const tag = cardTag(weekInnerHtml([goldEntry]), 30);
-    expect(tag).toContain("--c:var(--md-sys-color-primary)");
+    expect(tag).toContain("--c:var(--color-primary)");
     expect(tag).not.toContain("#f2c14e");
   });
   test("explicit client colors pass through untouched", () => {
@@ -868,7 +868,7 @@ describe("calendar column rounding (#845, #847, #849)", () => {
     expect(cutter![0]).toMatch(/position:\s*sticky/);
     expect(cutter![0]).toMatch(/top:\s*var\(--cal-head-h\)/);
     expect(cutter![0]).toMatch(/z-index:\s*3/);
-    expect(cutter![0]).toMatch(/background:\s*var\(--md-sys-color-surface\)/);
+    expect(cutter![0]).toMatch(/background:\s*var\(--color-bg-layout\)/);
     expect(cutter![0]).toMatch(/pointer-events:\s*none/);
     expect(cutter![0]).toMatch(/mask:/);
   });
@@ -881,15 +881,11 @@ describe("calendar column rounding (#845, #847, #849)", () => {
     expect(bottomCutter).not.toBeNull();
     expect(bottomCutter![0]).toMatch(/z-index:\s*0/);
   });
-  test("#877: top cutter paints above the translucent night band so its dark crescents can't show through it", async () => {
+  test("#877: top cutter paints above the lane so its page-bg crescents round the visible top edge", async () => {
     const css = await Bun.file("site/static/style.css").text();
     const cutter = css.match(/\.cal-day-col::before\s*\{[^}]*\}/);
     expect(cutter).not.toBeNull();
     expect(cutter![0]).toMatch(/z-index:\s*3/);
-    // night band stays z-auto (below the z-3 cutter, above the lane bg)
-    const band = css.match(/\.cal-night\s*\{[^}]*\}/);
-    expect(band).not.toBeNull();
-    expect(band![0]).not.toMatch(/z-index/);
     // entries stay above the cutter (the #849 fringe fix, now at z-2)
     const entry = css.match(/\.cal-entry\s*\{[^}]*\}/);
     expect(entry).not.toBeNull();
@@ -932,7 +928,7 @@ describe("calendar column rounding (#845, #847, #849)", () => {
     const css = await Bun.file("site/static/style.css").text();
     const lane = css.match(/\.cal-day-col\s*\{[^}]*\}/);
     expect(lane).not.toBeNull();
-    expect(lane![0]).toMatch(/border-radius:\s*var\(--md-sys-shape-corner-medium\)/);
+    expect(lane![0]).toMatch(/border-radius:\s*var\(--radius-lg\)/);
     const cutter = css.match(/\.cal-day-col::after\s*\{[^}]*\}/);
     expect(cutter).not.toBeNull();
     expect(cutter![0]).toMatch(/position:\s*sticky/);
@@ -943,31 +939,17 @@ describe("calendar column rounding (#845, #847, #849)", () => {
   });
 });
 
-/** #853: the AM night band's top corners showed tiny dark notches — the
- *  translucent band lets the ::before top cutter's page-bg crescents read
- *  through it. The band's top corner zone (12px) now has an opaque lane-bg
- *  backing with the purple composited over it, so the corners render cleanly
- *  while the rest of the band stays translucent (hour lines show through).
- *  Plus cal-edge-top: entries starting at 00:00 touch the lane's top edge and
- *  paint above the z-0 cutter, so they get the lane's medium radius on their
- *  top corners — mirrors #851's cal-edge-bottom. */
+/** #853: cal-edge-top — entries starting at 00:00 touch the lane's top edge
+ *  and paint above the z-0 cutter, so they get the lane's radius on their
+ *  top corners — mirrors #851's cal-edge-bottom. (The AM night band this
+ *  describe originally covered was removed in #1132.) */
 describe("calendar top-edge rounding (#853)", () => {
-  test("night band's top corner zone has an opaque lane-bg backing under the purple", async () => {
-    const css = await Bun.file("site/static/style.css").text();
-    const band = css.match(/\.cal-night-am\s*\{[^}]*\}/);
-    expect(band).not.toBeNull();
-    /* band keeps the lane's medium radius on its top corners … */
-    expect(band![0]).toMatch(/border-radius:\s*var\(--md-sys-shape-corner-medium\)\s+var\(--md-sys-shape-corner-medium\)\s+0\s+0/);
-    /* … and layers purple over an opaque lane-bg backing for exactly the
-       top corner zone, with the translucent purple below it. */
-    expect(band![0]).toMatch(/linear-gradient\(var\(--lane-bg\),\s*var\(--lane-bg\)\)\s+left top\s*\/\s*100%\s*var\(--md-sys-shape-corner-medium\)/);
-  });
   test("cal-edge-top gives midnight-start entries the lane's medium top radius (compact pills excluded)", async () => {
     const css = await Bun.file("site/static/style.css").text();
     const rule = css.match(/\.cal-entry\.cal-edge-top:not\(\.cal-compact\)\s*\{[^}]*\}/);
     expect(rule).not.toBeNull();
-    expect(rule![0]).toMatch(/border-top-left-radius:\s*var\(--md-sys-shape-corner-medium\)/);
-    expect(rule![0]).toMatch(/border-top-right-radius:\s*var\(--md-sys-shape-corner-medium\)/);
+    expect(rule![0]).toMatch(/border-top-left-radius:\s*var\(--radius-lg\)/);
+    expect(rule![0]).toMatch(/border-top-right-radius:\s*var\(--radius-lg\)/);
   });
 
   const stubQuery = () => ({
@@ -1190,5 +1172,30 @@ describe("calendar project pickers (#1121)", () => {
   test("edit picker is disabled for invoiced (locked) entries", () => {
     const html = viewsFor({ ...baseEntry, invoice_id: 42, invoice_status: "sent" }).editEntryDialog(11)!;
     expect(html).toContain('<select class="ui-input ui-select" id="ee-project" name="project_id" disabled>');
+  });
+});
+
+/** #1132: entries use the ui tint treatment (the viz-block pattern), and
+ *  the M3 night-sky decoration is gone from markup and CSS. */
+describe("calendar de-Material restyle (#1132)", () => {
+  test("entry blocks are tinted, bordered, and box-sized", async () => {
+    const css = await Bun.file("site/static/style.css").text();
+    const entry = css.match(/\.cal-entry\s*\{[^}]*\}/);
+    expect(entry).not.toBeNull();
+    expect(entry![0]).toContain("background: color-mix(in srgb, var(--c, var(--color-primary)) 22%, transparent)");
+    expect(entry![0]).toContain("border: 1px solid color-mix(in srgb, var(--c, var(--color-primary)) 38%, transparent)");
+    expect(entry![0]).toContain("box-sizing: border-box");
+    expect(entry![0]).toContain("border-radius: var(--radius-sm)");
+    expect(entry![0]).not.toContain("md-sys");
+  });
+
+  test("no night bands, stars, or waves remain", async () => {
+    const css = await Bun.file("site/static/style.css").text();
+    expect(css).not.toContain(".cal-night");
+    expect(css).not.toContain(".cal-star");
+    expect(css).not.toContain(".cal-wave");
+    const src = await Bun.file("site/views/calendar.ts").text();
+    expect(src).not.toContain("cal-night");
+    expect(src).not.toContain("nightStars");
   });
 });

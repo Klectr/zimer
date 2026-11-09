@@ -80,8 +80,8 @@ describe("fmtDur", () => {
 /* #841: rows stored under the legacy gold default track the theme primary. */
 describe("schemeColor", () => {
   test("legacy gold maps to the theme primary variable", () => {
-    expect(schemeColor("#f2c14e")).toBe("var(--md-sys-color-primary)");
-    expect(schemeColor("#F2C14E")).toBe("var(--md-sys-color-primary)");
+    expect(schemeColor("#f2c14e")).toBe("var(--color-primary)");
+    expect(schemeColor("#F2C14E")).toBe("var(--color-primary)");
   });
   test("explicitly chosen colors pass through untouched", () => {
     expect(schemeColor("#9050f2")).toBe("#9050f2");

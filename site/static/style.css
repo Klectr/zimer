@@ -811,7 +811,7 @@ main:focus { outline: none; }
 /* ---------------- cards (filled: surface-container-high, 12dp) ---------------- */
 .md-card {
   background: var(--md-sys-color-surface-container-high);
-  border-radius: var(--md-sys-shape-corner-medium);
+  border-radius: var(--radius-lg);
   padding: 20px;
   margin-bottom: 16px;
 }
@@ -1005,7 +1005,7 @@ input[type="number"] {
   padding: 22px 16px 8px;
   background: var(--md-sys-color-surface-container-highest);
   border: none;
-  border-radius: var(--md-sys-shape-corner-medium);
+  border-radius: var(--radius-lg);
   color: var(--md-sys-color-on-surface);
   font-size: 1rem;
   letter-spacing: 0.5px;
@@ -1066,7 +1066,7 @@ input[type="number"] {
   padding: 22px 16px 8px;
   background: var(--md-sys-color-surface-container-highest);
   border: none;
-  border-radius: var(--md-sys-shape-corner-medium);
+  border-radius: var(--radius-lg);
   color: var(--md-sys-color-on-surface);
   font-size: 1rem;
   letter-spacing: 0.5px;
@@ -1411,21 +1411,21 @@ body.app-fixed .cal-gutter-spacer {
    dark cuts at every scroll offset; opaque entries still paint over it. */
 .cal-day-col::before {
   content: ""; display: block; flex: none; width: 100%;
-  height: var(--md-sys-shape-corner-medium);
-  margin-bottom: calc(-1 * var(--md-sys-shape-corner-medium));
+  height: var(--radius-lg);
+  margin-bottom: calc(-1 * var(--radius-lg));
   position: sticky; top: var(--cal-head-h); z-index: 3;
-  background: var(--md-sys-color-surface);
+  background: var(--color-bg-layout);
   -webkit-mask:
-    radial-gradient(circle var(--md-sys-shape-corner-medium) at 100% 100%, transparent calc(var(--md-sys-shape-corner-medium) - 1px), #000 var(--md-sys-shape-corner-medium)) left top / var(--md-sys-shape-corner-medium) var(--md-sys-shape-corner-medium) no-repeat,
-    radial-gradient(circle var(--md-sys-shape-corner-medium) at 0 100%, transparent calc(var(--md-sys-shape-corner-medium) - 1px), #000 var(--md-sys-shape-corner-medium)) right top / var(--md-sys-shape-corner-medium) var(--md-sys-shape-corner-medium) no-repeat;
+    radial-gradient(circle var(--radius-lg) at 100% 100%, transparent calc(var(--radius-lg) - 1px), #000 var(--radius-lg)) left top / var(--radius-lg) var(--radius-lg) no-repeat,
+    radial-gradient(circle var(--radius-lg) at 0 100%, transparent calc(var(--radius-lg) - 1px), #000 var(--radius-lg)) right top / var(--radius-lg) var(--radius-lg) no-repeat;
   mask:
-    radial-gradient(circle var(--md-sys-shape-corner-medium) at 100% 100%, transparent calc(var(--md-sys-shape-corner-medium) - 1px), #000 var(--md-sys-shape-corner-medium)) left top / var(--md-sys-shape-corner-medium) var(--md-sys-shape-corner-medium) no-repeat,
-    radial-gradient(circle var(--md-sys-shape-corner-medium) at 0 100%, transparent calc(var(--md-sys-shape-corner-medium) - 1px), #000 var(--md-sys-shape-corner-medium)) right top / var(--md-sys-shape-corner-medium) var(--md-sys-shape-corner-medium) no-repeat;
+    radial-gradient(circle var(--radius-lg) at 100% 100%, transparent calc(var(--radius-lg) - 1px), #000 var(--radius-lg)) left top / var(--radius-lg) var(--radius-lg) no-repeat,
+    radial-gradient(circle var(--radius-lg) at 0 100%, transparent calc(var(--radius-lg) - 1px), #000 var(--radius-lg)) right top / var(--radius-lg) var(--radius-lg) no-repeat;
   pointer-events: none;
 }
 /* ---------------- calendar: tonal day lanes, no hard dividers ----------------
  * Separation comes from spacing (8px gutters) + tone (lane surfaces). */
-.cal-scroll { overflow-x: clip; border-radius: var(--md-sys-shape-corner-large); }
+.cal-scroll { overflow-x: clip; border-radius: var(--radius-lg); }
 .cal-grid {
   display: grid;
   grid-template-columns: 44px repeat(7, minmax(0, 1fr));
@@ -1436,10 +1436,8 @@ body.app-fixed .cal-gutter-spacer {
 .cal-hours { height: calc(var(--cal-hour) * 24); }
 .cal-hour-label {
   position: absolute; right: 8px; transform: translateY(-50%);
-  font-size: 0.6875rem; color: var(--md-sys-color-on-surface-variant); white-space: nowrap;
+  font-size: 0.6875rem; color: var(--color-text-tertiary); white-space: nowrap;
 }
-/* Night hours (7 PM – 6 AM) read lavender in the gutter. */
-.cal-hour-label.night { color: #b9a8e8; }
 .cal-day { display: flex; flex-direction: column; min-width: 0; }
 /* Grid entrance (#49): columns stagger in left→right inside the #48 region
    entrance; per-column delay rendered inline by the server. */
@@ -1454,9 +1452,9 @@ body.app-fixed .cal-gutter-spacer {
   content: attr(data-tip);
   position: absolute; left: 50%; top: calc(100% + 4px); /* M3: 4dp anchor gap */
   transform: translateX(-50%) translateY(-2px);
-  background: var(--md-sys-color-inverse-surface);
-  color: var(--md-sys-color-inverse-on-surface);
-  border-radius: var(--md-sys-shape-corner-extra-small); /* M3 plain tooltip shape */
+  background: var(--color-bg-spotlight);
+  color: var(--color-text);
+  border-radius: var(--radius-xs);
   padding: 4px 8px; /* M3 plain tooltip padding */
   white-space: nowrap; max-width: 0; overflow: hidden; /* #556: collapse while hidden */
   font-size: 0.75rem; line-height: 16px;
@@ -1479,29 +1477,29 @@ body.app-fixed .cal-gutter-spacer {
 .cal-day:last-child .cal-day-head[data-tip]:hover::after,
 .cal-day:last-child .cal-day-head[data-tip]:focus-visible::after,
 .cal-day:last-child .cal-day-head[data-tip].tip-show::after { transform: translateY(0); }
-.cal-day-num { font-size: 1.375rem; line-height: 28px; }
+.cal-day-num { font-size: var(--font-size-heading-4); line-height: 28px; }
 .cal-day-num.today {
   /* #69: today is marked with the primary color, not a filled badge */
-  color: var(--md-sys-color-primary); font-weight: 700;
+  color: var(--color-primary); font-weight: 700;
 }
 /* #845: per-day lane tone. #847: the sticky header no longer shares it — it is
    opaque page-bg so the scrolling purple night band can never peek through
    rounded corner cutouts; the ::before top cutter re-rounds the lane's
    visible top edge instead. */
-.cal-day { --lane-bg: var(--md-sys-color-surface-container-low); }
-.cal-day.today { --lane-bg: color-mix(in srgb, var(--md-sys-color-primary) 10%, var(--md-sys-color-surface-container-low)); }
+.cal-day { --lane-bg: color-mix(in srgb, var(--color-text) 5%, var(--color-bg-layout)); }
+.cal-day.today { --lane-bg: color-mix(in srgb, var(--color-primary) 10%, color-mix(in srgb, var(--color-text) 5%, var(--color-bg-layout))); }
 /* Past days under 8h get a subtle one-step tonal lift; today and future
    days are never tinted. Background only, so no layout shift. */
-.cal-day.paced-short { --lane-bg: var(--md-sys-color-surface-container); }
+.cal-day.paced-short { --lane-bg: color-mix(in srgb, var(--color-text) 8%, var(--color-bg-layout)); }
 .cal-day-col {
   position: relative; height: calc(var(--cal-hour) * 24); flex: none;
   display: flex; flex-direction: column;
   background-color: var(--lane-bg);
-  border-radius: var(--md-sys-shape-corner-medium);
+  border-radius: var(--radius-lg);
   background-image: repeating-linear-gradient(to bottom,
     transparent 0, transparent calc(var(--cal-hour) - 1px),
-    color-mix(in srgb, var(--md-sys-color-outline-variant) 30%, transparent) calc(var(--cal-hour) - 1px),
-    color-mix(in srgb, var(--md-sys-color-outline-variant) 30%, transparent) var(--cal-hour));
+    var(--color-border-secondary) calc(var(--cal-hour) - 1px),
+    var(--color-border-secondary) var(--cal-hour));
   cursor: crosshair; touch-action: none;
 }
 /* #845: the lane's own rounded bottom scrolls out of view — a sticky cutter
@@ -1517,57 +1515,22 @@ body.app-fixed .cal-gutter-spacer {
      own rounded corners and its crescents blend invisibly into them. */
   margin-top: auto;
   position: sticky; bottom: 0; z-index: 0;
-  height: var(--md-sys-shape-corner-medium);
-  background: var(--md-sys-color-surface);
+  height: var(--radius-lg);
+  background: var(--color-bg-layout);
   -webkit-mask:
-    radial-gradient(circle var(--md-sys-shape-corner-medium) at 100% 0, transparent calc(var(--md-sys-shape-corner-medium) - 1px), #000 var(--md-sys-shape-corner-medium)) left bottom / var(--md-sys-shape-corner-medium) var(--md-sys-shape-corner-medium) no-repeat,
-    radial-gradient(circle var(--md-sys-shape-corner-medium) at 0 0, transparent calc(var(--md-sys-shape-corner-medium) - 1px), #000 var(--md-sys-shape-corner-medium)) right bottom / var(--md-sys-shape-corner-medium) var(--md-sys-shape-corner-medium) no-repeat;
+    radial-gradient(circle var(--radius-lg) at 100% 0, transparent calc(var(--radius-lg) - 1px), #000 var(--radius-lg)) left bottom / var(--radius-lg) var(--radius-lg) no-repeat,
+    radial-gradient(circle var(--radius-lg) at 0 0, transparent calc(var(--radius-lg) - 1px), #000 var(--radius-lg)) right bottom / var(--radius-lg) var(--radius-lg) no-repeat;
   mask:
-    radial-gradient(circle var(--md-sys-shape-corner-medium) at 100% 0, transparent calc(var(--md-sys-shape-corner-medium) - 1px), #000 var(--md-sys-shape-corner-medium)) left bottom / var(--md-sys-shape-corner-medium) var(--md-sys-shape-corner-medium) no-repeat,
-    radial-gradient(circle var(--md-sys-shape-corner-medium) at 0 0, transparent calc(var(--md-sys-shape-corner-medium) - 1px), #000 var(--md-sys-shape-corner-medium)) right bottom / var(--md-sys-shape-corner-medium) var(--md-sys-shape-corner-medium) no-repeat;
+    radial-gradient(circle var(--radius-lg) at 100% 0, transparent calc(var(--radius-lg) - 1px), #000 var(--radius-lg)) left bottom / var(--radius-lg) var(--radius-lg) no-repeat,
+    radial-gradient(circle var(--radius-lg) at 0 0, transparent calc(var(--radius-lg) - 1px), #000 var(--radius-lg)) right bottom / var(--radius-lg) var(--radius-lg) no-repeat;
   pointer-events: none;
 }
-/* Night bands (7 PM – 6 AM): deep purple with stars. Translucent so the hour
-   lines show through; behind entries; pointer-events none so drag-create
-   still works over them. */
-.cal-night {
-  position: absolute; left: 0; right: 0; pointer-events: none;
-  background: color-mix(in srgb, #4a2b8f 48%, transparent);
-}
-/* Wavy horizon on the day-facing edge of each night band. The wave fill is
-   the same translucent purple, so it composites seamlessly with the band. */
-.cal-wave { position: absolute; left: 0; width: 100%; height: 12px; display: block; }
-.cal-wave path { fill: color-mix(in srgb, #4a2b8f 48%, transparent); }
-.cal-wave-am { bottom: -10px; }
-.cal-wave-pm { top: -10px; }
-.cal-night-am { top: 0; height: calc(var(--cal-hour) * 6);
-  border-radius: var(--md-sys-shape-corner-medium) var(--md-sys-shape-corner-medium) 0 0;
-  /* #853: the ::before top cutter's page-bg crescents sit directly under this
-     translucent band and read as dark notches through it at the rounded top
-     corners (the band already carries the lane's medium radius, matching the
-     cutter's crescent exactly). The top 12px gets an opaque lane-bg backing
-     (purple composited over it) so the corners render cleanly; below that the
-     band stays translucent so the hour lines show through. All layers are
-     clipped to the band's own border-radius. */
-  background:
-    linear-gradient(color-mix(in srgb, #4a2b8f 48%, transparent), color-mix(in srgb, #4a2b8f 48%, transparent)) left top / 100% var(--md-sys-shape-corner-medium) no-repeat,
-    linear-gradient(var(--lane-bg), var(--lane-bg)) left top / 100% var(--md-sys-shape-corner-medium) no-repeat,
-    color-mix(in srgb, #4a2b8f 48%, transparent); }
-.cal-night-pm { top: calc(var(--cal-hour) * 19); height: calc(var(--cal-hour) * 5);
-  border-radius: 0 0 var(--md-sys-shape-corner-medium) var(--md-sys-shape-corner-medium); }
-.cal-star {
-  position: absolute; color: #d9cdf7; font-size: 0.625rem; line-height: 1;
-  opacity: .55; animation: cal-twinkle 3.2s ease-in-out infinite;
-}
-.cal-star:nth-child(3n) { font-size: 0.5rem; opacity: .4; }
-.cal-star:nth-child(4n) { font-size: 0.75rem; opacity: .65; }
-@keyframes cal-twinkle { 50% { opacity: .22; } }
-@media (prefers-reduced-motion: reduce) {
-  .cal-star { animation: none; }
-}
 .cal-entry {
-  position: absolute; left: 4px; right: 4px; border-radius: var(--md-sys-shape-corner-small);
-  background: var(--c, var(--md-sys-color-primary)); color: #16161c;
+  position: absolute; left: 4px; right: 4px; border-radius: var(--radius-sm);
+  box-sizing: border-box;
+  background: color-mix(in srgb, var(--c, var(--color-primary)) 22%, transparent);
+  border: 1px solid color-mix(in srgb, var(--c, var(--color-primary)) 38%, transparent);
+  color: color-mix(in srgb, var(--c, var(--color-primary)) 55%, white);
   padding: 4px 8px; overflow: hidden; cursor: pointer;
   font-size: 0.75rem; line-height: 1.35;
   min-width: 0;
@@ -1587,8 +1550,8 @@ body.app-fixed .cal-gutter-spacer {
    box of a 15-min slot at 80px/hr exactly. */
 .cal-entry.cal-compact {
   display: flex; align-items: center;
-  padding: 2px 10px; font-size: 0.625rem; line-height: 1.2;
-  border-radius: 999px;
+  padding: 2px 10px; font-size: var(--font-size-sm); line-height: 1.2;
+  border-radius: var(--radius-sm);
 }
 .cal-entry.cal-compact .cal-entry-desc { flex: 1; min-width: 0; }
 .cal-entry.cal-compact .cal-entry-dur { display: none; }
@@ -1599,8 +1562,8 @@ body.app-fixed .cal-gutter-spacer {
    the cutter sits below entries so it can't fringe them, but edge entries fell
    back to small corners and read as sharp. Compact pills keep their 999px. */
 .cal-entry.cal-edge-bottom:not(.cal-compact) {
-  border-bottom-left-radius: var(--md-sys-shape-corner-medium);
-  border-bottom-right-radius: var(--md-sys-shape-corner-medium);
+  border-bottom-left-radius: var(--radius-lg);
+  border-bottom-right-radius: var(--radius-lg);
 }
 /* #853: an entry starting at midnight touches the lane's top edge
    (server-flagged cal-edge-top) gets the lane's medium corner radius on its
@@ -1608,8 +1571,8 @@ body.app-fixed .cal-gutter-spacer {
    top cutter, so without this their small corners would cover the cutter's
    rounding and read as sharp. Compact pills keep their 999px. */
 .cal-entry.cal-edge-top:not(.cal-compact) {
-  border-top-left-radius: var(--md-sys-shape-corner-medium);
-  border-top-right-radius: var(--md-sys-shape-corner-medium);
+  border-top-left-radius: var(--radius-lg);
+  border-top-right-radius: var(--radius-lg);
 }
 /* In-place week refresh (#65): load-entrance animations are suppressed while
    the #week section is swapped, so saving an entry never replays the page. */
@@ -1627,21 +1590,21 @@ body.app-fixed .cal-gutter-spacer {
 .cal-entry.overlap {
   box-shadow: 0 -4px 8px -2px rgb(0 0 0 / 0.3), 0 -2px 4px -2px rgb(0 0 0 / 0.25);
 }
-.cal-entry:focus-visible { outline: 2px solid var(--md-sys-color-on-surface); outline-offset: 1px; }
-.cal-entry.running { border: 2px dashed #16161c; }
+.cal-entry:focus-visible { outline: 2px solid var(--color-text); outline-offset: 1px; }
+.cal-entry.running { border: 1px dashed color-mix(in srgb, var(--c, var(--color-primary)) 70%, white); }
 .cal-entry-desc { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cal-entry-desc strong { font-weight: 700; }
 .cal-entry-dur { opacity: 0.75; white-space: nowrap; }
-.cal-now { position: absolute; left: 0; right: 0; height: 2px; background: var(--md-sys-color-error); z-index: 4; pointer-events: none; }
+.cal-now { position: absolute; left: 0; right: 0; height: 2px; background: var(--color-error); z-index: 4; pointer-events: none; }
 .cal-now::before {
   content: ""; position: absolute; left: -5px; top: -4px;
-  width: 10px; height: 10px; border-radius: var(--md-sys-shape-corner-full);
-  background: var(--md-sys-color-error);
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--color-error);
 }
 .cal-drag-preview {
-  position: absolute; left: 2px; right: 2px; border-radius: var(--md-sys-shape-corner-small);
-  background: color-mix(in srgb, var(--md-sys-color-primary) 35%, transparent);
-  border: 1px solid var(--md-sys-color-primary); pointer-events: none; z-index: 3;
+  position: absolute; left: 2px; right: 2px; border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-primary) 35%, transparent);
+  border: 1px solid var(--color-primary); pointer-events: none; z-index: 3;
 }
 /* M3 dialog */
 .cal-scrim {
@@ -1654,11 +1617,12 @@ body.app-fixed .cal-gutter-spacer {
 .cal-scrim[hidden] { display: none; }
 .cal-scrim.open { opacity: 1; }
 .cal-dialog {
-  background: var(--md-sys-color-surface-container-high);
-  border-radius: var(--md-sys-shape-corner-extra-large);
+  background: var(--color-bg-container);
+  border: 1px solid var(--color-border-secondary);
+  border-radius: var(--radius-lg);
   padding: 24px; width: min(480px, 100%);
   display: grid; gap: 16px;
-  transform: scale(0.9);
+  transform: scale(0.96);
   opacity: 0;
   transition: transform var(--motion-duration-medium2) var(--motion-easing-emphasized),
     opacity var(--motion-duration-short4) var(--motion-easing-standard);
@@ -2127,7 +2091,7 @@ body.app-fixed .cal-gutter-spacer {
 
 /* #969: the preview sheet centers in its pane. The sheet is a document
    surface: it carries its own card base (previously the shared md-card). */
-.invoice-sheet { max-width: 720px; margin: 0 auto 16px; background: var(--md-sys-color-surface-container-high); border-radius: var(--md-sys-shape-corner-medium); padding: 20px; }
+.invoice-sheet { max-width: 720px; margin: 0 auto 16px; background: var(--md-sys-color-surface-container-high); border-radius: var(--radius-lg); padding: 20px; }
 
 /* Public client invoice page: centered sheet, no app chrome. */
 .page-public-invoice { max-width: 800px; margin: 0 auto; padding: 32px 24px 48px; }
@@ -2441,7 +2405,7 @@ body.app-fixed .cal-gutter-spacer {
 }
 @keyframes skel-shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
 .skel-stack { display: flex; flex-direction: column; gap: 12px; }
-.skel-row { height: 64px; border-radius: var(--md-sys-shape-corner-medium); }
+.skel-row { height: 64px; border-radius: var(--radius-lg); }
 
 /* -------- calendar skeleton (#322): mirrors .cal-pane-layout so the htmx
    week swap has no layout flash. Same grid areas and 840px breakpoint as the
@@ -2451,8 +2415,8 @@ body.app-fixed .cal-gutter-spacer {
 .cal-skel-grid { grid-area: grid; display: grid; min-width: 0; min-height: 0;
   grid-template-columns: 44px repeat(7, minmax(0, 1fr)); gap: 8px; }
 .cal-skel-day { display: flex; flex-direction: column; gap: 8px; min-width: 0; min-height: 0; }
-.cal-skel-head { height: 64px; flex: none; border-radius: var(--md-sys-shape-corner-medium); }
-.cal-skel-lane { flex: 1; min-height: 120px; border-radius: var(--md-sys-shape-corner-medium);
+.cal-skel-head { height: 64px; flex: none; border-radius: var(--radius-lg); }
+.cal-skel-lane { flex: 1; min-height: 120px; border-radius: var(--radius-lg);
   background-color: var(--md-sys-color-surface-container-low);
   background-image: repeating-linear-gradient(to bottom,
     transparent 0, transparent 79px,
@@ -2488,11 +2452,11 @@ body.app-fixed .cal-gutter-spacer {
 }
 /* -------- week agenda (narrow calendar strips, #572) -------- */
 .cal-ag-day { background: var(--md-sys-color-surface-container-low);
-  border-radius: var(--md-sys-shape-corner-medium); padding: 10px 12px; }
+  border-radius: var(--radius-lg); padding: 10px 12px; }
 .cal-ag-day.today { background: color-mix(in srgb, var(--md-sys-color-primary) 10%, var(--md-sys-color-surface-container-low)); }
 .cal-ag-head { display: flex; align-items: center; gap: 10px; }
 .cal-ag-num { font-size: 1.375rem; line-height: 28px; }
-.cal-ag-num.today { color: var(--md-sys-color-primary); font-weight: 700; }
+.cal-ag-num.today { color: var(--color-primary); font-weight: 700; }
 .cal-ag-row { display: flex; align-items: baseline; gap: 10px; padding: 8px 10px;
   margin-top: 6px; border-radius: var(--md-sys-shape-corner-small);
   background: color-mix(in srgb, var(--c, var(--md-sys-color-primary)) 24%, transparent);
