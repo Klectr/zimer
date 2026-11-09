@@ -82,11 +82,13 @@ export interface SelectFieldOptions {
   value?: string;
   required?: boolean;
   className?: string;
+  disabled?: boolean;
 }
 
 export function selectField(opts: SelectFieldOptions): string {
   const name = opts.name ? ` name="${esc(opts.name)}"` : "";
   const required = opts.required ? " required" : "";
+  const disabled = opts.disabled ? " disabled" : "";
   const options = opts.options
     .map((o) => {
       const data = o.data
@@ -98,6 +100,6 @@ export function selectField(opts: SelectFieldOptions): string {
   return (
     `<div class="ui-field">` +
     `<label class="ui-field-label" for="${esc(opts.id)}">${esc(opts.label)}</label>` +
-    `<select class="ui-input ui-select${opts.className ? ` ${esc(opts.className)}` : ""}" id="${esc(opts.id)}"${name}${required}>${options}</select></div>`
+    `<select class="ui-input ui-select${opts.className ? ` ${esc(opts.className)}` : ""}" id="${esc(opts.id)}"${name}${required}${disabled}>${options}</select></div>`
   );
 }

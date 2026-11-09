@@ -122,7 +122,7 @@ function buildTenantTree(bundle: DbBundle, dbPath: string): WebTenant & ApiTenan
     dayTargetSecs: () => dayTargetSecs(db), /* #908: per-request read of the user's setting */
   });
   const { weekInner, weekStrip, weekGrid, calendarPage, editPage, editEntryDialog } = createCalendarViews({
-    db, qOne, qRange, entrySelect: ENTRY_SELECT, layout, projectOptions, weekTargetBar,
+    db, qOne, qRange, entrySelect: ENTRY_SELECT, layout, projectOptionRows, weekTargetBar,
     calHourPx: CAL_HOUR_PX,
   });
   const { managePage, clientSelection, clientDetailBody, clientListOob, bizProfileSection, dailyTargetSection, clientSettingsForm, settingsPage, themeSectionHtml } =

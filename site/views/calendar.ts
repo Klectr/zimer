@@ -9,7 +9,7 @@ import { icon } from "../lib/icons.ts";
 import { dayTargetSecs } from "../lib/domain.ts"; /* #908: short-day tint follows the user's daily target */
 import { workspaceEmpty } from "../lib/demo.ts"; /* #300: first-run hint */
 import { button, linkButton } from "../ui/button.ts";
-import { textField } from "../ui/field.ts";
+import { selectField, textField } from "../ui/field.ts";
 import type { Entry } from "../lib/types.ts";
 
 export interface CalendarViewDeps {
@@ -18,7 +18,7 @@ export interface CalendarViewDeps {
   qRange: Statement;
   entrySelect: string;
   layout: (title: string, body: string, active?: "timer" | "calendar" | "manage" | "invoices", fixed?: boolean) => string;
-  projectOptions: (selected?: number | null) => string;
+  projectOptionRows: () => { id: number; name: string; client: string | null }[];
   weekTargetBar: (weekTotalSecs: number) => string;
   calHourPx: number;
 }
@@ -40,7 +40,14 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     ).join("");
   }
 
-  const { db, qOne, qRange, entrySelect: ENTRY_SELECT, layout, projectOptions, weekTargetBar, calHourPx } = deps;
+  const { db, qOne, qRange, entrySelect: ENTRY_SELECT, layout, projectOptionRows, weekTargetBar, calHourPx } = deps;
+
+  /* #1121: the project pickers' options as data — the same rows and
+     "Name (Client)" labels the Timer panel's picker uses. */
+  function projectSelectOptions() {
+    return [{ value: "", label: "No project" },
+      ...projectOptionRows().map(r => ({ value: String(r.id), label: r.client ? `${r.name} (${r.client})` : r.name }))];
+  }
 
   /* #578: description suggestions for the entry dialog — the 15 most recently
      used non-blank descriptions, deduped. Same pattern as the timer start
@@ -508,7 +515,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
           <p class="muted" id="cal-dialog-date"></p>
           ${textField({ id: "cal-desc", label: "Description", autocomplete: "off", list: "tk-desc-suggest-dialog" })}
           ${descDatalist()}
-          <div class="ui-field"><label class="ui-field-label" for="cal-project">Project</label><select class="ui-input ui-select" id="cal-project"><option value="">No project</option>${projectOptions()}</select></div>
+          ${selectField({ id: "cal-project", label: "Project", options: projectSelectOptions() })}
           <div class="cal-time-row">
             ${textField({ id: "cal-start", label: "Start", type: "time", required: true })}
             ${textField({ id: "cal-end", label: "End", type: "time", required: true })}
@@ -1086,7 +1093,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
   function editEntryFields(e: Entry, dis: string): string {
     return `
         ${textField({ id: "ee-desc", label: "Description", name: "description", value: e.description, attrs: dis ? "disabled" : undefined })}
-        <div class="ui-field"><label class="ui-field-label" for="ee-project">Project</label><select class="ui-input ui-select" id="ee-project" name="project_id"${dis}><option value="">No project</option>${projectOptions(e.project_id)}</select></div>
+        ${selectField({ id: "ee-project", label: "Project", name: "project_id", value: e.project_id ? String(e.project_id) : "", disabled: !!dis, options: projectSelectOptions() })}
         ${textField({ id: "ee-start", label: "Start", name: "start_time", type: "datetime-local", required: true, attrs: `data-iso="${esc(e.start_time)}"${dis}` })}
         ${textField({ id: "ee-end", label: "End (blank = still running)", name: "end_time", type: "datetime-local", attrs: `data-iso="${esc(e.end_time || "")}"${dis}` })}`;
   }

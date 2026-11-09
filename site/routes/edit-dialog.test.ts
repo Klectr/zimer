@@ -29,7 +29,7 @@ function setup() {
     qRange: { all: () => [] } as any,
     entrySelect: ENTRY_SELECT,
     layout: (t: string, b: string) => `<!DOCTYPE html><title>${t}</title>${b}`,
-    projectOptions: () => "",
+    projectOptionRows: () => [],
     weekTargetBar: () => "",
     calHourPx: 64,
   } as any);

@@ -53,7 +53,6 @@ function calendarWeekHtml(): string {
     qRange: { all: () => [] } as unknown as Statement,
     entrySelect: "",
     layout,
-    projectOptions: () => "",
     projectOptionRows: () => [],
     weekTargetBar: () => "",
     calHourPx: 56,
