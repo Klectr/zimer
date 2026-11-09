@@ -116,12 +116,14 @@ describe("page-level h1 (#701)", () => {
   test("timer page h1 carries the ui title class (migrated in #1102)", () => {
     expect(timerPage()).toContain('<h1 class="ui-page-title">Today</h1>');
   });
+  test("manage page h1 carries the ui title class (migrated in #1105)", () => {
+    expect(managePages().manage).toContain('<h1 class="ui-page-title">Clients</h1>');
+  });
   test("promoted headings keep their M3 classes (no visual change)", () => {
     for (const html of [
       calendarWeekHtml(),
       invoicePages().list,
       invoicePages().form,
-      managePages().manage,
     ]) {
       expect(html).toContain('<h1 class="md-headline-small">');
     }

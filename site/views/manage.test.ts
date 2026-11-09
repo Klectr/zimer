@@ -74,7 +74,7 @@ describe("client settings modal (#630)", () => {
     const html = detailHtml();
     expect(html).not.toContain('action="/clients/1/name"');
     expect(html).not.toContain('class="name-form detail-form"');
-    expect(html).toContain('class="md-icon-button client-settings-open"');
+    expect(html).toContain('class="ui-icon-btn client-settings-open"');
     expect(html).toContain('data-client-id="1"');
     expect(html).toContain('aria-haspopup="dialog"');
     expect(html).toContain('aria-label="Client settings for Acme"');
@@ -166,17 +166,17 @@ describe("manage labels (#827)", () => {
     const html = views.clientSettingsForm(client);
     for (const id of ["cs-name", "cs-rate", "cs-terms", "cs-email", "cs-phone", "cs-website", "cs-address"]) {
       expect(html).toContain(`id="${id}"`);
-      expect(html).toContain(`<label for="${id}">`);
+      expect(html).toContain(`<label class="ui-field-label" for="${id}">`);
     }
   });
 
   test("add-project and add-client labels are wired via matching id/for", () => {
-    expect(detailHtml()).toContain('<label for="mp-name">');
+    expect(detailHtml()).toContain('<label class="ui-field-label" for="mp-name">');
     expect(detailHtml()).toContain('id="mp-name"');
     const page = pageHtml();
     for (const id of ["mc-name", "mc-rate"]) {
       expect(page).toContain(`id="${id}"`);
-      expect(page).toContain(`<label for="${id}">`);
+      expect(page).toContain(`<label class="ui-field-label" for="${id}">`);
     }
   });
 
