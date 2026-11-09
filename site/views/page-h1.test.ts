@@ -87,8 +87,10 @@ function managePages() {
 }
 
 describe("page-level h1 (#701)", () => {
-  test("timer page has exactly one h1: Today", () => {
-    expect(h1Texts(timerPage())).toEqual(["Today"]);
+  test("timer page has exactly one h1: the greeting", () => {
+    const h1 = h1Texts(timerPage());
+    expect(h1).toHaveLength(1);
+    expect(h1[0]).toMatch(/^Good (morning|afternoon|evening)$/);
   });
   test("calendar page has exactly one h1: the week nav title", () => {
     const h1 = h1Texts(calendarWeekHtml());
@@ -111,7 +113,7 @@ describe("page-level h1 (#701)", () => {
     expect(h1Texts(managePages().settings)).toEqual(["Settings"]);
   });
   test("timer page h1 carries the ui title class (appHeader, #1121)", () => {
-    expect(timerPage()).toContain('<h1 class="ui-app-title">Today</h1>');
+    expect(timerPage()).toMatch(/<h1 class="ui-app-title">Good (morning|afternoon|evening)<\/h1>/);
   });
   test("manage page h1 carries the ui title class (migrated in #1105)", () => {
     expect(managePages().manage).toContain('<h1 class="ui-app-title">Clients</h1>');

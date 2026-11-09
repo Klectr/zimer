@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { clientColor, csvCell, fmtDur, schemeColor, shortDateRange, shortDateRangeYear, shortYmd } from "./format.ts";
+import { clientColor, csvCell, fmtDur, greeting, schemeColor, shortDateRange, shortDateRangeYear, shortYmd } from "./format.ts";
 
 /* #914: CSV formula injection — cells starting with =, +, - or @ (after
    leading whitespace) get a single-quote prefix so Excel/Sheets open them
@@ -107,5 +107,22 @@ describe("clientColor (#990)", () => {
     expect(clientColor("")).toBe("#fb923c");
     expect(clientColor(null)).toBe("#fb923c");
     expect(clientColor(undefined)).toBe("#fb923c");
+  });
+});
+
+describe("greeting", () => {
+  const at = (h: number) => new Date(2026, 10, 9, h, 0, 0);
+  test("morning before noon", () => {
+    expect(greeting(at(0))).toBe("Good morning");
+    expect(greeting(at(5))).toBe("Good morning");
+    expect(greeting(at(11))).toBe("Good morning");
+  });
+  test("afternoon from noon to 17:00", () => {
+    expect(greeting(at(12))).toBe("Good afternoon");
+    expect(greeting(at(16))).toBe("Good afternoon");
+  });
+  test("evening from 17:00", () => {
+    expect(greeting(at(17))).toBe("Good evening");
+    expect(greeting(at(23))).toBe("Good evening");
   });
 });

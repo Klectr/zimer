@@ -463,7 +463,7 @@ describe("dashboard document title (#798)", () => {
       layout: (t: string, b: string) => { captured = t; return b; },
     };
     createTimerViews(deps as any).dashboardPage();
-    expect(captured).toBe("Today");
+    expect(captured).toMatch(/^Good (morning|afternoon|evening)$/);
     expect(captured).not.toBe("Zimer");
   });
 });
@@ -537,7 +537,7 @@ describe("timer mock parity (#1121)", () => {
     const deps = { ...baseDeps, qRunning: { get: () => null } as unknown as Statement };
     const html = createTimerViews(deps as any).dashboardPage();
     expect(html).toContain('<header class="ui-app-head">');
-    expect(html).toContain('<h1 class="ui-app-title">Today</h1>');
+    expect(html).toMatch(/<h1 class="ui-app-title">Good (morning|afternoon|evening)<\/h1>/);
     expect(html).toContain("here's your day so far.");
     expect(html).toContain('id="invoice-week"');
     expect(html).toContain('<div id="today-stats" hx-get="/partial/today-stats" hx-trigger="load, timer-updated from:body">');

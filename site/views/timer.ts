@@ -5,7 +5,7 @@
  *  slices, so every call site keeps working unchanged. */
 
 import type { Database, Statement } from "bun:sqlite";
-import { addDays, dayBounds, durationSeconds, entryInvoiceMark, entryIsLocked, esc, fmtDur, money, schemeColor, sundayOf, todayStr } from "../lib/format.ts";
+import { addDays, dayBounds, durationSeconds, entryInvoiceMark, entryIsLocked, esc, fmtDur, greeting, money, schemeColor, sundayOf, todayStr } from "../lib/format.ts";
 import { icon } from "../lib/icons.ts";
 import { timerPanel } from "../ui/timer-display.ts";
 import { card } from "../ui/card.ts";
@@ -239,9 +239,10 @@ export function createTimerViews(deps: TimerViewDeps) {
 
   function dashboardPage(): string {
     const dateSub = new Intl.DateTimeFormat("en-US", { weekday: "long", month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(`${todayStr()}T12:00:00Z`));
-    return layout("Today", `
+    const title = greeting();
+    return layout(title, `
       ${demoBanner(db)}
-      ${appHeader({ title: "Today", sub: `${dateSub} — here's your day so far.`, actions: linkButton({ label: "Zinvoice this week", href: "/invoices/new", icon: "receipt", id: "invoice-week" }) })}
+      ${appHeader({ title, sub: `${dateSub} — here's your day so far.`, actions: linkButton({ label: "Zinvoice this week", href: "/invoices/new", icon: "receipt", id: "invoice-week" }) })}
       <div id="today-stats" hx-get="/partial/today-stats" hx-trigger="load, timer-updated from:body">${statRow()}</div>
       <div class="pane-layout">
         <section class="pane-focus" data-enter="2" aria-label="Zimer and today's entries">
