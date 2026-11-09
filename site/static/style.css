@@ -402,6 +402,8 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .ui-timer-context { font-size: var(--font-size); color: var(--color-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .ui-timer-started { margin-left: auto; font-size: var(--font-size-sm); color: var(--color-text-tertiary); }
 .ui-timer-panel .ui-timer { margin: var(--spacing-sm) 0 var(--spacing-xs); }
+.pane-layout .ui-card { margin-bottom: var(--spacing); }
+.pane-supporting .ui-page-title { margin-bottom: var(--spacing-sm); }
 .ui-timer-form { display: flex; gap: var(--spacing-sm); align-items: flex-end; flex-wrap: wrap; margin-top: var(--spacing-sm); }
 .ui-timer-form-grow { flex: 2 1 220px; min-width: 0; }
 .ui-timer-form-project { flex: 1 1 160px; min-width: 0; }
@@ -428,6 +430,13 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .ui-rev-swatch { width: 12px; height: 12px; border-radius: var(--radius-xs); display: inline-block; }
 .ui-rev-swatch.paid { background: var(--color-primary); }
 .ui-rev-swatch.out { background: var(--color-fill); margin-left: var(--spacing-sm); }
+.attn-chip {
+  display: inline-block; flex: none; white-space: nowrap;
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
+  padding: 4px 12px; border-radius: 999px;
+  font-size: 0.75rem; font-weight: 500;
+}
 .ui-attn-chip { display: inline-block; flex: none; white-space: nowrap; background: var(--color-error-bg); color: var(--color-error); padding: var(--spacing-xs) var(--spacing-sm); border-radius: 9999px; font-size: var(--font-size-sm); font-weight: 500; }
 .ui-timer-bottom { display: flex; align-items: center; gap: var(--spacing-sm); }
 .ui-timer-meta { display: flex; gap: var(--spacing-xs); flex-wrap: wrap; }
@@ -1182,7 +1191,7 @@ input[type="number"] {
    #901: the row is overflow:visible so icon-button tooltips (::before,
    below the button) can overlay the next row; overflow:hidden lives only
    on .htmx-swapping, where the collapse needs the clip. */
-#today-list .md-list-item {
+#today-list .ui-row {
   animation: row-enter var(--motion-duration-short4) var(--motion-easing-emphasized-decelerate) backwards;
   transition: opacity var(--motion-duration-short4) var(--motion-easing-standard),
     transform var(--motion-duration-short4) var(--motion-easing-standard),
@@ -1193,7 +1202,17 @@ input[type="number"] {
   overflow: visible;
 }
 @keyframes row-enter { from { opacity: 0; transform: translateY(12px); } }
-#today-list .md-list-item.htmx-swapping {
+#today-list .ui-row:nth-child(2) { animation-delay: 30ms; }
+#today-list .ui-row:nth-child(3) { animation-delay: 60ms; }
+#today-list .ui-row:nth-child(4) { animation-delay: 90ms; }
+#today-list .ui-row:nth-child(5) { animation-delay: 120ms; }
+#today-list .ui-row:nth-child(6) { animation-delay: 150ms; }
+#today-list .ui-row:nth-child(7) { animation-delay: 180ms; }
+#today-list .ui-row:nth-child(8) { animation-delay: 210ms; }
+#today-list .ui-row:nth-child(9) { animation-delay: 240ms; }
+#today-list .ui-row:nth-child(10) { animation-delay: 270ms; }
+#today-list .ui-row:nth-child(11) { animation-delay: 300ms; }
+#today-list .ui-row.htmx-swapping {
   opacity: 0;
   transform: translateX(24px);
   max-height: 0;

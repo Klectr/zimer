@@ -45,7 +45,7 @@
          project) isn't silently dropped the way the old empty-FormData post
          dropped it. The stop route reads nothing from the body, and there's
          no card form on other pages, so both keep the empty body. */
-      const form = running ? null : document.querySelector("#timer-card .start-form");
+      const form = running ? null : document.querySelector("#timer-card .ui-timer-form");
       const res = await fetch(path, {
         method: "POST",
         headers: { "HX-Request": "true" },

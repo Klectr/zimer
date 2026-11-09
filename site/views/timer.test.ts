@@ -28,7 +28,7 @@ const baseDeps = {
   qRange: { all: () => [] } as unknown as Statement,
   layout: (_t: string, b: string) => b,
   demoBanner: () => "",
-  projectOptions: () => "", projectOptionRows: () => [],
+  projectOptions: () => "",
   projectOptionRows: () => [],
   revenueTotals: () => ({ invoiced: 0, paid: 0, outstanding: 0 }),
   revenueMonthly: () => [],
@@ -163,7 +163,7 @@ describe("running entry row live duration (#469)", () => {
     expect(row(runningEntry)).toContain("data-live-duration");
   });
   test("finished entry row has no live duration hook", () => {
-    expect(row(stoppedEntry)).not.toContain("data-live-start");
+    expect(row(stoppedEntry)).not.toContain("data-live-duration");
   });
   test("card tick script updates the live row with a fmtDur mirror", () => {
     const html = partial(true);
@@ -175,7 +175,7 @@ describe("running entry row live duration (#469)", () => {
   });
   test("stopped card renders no live ticker", () => {
     // the stopped card only retires the old interval — no row-ticking logic
-    expect(partial(false)).not.toContain("data-live-start");
+    expect(partial(false)).not.toContain("data-live-duration");
   });
 });
 
