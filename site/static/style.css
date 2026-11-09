@@ -428,6 +428,11 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .ui-btn[data-tip]:hover::before, .ui-btn[data-tip]:focus-visible::before, .ui-btn[data-tip].tip-show::before, .ui-icon-btn[data-tip]:hover::before, .ui-icon-btn[data-tip]:focus-visible::before, .ui-icon-btn[data-tip].tip-show::before { opacity: 1; transform: translateX(-50%) translateY(0); max-width: 200px; overflow: visible; }
 .ui-btn[data-tip].tip-right::before, .ui-icon-btn[data-tip].tip-right::before { left: auto; right: 0; transform: translateY(-2px); }
 .ui-btn[data-tip].tip-right:hover::before, .ui-btn[data-tip].tip-right:focus-visible::before, .ui-btn[data-tip].tip-right.tip-show::before, .ui-icon-btn[data-tip].tip-right:hover::before, .ui-icon-btn[data-tip].tip-right:focus-visible::before, .ui-icon-btn[data-tip].tip-right.tip-show::before { transform: translateY(0); }
+/* #1119: sidebar-footer buttons sit at the viewport's bottom edge — their
+   tooltips open upward, left-aligned to the button so they stay inside
+   both the sidebar and the viewport. */
+.ui-side-foot .ui-btn[data-tip]::before, .ui-side-foot .ui-icon-btn[data-tip]::before { top: auto; bottom: calc(100% + var(--spacing-xs)); left: 0; transform: translateY(2px); }
+.ui-side-foot .ui-btn[data-tip]:hover::before, .ui-side-foot .ui-btn[data-tip]:focus-visible::before, .ui-side-foot .ui-btn[data-tip].tip-show::before, .ui-side-foot .ui-icon-btn[data-tip]:hover::before, .ui-side-foot .ui-icon-btn[data-tip]:focus-visible::before, .ui-side-foot .ui-icon-btn[data-tip].tip-show::before { transform: translateY(0); }
 .ui-row.selected { background: var(--color-primary-bg); }
 .ui-row-lead-dot { width: 10px; height: 10px; border-radius: 9999px; flex: none; }
 .ui-row-lead-icon { display: inline-flex; flex: none; color: var(--color-text-tertiary); }
@@ -670,7 +675,6 @@ a.ui-menu-item:active, button.ui-menu-item:active { background: var(--color-fill
      the one-word labels still fit. The 80px bottom bar height is the M3
      default. The /specs measurement values weren't extractable in the
      research pass, so these are judgment calls (noted on #354). */
-  --md-nav-rail-width: 72px;
   --md-nav-bar-height: 80px;
 }
 @media (min-width: 600px) {
@@ -749,40 +753,6 @@ body {
   outline-offset: 2px;
 }
 
-/* ---------------- top app bar (slim, 56px) ----------------
- * #389: deliberately slimmer than the M3 small app bar spec (64dp) — the
- * chromeless bar read too tall. Logo is 34px, actions are 48px icon
- * buttons, so 56px keeps comfortable clearance and full touch targets. */
-.md-top-app-bar {
-  position: sticky;
-  /* #387: sticks 12px off the viewport top so the chrome floats with a
-     page-background gutter while scrolling. */
-  top: 12px;
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 56px;
-  /* #361: leading padding tracks the M3 body margin (16px compact, 24px
-     medium+) so the brand mark aligns with the content ruler. #362: no hard
-     border under the app bar — M3 separates it tonally. */
-  padding: 0 16px 0 var(--layout-body-margin);
-  /* #377: tonal default (surface-container); the app override below (#387)
-     makes it transparent so it inherits the page bg. */
-  background: var(--md-sys-color-surface-container);
-}
-/* ---------------- M3 tonal separation: nav chrome (#377, #385, #387) ----------------
- * #387: the page background is surface-container and the app bar + rail sit
- * chromeless on it; only the content column is the rounded surface sheet.
- * In-content supporting/detail panes stay flat surface. */
-.md-top-app-bar-title {
-  font-size: 1.375rem;
-  line-height: 28px;
-  color: var(--md-sys-color-on-surface);
-  white-space: nowrap;
-}
-.md-top-app-bar-spacer { flex: 1; }
-
 /* ---------------- trial-expiry nudge banner (#923) ----------------
  * Full-width tonal strip between the app bar and the page chrome: one
  * line of copy, a pumpkin Subscribe CTA, and a dismiss button. Dismissal
@@ -794,17 +764,12 @@ body {
   gap: 8px 16px;
   flex-wrap: wrap;
   padding: 10px 16px 10px var(--layout-body-margin);
-  background: var(--md-sys-color-surface-container-high);
-  color: var(--md-sys-color-on-surface);
+  background: var(--color-bg-container);
+  border-bottom: 1px solid var(--color-border-secondary);
+  color: var(--color-text);
 }
 .trial-banner-text { margin: 0; flex: 1 1 240px; }
 .trial-banner-cta { margin: 0; display: flex; }
-
-/* ---------------- slim top app bar: brand mark + account actions only ----------------
- * #354: primary navigation moved out of the app bar into the bottom bar / rail
- * below, per M3. The app bar holds the title and essential actions only. */
-.md-top-app-bar-title { display: inline-flex; align-items: center; gap: 10px; }
-.md-top-app-bar-title svg { width: 34px; height: 34px; color: var(--md-sys-color-primary); }
 
 /* Body margins follow the M3 window size classes: 16px on compact (<600px),
    24px on medium and wider (via --layout-body-margin). */
@@ -824,9 +789,9 @@ h2.md-headline-small { margin: 24px 0 12px; }
   top: -72px;
   z-index: 200;
   padding: 10px 20px;
-  border-radius: var(--md-sys-shape-corner-full);
-  background: var(--md-sys-color-primary-container);
-  color: var(--md-sys-color-on-primary-container);
+  border-radius: 9999px;
+  background: var(--color-primary-bg);
+  color: var(--color-text);
   font-size: 0.875rem;
   font-weight: 500;
   text-decoration: none;
@@ -1249,106 +1214,52 @@ body.app-fixed main {
  * field, and fields sit flush against this region's clip edge (overflow-y: auto
  * clips the ring otherwise). */
 .scroll-region { flex: 1; min-height: 0; overflow-y: auto; padding: 4px; }
-/* ---------------- rounded app sheet (#385, refined #387) ----------------
- * M3 doesn't do sharp corners. The page background is surface-container; the
- * top app bar and nav rail sit chromeless on it (no background of their own),
- * and only the content column is a surface sheet with extra-large corners
- * floating on the page. Scoped to layout() via body.app — public pages
- * (login, invoice links, error pages) keep the flat surface background. */
-body.app { background: var(--md-sys-color-surface-container); }
-/* #387: the sheet is the content column of .app-chrome (rail beside it).
- * Gutters live on .app-chrome's padding; overflow: clip rounds the sheet's
- * inner content corners without becoming a scroll container. */
-.app-sheet {
-  background: var(--md-sys-color-surface);
-  border-radius: var(--md-sys-shape-corner-extra-large);
-  overflow: clip;
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-width: 0;
-  min-height: 0;
-}
-/* #387: the app bar floats chromeless on the page background — no tonal band
- * of its own, so it inherits the page bg exactly. */
-body.app .md-top-app-bar {
-  background: transparent;
-  margin: 12px 12px 0;
-}
-/* fixed-viewport pages: the chrome row fills the 100dvh body and the sheet
-   stretches with it. The rail stops being sticky here — its 100dvh-based
-   height would poke past the chrome — and just stretches with the row. */
-body.app-fixed .app-sheet { min-height: 0; }
-body.app-fixed .md-nav-rail { position: static; height: auto; }
-/* ---------------- primary navigation: bottom bar (compact) / rail (medium+) ----
- * #354: M3 per window size class. Compact (<600px): bottom navigation bar,
- * fixed to the bottom edge. Medium and wider (600px+): collapsed leading
- * navigation rail, outside all panes on the leading edge, below the app bar.
- * The switch is the 600px breakpoint — rail and bar never show together.
- * Rail width (72px, #397) is a deliberate deviation from the M3 80dp
- * default; bar height (80px) is the M3 default. */
-/* app chrome: rail beside the content column (banner + main). On
-   fixed-viewport pages the row fills the 100dvh body; on document pages the
-   rail sticks below the app bar while the page scrolls. #387: the 12px
-   gutters around the floating sheet live on this row's padding/gap. */
-.app-chrome { display: flex; flex: 1; min-height: 0; gap: 12px; padding: 12px; }
-.md-nav-rail {
-  flex: none; width: var(--md-nav-rail-width);
-  /* #387: sticks below the floating app bar (12px gutter + 56px bar + 12px
-     chrome gap) so the rail keeps the same offset at rest and while stuck.
-     Chromeless — inherits the page background. #389: 88px → 80px follows
-     the slimmer app bar. */
-  position: sticky; top: 80px; height: calc(100dvh - 80px);
-  display: flex; flex-direction: column; align-items: stretch;
-  padding: 12px 0; gap: 4px;
-  background: transparent;
-}
-/* destinations: icon in an active-indicator pill + one-word label below.
-   Shared by rail and bottom bar; labels are never truncated. */
-.md-rail-item, .md-bar-item {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 4px; text-decoration: none; color: var(--md-sys-color-on-surface-variant);
-  font-size: 0.75rem; font-weight: 500; letter-spacing: 0.5px; line-height: 16px;
-  position: relative;
-}
-.md-rail-item { padding: 12px 0 10px; }
-.nav-pill {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 56px; height: 32px; border-radius: var(--md-sys-shape-corner-full);
-}
-.nav-pill svg { width: 24px; height: 24px; }
-.md-rail-item:hover .nav-pill, .md-bar-item:hover .nav-pill {
-  background: color-mix(in srgb, var(--md-sys-color-on-surface) 8%, transparent);
-  color: var(--md-sys-color-on-surface);
-}
-.md-rail-item.active, .md-bar-item.active { color: var(--md-sys-color-on-surface); }
-.md-rail-item.active .nav-pill, .md-bar-item.active .nav-pill {
-  background: var(--md-sys-color-secondary-container);
-  color: var(--md-sys-color-on-secondary-container);
-}
-/* bottom navigation bar: compact only, fixed to the bottom edge */
-.md-bottom-nav {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
-  height: calc(var(--md-nav-bar-height) + env(safe-area-inset-bottom, 0px));
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-  display: flex; align-items: stretch;
-  background: var(--md-sys-color-surface-container);
-}
-.md-bar-item { flex: 1; min-width: 0; }
-.md-bar-item .nav-label {
-  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-/* the 600px switch: never rail + bar together */
+/* ---------------- app shell (#1119) ----------------
+ * The mocked ui frame: a 208px sidebar on the container surface beside a
+ * plain content column on the layout background. The sidebar sticks at
+ * full height so its footer (the global actions) stays pinned; on
+ * fixed-viewport pages the shell row fills the body instead. */
+body.app { background: var(--color-bg-layout); }
+.ui-shell { display: flex; min-height: 100dvh; }
+.ui-shell > .ui-side { position: sticky; top: 0; height: 100dvh; }
+.ui-shell-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+body.app-fixed .ui-shell { flex: 1; min-height: 0; }
+body.app-fixed .ui-shell > .ui-side { position: static; height: auto; }
+body.app-fixed .ui-shell-main { min-height: 0; }
+.ui-mobile-head { display: none; }
+
+/* ---------------- compact navigation (#1119) ----------------
+ * Below 600px the sidebar gives way to a compact head (logo lockup + menu
+ * button) and a fixed bottom bar carrying the four destinations as ui nav
+ * items; at 600px+ the sidebar shows and neither compact piece does. */
+.ui-mobile-nav { display: none; }
 @media (max-width: 599px) {
-  .md-nav-rail { display: none; }
+  .ui-shell > .ui-side { display: none; }
+  .ui-mobile-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px 0;
+  }
+  .ui-mobile-nav {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
+    height: calc(var(--md-nav-bar-height) + env(safe-area-inset-bottom, 0px));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    display: flex; align-items: stretch;
+    background: var(--color-bg-container);
+    border-top: 1px solid var(--color-border-secondary);
+  }
+  .ui-mobile-nav .ui-navitem {
+    flex: 1; min-width: 0; flex-direction: column; justify-content: center;
+    gap: 4px; border-radius: 0; padding: 8px 4px; font-size: 0.75rem;
+  }
+  .ui-mobile-nav .ui-navitem span {
+    max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
   /* compact clearance: the fixed bar overlays the bottom 80px */
   body main { padding-bottom: calc(96px + var(--md-nav-bar-height)); }
   body.app-fixed main { padding-bottom: calc(16px + var(--md-nav-bar-height)); }
   .tk-snackbar { bottom: calc(24px + var(--md-nav-bar-height)); }
 }
-@media (min-width: 600px) {
-  .md-bottom-nav { display: none; }
-}
+
 /* ---------------- invoices list-detail (M3 canonical, #364) ----------------
  * The invoice list → invoice document is a parent-child pairing, so M3
  * expects the list-detail layout: two panes at expanded+, a single pane
@@ -1799,20 +1710,13 @@ body.app-fixed .cal-gutter-spacer {
   .cal-dialog-head .ui-icon-btn { display: inline-flex; }
 }
 
-/* #654: the account menu (#151/#155/#253) was replaced by app-bar action icons —
-   Settings, Export entries CSV, Download backup, Log out as .md-icon-buttons
-   on the right side of the top app bar. The .m3-menu CSS went with it. */
-.app-bar-actions { display: inline-flex; align-items: center; gap: 4px; flex: none; }
-/* #912: logout is a POST form in the app bar — the form must not disturb the
-   icon row's layout. */
-.app-bar-logout { display: inline-flex; margin: 0; }
-/* #949: the hamburger replaces the icon row on compact screens only — the
-   labeled navigation drawer below carries the four actions there. */
-.app-bar-menu-btn { display: none; }
-@media (max-width: 599px) {
-  .app-bar-actions { display: none; }
-  .app-bar-menu-btn { display: inline-flex; }
-}
+/* #654: the account menu was replaced by visible action icons — the four
+   global actions now live in the sidebar footer (#1119) as ui icon buttons
+   in a never-wrapping row. #912: the logout form must not disturb the
+   row's layout. */
+.ui-shell-actions { display: flex; align-items: center; gap: 4px; }
+.ui-shell-logout { display: inline-flex; margin: 0; }
+
 /* #949: M3 modal navigation drawer, per the official spec measurements:
    360dp container on surface-container-low, 0/16/16/0 corners, 32% scrim,
    56dp full-round rows (label-large, on-surface-variant; the indicator sits
@@ -1830,8 +1734,8 @@ body.app-fixed .cal-gutter-spacer {
   position: absolute; top: 0; left: 0; bottom: 0;
   touch-action: pan-y; /* horizontal drags reach the swipe-to-close handler */
   width: min(360px, 100vw);
-  background: var(--md-sys-color-surface-container-low);
-  border-radius: 0 var(--md-sys-shape-corner-large) var(--md-sys-shape-corner-large) 0;
+  background: var(--color-bg-container);
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
   padding: 12px;
   display: flex; flex-direction: column;
   transform: translateX(-100%);
@@ -1841,19 +1745,19 @@ body.app-fixed .cal-gutter-spacer {
 .nav-drawer-head {
   padding: 12px 16px 16px;
   font-size: 0.875rem; font-weight: 500;
-  color: var(--md-sys-color-on-surface-variant);
+  color: var(--color-text-tertiary);
 }
 .nav-drawer-row {
   display: flex; align-items: center; gap: 12px;
   min-height: 56px; padding: 0 16px;
-  border: 0; border-radius: var(--md-sys-shape-corner-full);
-  background: transparent; color: var(--md-sys-color-on-surface-variant);
+  border: 0; border-radius: 9999px;
+  background: transparent; color: var(--color-text-secondary);
   font: inherit; font-size: 0.875rem; font-weight: 500; text-align: left;
   text-decoration: none; cursor: pointer; width: 100%;
 }
 .nav-drawer-row:hover, .nav-drawer-row:focus-visible {
-  background: var(--md-sys-color-secondary-container);
-  color: var(--md-sys-color-on-secondary-container);
+  background: var(--color-fill-secondary);
+  color: var(--color-text);
 }
 .nav-drawer-row svg { flex: none; }
 .nav-drawer-logout { margin: 0; }
@@ -2461,15 +2365,14 @@ body.app-fixed .cal-gutter-spacer {
 
 /* ---------------- print ---------------- */
 @media print {
-  .md-top-app-bar, .md-nav-rail, .md-bottom-nav, .nav-drawer-scrim, .no-print, .page-head { display: none !important; }
+  .ui-side, .ui-mobile-head, .ui-mobile-nav, .nav-drawer-scrim, .trial-banner, .no-print, .page-head { display: none !important; }
   .invoice-list-pane { display: none !important; } /* #364: print only the invoice document */
   .invoice-list-detail { display: block; }
   .invoice-detail-pane { overflow: visible; }
   body { background: #fff; color: #111; }
   body.app { background: #fff; }
-  /* #387: flatten the app sheet for print — no radius, no gutters. */
-  body.app .app-chrome { display: block; padding: 0; gap: 0; }
-  .app-sheet { background: #fff; border-radius: 0; overflow: visible; }
+  /* #1119: flatten the shell for print — the content column prints alone. */
+  body.app .ui-shell { display: block; }
   main { max-width: none; padding: 0; }
   .invoice-sheet { box-shadow: none; background: #fff; color: #111; max-width: none; }
   .invoice-sheet .muted { color: #555; }

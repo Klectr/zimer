@@ -71,10 +71,10 @@ describe("trialBannerHtml", () => {
     expect(trialBannerHtml(baseOpts(13))).toContain("Your trial ends tomorrow");
   });
 
-  test("CTA posts to /billing/checkout with the pumpkin filled button", () => {
+  test("CTA posts to /billing/checkout with the pumpkin primary button", () => {
     const html = trialBannerHtml(baseOpts(12));
     expect(html).toContain('method="POST" action="/billing/checkout"');
-    expect(html).toContain('class="md-filled-button"');
+    expect(html).toContain('class="ui-btn ui-btn-primary"');
     expect(html).toContain("Subscribe · $12/month");
   });
 
@@ -103,15 +103,15 @@ describe("trialBannerHtml", () => {
 
 describe("createLayoutViews trialBanner thunk", () => {
   const banner = "<div>TRIAL-BANNER</div>";
-  test("renders the banner between the app bar and the chrome when provided", () => {
+  test("renders the banner in the content column above main when provided", () => {
     const { layout } = createLayoutViews(noRunning, undefined, () => banner);
     const html = layout("Today", "<p>body</p>", "timer", true);
     expect(html).toContain(banner);
-    const headerIdx = html.indexOf("</header>");
-    const chromeIdx = html.indexOf('<div class="app-chrome">');
+    const sidebarIdx = html.indexOf('<aside class="ui-side">');
+    const mainIdx = html.indexOf('<main id="main"');
     const bannerIdx = html.indexOf(banner);
-    expect(bannerIdx).toBeGreaterThan(headerIdx);
-    expect(bannerIdx).toBeLessThan(chromeIdx);
+    expect(bannerIdx).toBeGreaterThan(sidebarIdx);
+    expect(bannerIdx).toBeLessThan(mainIdx);
   });
 
   test("no banner markup when the thunk is omitted", () => {
@@ -189,15 +189,19 @@ describe("PostHog snippet (#928)", () => {
   });
 });
 
-/** #949: on compact screens the icon-only app-bar actions are undiscoverable,
+/** #949: on compact screens the icon-only actions are undiscoverable,
  *  so a hamburger opens a labeled navigation drawer carrying the same four
- *  actions as icon+text rows. Desktop keeps the #654 icon row. */
+ *  actions as icon+text rows. Desktop keeps the #654 icon row, now in the
+ *  sidebar footer (#1119). */
 describe("layout navigation drawer (#949)", () => {
-  test("app bar carries the hamburger and the desktop icon row", () => {
+  test("compact head carries the hamburger; sidebar footer carries the settings opener", () => {
     const { layout } = createLayoutViews(noRunning);
-    const body = layout("T", "body");
+    const body = layout("T", "body", "timer");
     expect(body).toContain('id="appbar-menu-btn"');
     expect(body).toContain('id="appbar-settings-btn"');
+    expect(body).toContain('<aside class="ui-side">');
+    expect(body).toContain('class="ui-navitem is-active" aria-current="page"');
+    expect(body).toContain('href="/settings"');
   });
 
   test("drawer carries all four actions as labeled rows", () => {

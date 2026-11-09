@@ -1,9 +1,9 @@
 /** #654: the account menu is gone — Triston wanted its four actions (Settings,
- *  Export entries CSV, Download backup, Log out) visible as icons in the top
- *  app bar instead of two taps deep. The old #395 locked spec (menu geometry)
- *  is retired; the replacement lock is the .app-bar-actions row that carries
- *  the four .md-icon-buttons: inline-flex, 4px gap, never wrapping. The four
- *  buttons reuse the shared .md-icon-button (48dp, tooltips via data-tip).
+ *  Export entries CSV, Download backup, Log out) visible as icons instead of
+ *  two taps deep. The old #395 locked spec (menu geometry) is retired; the
+ *  lock is now the .ui-shell-actions row in the sidebar footer (#1119) that
+ *  carries the four ui icon buttons: flex, 4px gap, on the shared
+ *  .ui-icon-button (36px control height, tooltips via data-tip).
  *
  *  Red here means the change needs a GitHub issue and a spec update —
  *  never a silent restyle.
@@ -49,33 +49,36 @@ function paddingSides(value: string): string[] {
   throw new Error(`locked-spec: unexpected padding: ${value}`);
 }
 
-describe("app-bar actions locked spec (#654)", () => {
-  test("actions row is an inline-flex strip with a 4px gap; buttons are the shared 48dp icon buttons", () => {
-    const row = declarations(ruleBlock(".app-bar-actions"));
-    expect(row.get("display")).toBe("inline-flex");
+describe("shell actions locked spec (#654)", () => {
+  test("actions row is a flex strip with a 4px gap; buttons are the shared ui icon buttons", () => {
+    const row = declarations(ruleBlock(".ui-shell-actions"));
+    expect(row.get("display")).toBe("flex");
     expect(row.get("gap")).toBe("4px");
 
-    const btn = declarations(ruleBlock(".md-icon-button"));
-    expect(btn.get("width")).toBe("48px");
-    expect(btn.get("height")).toBe("48px");
-    expect(btn.get("border-radius")).toBe("var(--md-sys-shape-corner-full)");
+    const btn = declarations(ruleBlock(".ui-icon-btn"));
+    expect(btn.get("width")).toBe("var(--control-height)");
+    expect(btn.get("height")).toBe("var(--control-height)");
+    expect(btn.get("border-radius")).toBe("var(--radius)");
   });
 });
 
-describe("navigation rail width (#397)", () => {
-  test("72px rail — documented deviation from the M3 80dp default", () => {
-    // :root is split across two blocks; take the one carrying the nav token
-    const hits = [...css.matchAll(/^:root\s*\{([^}]*)\}/gm)];
-    const hit = hits.find((m) => m[1].includes("--md-nav-rail-width"));
-    if (!hit)
-      throw new Error(
-        "locked-spec: --md-nav-rail-width not found in any :root block",
-      );
-    const root = declarations(hit[1]);
-    expect(root.get("--md-nav-rail-width")).toBe("72px");
+describe("sidebar width (#1119)", () => {
+  test("the mocked sidebar is 208px on the container surface", () => {
+    const side = declarations(ruleBlock(".ui-side"));
+    expect(side.get("width")).toBe("208px");
+    expect(side.get("background")).toBe("var(--color-bg-container)");
+  });
 
-    const rail = declarations(ruleBlock(".md-nav-rail"));
-    expect(rail.get("width")).toBe("var(--md-nav-rail-width)");
+  test("sidebar footer tooltips open upward, inside the viewport", () => {
+    expect(css).toContain(".ui-side-foot .ui-icon-btn[data-tip]::before");
+    const decls = declarations(ruleBlock(".ui-side-foot .ui-btn[data-tip]::before, .ui-side-foot .ui-icon-btn[data-tip]::before"));
+    expect(decls.get("top")).toBe("auto");
+    expect(decls.get("bottom")).toBe("calc(100% + var(--spacing-xs))");
+    expect(decls.get("left")).toBe("0");
+  });
+
+  test("the trial banner never prints", () => {
+    expect(css).toMatch(/@media print\s*\{\s*[^}]*\.trial-banner[^}]*display: none !important/);
   });
 });
 

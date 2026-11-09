@@ -387,7 +387,7 @@ export function createManageViews(deps: ManageViewDeps) {
         <h1 class="ui-page-title">Settings</h1>
       </div>
       <div class="ui-settings-stack">${settingsBody}</div>
-      </div>`);
+      </div>`, "settings");
   }
 
   return { managePage, clientSelection, clientDetailBody, clientListOob, clientOptions, bizProfileSection, dailyTargetSection, clientSettingsForm, settingsPage, themeSectionHtml };
