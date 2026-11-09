@@ -13,6 +13,13 @@ describe("statBlock", () => {
     expect(html).toContain('<div class="ui-stat-sub">3 sent</div>');
     expect(statBlock({ label: "Drafts", value: "2" })).not.toContain("ui-stat-sub");
   });
+
+  test("valueClass lands on the value element only when given (#1166)", () => {
+    expect(statBlock({ label: "Paid", value: "$5", valueClass: "ui-rev-paid" }))
+      .toContain('<div class="ui-stat-value ui-rev-paid">$5</div>');
+    expect(statBlock({ label: "Paid", value: "$5" }))
+      .toBe('<div><div class="ui-stat-label">Paid</div><div class="ui-stat-value">$5</div></div>');
+  });
 });
 
 describe("progressBar", () => {
@@ -152,5 +159,30 @@ describe("entryRow extensions (#1102)", () => {
     expect(html).toContain("<span>9:04 AM – now</span>");
     expect(html).toContain("data-live-duration");
     expect(entryRow({ title: "T", meta: "<b>x</b>", duration: "1h" })).toContain("&lt;b&gt;");
+  });
+});
+
+describe("entryRow link + trailing extensions (#1166)", () => {
+  test("href makes the whole row an anchor; trailing renders raw after the side", () => {
+    const html = entryRow({
+      title: "Acme", meta: "INV-1 · Due 2026-01-01", duration: "$5.00",
+      href: "/invoices?invoice=3",
+      trailing: '<span class="ui-attn-chip" data-bucket="0-7">2d overdue</span>',
+    });
+    expect(html).toBe(
+      '<a class="ui-row" href="/invoices?invoice=3">' +
+      '<div class="ui-row-main"><span class="ui-row-title">Acme</span>' +
+      '<div class="ui-row-meta">INV-1 · Due 2026-01-01</div></div>' +
+      '<div class="ui-row-side"><span class="ui-row-amount">$5.00</span></div>' +
+      '<span class="ui-attn-chip" data-bucket="0-7">2d overdue</span></a>',
+    );
+  });
+
+  test("without href/trailing the output is the plain div row, unchanged", () => {
+    expect(entryRow({ title: "T", meta: "M", duration: "1h" })).toBe(
+      '<div class="ui-row"><div class="ui-row-main"><span class="ui-row-title">T</span>' +
+      '<div class="ui-row-meta">M</div></div>' +
+      '<div class="ui-row-side"><span class="ui-row-amount">1h</span></div></div>',
+    );
   });
 });
