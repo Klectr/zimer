@@ -32,6 +32,7 @@ export interface LinkButtonOptions {
   size?: ButtonSize;
   block?: boolean;
   external?: boolean;
+  id?: string;
 }
 
 export function linkButton(opts: LinkButtonOptions): string {
@@ -42,7 +43,8 @@ export function linkButton(opts: LinkButtonOptions): string {
   if (opts.block) cls += " ui-btn-block";
   const ext = opts.external ? ` target="_blank" rel="noopener"` : "";
   const iconHtml = opts.icon ? icon(opts.icon) : "";
-  return `<a class="${cls}" href="${esc(opts.href)}"${ext}>${iconHtml}${esc(opts.label)}</a>`;
+  const id = opts.id ? ` id="${esc(opts.id)}"` : "";
+  return `<a class="${cls}" href="${esc(opts.href)}"${id}${ext}>${iconHtml}${esc(opts.label)}</a>`;
 }
 
 export function button(opts: ButtonOptions): string {

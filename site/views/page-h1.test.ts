@@ -32,7 +32,8 @@ function timerPage(): string {
     qRange: { all: () => [] } as unknown as Statement,
     layout,
     demoBanner: () => "",
-    projectOptions: () => "",
+    projectOptions: () => "", projectOptionRows: () => [],
+  projectOptionRows: () => [],
     revenueTotals: () => ({ invoiced: 0, paid: 0, outstanding: 0 }),
     revenueMonthly: () => [],
     revenueByClient: () => [],
@@ -52,7 +53,8 @@ function calendarWeekHtml(): string {
     qRange: { all: () => [] } as unknown as Statement,
     entrySelect: "",
     layout,
-    projectOptions: () => "",
+    projectOptions: () => "", projectOptionRows: () => [],
+  projectOptionRows: () => [],
     weekTargetBar: () => "",
     calHourPx: 56,
   };
@@ -106,14 +108,16 @@ describe("page-level h1 (#701)", () => {
     expect(h1Texts(managePages().manage)).toEqual(["Clients"]);
   });
   test("settings page h1 carries the ui title class (migrated in #1100)", () => {
-    expect(managePages().settings).toContain('<h1 class="ui-settings-title">Settings</h1>');
+    expect(managePages().settings).toContain('<h1 class="ui-page-title">Settings</h1>');
   });
   test("settings page has exactly one h1: Settings", () => {
     expect(h1Texts(managePages().settings)).toEqual(["Settings"]);
   });
+  test("timer page h1 carries the ui title class (migrated in #1102)", () => {
+    expect(timerPage()).toContain('<h1 class="ui-page-title">Today</h1>');
+  });
   test("promoted headings keep their M3 classes (no visual change)", () => {
     for (const html of [
-      timerPage(),
       calendarWeekHtml(),
       invoicePages().list,
       invoicePages().form,

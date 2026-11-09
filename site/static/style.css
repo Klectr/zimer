@@ -358,7 +358,7 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .ui-settings-actions { display: flex; justify-content: flex-end; }
 .ui-settings-note { margin: 0; font-size: var(--font-size-sm); line-height: var(--line-height-sm); color: var(--color-text-tertiary); }
 .ui-settings-head { margin-bottom: var(--spacing-md); }
-.ui-settings-title { font-size: var(--font-size-heading-3); font-weight: var(--font-weight-strong); margin: 0; }
+.ui-page-title { font-size: var(--font-size-heading-3); font-weight: var(--font-weight-strong); margin: 0; }
 .ui-settings-stack { display: grid; gap: var(--spacing-md); }
 .ui-settings-support { margin: 0; font-size: var(--font-size-sm); line-height: var(--line-height-sm); color: var(--color-text-tertiary); }
 .ui-theme-dots { display: flex; flex-wrap: wrap; gap: var(--spacing-sm); }
@@ -399,9 +399,36 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .ui-timer { font-family: var(--font-family-code); font-size: var(--font-size-heading-1); font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; line-height: 1.2; }
 .ui-timer-sm { font-size: var(--font-size-heading-2); }
 .ui-timer-top { display: flex; align-items: center; gap: var(--spacing-sm); }
-.ui-timer-context { font-size: var(--font-size); color: var(--color-text-secondary); }
+.ui-timer-context { font-size: var(--font-size); color: var(--color-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .ui-timer-started { margin-left: auto; font-size: var(--font-size-sm); color: var(--color-text-tertiary); }
 .ui-timer-panel .ui-timer { margin: var(--spacing-sm) 0 var(--spacing-xs); }
+.ui-timer-form { display: flex; gap: var(--spacing-sm); align-items: flex-end; flex-wrap: wrap; margin-top: var(--spacing-sm); }
+.ui-timer-form-grow { flex: 2 1 220px; min-width: 0; }
+.ui-timer-form-project { flex: 1 1 160px; min-width: 0; }
+.ui-repeat-form { display: inline-flex; }
+.ui-note { margin: 0; font-size: var(--font-size-sm); line-height: var(--line-height-sm); color: var(--color-text-tertiary); }
+.ui-block-title { font-size: var(--font-size); font-weight: 600; margin-bottom: var(--spacing-sm); }
+.ui-target { margin-bottom: var(--spacing-sm); }
+.ui-target-label { font-size: var(--font-size-sm); line-height: var(--line-height-sm); color: var(--color-text-tertiary); margin-top: var(--spacing-xxs); }
+.ui-card .ui-row:last-child { border-bottom: none; }
+.ui-inv-mark { display: inline-flex; align-items: center; height: 18px; padding: 0 var(--spacing-xs); border-radius: 9999px; font-size: 10px; font-weight: 600; letter-spacing: 0.4px; white-space: nowrap; flex: none; background: var(--color-fill-secondary); color: var(--color-text-secondary); margin-right: var(--spacing-xs); }
+.ui-inv-mark.draft { opacity: 0.7; }
+.ui-inv-mark[data-tip] { position: relative; overflow: visible; }
+.ui-inv-mark[data-tip]::after { content: attr(data-tip); position: absolute; left: 50%; top: calc(100% + var(--spacing-xs)); transform: translateX(-50%) translateY(-2px); background: var(--color-bg-spotlight); color: var(--color-text); border-radius: var(--radius-sm); padding: var(--spacing-xs) var(--spacing-sm); white-space: nowrap; max-width: 0; overflow: hidden; font-size: var(--font-size-sm); line-height: var(--line-height-sm); font-weight: 400; letter-spacing: 0; opacity: 0; pointer-events: none; z-index: 30; transition: opacity 0.15s ease, transform 0.15s ease; }
+.ui-inv-mark[data-tip]:hover::after, .ui-inv-mark[data-tip].tip-show::after { opacity: 1; transform: translateX(-50%) translateY(0); max-width: 200px; overflow: visible; }
+.ui-rev-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--spacing-sm); margin-bottom: var(--spacing-sm); }
+@container (max-width: 480px) { .ui-rev-cards { grid-template-columns: 1fr; } }
+.ui-rev-paid { color: var(--color-primary); }
+.ui-rev-chart { width: 100%; height: auto; display: block; }
+.ui-rev-chart .ui-rev-bar-out { fill: var(--color-fill); }
+.ui-rev-chart .ui-rev-bar-paid { fill: var(--color-primary); }
+.ui-rev-chart .ui-rev-bar-out, .ui-rev-chart .ui-rev-bar-paid { transform-box: fill-box; transform-origin: 50% 100%; animation: bar-grow var(--motion-duration-medium2) var(--motion-easing-emphasized-decelerate) backwards; }
+.ui-rev-chart text { fill: var(--color-text-tertiary); font-size: 0.625rem; }
+.ui-rev-legend { display: flex; align-items: center; gap: var(--spacing-xs); margin-top: var(--spacing-xs); color: var(--color-text-tertiary); font-size: var(--font-size-sm); }
+.ui-rev-swatch { width: 12px; height: 12px; border-radius: var(--radius-xs); display: inline-block; }
+.ui-rev-swatch.paid { background: var(--color-primary); }
+.ui-rev-swatch.out { background: var(--color-fill); margin-left: var(--spacing-sm); }
+.ui-attn-chip { display: inline-block; flex: none; white-space: nowrap; background: var(--color-error-bg); color: var(--color-error); padding: var(--spacing-xs) var(--spacing-sm); border-radius: 9999px; font-size: var(--font-size-sm); font-weight: 500; }
 .ui-timer-bottom { display: flex; align-items: center; gap: var(--spacing-sm); }
 .ui-timer-meta { display: flex; gap: var(--spacing-xs); flex-wrap: wrap; }
 .ui-timer-actions { margin-left: auto; display: flex; gap: var(--spacing-xs); }
@@ -1239,54 +1266,7 @@ input[type="number"] {
 }
 #timer-card.htmx-swapping { opacity: 0; transform: translateY(6px) scale(0.99); }
 #timer-card.htmx-settling { opacity: 0; transform: translateY(-8px); }
-.timer-state-label {
-  font-size: 0.75rem;
-  font-weight: 500;
-  letter-spacing: 0.5px;
-  color: var(--md-sys-color-on-surface-variant);
-  margin-bottom: 4px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-/* Live tracking indicator (#51): pumpkin dot pulsing while a timer runs.
-   The #41 reduced-motion guard collapses this to a static dot. */
-.live-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--md-sys-color-primary);
-  animation: live-pulse 1.6s ease-in-out infinite;
-}
-@keyframes live-pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.35; transform: scale(0.85); }
-}
-.md-card.tracking .timer-state-label { color: var(--md-sys-color-on-primary-container); }
-/* #259: Stop sits top-right on the TRACKING row; elapsed time drops to the
-   bottom-left where Stop used to be. The 56px FAB is taken out of flow so it
-   doesn't stretch the label row and push the description down (#261). */
-.md-card.tracking { position: relative; }
-.timer-top-row .stop { position: absolute; top: 20px; right: 20px; }
-.timer-top-row .timer-state-label { padding-right: 140px; }
-/* #718: the project name never breaks mid-phrase on narrow screens — the
-   label row is padded for the absolute Stop button, so a long name wraps
-   awkwardly there. One line with an ellipsis instead. */
-.timer-state-proj { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-/* #761: the running card's description sat in normal flow while the Stop
-   button is absolutely positioned — a long description slid under the button
-   and clipped mid-word on narrow screens. Same one-line ellipsis treatment
-   as the label row, with matching right padding to clear the button. */
-.timer-desc { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 140px; }
-.timer-elapsed {
-  font-size: 2.8125rem;
-  line-height: 52px;
-  font-variant-numeric: tabular-nums;
-  margin: 8px 0 16px;
-}
-.start-form { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; margin-top: 12px; }
-.start-form .grow { flex: 2; min-width: 220px; }
-.start-form .shrink { flex: 1; min-width: 160px; }
+
 
 /* ---------------- calendar (time grid) ---------------- */
 .week-nav { display: flex; align-items: center; justify-content: space-between; margin: 8px 0 4px; }
@@ -2110,17 +2090,6 @@ body.app-fixed .cal-gutter-spacer {
 .pill-paid { background: var(--md-sys-color-success-container); color: var(--md-sys-color-on-success-container); }
 
 /* #330: "Invoiced"/"Draft" mark on timer entry rows — tonal pill, no border. */
-.inv-mark { display: inline-flex; align-items: center; height: 18px; padding: 0 8px;
-  border-radius: var(--md-sys-shape-corner-full); font-size: 0.625rem; font-weight: 600;
-  letter-spacing: 0.4px; white-space: nowrap; flex: none; }
-/* #332: calendar slots carry no chip — the grid is too dense for a pill on
-   every card. Invoiced cards dim instead (bright = still needs billing); the
-   invoice number is in the hover tooltip. */
-.cal-entry.invoiced { opacity: 0.72; }
-/* Timer entry rows: tonal on the dark surface. */
-.md-list-item-supporting .inv-mark { background: var(--md-sys-color-secondary-container);
-  color: var(--md-sys-color-on-secondary-container); margin-right: 6px; }
-.md-list-item-supporting .inv-mark.draft { opacity: 0.7; }
 /* #500: house M3 plain tooltip for the calendar entry card's invoiced mark
    (hover + :focus-visible + 450ms touch long-press via the site-wide
    [data-tip] handler). Mirrors the inv-mark tooltip (#498); the card uses no
@@ -2159,30 +2128,6 @@ body.app-fixed .cal-gutter-spacer {
 .cal-day:last-child .cal-entry[data-tip]:hover::after,
 .cal-day:last-child .cal-entry[data-tip]:focus-visible::after,
 .cal-day:last-child .cal-entry[data-tip].tip-show::after { transform: translateY(0); }
-/* #498: M3 plain tooltip for the inv-mark chip (hover + 450ms touch long-press
-   via the site-wide [data-tip] handler). ::after; the chip uses no other
-   pseudo-element, and the supporting line clips nothing. */
-.inv-mark[data-tip] { position: relative; overflow: visible; }
-.inv-mark[data-tip]::after {
-  content: attr(data-tip);
-  position: absolute; left: 50%; top: calc(100% + 4px); /* M3: 4dp anchor gap */
-  transform: translateX(-50%) translateY(-2px);
-  background: var(--md-sys-color-inverse-surface);
-  color: var(--md-sys-color-inverse-on-surface);
-  border-radius: var(--md-sys-shape-corner-extra-small);
-  padding: 4px 8px; /* M3 plain tooltip padding */
-  white-space: nowrap; max-width: 0; overflow: hidden; /* #556: collapse while hidden */
-  font-size: 0.75rem; line-height: 16px; font-weight: 400;
-  opacity: 0; pointer-events: none; z-index: 30;
-  transition: opacity var(--motion-duration-short2) var(--motion-easing-standard),
-    transform var(--motion-duration-short2) var(--motion-easing-standard);
-}
-.inv-mark[data-tip]:hover::after,
-.inv-mark[data-tip].tip-show::after {
-  opacity: 1; transform: translateX(-50%) translateY(0);
-  max-width: 200px; overflow: visible; /* #556 */
-}
-
 .two-field { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 /* #353: content-driven — form field stacking, not an M3 window size class. */
 @media (max-width: 560px) { .two-field { grid-template-columns: 1fr; } }
@@ -2550,26 +2495,7 @@ body.app-fixed .cal-gutter-spacer {
 }
 
 /* ---------------- revenue (milestone 1) ---------------- */
-.rev-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-/* feed-style adaptive grid inside the supporting pane: stack when the pane is narrow */
-@container (max-width: 480px) { .rev-cards { grid-template-columns: 1fr; } }
-.rev-card { padding: 16px 20px; }
-.rev-card .md-title-large { margin-top: 4px; }
-.rev-paid { color: var(--md-sys-color-primary); }
-.rev-chart-card { padding: 16px 20px 12px; margin-top: 16px; }
-.rev-chart-title { margin-bottom: 8px; }
-.rev-chart { width: 100%; height: auto; display: block; }
-.rev-chart .bar-out { fill: var(--md-sys-color-surface-container-highest); }
-.rev-chart .bar-paid { fill: var(--md-sys-color-primary); }
-/* Bar grow-in (#47): each segment scales from its own base so the combined
-   bar grows uniformly from the baseline; stagger via inline animation-delay. */
-.rev-chart .bar-out, .rev-chart .bar-paid {
-  transform-box: fill-box;
-  transform-origin: 50% 100%;
-  animation: bar-grow var(--motion-duration-medium2) var(--motion-easing-emphasized-decelerate) backwards;
-}
 @keyframes bar-grow { from { transform: scaleY(0); } }
-.rev-chart text { fill: var(--md-sys-color-on-surface-variant); font-size: 0.625rem; }
 /* #899: time-breakdown chart on the zinvoices sheet — same bar treatment
    as the revenue chart, single-series (no animation: it prints). */
 .inv-breakdown { margin-top: 20px; }
@@ -2577,15 +2503,6 @@ body.app-fixed .cal-gutter-spacer {
 .tb-chart { width: 100%; height: auto; display: block; }
 .tb-chart .tb-bar { fill: var(--md-sys-color-primary); }
 .tb-chart text { fill: var(--md-sys-color-on-surface-variant); font-size: 0.625rem; }
-.rev-legend { display: flex; align-items: center; gap: 8px; margin-top: 8px;
-  color: var(--md-sys-color-on-surface-variant); font-size: 0.75rem; }
-.rev-swatch { width: 12px; height: 12px; border-radius: 4px; display: inline-block; }
-.rev-swatch.paid { background: var(--md-sys-color-primary); }
-.rev-swatch.out { background: var(--md-sys-color-surface-container-highest); margin-left: 12px; }
-.rev-clients-card { padding: 16px 20px 8px; margin-top: 16px; }
-.rev-clients-card .md-list { margin-bottom: 8px; }
-.rev-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
-
 /* Error pages (404/500): centered, tonal, no hard borders. */
 .error-page { max-width: 560px; margin: 0 auto; padding: 96px 24px; text-align: center; }
 .error-page h1 { margin: 0 0 12px; }
@@ -2718,21 +2635,6 @@ body.app-fixed .cal-gutter-spacer {
 .md-ripple.go.fade {
   transition: opacity var(--motion-duration-short3) var(--motion-easing-standard);
   opacity: 0;
-}
-
-/* ---------------- needs-attention list (milestone 7) ---------------- */
-.rev-attention { margin-bottom: 16px; }
-.attn-ok { margin: 4px 0 0; }
-.attn-link {
-  display: flex; align-items: center; gap: 8px;
-  flex: 1; min-width: 0; color: inherit; text-decoration: none;
-}
-.attn-chip {
-  display: inline-block; flex: none; white-space: nowrap;
-  background: var(--md-sys-color-error-container);
-  color: var(--md-sys-color-on-error-container);
-  padding: 4px 12px; border-radius: 999px;
-  font-size: 0.75rem; font-weight: 500;
 }
 
 /* #753: Zimer mascot placements — subtle, never competing with CTAs. */

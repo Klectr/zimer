@@ -7,6 +7,13 @@
 import type { Database, Statement } from "bun:sqlite";
 import { dayBounds, durationSeconds, entryInvoiceMark, entryIsLocked, esc, fmtDur, money, schemeColor, todayStr } from "../lib/format.ts";
 import { icon } from "../lib/icons.ts";
+import { timerPanel } from "../ui/timer-display.ts";
+import { card } from "../ui/card.ts";
+import { selectField, textField } from "../ui/field.ts";
+import { button, linkButton } from "../ui/button.ts";
+import { entryRow as uiEntryRow } from "../ui/rows.ts";
+import { progressBar } from "../ui/progress.ts";
+import { tag } from "../ui/tag.ts";
 import type { Entry } from "../lib/types.ts";
 
 export interface TimerViewDeps {
@@ -16,6 +23,7 @@ export interface TimerViewDeps {
   layout: (title: string, body: string, active?: "timer" | "calendar" | "manage" | "invoices", fixed?: boolean) => string;
   demoBanner: (db: Database) => string;
   projectOptions: (selected?: number | null) => string;
+  projectOptionRows: () => { id: number; name: string; client: string | null }[];
   revenueTotals: () => { invoiced: number; paid: number; outstanding: number };
   revenueMonthly: () => { label: string; invoiced: number; paid: number }[];
   revenueByClient: () => { name: string; color: string | null; invoiced: number; paid: number; outstanding: number }[];
@@ -27,7 +35,7 @@ export interface TimerViewDeps {
 }
 
 export function createTimerViews(deps: TimerViewDeps) {
-  const { db, qRunning, qRange, layout, demoBanner, projectOptions,
+  const { db, qRunning, qRange, layout, demoBanner, projectOptions, projectOptionRows,
     revenueTotals, revenueMonthly, revenueByClient, revenueOverdue, m3ProgressBar, dayTargetSecs } = deps;
 
   /* #546: description suggestions for the start form — the 15 most recently
@@ -55,120 +63,98 @@ export function createTimerViews(deps: TimerViewDeps) {
        it; fmtTimes() in dashboardPage fills these in after every swap. */
     const startTs = `<time data-ts="${esc(e.start_time)}"></time>`;
     const endTs = e.end_time ? `<time data-ts="${esc(e.end_time)}"></time>` : "now";
-    const chip = e.project_name
-      ? `<span class="md-chip">${e.client_color ? `<span class="dot" style="background:${esc(schemeColor(e.client_color))}"></span>` : ""}${esc(e.project_name)}</span>`
-      : "";
-    const desc = e.description ? esc(e.description) : "<em>No description</em>";
     /* #330: mark time that's already on an invoice (sent/paid) or in a draft. */
     const mark = entryInvoiceMark(e);
-    /* #498: house M3 plain tooltip (data-tip) instead of the native title —
-       matches the site's tooltip language and gives touch users the 450ms
-       long-press (#496). */
-    const invMark = mark ? `<span class="inv-mark ${mark.cls}" data-tip="${esc(mark.title)}">${mark.label}</span>` : "";
-    /* #469: the running row's duration ticks live from the card's 1s interval
-       (found by data-live-start); finished rows stay static. */
-    const durSpan = !e.end_time
-      ? `<span class="dur" data-live-start="${esc(e.start_time)}">${dur}</span>`
-      : `<span class="dur">${dur}</span>`;
-    return `<li class="md-list-item" id="entry-${e.id}" style="animation-delay:${Math.min(i * 30, 300)}ms">
-      <div class="md-list-item-content">
-        <div class="md-list-item-headline">${desc}</div>
-        <div class="md-list-item-supporting">${chip}${invMark}<span>${startTs} – ${endTs}${e.client_name && !e.project_name ? ` · ${esc(e.client_name)}` : ""}</span></div>
-      </div>
-      <div class="md-list-item-trailing">
-        ${durSpan}
-        ${entryIsLocked(e) ? "" : `
-        <button class="md-icon-button" type="button" data-edit-entry="${e.id}" aria-label="Edit entry" data-tip="Edit">${icon("edit")}</button>
-        ${/* #462: the timer card owns the running entry — deleting it from the
-             list orphaned the card (ghost TRACKING + tab-title count). Stop
-             there first; delete lands on the finished row. */ !e.end_time ? "" : `
-        ${/* #473: repeat posts the row's description + project to the existing
-             /timer/start route (mini-form: hidden inputs survive quotes and
-             apostrophes where hx-vals JSON would not). */ canRepeat ? `
-        <form class="repeat-form" hx-post="/timer/start" hx-target="#timer-card" hx-swap="outerHTML swap:200ms">
+    /* #498: house plain tooltip (data-tip) instead of the native title. */
+    const invMark = mark ? `<span class="ui-inv-mark${mark.cls ? ` ${mark.cls}` : ""}" data-tip="${esc(mark.title)}">${esc(mark.label)}</span>` : "";
+    const title = e.project_name
+      ? (e.client_name ? `${e.client_name} — ${e.project_name}` : e.project_name)
+      : (e.client_name || e.description || "No description");
+    const descPart = (e.project_name || e.client_name) && e.description ? ` · ${esc(e.description)}` : "";
+    const metaHtml = `${invMark}<span>${startTs} – ${endTs}</span>${descPart}`;
+    let actions = "";
+    if (!entryIsLocked(e)) {
+      const parts: string[] = [];
+      parts.push(`<button class="ui-icon-btn" type="button" data-edit-entry="${e.id}" aria-label="Edit entry" data-tip="Edit">${icon("edit")}</button>`);
+      if (e.end_time) {
+        /* #462: the timer card owns the running entry — deleting it from the
+           list orphaned the card. Stop there first; delete lands on the
+           finished row. */
+        if (canRepeat) {
+          /* #473: repeat posts the row's description + project to the
+             existing /timer/start route (mini-form: hidden inputs survive
+             quotes and apostrophes where hx-vals JSON would not). */
+          parts.push(`<form class="ui-repeat-form" hx-post="/timer/start" hx-target="#timer-card" hx-swap="outerHTML swap:200ms">
           <input type="hidden" name="description" value="${esc(e.description ?? "")}">
           <input type="hidden" name="project_id" value="${e.project_id ?? ""}">
-          <button class="md-icon-button" type="submit" aria-label="Repeat entry" data-tip="Repeat">${icon("repeat")}</button>
-        </form>` : ""}
-        <button class="md-icon-button danger" hx-delete="/entries/${e.id}"
+          <button class="ui-icon-btn" type="submit" aria-label="Repeat entry" data-tip="Repeat">${icon("repeat")}</button>
+        </form>`);
+        }
+        parts.push(`<button class="ui-icon-btn ui-icon-btn-danger" type="button" hx-delete="/entries/${e.id}"
           hx-target="#entry-${e.id}" hx-swap="outerHTML swap:220ms" data-confirm="Delete this entry? This cannot be undone."
-          aria-label="Delete entry" data-tip="Delete">${icon("delete")}</button>`}`}
-      </div>
-    </li>`;
+          aria-label="Delete entry" data-tip="Delete">${icon("delete")}</button>`);
+      }
+      actions = parts.join("");
+    }
+    return uiEntryRow({
+      id: `entry-${e.id}`,
+      title,
+      dot: e.client_color ? schemeColor(e.client_color) : undefined,
+      metaHtml,
+      duration: dur,
+      running: !e.end_time,
+      actions,
+    });
   }
-
 
   /** Timer card: running entry with live ticking, or the start form. */
   function timerPartial(): string {
     const running = qRunning.get() as Entry | null;
     if (running) {
-      /* #718: the "· name" rides in one no-wrap span so the TRACKING label
-         can't split the project name mid-phrase on narrow screens — the span
-         ellipsizes instead. The separator lives INSIDE the span: as a bare
-         text run next to the shrinking span, Chrome drops the "·" to the
-         baseline (verified in QA). */
-      const proj = running.project_name ? `<span class="timer-state-proj">· ${esc(running.project_name)}</span>` : "";
-      /* #475: the stop class is what .timer-top-row .stop positions — the
-         button once dropped it and sat below the TRACKING label in normal
-         flow. This note lives outside the template literal: a JS-style comment
-         inside the HTML renders as visible text in the card. */
-      return `<div class="md-card tracking" id="timer-card">
-        <div class="timer-top-row">
-          <div class="timer-state-label"><span class="live-dot" aria-hidden="true"></span>TRACKING${proj}</div>
-        <button class="md-filled-button stop" hx-post="/timer/stop" hx-target="#timer-card" hx-swap="outerHTML swap:200ms"
-          data-tip="Stop (t)" aria-keyshortcuts="t">
-            ${icon("stop")}Stop
-          </button>
-        </div>
-        <div class="md-title-medium timer-desc">${running.description ? esc(running.description) : "No description"}</div>
-        <div class="timer-elapsed" id="elapsed" data-start="${esc(running.start_time)}">…</div>
-        <script>(function(){var el=document.getElementById('elapsed');if(!el)return;
-          /* #444: the tab-title ticker moved to shortcut.js (site-wide) — the
-             card keeps its own display interval, and still clears the previous
-             one so re-renders don't orphan intervals on detached nodes. */
+      const projLine = running.project_name
+        ? (running.client_name ? `${running.client_name} — ${running.project_name}` : running.project_name)
+        : (running.client_name ?? "");
+      const context = [projLine, running.description ?? ""].filter(Boolean).join(" · ") || "No description";
+      return timerPanel({
+        id: "timer-card",
+        elapsedId: "elapsed",
+        running: true,
+        statusHtml: tag({ label: "Running", tone: "success", dot: true }),
+        context,
+        startedAt: running.start_time,
+        elapsed: "…",
+        actionsHtml: button({ label: "Stop", variant: "primary", icon: "stop", attrs: 'hx-post="/timer/stop" hx-target="#timer-card" hx-swap="outerHTML swap:200ms" data-tip="Stop (t)" aria-keyshortcuts="t"' }),
+      }) + `
+      <script>(function(){var el=document.getElementById('elapsed');if(!el)return;
           if(window.__tkTick){clearInterval(window.__tkTick);window.__tkTick=null;}
           var s=new Date(el.dataset.start).getTime();
-          /* #469: mirror fmtDur (site/lib/format.ts) for the running entry's
-             duration in the Today list — it was frozen at render time while
-             the card ticked. Same 1s interval, no extra timers. */
           function fmtDurRow(d){var t=Math.floor(d/1000),
             h=Math.floor(t/3600),m=Math.floor(t%3600/60),sec=t%60;
-            /* #821: mirror of fmtDur — whole hours drop the 00m (#817). */
             if(h>0)return m>0?h+'h '+String(m).padStart(2,'0')+'m':h+'h';
-            /* #596: mirror of fmtDur — whole minutes drop the 00s. */
             if(m>0)return m+'m'+(sec>0?' '+String(sec).padStart(2,'0')+'s':'');
             return sec+'s';}
           function tick(){var d=Math.max(0,Date.now()-s);
             var h=Math.floor(d/36e5),m=Math.floor(d%36e5/6e4),sec=Math.floor(d%6e4/1e3);
             el.textContent=(h?h+':':'')+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0');
-            var row=document.querySelector('#today-list [data-live-start]');
+            var row=document.querySelector('#today-list [data-live-duration]');
             if(row)row.textContent=fmtDurRow(d);}
-          tick();window.__tkTick=setInterval(tick,1000);})();</script>
-      </div>`;
+          tick();window.__tkTick=setInterval(tick,1000);})();</script>`;
     }
-    return `<div class="md-card" id="timer-card">
-      <div class="timer-state-label">ZIMER</div>
-      <div class="md-title-medium muted">Nothing tracking</div>
-      <form hx-post="/timer/start" hx-target="#timer-card" hx-swap="outerHTML swap:200ms" class="start-form">
-        <div class="md-text-field grow">
-          <input type="text" id="tm-desc" name="description" placeholder=" " autocomplete="off" aria-label="What are you working on?" list="tk-desc-suggest">
-          <label for="tm-desc">What are you working on?</label>
-        </div>
-        ${descDatalist()}
-        <div class="md-text-field shrink filled">
-          <select name="project_id" id="tm-project" aria-label="Project"><option value="">No project</option>${projectOptions()}</select>
-          <label for="tm-project">Project</label>
-        </div>
-        <button class="md-filled-button" type="submit" data-tip="Start (t)" aria-keyshortcuts="t">
-          ${icon("play")}Start
-        </button>
-      </form>
-      <script>(function(){
-        /* #444: the card's display interval still needs retiring on stop —
-           the tab title itself is restored by shortcut.js's site-wide ticker. */
+    const options = [{ value: "", label: "No project" },
+      ...projectOptionRows()
+        .map(r => ({ value: String(r.id), label: r.client ? `${r.name} (${r.client})` : r.name }))];
+    return card({ id: "timer-card", content:
+      `<div class="ui-timer-top">${tag({ label: "Not tracking" })}</div>` +
+      `<form hx-post="/timer/start" hx-target="#timer-card" hx-swap="outerHTML swap:200ms" class="ui-timer-form">` +
+      `<div class="ui-timer-form-grow">${textField({ id: "tm-desc", label: "What are you working on?", name: "description", autocomplete: "off", list: "tk-desc-suggest" })}</div>` +
+      descDatalist() +
+      `<div class="ui-timer-form-project">${selectField({ id: "tm-project", label: "Project", name: "project_id", options })}</div>` +
+      button({ label: "Start", type: "submit", variant: "primary", icon: "play", attrs: 'data-tip="Start (t)" aria-keyshortcuts="t"' }) +
+      `</form>` +
+      `<script>(function(){
         if(window.__tkTick){clearInterval(window.__tkTick);window.__tkTick=null;}
-      })();</script>
-    </div>`;
+      })();</script>`,
+    });
   }
 
   /* #255: "today" is a client concept — the server may be in another timezone.
@@ -180,12 +166,12 @@ export function createTimerViews(deps: TimerViewDeps) {
     const entries = qRange.all(f, t) as Entry[];
     const total = entries.reduce((a, e) => a + durationSeconds(e.start_time, e.end_time), 0);
     const bar = todayTargetBar(total);
-    if (!entries.length) return `${bar}<p class="muted">Nothing tracked today yet.</p>`;
+    if (!entries.length) return `${bar}<p class="ui-note">Nothing tracked today yet.</p>`;
     /* #473: repeat is only offered when nothing is running — /timer/start
        409s while a timer runs, so showing it then would be a silent no-op. */
     const canRepeat = !qRunning.get();
     return `${bar}
-      <ul class="md-list">${entries.map((e, i) => entryRow(e, i, canRepeat)).join("")}</ul>`;
+      <div class="ui-list">${entries.map((e, i) => entryRow(e, i, canRepeat)).join("")}</div>`;
   }
 
   function dashboardPage(): string {
@@ -196,8 +182,8 @@ export function createTimerViews(deps: TimerViewDeps) {
           ${timerPartial()}
           <div class="scroll-region">
             <div class="page-head">
-              <h1 class="md-headline-small">Today</h1>
-              <a class="md-text-button" id="invoice-week" href="/invoices/new">${icon("receipt")} Zinvoice this week</a>
+              <h1 class="ui-page-title">Today</h1>
+              ${linkButton({ label: "Zinvoice this week", href: "/invoices/new", icon: "receipt", variant: "ghost", size: "sm", id: "invoice-week" })}
             </div>
             <div id="today-list" hx-get="/partial/today" hx-trigger="load, timer-updated from:body">
               <div class="skel-stack" aria-hidden="true">
@@ -231,7 +217,7 @@ export function createTimerViews(deps: TimerViewDeps) {
         </section>
         <aside class="pane-supporting" data-enter="3" aria-label="Revenue">
           <div class="scroll-region">
-            <h2 class="md-headline-small">Revenue</h2>
+            <h2 class="ui-page-title">Revenue</h2>
             ${revenueSection()}
           </div>
         </aside>
@@ -242,18 +228,14 @@ export function createTimerViews(deps: TimerViewDeps) {
   /** A1: revenue stat cards (invoiced / paid / outstanding). */
   function revenueCards(): string {
     const t = revenueTotals();
-    const card = (label: string, val: number, cls = "") => `
-      <div class="md-card rev-card">
-        <div class="md-label-medium muted">${label}</div>
-        <div class="md-title-large${cls ? ` ${cls}` : ""}">${money(val)}</div>
-      </div>`;
-    return `<div class="rev-cards">
-      ${card("Zinvoiced", t.invoiced)}
-      ${card("Paid", t.paid, "rev-paid")}
-      ${card("Outstanding", t.outstanding)}
+    const stat = (label: string, val: number, cls = "") => card({ content:
+      `<div><div class="ui-stat-label">${label}</div><div class="ui-stat-value${cls ? ` ${cls}` : ""}">${money(val)}</div></div>` });
+    return `<div class="ui-rev-cards">
+      ${stat("Zinvoiced", t.invoiced)}
+      ${stat("Paid", t.paid, "ui-rev-paid")}
+      ${stat("Outstanding", t.outstanding)}
     </div>`;
   }
-
 
   /** A2: trailing-12-month bar chart, hand-rolled SVG. Pumpkin = paid, tonal = outstanding remainder. */
   function revenueChart(): string {
@@ -268,20 +250,19 @@ export function createTimerViews(deps: TimerViewDeps) {
       const x = Math.round(i * slot + (slot - bw) / 2);
       const cx = Math.round(i * slot + slot / 2);
       return `<g><title>${esc(`${m.label}: ${money(m.paid)} paid of ${money(m.invoiced)} zinvoiced`)}</title>` +
-        (ho > 0 ? `<rect x="${x}" y="${baseline - h}" width="${bw}" height="${ho}" rx="4" class="bar-out" style="animation-delay:${i * 40}ms"/>` : "") +
-        (hp > 0 ? `<rect x="${x}" y="${baseline - hp}" width="${bw}" height="${hp}" rx="4" class="bar-paid" style="animation-delay:${i * 40}ms"/>` : "") +
+        (ho > 0 ? `<rect x="${x}" y="${baseline - h}" width="${bw}" height="${ho}" rx="4" class="ui-rev-bar-out" style="animation-delay:${i * 40}ms"/>` : "") +
+        (hp > 0 ? `<rect x="${x}" y="${baseline - hp}" width="${bw}" height="${hp}" rx="4" class="ui-rev-bar-paid" style="animation-delay:${i * 40}ms"/>` : "") +
         `<text x="${cx}" y="${baseline + 18}" text-anchor="middle">${m.label}</text></g>`;
     }).join("");
-    return `<div class="md-card rev-chart-card">
-      <div class="md-title-medium rev-chart-title">Last 12 months</div>
-      <svg class="rev-chart" viewBox="0 0 ${W} 215" role="img" aria-label="Monthly revenue, last 12 months">${bars}</svg>
-      <div class="rev-legend"><span class="rev-swatch paid"></span>Paid<span class="rev-swatch out"></span>Zinvoiced</div>
-    </div>`;
+    return card({ content:
+      `<div class="ui-block-title">Last 12 months</div>` +
+      `<svg class="ui-rev-chart" viewBox="0 0 ${W} 215" role="img" aria-label="Monthly revenue, last 12 months">${bars}</svg>` +
+      `<div class="ui-rev-legend"><span class="ui-rev-swatch paid"></span>Paid<span class="ui-rev-swatch out"></span>Zinvoiced</div>` });
   }
 
   function revenueSection(): string {
     if (revenueTotals().invoiced === 0)
-      return `<p class="muted">No zinvoices yet — revenue will show up here.</p>`;
+      return `<p class="ui-note">No zinvoices yet — revenue will show up here.</p>`;
     return revenueAttention() + revenueCards() + revenueChart() + revenueClients();
   }
 
@@ -289,21 +270,17 @@ export function createTimerViews(deps: TimerViewDeps) {
   /** Milestone 7: overdue invoices needing attention, most overdue first. */
   function revenueAttention(): string {
     const overdue = revenueOverdue();
-    const title = `<div class="md-title-medium rev-chart-title">Needs attention</div>`;
+    const title = `<div class="ui-block-title">Needs attention</div>`;
     if (!overdue.length)
-      return `<div class="md-card rev-attention">${title}<p class="muted attn-ok">All caught up — nothing overdue.</p></div>`;
+      return card({ content: `${title}<p class="ui-note">All caught up — nothing overdue.</p>` });
     const rows = overdue.map(o => `
-      <li class="md-list-item">
-        <a class="attn-link" href="/invoices?invoice=${o.id}">
-          <div class="md-list-item-content">
-            <div class="md-list-item-headline">${esc(o.client_name || "Unknown")}</div>
-            <div class="md-list-item-supporting">${esc(o.number)} · Due ${esc(o.due_date || "")}</div>
-          </div>
-          <div class="md-list-item-trailing"><span class="dur">${money(o.total)}</span></div>
-          <span class="attn-chip" data-bucket="${esc(o.bucket)}">${o.days_past_due}d overdue</span>
-        </a>
-      </li>`).join("");
-    return `<div class="md-card rev-attention">${title}<ul class="md-list">${rows}</ul></div>`;
+      <a class="ui-row" href="/invoices?invoice=${o.id}">
+        <div class="ui-row-main"><span class="ui-row-title">${esc(o.client_name || "Unknown")}</span>
+        <div class="ui-row-meta">${esc(o.number)} · Due ${esc(o.due_date || "")}</div></div>
+        <div class="ui-row-side"><span class="ui-row-amount">${money(o.total)}</span></div>
+        <span class="ui-attn-chip" data-bucket="${esc(o.bucket)}">${o.days_past_due}d overdue</span>
+      </a>`).join("");
+    return card({ content: `${title}${rows}` });
   }
 
   /** A3: per-client revenue breakdown, with an expressive collection-progress
@@ -314,24 +291,17 @@ export function createTimerViews(deps: TimerViewDeps) {
     if (!clients.length) return "";
     const rows = clients.map(c => {
       const pct = c.invoiced > 0 ? Math.min(100, (c.paid / c.invoiced) * 100) : 0;
-      const met = c.invoiced > 0 && c.outstanding <= 0;
       const bar = c.invoiced > 0
-        ? `<div class="m3-progress rev-collection">${m3ProgressBar(pct, met, `${esc(c.name)}: ${money(c.paid)} paid of ${money(c.invoiced)} zinvoiced`)}</div>`
+        ? progressBar({ value: pct, label: `${c.name}: ${money(c.paid)} paid of ${money(c.invoiced)} zinvoiced` })
         : "";
-      return `
-      <li class="md-list-item">
-        <span class="rev-dot" style="background:${esc(schemeColor(c.color) || "var(--md-sys-color-primary)")}"></span>
-        <div class="md-list-item-content">
-          <div class="md-list-item-headline">${esc(c.name)}</div>
-          <div class="md-list-item-supporting">${money(c.paid)} paid · ${money(c.outstanding)} outstanding</div>
-          ${bar}
-        </div>
-        <div class="md-list-item-trailing"><span class="dur">${money(c.invoiced)}</span></div>
-      </li>`; }).join("");
-    return `<div class="md-card rev-clients-card">
-      <div class="md-title-medium rev-chart-title">By client</div>
-      <ul class="md-list">${rows}</ul>
-    </div>`;
+      return uiEntryRow({
+        title: c.name,
+        dot: schemeColor(c.color) || "var(--color-primary)",
+        metaHtml: `${money(c.paid)} paid · ${money(c.outstanding)} outstanding${bar}`,
+        duration: money(c.invoiced),
+      });
+    }).join("");
+    return card({ content: `<div class="ui-block-title">By client</div>${rows}` });
   }
 
   /** Today-vs-target pacing bar at the top of the timer page's today list.
@@ -343,9 +313,9 @@ export function createTimerViews(deps: TimerViewDeps) {
     const pct = Math.min(100, (totalSecs / target) * 100);
     const met = totalSecs >= target;
     return `
-      <div class="m3-progress today-target">
-        ${m3ProgressBar(pct, met, `Today's hours target, ${target / 3600} hours`)}
-        <div class="md-label-medium muted m3-progress-label">Today · ${fmtDur(totalSecs)} / ${fmtDur(target)}${met ? ` · <span class="tiny">target met</span>` : ""}</div>
+      <div class="ui-target">
+        ${progressBar({ value: pct, label: `Today's hours target, ${target / 3600} hours` })}
+        <div class="ui-target-label">Today · ${fmtDur(totalSecs)} / ${fmtDur(target)}${met ? " · Target met" : ""}</div>
       </div>`;
   }
 

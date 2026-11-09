@@ -198,11 +198,14 @@ export function createDomain(deps: DomainDeps) {
   /* Milestone 20: auth lives in lib/auth.ts. */
 
   /* ---------------- views ---------------- */
-  function projectOptions(selected: number | null = null): string {
-    const rows = db.query(
+  function projectOptionRows(): { id: number; name: string; client: string | null }[] {
+    return db.query(
       `SELECT p.id, p.name, c.name AS client FROM projects p
        LEFT JOIN clients c ON c.id = p.client_id ORDER BY p.name`).all() as any[];
-    return rows.map(r =>
+  }
+
+  function projectOptions(selected: number | null = null): string {
+    return projectOptionRows().map(r =>
       `<option value="${r.id}"${r.id === selected ? " selected" : ""}>${esc(r.name)}${r.client ? ` (${esc(r.client)})` : ""}</option>`
     ).join("");
   }
@@ -270,7 +273,7 @@ export function createDomain(deps: DomainDeps) {
   return {
     getInvoice, invoiceTotals, nextInvoiceNumber, stripeLinkFor,
     unbilledEntries, groupToLineItems, clientRestFrom, unbilledByClient,
-    projectOptions, m3ProgressBar, weekTargetBar,
+    projectOptions, projectOptionRows, m3ProgressBar, weekTargetBar,
     newPublicToken, ensurePublicToken, getPublicToken, mintPublicToken,
   };
 }
