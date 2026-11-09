@@ -62,6 +62,13 @@ describe("shell actions locked spec (#654)", () => {
   });
 });
 
+describe("ui button anchors (#1121)", () => {
+  test("link buttons never render with the UA underline", () => {
+    const btn = declarations(ruleBlock(".ui-btn"));
+    expect(btn.get("text-decoration")).toBe("none");
+  });
+});
+
 describe("sidebar width (#1119)", () => {
   test("the mocked sidebar is 208px on the container surface", () => {
     const side = declarations(ruleBlock(".ui-side"));
