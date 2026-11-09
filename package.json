@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "bun run ./site/server.ts",
+    "dev:hosted": "HOSTED=1 bun run ./site/server.ts",
     "zandbox": "bun run ./.zandbox/server.ts"
   },
   "devDependencies": {
