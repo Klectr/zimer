@@ -11,6 +11,7 @@ export interface ButtonOptions {
   disabled?: boolean;
   type?: "button" | "submit";
   id?: string;
+  attrs?: string;
 }
 
 const VARIANT_CLASS: Record<ButtonVariant, string> = {
@@ -27,5 +28,6 @@ export function button(opts: ButtonOptions): string {
   if (opts.danger) cls += " ui-btn-danger";
   const id = opts.id ? ` id="${esc(opts.id)}"` : "";
   const disabled = opts.disabled ? " disabled" : "";
-  return `<button type="${esc(opts.type ?? "button")}" class="${cls}"${id}${disabled}>${esc(opts.label)}</button>`;
+  const attrs = opts.attrs ? ` ${opts.attrs}` : "";
+  return `<button type="${esc(opts.type ?? "button")}" class="${cls}"${id}${disabled}${attrs}>${esc(opts.label)}</button>`;
 }

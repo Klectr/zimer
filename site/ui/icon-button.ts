@@ -8,14 +8,16 @@ export interface IconButtonOptions {
   disabled?: boolean;
   type?: "button" | "submit";
   id?: string;
+  attrs?: string;
 }
 
 export function iconButton(opts: IconButtonOptions): string {
   const cls = "ui-icon-btn" + (opts.danger ? " ui-icon-btn-danger" : "");
   const id = opts.id ? ` id="${esc(opts.id)}"` : "";
   const disabled = opts.disabled ? " disabled" : "";
+  const attrs = opts.attrs ? ` ${opts.attrs}` : "";
   return (
-    `<button type="${esc(opts.type ?? "button")}" class="${cls}"${id}${disabled} ` +
+    `<button type="${esc(opts.type ?? "button")}" class="${cls}"${id}${disabled}${attrs} ` +
     `aria-label="${esc(opts.label)}" title="${esc(opts.label)}">${icon(opts.icon)}</button>`
   );
 }

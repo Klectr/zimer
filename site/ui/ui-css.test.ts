@@ -4,6 +4,17 @@ import { join } from "node:path";
 
 const css = readFileSync(join(import.meta.dir, "../static/style.css"), "utf8");
 
+const INLINE_SET_VARS = ["--cal-hour", "--dot"];
+
+describe("style.css token references", () => {
+  test("every var() reference resolves to a definition (or an inline-set legacy var)", () => {
+    const defs = new Set([...css.matchAll(/(--[\w-]+)\s*:/g)].map((m) => m[1]));
+    const refs = new Set([...css.matchAll(/var\((--[\w-]+)\)/g)].map((m) => m[1]));
+    const unresolved = [...refs].filter((r) => !defs.has(r) && !INLINE_SET_VARS.includes(r));
+    expect(unresolved).toEqual([]);
+  });
+});
+
 const RULES = [
   ".ui-btn {",
   ".ui-btn-primary {",
@@ -83,6 +94,23 @@ const RULES = [
   ".ui-viz-handle {",
   ".ui-viz-grip {",
   ".ui-viz-now {",
+  ".ui-scrim {",
+  ".ui-dialog {",
+  ".ui-dialog-head {",
+  ".ui-dialog-title {",
+  ".ui-dialog-body {",
+  ".ui-dialog-actions {",
+  ".ui-toast {",
+  ".ui-toast-chip {",
+  ".ui-toast-title {",
+  ".ui-toast-body {",
+  ".ui-menu {",
+  ".ui-menu-item {",
+  ".ui-empty {",
+  ".ui-empty-icon {",
+  ".ui-empty-title {",
+  ".ui-empty-body {",
+  ".ui-empty-action {",
 ];
 
 describe("ui component CSS", () => {
