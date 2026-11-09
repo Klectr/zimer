@@ -152,6 +152,9 @@ function assetType(path: string): string {
   return ASSET_TYPES[dot === -1 ? "" : path.slice(dot)] ?? "application/octet-stream";
 }
 
+const FAVICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 180 180"><rect width="180" height="180" rx="40" fill="#fbbf24"/><text x="90" y="128" font-family="Arial, sans-serif" font-weight="700" font-size="104" fill="#442100" text-anchor="middle">Z</text></svg>`;
+const FAVICON_LINK = `<link rel="icon" href="data:image/svg+xml,${encodeURIComponent(FAVICON_SVG)}" type="image/svg+xml">`;
+
 function page(title: string, body: string): string {
   const hrefs = Object.keys(cfg.assets ?? {});
   const links = hrefs
@@ -168,6 +171,7 @@ function page(title: string, body: string): string {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(title)} — ${esc(NAME)}</title>
+${FAVICON_LINK}
 <script src="${esc(cfg.htmxUrl ?? "https://unpkg.com/htmx.org@2.0.4")}"></script>
 ${links}
 ${scripts}
@@ -245,6 +249,9 @@ const server = Bun.serve({
   fetch(req) {
     const url = new URL(req.url);
     const html = { "content-type": "text/html; charset=utf-8" };
+    if (url.pathname === "/favicon.ico") {
+      return new Response(FAVICON_SVG, { headers: { "content-type": "image/svg+xml" } });
+    }
     if (url.pathname === "/") {
       if (STORIES.length === 0) return new Response("No stories registered", { headers: html });
       return new Response(shellPage(STORIES[0]), { headers: html });
