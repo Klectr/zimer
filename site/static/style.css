@@ -1281,6 +1281,9 @@ body.app-fixed .ui-shell-main { min-height: 0; }
   .invoice-list-pane, .invoice-detail-pane { flex: 1; min-height: 0; overflow-y: auto; }
   .invoice-list-detail.has-selection .invoice-list-pane { display: none; }
   .invoice-list-detail:not(.has-selection) .invoice-detail-pane { display: none; }
+  /* #1121: single-pane detail opens on the document, not the stat cards —
+     they belong to the list state the pane just left. */
+  main:has(.invoice-list-detail.has-selection) #inv-stats { display: none; }
 }
 /* #442: date phrases in list rows never split mid-date; the supporting line
    wraps at the middot separators instead. */
@@ -1906,19 +1909,7 @@ body.app-fixed .cal-gutter-spacer {
 .invoice-detail-head { display: flex; align-items: center; gap: 12px; }
 /* #328: "Unbilled time" section head on the invoices page. */
 .unbilled-head { margin-top: var(--spacing); }
-/* #948: compact the zinvoices header on phones so the invoice list gets
-   more of the viewport: smaller title, short "CSV" label on Export (kept
-   readable per #949), New zinvoice icon-only on phones (its label stays
-   as the aria-label), tighter outstanding/unbilled. */
-.page-head-invoices .page-head-actions .btn-label-short { display: none; }
 @media (max-width: 599px) {
-  .page-head-invoices { margin-bottom: 4px; gap: 8px; }
-  .page-head-invoices h1.ui-page-title { font-size: 1.375rem; line-height: 1.75rem; }
-  .page-head-invoices .page-head-actions .btn-label { display: none; }
-  .page-head-invoices .page-head-actions .btn-label-short { display: inline; }
-  .page-head-invoices .page-head-actions .ui-btn-ghost { padding: 0 12px; min-width: 40px; }
-  .page-head-invoices .page-head-actions .ui-btn-primary { padding: 0 16px; }
-  #inv-outstanding { margin: 8px 0 4px; font-size: 0.875rem; }
   .unbilled-head { margin-top: var(--spacing-sm); }
 }
 

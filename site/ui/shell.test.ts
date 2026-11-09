@@ -48,6 +48,11 @@ describe("appHeader", () => {
     expect(html).not.toContain("<b>");
     expect(html).toContain("&lt;b&gt;");
   });
+
+  test("subId lands on the sub paragraph for out-of-band refresh (#1121)", () => {
+    const html = appHeader({ title: "Zinvoices", sub: "Outstanding $1", subId: "inv-sub" });
+    expect(html).toContain('<p class="ui-app-sub" id="inv-sub">Outstanding $1</p>');
+  });
 });
 
 describe("runningIndicator", () => {

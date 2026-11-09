@@ -14,6 +14,8 @@ import { button, linkButton } from "../ui/button.ts";
 import { card } from "../ui/card.ts";
 import { textField } from "../ui/field.ts";
 import { clientRow, zinvoiceRow } from "../ui/rows.ts";
+import { appHeader } from "../ui/app-header.ts";
+import { statBlock } from "../ui/stat.ts";
 import { formSection } from "../ui/zinvoice-form.ts";
 
 export interface InvoiceViewDeps {
@@ -92,7 +94,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       clientHtml: `${r.client_name ? esc(r.client_name) : "<em>No client</em>"} <span class="inv-dates">${dates}</span>`,
       status: r.status,
       overdueDays: od || undefined,
-      amount: money(round2(r.subtotal * (1 + (r.tax_rate || 0) / 100))),
+      amount: money(rowTotal(r)),
       meta: "",
       href: `/invoices?invoice=${r.id}`,
       ariaLabel: `View zinvoice ${r.number}`,
@@ -101,10 +103,43 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     });
   }
 
-  function outstandingTotal(rows: any[]): number {
-    return rows
-      .filter(r => r.status !== "paid")
-      .reduce((a, r) => a + r.subtotal * (1 + (r.tax_rate || 0) / 100), 0);
+  function rowTotal(r: any): number {
+    return round2(r.subtotal * (1 + (r.tax_rate || 0) / 100));
+  }
+
+  /* #1121: the mock's summary figures. Outstanding here means sent
+     (incl. overdue) — drafts carry their own card, as in the mock.
+     This deliberately differs from the Timer revenue pane, whose
+     Outstanding is invoiced-minus-paid over rows of every status
+     (drafts included); the two definitions sharing one label is a
+     recorded follow-up, not an accident of this change. */
+  function invoiceStats(rows: any[]) {
+    const sum = (xs: any[]) => round2(xs.reduce((a, r) => a + rowTotal(r), 0));
+    const sent = rows.filter(r => r.status === "sent");
+    const drafts = rows.filter(r => r.status === "draft");
+    const month = todayStr().slice(0, 7);
+    const paidMonth = rows.filter(r => r.status === "paid" && r.paid_at && String(r.paid_at).startsWith(month));
+    return {
+      outstanding: sum(sent), outstandingCount: sent.length,
+      drafts: sum(drafts), draftsCount: drafts.length,
+      paidMonth: sum(paidMonth), paidMonthCount: paidMonth.length,
+    };
+  }
+
+  function statsSub(rows: any[]): string {
+    const st = invoiceStats(rows);
+    return `Outstanding ${money(st.outstanding)} · Paid this month ${money(st.paidMonth)}`;
+  }
+
+  function statsRowHtml(rows: any[], oob = false): string {
+    const st = invoiceStats(rows);
+    const monthName = new Intl.DateTimeFormat("en-US", { month: "long", timeZone: "UTC" }).format(new Date(`${todayStr()}T12:00:00Z`));
+    const z = (n: number) => `zinvoice${n === 1 ? "" : "s"}`;
+    return `<div class="ui-stat-row" id="inv-stats"${oob ? ' hx-swap-oob="true"' : ""}>` +
+      card({ content: statBlock({ label: "Outstanding", value: money(st.outstanding), sub: `${st.outstandingCount} ${z(st.outstandingCount)} waiting` }) }) +
+      card({ content: statBlock({ label: "Drafts", value: money(st.drafts), sub: `${st.draftsCount} draft${st.draftsCount === 1 ? "" : "s"}` }) }) +
+      card({ content: statBlock({ label: `Paid · ${monthName}`, value: money(st.paidMonth), sub: `${st.paidMonthCount} ${z(st.paidMonthCount)}` }) }) +
+      `</div>`;
   }
 
   function invoiceListHtml(rows: any[], selectedId: number | null): string {
@@ -117,37 +152,39 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
   function invoiceListOob(selectedId: number): string {
     const rows = qInvoices.all() as any[];
     return `<div class="ui-list" id="inv-list" hx-swap-oob="true">${rows.map(r => invoiceRow(r, selectedId === r.id)).join("")}</div>`
-      + `<p class="muted" id="inv-outstanding" hx-swap-oob="true">Outstanding: <strong>${money(outstandingTotal(rows))}</strong></p>`;
+      + statsRowHtml(rows, true)
+      + `<p class="ui-app-sub" id="inv-sub" hx-swap-oob="true">${esc(statsSub(rows))}</p>`;
   }
 
   function detailPlaceholder(): string {
     return `<div class="detail-placeholder">${icon("receipt")}<p class="muted">Select a zinvoice to preview it here.</p></div>`;
   }
 
-  /* #364: M3 list-detail — the list pane owns the outstanding summary,
-     unbilled time, and invoice rows; the detail pane shows the selected
-     invoice (or a placeholder). Below 840px the panes take turns via
-     .has-selection. #805: isDefault marks the route's first-invoice
-     fallback — the detail pane gets content on desktop, but has-selection
-     stays unset so single-pane (mobile) still opens on the list. */
+  /* #364: M3 list-detail — the list pane owns unbilled time and invoice
+     rows; the detail pane shows the selected invoice (or a placeholder).
+     #1121: the summary figures live above the panes as stat cards.
+     Below 840px the panes take turns via .has-selection. #805: isDefault
+     marks the route's first-invoice fallback — the detail pane gets
+     content on desktop, but has-selection stays unset so single-pane
+     (mobile) still opens on the list. */
   function invoicesPage(selected: (Invoice & { items: InvoiceItem[] }) | null, origin: string, isDefault = false): string {
     const rows = qInvoices.all() as any[];
-    const head = `
-      <div class="page-head page-head-invoices" data-enter="2">
-        <h1 class="ui-page-title">Zinvoices</h1>
-        <div class="page-head-actions">
-          ${rows.length ? `<a class="ui-btn ui-btn-ghost" href="/export/invoices.csv" download aria-label="Export CSV">${icon("download")}<span class="btn-label">Export CSV</span><span class="btn-label-short">CSV</span></a>` : ""}
-          <a class="ui-btn ui-btn-primary" href="/invoices/new" aria-label="New zinvoice">${icon("add")}<span class="btn-label">New zinvoice</span></a>
-        </div>
-      </div>`;
+    const head = appHeader({
+      title: "Zinvoices",
+      sub: rows.length ? statsSub(rows) : undefined,
+      subId: "inv-sub",
+      actions:
+        (rows.length ? linkButton({ label: "Export CSV", href: "/export/invoices.csv", variant: "ghost", icon: "download", download: true, ariaLabel: "Export CSV" }) : "") +
+        linkButton({ label: "New Zinvoice", href: "/invoices/new", variant: "primary", icon: "add", ariaLabel: "New zinvoice" }),
+    });
     if (!rows.length) {
       return layout("Zinvoices", `${head}
         <div class="scroll-region" data-enter="3">${emptyInvoices()}</div>`, "invoices", true);
     }
     return layout("Zinvoices", `${head}
+      ${statsRowHtml(rows)}
       <div class="invoice-list-detail${selected && !isDefault ? " has-selection" : ""}" data-enter="3">
         <section class="invoice-list-pane" aria-label="Zinvoice list">
-          <p class="muted" id="inv-outstanding">Outstanding: <strong>${money(outstandingTotal(rows))}</strong></p>
           ${unbilledSection(rows)}
           ${invoiceListHtml(rows, selected ? selected.id : null)}
         </section>
