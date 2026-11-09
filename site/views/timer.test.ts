@@ -532,4 +532,50 @@ describe("timer mock parity (#1121)", () => {
     const html = createTimerViews({ ...baseDeps, qRunning: stubQuery() } as any).entryRow(entry as any);
     expect(html).not.toContain('ui-row-meta">$');
   });
+
+  test("dashboard composes the mock header, stat row, and entries card", () => {
+    const deps = { ...baseDeps, qRunning: { get: () => null } as unknown as Statement };
+    const html = createTimerViews(deps as any).dashboardPage();
+    expect(html).toContain('<header class="ui-app-head">');
+    expect(html).toContain('<h1 class="ui-app-title">Today</h1>');
+    expect(html).toContain("here's your day so far.");
+    expect(html).toContain('id="invoice-week"');
+    expect(html).toContain('<div id="today-stats" hx-get="/partial/today-stats" hx-trigger="load, timer-updated from:body">');
+    expect(html).toContain('<div class="ui-stat-row">');
+    for (const label of ["Today", "This week", "Unbilled"]) {
+      expect(html).toContain(`<div class="ui-stat-label">${label}</div>`);
+    }
+    expect(html).toContain("Create Zinvoice");
+    expect(html).toContain('<div class="ui-block-title">Today\'s entries</div>');
+    expect(html).not.toContain("page-head");
+  });
+
+  test("stat partial values: today, week window, and rounded unbilled", () => {
+    const mk = (start: string, end: string, client: string) => ({
+      start_time: start, end_time: end, client_name: client,
+      project_name: null, client_color: null, client_rate: null,
+      invoice_id: null, invoice_number: null, invoice_status: null,
+      id: 1, project_id: 1, description: "",
+    });
+    const todayEntries = [mk("2026-11-09T09:00:00.000Z", "2026-11-09T10:00:00.000Z", "Acme")];
+    const weekEntries = [...todayEntries, mk("2026-11-04T09:00:00.000Z", "2026-11-04T11:00:00.000Z", "Beta")];
+    let call = 0;
+    const deps = {
+      ...baseDeps,
+      qRange: { all: () => (++call === 1 ? todayEntries : weekEntries) } as unknown as Statement,
+      db: { query: () => ({ all: () => [
+        { cid: 1, rate: 100, start_time: "2026-11-02T09:00:00.000Z", end_time: "2026-11-02T09:30:00.000Z" },
+        { cid: 1, rate: 100, start_time: "2026-11-03T09:00:00.000Z", end_time: "2026-11-03T09:01:00.000Z" },
+      ] }) } as unknown as Database,
+    };
+    const html = createTimerViews(deps as any).todayStatsPartial(
+      "2026-11-09T06:00:00.000Z", "2026-11-10T06:00:00.000Z",
+      "2026-11-08T06:00:00.000Z", "2026-11-15T06:00:00.000Z");
+    expect(html).toContain('<div class="ui-stat-value">1h</div>');
+    expect(html).toContain('<div class="ui-stat-value">3h</div>');
+    expect(html).toContain("Across 2 clients");
+    /* 30m at rate 100 = $50; the 1-minute entry rounds up to 5m = $8.33 */
+    expect(html).toContain('<div class="ui-stat-value">$58.33</div>');
+    expect(html).toContain("35m across 1 client");
+  });
 });

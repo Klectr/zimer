@@ -116,7 +116,7 @@ function buildTenantTree(bundle: DbBundle, dbPath: string): WebTenant & ApiTenan
     ensurePublicToken, getPublicToken, mintPublicToken,
   } = createDomain({ db, qInvoice, qInvoiceItems, TOKEN });
 
-  const { timerPartial, todayPartial, dashboardPage } = createTimerViews({
+  const { timerPartial, todayPartial, todayStatsPartial, dashboardPage } = createTimerViews({
     db, qRunning, qRange, layout, demoBanner, projectOptions, projectOptionRows,
     revenueTotals, revenueMonthly, revenueByClient, revenueOverdue, m3ProgressBar,
     dayTargetSecs: () => dayTargetSecs(db), /* #908: per-request read of the user's setting */
@@ -153,7 +153,7 @@ function buildTenantTree(bundle: DbBundle, dbPath: string): WebTenant & ApiTenan
     db, dbPath,
     qRunning, qOne, qRange, qInvoice, qInvoices,
     notFoundPage, errorPage,
-    dashboardPage, timerPartial, todayPartial, weekInner, weekStrip,
+    dashboardPage, timerPartial, todayPartial, todayStatsPartial, weekInner, weekStrip,
     calendarPage, editPage, editEntryDialog,
     managePage, clientSelection, clientDetailBody, clientListOob, bizProfileSection, dailyTargetSection, clientSettingsForm, settingsPage, themeSectionHtml,
     invoicesPage, invoiceNewPage, defaultNewInvParams, invoiceStep2, invoiceDetailBody, invoiceListOob, invoiceDoc, publicInvoicePage,

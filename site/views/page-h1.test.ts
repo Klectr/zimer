@@ -39,7 +39,7 @@ function timerPage(): string {
     revenueByClient: () => [],
     revenueOverdue: () => [],
     m3ProgressBar: () => "",
-    dayTargetSecs: 8 * 3600,
+    dayTargetSecs: () => 8 * 3600,
   };
   return createTimerViews(deps as any).dashboardPage();
 }
@@ -112,8 +112,8 @@ describe("page-level h1 (#701)", () => {
   test("settings page has exactly one h1: Settings", () => {
     expect(h1Texts(managePages().settings)).toEqual(["Settings"]);
   });
-  test("timer page h1 carries the ui title class (migrated in #1102)", () => {
-    expect(timerPage()).toContain('<h1 class="ui-page-title">Today</h1>');
+  test("timer page h1 carries the ui title class (appHeader, #1121)", () => {
+    expect(timerPage()).toContain('<h1 class="ui-app-title">Today</h1>');
   });
   test("manage page h1 carries the ui title class (migrated in #1105)", () => {
     expect(managePages().manage).toContain('<h1 class="ui-page-title">Clients</h1>');

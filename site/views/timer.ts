@@ -5,7 +5,7 @@
  *  slices, so every call site keeps working unchanged. */
 
 import type { Database, Statement } from "bun:sqlite";
-import { dayBounds, durationSeconds, entryInvoiceMark, entryIsLocked, esc, fmtDur, money, schemeColor, todayStr } from "../lib/format.ts";
+import { addDays, dayBounds, durationSeconds, entryInvoiceMark, entryIsLocked, esc, fmtDur, money, schemeColor, sundayOf, todayStr } from "../lib/format.ts";
 import { icon } from "../lib/icons.ts";
 import { timerPanel } from "../ui/timer-display.ts";
 import { card } from "../ui/card.ts";
@@ -13,6 +13,8 @@ import { selectField, textField } from "../ui/field.ts";
 import { button, linkButton } from "../ui/button.ts";
 import { entryRow as uiEntryRow } from "../ui/rows.ts";
 import { progressBar } from "../ui/progress.ts";
+import { appHeader } from "../ui/app-header.ts";
+import { statBlock } from "../ui/stat.ts";
 import { tag } from "../ui/tag.ts";
 import type { Entry } from "../lib/types.ts";
 
@@ -188,28 +190,79 @@ export function createTimerViews(deps: TimerViewDeps) {
       <div class="ui-list">${entries.map((e, i) => entryRow(e, i, canRepeat)).join("")}</div>`;
   }
 
+  /* #1121: the mock's stat-card row above the panes — today vs the
+     daily target, the Sun–Sat week vs five days of target, and unbilled
+     value with the #328 per-entry 5-minute round-up the Zinvoices page
+     uses. The dashboard's initial render uses the server day; the
+     #today-stats region re-fetches with the client's bounds on load
+     (#255), and again on every timer start/stop. */
+  function statRow(from?: string, to?: string, weekFrom?: string, weekTo?: string): string {
+    const target = dayTargetSecs();
+    const [tf, tt] = from && to ? [from, to] : dayBounds(todayStr());
+    const todayEntries = qRange.all(tf, tt) as Entry[];
+    const todaySecs = todayEntries.reduce((a, e) => a + durationSeconds(e.start_time, e.end_time), 0);
+    const sun = sundayOf(todayStr());
+    const [dwf] = dayBounds(sun);
+    const [dwt] = dayBounds(addDays(sun, 7));
+    const [wf, wt] = weekFrom && weekTo ? [weekFrom, weekTo] : [dwf, dwt];
+    const weekEntries = qRange.all(wf, wt) as Entry[];
+    const weekSecs = weekEntries.reduce((a, e) => a + durationSeconds(e.start_time, e.end_time), 0);
+    const weekClients = new Set(weekEntries.map(e => e.client_name).filter(Boolean)).size;
+    const unbilledRows = db.query(
+      `SELECT c.id AS cid, c.rate AS rate, e.start_time, e.end_time FROM time_entries e
+       JOIN projects p ON p.id = e.project_id
+       JOIN clients c ON c.id = p.client_id
+       WHERE e.invoice_id IS NULL AND e.end_time IS NOT NULL`).all() as any[];
+    let unbilledSecs = 0, unbilledValue = 0;
+    const unbilledClients = new Set<number>();
+    for (const r of unbilledRows) {
+      const secs = Math.ceil(durationSeconds(r.start_time, r.end_time) / 300) * 300;
+      if (secs <= 0) continue;
+      unbilledSecs += secs;
+      unbilledValue += (secs / 3600) * (r.rate || 0);
+      unbilledClients.add(r.cid);
+    }
+    const across = (n: number) => `across ${n} client${n === 1 ? "" : "s"}`;
+    return `<div class="ui-stat-row">` +
+      card({ content: statBlock({ label: "Today", value: fmtDur(todaySecs), sub: `Goal ${fmtDur(target)}${todaySecs >= target ? " · Target met" : ""}` }) + progressBar({ value: (todaySecs / target) * 100, label: "Today's goal progress" }) }) +
+      card({ content: statBlock({ label: "This week", value: fmtDur(weekSecs), sub: `Across ${weekClients} client${weekClients === 1 ? "" : "s"}` }) + progressBar({ value: (weekSecs / (target * 5)) * 100, label: "Week progress" }) }) +
+      card({ content: statBlock({ label: "Unbilled", value: money(unbilledValue), sub: `${fmtDur(unbilledSecs)} ${across(unbilledClients.size)}` }) + linkButton({ label: "Create Zinvoice", href: "/invoices/new", size: "sm" }) }) +
+      `</div>`;
+  }
+
+  /* #1121: the stat row as a partial — the client passes its own day and
+     week bounds (#255 pattern, same as /partial/today) so the figures
+     agree with the today list below them in every timezone. */
+  function todayStatsPartial(from?: string, to?: string, weekFrom?: string, weekTo?: string): string {
+    return statRow(from, to, weekFrom, weekTo);
+  }
+
   function dashboardPage(): string {
+    const dateSub = new Intl.DateTimeFormat("en-US", { weekday: "long", month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(`${todayStr()}T12:00:00Z`));
     return layout("Today", `
       ${demoBanner(db)}
+      ${appHeader({ title: "Today", sub: `${dateSub} — here's your day so far.`, actions: linkButton({ label: "Zinvoice this week", href: "/invoices/new", icon: "receipt", id: "invoice-week" }) })}
+      <div id="today-stats" hx-get="/partial/today-stats" hx-trigger="load, timer-updated from:body">${statRow()}</div>
       <div class="pane-layout">
         <section class="pane-focus" data-enter="2" aria-label="Zimer and today's entries">
           ${timerPartial()}
           <div class="scroll-region">
-            <div class="page-head">
-              <h1 class="ui-page-title">Today</h1>
-              ${linkButton({ label: "Zinvoice this week", href: "/invoices/new", icon: "receipt", variant: "ghost", size: "sm", id: "invoice-week" })}
-            </div>
-            <div id="today-list" hx-get="/partial/today" hx-trigger="load, timer-updated from:body">
-              <div class="skel-stack" aria-hidden="true">
-                <div class="skel skel-row"></div>
-                <div class="skel skel-row"></div>
-                <div class="skel skel-row"></div>
+            <section class="ui-card">
+              <div class="ui-block-title">Today's entries</div>
+              <div id="today-list" hx-get="/partial/today" hx-trigger="load, timer-updated from:body">
+                <div class="skel-stack" aria-hidden="true">
+                  <div class="skel skel-row"></div>
+                  <div class="skel skel-row"></div>
+                  <div class="skel skel-row"></div>
+                </div>
               </div>
-            </div>
+            </section>
             <script>(function(){/* #255: client day bounds + client-side time formatting.
               Runs at parse time, before htmx's load trigger fires. */
               var el=document.getElementById('today-list');if(!el)return;
               var d=new Date();
+              var sub=document.querySelector('.ui-app-head .ui-app-sub');
+              if(sub)sub.textContent=d.toLocaleDateString([],{weekday:'long',month:'short',day:'numeric'})+" — here's your day so far.";
               /* #299: point "Invoice this week" at the client-local week (Sun–Sat),
                  matching the calendar's week convention. Server can't know the tz. */
               var inv=document.getElementById('invoice-week');
@@ -220,6 +273,10 @@ export function createTimerViews(deps: TimerViewDeps) {
               var s=new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime();
               var from=new Date(s).toISOString(), to=new Date(s+864e5).toISOString();
               el.setAttribute('hx-get','/partial/today?from='+encodeURIComponent(from)+'&to='+encodeURIComponent(to));
+              var stats=document.getElementById('today-stats');
+              if(stats){var wsun=new Date(d.getFullYear(),d.getMonth(),d.getDate()-d.getDay());
+                var wend=new Date(wsun.getFullYear(),wsun.getMonth(),wsun.getDate()+7);
+                stats.setAttribute('hx-get','/partial/today-stats?from='+encodeURIComponent(from)+'&to='+encodeURIComponent(to)+'&wfrom='+encodeURIComponent(wsun.toISOString())+'&wto='+encodeURIComponent(wend.toISOString()));}
               window.__tkFmtTimes=function(root){
                 var els=(root||document).querySelectorAll('[data-ts]');
                 for(var i=0;i<els.length;i++){var t=els[i];
@@ -333,5 +390,5 @@ export function createTimerViews(deps: TimerViewDeps) {
       </div>`;
   }
 
-  return { entryRow, timerPartial, todayPartial, dashboardPage, revenueSection };
+  return { entryRow, timerPartial, todayPartial, todayStatsPartial, dashboardPage, revenueSection };
 }
