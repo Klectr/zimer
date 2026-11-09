@@ -99,6 +99,14 @@ describe("selectField option descriptions", () => {
   });
 });
 
+describe("selectField option data attributes", () => {
+  test("data map renders as data-* attributes, escaped (#1121)", () => {
+    const html = selectField({ id: "c", label: "Client", options: [{ value: "3", label: "Acme", data: { rate: 85, "terms-days": 15 } }, { value: "4", label: "B<x>" }], value: "3" });
+    expect(html).toContain('<option value="3" data-rate="85" data-terms-days="15" selected>Acme</option>');
+    expect(html).toContain('<option value="4">B&lt;x&gt;</option>');
+  });
+});
+
 describe("selectField className", () => {
   test("extra class lands on the select for behavior hooks", () => {
     const html = selectField({ id: "t", label: "Terms", options: [{ value: "a", label: "A" }], className: "terms-select" });

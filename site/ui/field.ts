@@ -71,6 +71,7 @@ export interface SelectOption {
   value: string;
   label: string;
   desc?: string;
+  data?: Record<string, string | number>;
 }
 
 export interface SelectFieldOptions {
@@ -87,10 +88,12 @@ export function selectField(opts: SelectFieldOptions): string {
   const name = opts.name ? ` name="${esc(opts.name)}"` : "";
   const required = opts.required ? " required" : "";
   const options = opts.options
-    .map(
-      (o) =>
-        `<option value="${esc(o.value)}"${o.desc ? ` data-desc="${esc(o.desc)}"` : ""}${o.value === opts.value ? " selected" : ""}>${esc(o.label)}</option>`,
-    )
+    .map((o) => {
+      const data = o.data
+        ? Object.entries(o.data).map(([k, v]) => ` data-${esc(k)}="${esc(String(v))}"`).join("")
+        : "";
+      return `<option value="${esc(o.value)}"${o.desc ? ` data-desc="${esc(o.desc)}"` : ""}${data}${o.value === opts.value ? " selected" : ""}>${esc(o.label)}</option>`;
+    })
     .join("");
   return (
     `<div class="ui-field">` +

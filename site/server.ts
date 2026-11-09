@@ -125,14 +125,14 @@ function buildTenantTree(bundle: DbBundle, dbPath: string): WebTenant & ApiTenan
     db, qOne, qRange, entrySelect: ENTRY_SELECT, layout, projectOptions, weekTargetBar,
     calHourPx: CAL_HOUR_PX,
   });
-  const { managePage, clientSelection, clientDetailBody, clientListOob, clientOptions, bizProfileSection, dailyTargetSection, clientSettingsForm, settingsPage, themeSectionHtml } =
+  const { managePage, clientSelection, clientDetailBody, clientListOob, bizProfileSection, dailyTargetSection, clientSettingsForm, settingsPage, themeSectionHtml } =
     createManageViews({ db, layout });
   const {
     invoicesPage, defaultNewInvParams, invoiceNewPage, invoiceStep2, invoiceSheet,
     invoiceDoc, invoiceDetailBody, invoiceListOob,
     invoiceDocumentHtml, invoicePdfInput, /* #301 */
   } = createInvoiceViews({
-    db, qInvoices, layout, clientOptions,
+    db, qInvoices, layout,
     getPublicToken, stripeConfigured, nextInvoiceNumber, invoiceTotals, isOverdue,
     unbilledByClient,
   });

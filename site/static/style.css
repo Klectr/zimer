@@ -1907,6 +1907,8 @@ body.app-fixed .cal-gutter-spacer {
 .page-head h2 { margin: 0; }
 .page-head .row { display: flex; gap: 8px; align-items: center; }
 .invoice-detail-head { display: flex; align-items: center; gap: 12px; }
+.detail-title { margin-bottom: var(--spacing-sm); }
+.detail-title .ui-app-sub { margin-top: var(--spacing-xxs); }
 /* #328: "Unbilled time" section head on the invoices page. */
 .unbilled-head { margin-top: var(--spacing); }
 @media (max-width: 599px) {

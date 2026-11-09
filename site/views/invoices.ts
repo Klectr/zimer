@@ -12,17 +12,18 @@ import type { PdfInvoice } from "../pdf.ts";
 import { listProofs } from "../lib/payment_proofs.ts"; /* #956 */
 import { button, linkButton } from "../ui/button.ts";
 import { card } from "../ui/card.ts";
-import { textField } from "../ui/field.ts";
+import { selectField, textField } from "../ui/field.ts";
 import { clientRow, zinvoiceRow } from "../ui/rows.ts";
 import { appHeader } from "../ui/app-header.ts";
 import { statBlock } from "../ui/stat.ts";
 import { formSection } from "../ui/zinvoice-form.ts";
+import { steps } from "../ui/steps.ts";
+import { PAYMENT_TERMS } from "../lib/format.ts";
 
 export interface InvoiceViewDeps {
   db: Database;
   qInvoices: Statement;
   layout: (title: string, body: string, active?: "timer" | "calendar" | "manage" | "invoices", fixed?: boolean) => string;
-  clientOptions: (selected?: number | null) => string;
   getPublicToken: (id: number) => string | null;
   stripeConfigured: () => boolean;
   nextInvoiceNumber: () => string;
@@ -33,7 +34,7 @@ export interface InvoiceViewDeps {
 
 export function createInvoiceViews(deps: InvoiceViewDeps) {
   const {
-    db, qInvoices, layout, clientOptions,
+    db, qInvoices, layout,
     getPublicToken, stripeConfigured, nextInvoiceNumber, invoiceTotals, isOverdue,
     unbilledByClient,
   } = deps;
@@ -241,9 +242,29 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     };
   }
 
+  /* #1121: the mock's wizard step labels. */
+  const STEP_ITEMS = ["Client & period", "Pick time", "Review & send"];
+
+  /* #1121: the client picker's options as data — the rate and effective
+     terms days ride as data attributes, which the step-1 script reads to
+     prefill the rate and derive the due date (#293). This replaces the
+     manage factory's clientOptions HTML the wizard used to inject. */
+  function clientPickerOptions(clients: any[]) {
+    const g = termsKey(null, getMeta(db, "business_payment_terms"));
+    return [
+      { value: "", label: "Choose a client…" },
+      ...clients.map(c => {
+        const days = termsDays(c.payment_terms || g);
+        const data: Record<string, string | number> = { rate: c.rate || 0 };
+        if (days !== null) data["terms-days"] = days;
+        return { value: String(c.id), label: c.name as string, data };
+      }),
+    ];
+  }
+
   /** Step 1: pick client + date range. Step 2 (preview): editable line items. */
   function invoiceNewPage(p: NewInvParams, preview?: { items: any[]; emptyMsg?: string }): string {
-    const clients = db.query("SELECT id, name, rate FROM clients ORDER BY name").all() as any[];
+    const clients = db.query("SELECT id, name, rate, payment_terms FROM clients ORDER BY name").all() as any[];
     const selClient = clients.find(c => String(c.id) === p.client_id);
     const step1 = card({ className: "form-card", content: formSection({ step: 1, title: "Pick unbilled time", bodyHtml: `
         <div class="form-info">
@@ -251,9 +272,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
           <p>Only finished, unbilled entries on this client's projects are included. Client hourly rates can be set on the <a href="/manage">Clients page</a>.</p>
         </div>
         <form method="post" action="/invoices/preview" class="form" hx-post="/invoices/preview" hx-target="#invoice-step2" hx-swap="innerHTML">
-          <div class="ui-field"><label class="ui-field-label" for="inv-client">Client</label><select class="ui-input ui-select" name="client_id" id="inv-client" required>
-              <option value="">Choose a client…</option>${clientOptions(p.client_id ? Number(p.client_id) : null)}
-            </select></div>
+          ${selectField({ id: "inv-client", label: "Client", name: "client_id", required: true, value: p.client_id, options: clientPickerOptions(clients) })}
           <div class="two-field" id="inv-range">
             ${textField({ id: "inv-from", label: "From", name: "from", type: "date", value: p.from, required: true })}
             ${textField({ id: "inv-to", label: "To", name: "to", type: "date", value: p.to, required: true })}
@@ -329,10 +348,8 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
 
     return layout("New zinvoice", `
       <div class="page-narrow" data-enter="2">
-      <div class="page-head">
-        <h1 class="ui-page-title">New zinvoice</h1>
-        ${linkButton({ label: "Cancel", href: "/invoices", variant: "ghost" })}
-      </div>
+      ${appHeader({ title: "New Zinvoice", actions: linkButton({ label: "Cancel", href: "/invoices", variant: "ghost" }) })}
+      <div id="inv-steps">${steps({ items: STEP_ITEMS, current: preview ? 1 : 0 })}</div>
       ${step1}<div id="invoice-step2">${invoiceStep2(p, preview)}</div>
       </div>`, "invoices");
   }
@@ -358,7 +375,8 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
           <td class="num">${money(it.amount)}<input type="hidden" name="g${i}_ids" value="${it.entry_ids.join(",")}"><input type="hidden" name="g${i}_date_from" value="${esc(it.date_from || "")}"><input type="hidden" name="g${i}_date_to" value="${esc(it.date_to || "")}"></td>
         </tr>`).join("");
     const t = invoiceTotals(preview.items, Number(p.tax_rate) || 0);
-    return card({ className: "form-card", content: formSection({ step: 2, title: "Review line items", bodyHtml: `
+    return `<div id="inv-steps" hx-swap-oob="true">${steps({ items: STEP_ITEMS, current: 1 })}</div>`
+      + card({ className: "form-card", content: formSection({ step: 2, title: "Review line items", bodyHtml: `
         ${emptyNote}
         ${roundingNote}
         <form method="post" action="/invoices" class="form">
@@ -756,7 +774,12 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     /* #424: the paid label stays exactly where it always was — first in the
        detail actions row. Only its styling changes (now the ui paid chip:
        check icon + label). Nothing else in the header moves. */
+    const termsLabel = PAYMENT_TERMS[termsKey(inv.client_payment_terms, termsKey(null, getMeta(db, "business_payment_terms")))].label;
     return `<div id="invoice-detail">
+      <div class="detail-title no-print">
+        <h2 class="ui-section-title">Zinvoice ${esc(inv.number)}${inv.client_name ? ` — ${esc(inv.client_name)}` : ""}</h2>
+        <p class="ui-app-sub">Issued ${esc(shortYmd(inv.issue_date))}${inv.due_date ? ` · Due ${esc(shortYmd(inv.due_date))}` : ""} · ${esc(termsLabel)}</p>
+      </div>
       <div class="page-head no-print">
         <div class="invoice-detail-head">
           ${linkButton({ label: "Zinvoices", href: "/invoices", icon: "arrow_left", variant: "ghost", className: "detail-back" })}
