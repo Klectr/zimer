@@ -66,6 +66,10 @@ const LAB_CSS = `
   .zb-side{width:264px;flex:none;background:var(--zb-side-bg);border-right:1px solid var(--zb-border);padding:18px 12px;position:sticky;top:0;height:100vh;overflow-y:auto;box-sizing:border-box}
   .zb-brand{font-size:17px;font-weight:600;padding:0 10px}
   .zb-brand-sub{font-size:12px;opacity:.55;padding:2px 10px 14px}
+  .zb-filter{padding:0 10px 6px}
+  .zb-filter input{width:100%;box-sizing:border-box;background:rgba(127,127,127,.08);border:1px solid var(--zb-border);border-radius:6px;padding:7px 10px;color:inherit;font-size:14px;font-family:inherit}
+  .zb-filter input:focus-visible{outline:2px solid rgba(127,127,127,.6);outline-offset:1px}
+  .zb-no-matches{font-size:13px;opacity:.55;padding:10px}
   .zb-group{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;opacity:.55;padding:14px 10px 5px}
   .zb-item{display:block;padding:6px 10px;border-radius:6px;color:inherit;text-decoration:none;font-size:14px}
   .zb-item:hover{background:var(--zb-hover)}
@@ -90,6 +94,35 @@ const NAV_SCRIPT = `
     document.querySelectorAll(".zb-item.is-active").forEach((el) => el.classList.remove("is-active"));
     a.classList.add("is-active");
   });
+  const zbFilterInput = document.getElementById("zb-filter-input");
+  function zbApplyFilter() {
+    const q = zbFilterInput.value.trim().toLowerCase();
+    let anyVisible = false;
+    document.querySelectorAll(".zb-group-wrap").forEach((wrap) => {
+      let groupVisible = false;
+      wrap.querySelectorAll(".zb-item").forEach((item) => {
+        const show = !q || item.dataset.search.includes(q);
+        item.style.display = show ? "" : "none";
+        if (show) groupVisible = true;
+      });
+      wrap.style.display = groupVisible ? "" : "none";
+      if (groupVisible) anyVisible = true;
+    });
+    const empty = document.querySelector(".zb-no-matches");
+    if (empty) empty.hidden = anyVisible || !q;
+  }
+  if (zbFilterInput) {
+    zbFilterInput.addEventListener("input", zbApplyFilter);
+    zbFilterInput.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") { zbFilterInput.value = ""; zbApplyFilter(); }
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "/" && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) {
+        e.preventDefault();
+        zbFilterInput.focus();
+      }
+    });
+  }
   window.addEventListener("popstate", () => {
     const id = location.pathname.match(/\\/story\\/([\\w-]+)/)?.[1];
     if (!id) return;
@@ -164,19 +197,23 @@ function sidebar(activeId: string): string {
   const nav = [...groups.entries()]
     .map(
       ([group, stories]) =>
-        `<div class="zb-group">${esc(group)}</div>` +
+        `<div class="zb-group-wrap"><div class="zb-group">${esc(group)}</div>` +
         stories
           .map(
             (s) =>
               `<a class="zb-item${s.id === activeId ? " is-active" : ""}" href="/story/${esc(s.id)}" ` +
+              `data-search="${esc(`${group} ${s.title} ${s.id}`.toLowerCase())}" ` +
               `hx-get="/story/${esc(s.id)}/fragment" hx-target="#zb-stage-wrap" hx-push-url="/story/${esc(s.id)}">${esc(s.title)}</a>`,
           )
-          .join(""),
+          .join("") +
+        `</div>`,
     )
     .join("");
   return (
     `<aside class="zb-side"><div class="zb-brand">${esc(NAME)}</div>` +
-    `<div class="zb-brand-sub">dev only · fictional data</div>${nav}</aside>`
+    `<div class="zb-brand-sub">dev only · fictional data</div>` +
+    `<div class="zb-filter"><input id="zb-filter-input" type="search" placeholder="Filter stories" aria-label="Filter stories"></div>` +
+    `${nav}<div class="zb-no-matches" hidden>No stories match</div></aside>`
   );
 }
 
