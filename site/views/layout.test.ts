@@ -139,6 +139,25 @@ describe("layout lazy dialogs drop stale loads (#1189)", () => {
     expect(eClose).toBeGreaterThan(-1);
     expect(body.indexOf("loadGen++;", eClose)).toBeGreaterThan(eClose);
   });
+
+  test("both closes capture the generation so a reopen during the fade cancels the hide (#1192)", () => {
+    const { layout } = createLayoutViews(noRunning);
+    const body = layout("T", "body");
+    const sScript = body.indexOf("getElementById('settings-body')");
+    const sClose = body.indexOf("function close(refocus){", sScript);
+    expect(sClose).toBeGreaterThan(-1);
+    const sBump = body.indexOf("loadGen++;", sClose);
+    const sCapture = body.indexOf("var gen=loadGen, done=false,", sClose);
+    expect(sCapture).toBeGreaterThan(sBump);
+    expect(body.indexOf("if(done||gen!==loadGen) return;", sClose)).toBeGreaterThan(sCapture);
+    const eScript = body.indexOf("getElementById('entry-dialog-body')");
+    const eClose = body.indexOf("function closeDialog(refocus){", eScript);
+    expect(eClose).toBeGreaterThan(-1);
+    const eBump = body.indexOf("loadGen++;", eClose);
+    const eCapture = body.indexOf("var gen=loadGen, done=false,", eClose);
+    expect(eCapture).toBeGreaterThan(eBump);
+    expect(body.indexOf("if(done||gen!==loadGen) return;", eClose)).toBeGreaterThan(eCapture);
+  });
 });
 
 /** #923: trial-expiry nudge banner — pure view logic + layout wiring. */

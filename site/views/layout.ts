@@ -380,7 +380,7 @@ function settingsDialog(): string {
       if(!open_) return; open_=false; focusOnSwap=false; loadGen++;
       scrim.classList.remove('open');
       document.removeEventListener('keydown',onKey,true);
-      var done=false, finish=function(){ if(done) return; done=true; scrim.hidden=true; };
+      var gen=loadGen, done=false, finish=function(){ if(done||gen!==loadGen) return; done=true; scrim.hidden=true; };
       var onEnd=function(e){ if(e.target===scrim&&e.propertyName==='opacity'){ scrim.removeEventListener('transitionend',onEnd); finish(); } };
       scrim.addEventListener('transitionend',onEnd); setTimeout(finish,300);
       if(refocus){ var t=(opener===drawerItem&&menuBtn)?menuBtn:opener; if(t) t.focus(); }
@@ -455,7 +455,7 @@ function entryDialog(): string {
       if(!open_) return; open_=false; loadGen++;
       scrim.classList.remove('open');
       document.removeEventListener('keydown',onKey,true);
-      var done=false, finish=function(){ if(done) return; done=true; scrim.hidden=true; };
+      var gen=loadGen, done=false, finish=function(){ if(done||gen!==loadGen) return; done=true; scrim.hidden=true; };
       var onEnd=function(e){ if(e.target===scrim&&e.propertyName==='opacity'){ scrim.removeEventListener('transitionend',onEnd); finish(); } };
       scrim.addEventListener('transitionend',onEnd); setTimeout(finish,300);
       if(refocus&&opener&&document.contains(opener)) opener.focus();
