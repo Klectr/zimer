@@ -85,7 +85,7 @@ function getSettings(handleWeb: any, id: number | string, htmx = true) {
 describe("client settings (#630)", () => {
   const full = {
     name: "  Byte Bot LLC  ",
-    rate: "45", payment_terms: "net_15",
+    rate: "45", payment_terms: "net_15", color: "#38bdf8",
     email: " ap@bytebot.io ", phone: " 555-0100 ", website: "bytebot.io",
     address: " 2643 Morningside Dr\r\nClearwater, FL 33759 ",
   };
@@ -105,11 +105,11 @@ describe("client settings (#630)", () => {
     expect(res!.status).toBe(404);
   });
 
-  test("POST saves all seven fields trimmed, returning the form", async () => {
+  test("POST saves all eight fields trimmed, returning the form", async () => {
     const { db, client, handleWeb } = setup();
     const res = await postSettings(handleWeb, client.id, full);
     expect(res!.status).toBe(200);
-    const row = db.query("SELECT name, rate, payment_terms, email, phone, website, address FROM clients WHERE id = ?").get(client.id) as any;
+    const row = db.query("SELECT name, rate, payment_terms, email, phone, website, address, color FROM clients WHERE id = ?").get(client.id) as any;
     expect(row.name).toBe("Byte Bot LLC");
     expect(row.rate).toBe(45);
     expect(row.payment_terms).toBe("net_15");
@@ -117,37 +117,77 @@ describe("client settings (#630)", () => {
     expect(row.phone).toBe("555-0100");
     expect(row.website).toBe("bytebot.io");
     expect(row.address).toBe("2643 Morningside Dr\nClearwater, FL 33759");
+    expect(row.color).toBe("#38bdf8");
     const body = await res!.text();
     expect(body).toContain('id="client-settings-form"');
     expect(body).toContain('name="name" value="Byte Bot LLC"');
     expect(body).toContain('name="rate" value="45"');
+    expect(body).toContain('name="color" value="#38bdf8"');
     expect(body).toContain("ap@bytebot.io");
   });
 
-  test("empty name is rejected with 400 and leaves the row untouched", async () => {
+  /* #1160: an invalid color falls back to the default, same as create. */
+  test("an invalid color falls back to the default on save", async () => {
+    const { db, client, handleWeb } = setup();
+    const res = await postSettings(handleWeb, client.id, { ...full, color: "not-a-color" });
+    expect(res!.status).toBe(200);
+    const row = db.query("SELECT color FROM clients WHERE id = ?").get(client.id) as any;
+    expect(row.color).toBe("#fb923c");
+  });
+
+  /* #1160 review: a save that omits the color field (a pre-#1160 form, any
+     caller that never had the field) keeps the stored color. */
+  test("a settings save without a color field keeps the stored color", async () => {
+    const { db, client, handleWeb } = setup();
+    db.query("UPDATE clients SET color = '#a78bfa' WHERE id = ?").run(client.id);
+    const { color: _omit, ...noColor } = full as any;
+    const res = await postSettings(handleWeb, client.id, noColor);
+    expect(res!.status).toBe(200);
+    const row = db.query("SELECT color FROM clients WHERE id = ?").get(client.id) as any;
+    expect(row.color).toBe("#a78bfa");
+  });
+
+  /* #1160: HTMX validation failures answer 422 with the form re-rendered
+     around the error (the dialog swaps it in); the row stays untouched. */
+  test("empty name is rejected with a 422 inline error and leaves the row untouched", async () => {
     const { db, client, handleWeb } = setup();
     const res = await postSettings(handleWeb, client.id, { ...full, name: "   " });
-    expect(res!.status).toBe(400);
+    expect(res!.status).toBe(422);
+    const body = await res!.text();
+    expect(body).toContain('id="client-settings-form"');
+    expect(body).toContain('<p class="error" role="alert">Client name is required.</p>');
     const row = db.query("SELECT name FROM clients WHERE id = ?").get(client.id) as any;
     expect(row.name).toBe("Bytebot");
   });
 
-  test("unknown payment terms are rejected with 400 and leave the row untouched", async () => {
+  test("unknown payment terms are rejected with a 422 inline error and leave the row untouched", async () => {
     const { db, client, handleWeb } = setup();
     const res = await postSettings(handleWeb, client.id, { ...full, payment_terms: "net_99" });
-    expect(res!.status).toBe(400);
+    expect(res!.status).toBe(422);
+    const body = await res!.text();
+    expect(body).toContain('<p class="error" role="alert">Unknown payment terms.</p>');
     const row = db.query("SELECT payment_terms FROM clients WHERE id = ?").get(client.id) as any;
     expect(row.payment_terms).toBeNull();
   });
 
-  test("negative or non-numeric rate is rejected with 400 and leaves the row untouched", async () => {
+  test("negative or non-numeric rate is rejected with a 422 inline error and leaves the row untouched", async () => {
     const { db, client, handleWeb } = setup();
     for (const rate of ["-5", "abc"]) {
       const res = await postSettings(handleWeb, client.id, { ...full, rate });
-      expect(res!.status).toBe(400);
+      expect(res!.status).toBe(422);
+      const body = await res!.text();
+      expect(body).toContain('<p class="error" role="alert">Hourly rate must be a number at or above 0.</p>');
     }
     const row = db.query("SELECT rate FROM clients WHERE id = ?").get(client.id) as any;
     expect(row.rate).toBe(40);
+  });
+
+  /* #1160: plain (non-HTMX) posts keep the original 400 text contract. */
+  test("a plain POST validation failure stays a 400 text response", async () => {
+    const { client, handleWeb } = setup();
+    const res = await postSettings(handleWeb, client.id, { ...full, name: "   " }, false);
+    expect(res!.status).toBe(400);
+    expect(await res!.text()).toBe("Client name is required.");
   });
 
   test("blank rate stores 0 and blank payment terms store NULL", async () => {
@@ -172,6 +212,34 @@ describe("client settings (#630)", () => {
     const res = await postSettings(handleWeb, client.id, full, false);
     expect(res!.status).toBe(302);
     expect(res!.headers.get("Location")).toBe(`/manage?client=${client.id}`);
+  });
+});
+
+/** #1160: the add-client form collects email at creation (the page-manage
+ *  mock always had the field; the live form dropped it). */
+function postClient(handleWeb: any, fields: Record<string, string>) {
+  const form = new FormData();
+  for (const [k, v] of Object.entries(fields)) form.append(k, v);
+  const req = new Request("http://x/clients", { method: "POST", body: form });
+  return handleWeb(req, new URL(req.url), "/clients", "POST");
+}
+
+describe("client create (#1160)", () => {
+  test("POST /clients stores the email, trimmed", async () => {
+    const { db, handleWeb } = setup();
+    const res = await postClient(handleWeb, { name: "Harbor Dental", rate: "75", color: "#4ade80", email: " billing@harbor.example " });
+    expect(res!.status).toBe(302);
+    const row = db.query("SELECT id, name, email, color FROM clients WHERE name = 'Harbor Dental'").get() as any;
+    expect(row.email).toBe("billing@harbor.example");
+    expect(row.color).toBe("#4ade80");
+    expect(res!.headers.get("Location")).toBe(`/manage?client=${row.id}`);
+  });
+
+  test("POST /clients with a blank email stores NULL", async () => {
+    const { db, handleWeb } = setup();
+    await postClient(handleWeb, { name: "No Email Co", rate: "", color: "", email: "   " });
+    const row = db.query("SELECT email FROM clients WHERE name = 'No Email Co'").get() as any;
+    expect(row.email).toBeNull();
   });
 });
 
