@@ -105,6 +105,13 @@ export function todayStr(): string {
   return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`;
 }
 
+export function greeting(at: Date = new Date()): string {
+  const h = at.getHours();
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  return "Good evening";
+}
+
 /** Local-day bounds as ISO strings: YYYY-MM-DD in server-local time. */
 export function dayBounds(dateStr: string): [string, string] {
   const [y, m, d] = dateStr.split("-").map(Number);
