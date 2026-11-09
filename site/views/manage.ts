@@ -4,7 +4,7 @@
  *  and deletion. */
 
 import type { Database } from "bun:sqlite";
-import { esc, fmtDur, PAYMENT_TERMS, schemeColor, termsDescription, termsKey } from "../lib/format.ts";
+import { clientColor, esc, fmtDur, PAYMENT_TERMS, schemeColor, termsDescription, termsKey } from "../lib/format.ts";
 import type { PaymentTermsKey } from "../lib/format.ts";
 import { icon } from "../lib/icons.ts";
 import { THEMES, themeKey } from "../lib/theme.ts"; /* #884 */
@@ -171,24 +171,34 @@ export function createManageViews(deps: ManageViewDeps) {
     return `<div class="detail-placeholder">${icon("group")}<p class="muted">Select a client to manage its projects and settings.</p></div>`;
   }
 
-  /* #630: client settings form — all seven editable client fields,
+  /* #630: client settings form — all eight editable client fields,
      lazy-loaded into the settings modal. Same trimming/NULL/CRLF rules as
-     the old inline forms; the route enforces them. */
-  function clientSettingsForm(c: any): string {
+     the old inline forms; the route enforces them. #1160: color joins the
+     form (create no longer owns it), and a failed save re-renders through
+     here with the route's error line and the submitted values. */
+  function clientSettingsForm(c: any, error?: string): string {
     const options = [
       { value: "", label: "Use global terms", desc: "Falls back to the global payment terms." },
       ...termsOptions(),
     ];
-    return `<form method="post" action="/clients/${c.id}/settings" id="client-settings-form" class="ui-settings-form" hx-post="/clients/${c.id}/settings" hx-swap="outerHTML">` +
+    return `<form method="post" action="/clients/${c.id}/settings" id="client-settings-form" class="ui-settings-form" hx-post="/clients/${c.id}/settings" hx-swap="outerHTML" data-client-name="${esc(c.name || "")}">` +
+      (error ? `<p class="error" role="alert">${esc(error)}</p>` : "") +
       textField({ id: "cs-name", label: "Client name", name: "name", value: c.name || "", required: true }) +
-      textField({ id: "cs-rate", label: "Hourly rate", name: "rate", type: "number", value: c.rate ? String(c.rate) : "", min: "0", step: "0.01", prefix: "$", suffix: "/hr" }) +
+      `<div class="ui-form-row">` +
+      `<div style="max-width:172px">${textField({ id: "cs-rate", label: "Hourly rate", name: "rate", type: "number", value: c.rate ? String(c.rate) : "", min: "0", step: "0.01", prefix: "$", suffix: "/hr" })}</div>` +
+      `<label class="ui-color-control">
+            ${icon("palette")}
+            <span>Color</span>
+            <input type="color" name="color" value="${clientColor(c.color)}" aria-label="Client color">
+          </label>` +
+      `</div>` +
       selectField({ id: "cs-terms", label: "Payment terms", name: "payment_terms", options, value: c.payment_terms || "", className: "terms-select" }) +
       `<p class="terms-desc ui-settings-note">${esc(termsDescription(termsKey(c.payment_terms, globalTerms())))}</p>` +
       textField({ id: "cs-email", label: "Email", name: "email", type: "email", value: c.email || "" }) +
       textField({ id: "cs-phone", label: "Phone", name: "phone", type: "tel", value: c.phone || "" }) +
       textField({ id: "cs-website", label: "Website", name: "website", value: c.website || "", attrs: 'autocapitalize="none" spellcheck="false"' }) +
       textAreaField({ id: "cs-address", label: "Address", name: "address", value: c.address || "", rows: 3 }) +
-      `<div class="ui-settings-actions">${button({ label: "Save", type: "submit", variant: "primary" })}</div>` +
+      `<div class="ui-settings-actions">${button({ label: "Cancel", type: "button", variant: "ghost", id: "client-settings-cancel" })}${button({ label: "Save", type: "submit", variant: "primary" })}</div>` +
       `</form>`;
   }
 
@@ -200,7 +210,10 @@ export function createManageViews(deps: ManageViewDeps) {
     return `<div class="cal-scrim" id="client-settings-scrim" hidden>
       <div class="settings-dialog" role="dialog" aria-modal="true" aria-labelledby="client-settings-title">
         <div class="settings-dialog-head">
-          <h2 class="ui-dialog-title" id="client-settings-title">Client settings</h2>
+          <div>
+            <h2 class="ui-dialog-title" id="client-settings-title">Client settings</h2>
+            <p class="ui-settings-note" id="client-settings-sub" hidden>Client settings — rate, terms, color, and contact details invoicing uses.</p>
+          </div>
           <button class="ui-icon-btn" id="client-settings-close" type="button" aria-label="Close client settings">${icon("close")}</button>
         </div>
         <div id="client-settings-body"><p class="muted">Loading…</p></div>
@@ -216,6 +229,7 @@ export function createManageViews(deps: ManageViewDeps) {
     return `<div class="client-add">
       <form method="post" action="/clients" id="client-add-form" class="ui-settings-form">
         ${textField({ id: "mc-name", label: "Client name", name: "name", required: true })}
+        ${textField({ id: "mc-email", label: "Email", name: "email", type: "email", placeholder: "billing@client.example" })}
         <div class="ui-form-row">
           <div style="max-width:172px">${textField({ id: "mc-rate", label: "Hourly rate", name: "rate", type: "number", min: "0", step: "0.01", prefix: "$", suffix: "/hr" })}</div>
           <label class="ui-color-control">
@@ -273,8 +287,12 @@ export function createManageViews(deps: ManageViewDeps) {
         var dlgScrim = document.getElementById("client-settings-scrim");
         var dlgBody = document.getElementById("client-settings-body");
         var dlgClose = document.getElementById("client-settings-close");
+        var dlgTitle = document.getElementById("client-settings-title");
+        var dlgSub = document.getElementById("client-settings-sub");
         function openClientSettings(id){
           if(!dlgScrim || !dlgBody || !window.htmx) return;
+          if(dlgTitle) dlgTitle.textContent = "Client settings";
+          if(dlgSub) dlgSub.hidden = true;
           dlgScrim.hidden = false; void dlgScrim.offsetWidth; dlgScrim.classList.add("open");
           window.htmx.ajax("GET", "/clients/" + id + "/settings",
             { target: "#client-settings-body", swap: "innerHTML" });
@@ -297,12 +315,30 @@ export function createManageViews(deps: ManageViewDeps) {
           dlgScrim.addEventListener("pointerdown", function(e){ if(e.target===dlgScrim) closeClientSettings(false); });
           if(dlgClose) dlgClose.addEventListener("click", function(){ closeClientSettings(true); });
           dlgBody.addEventListener("htmx:afterSwap", function(){
+            var form=dlgBody.querySelector("#client-settings-form");
+            var nm=form ? (form.getAttribute("data-client-name")||"").trim() : "";
+            if(nm && dlgTitle){ dlgTitle.textContent=nm; if(dlgSub) dlgSub.hidden=false; }
             var f=dlgBody.querySelector("input"); if(f) f.focus();
+          });
+          dlgBody.addEventListener("click", function(ev){
+            if(ev.target.closest("#client-settings-cancel")) closeClientSettings(true);
           });
         }
         wrap.addEventListener("click", function(ev){
           var cog = ev.target.closest(".client-settings-open");
           if(cog) openClientSettings(cog.getAttribute("data-client-id"));
+        });
+        document.body.addEventListener("htmx:beforeSwap", function(e){
+          /* #1160: a failed settings save answers 422 with the form
+             re-rendered around the error — swap it in so the error shows
+             inline instead of the save silently doing nothing. */
+          var cfg=e.detail.requestConfig||{};
+          var pi=e.detail.pathInfo||{};
+          var p=pi.requestPath||cfg.path||"";
+          if(e.detail.xhr && e.detail.xhr.status===422 && (cfg.verb||"").toLowerCase()==="post" && /\/clients\/\d+\/settings$/.test(p)){
+            e.detail.shouldSwap = true;
+            e.detail.isError = false;
+          }
         });
         document.body.addEventListener("htmx:afterRequest", function(e){
           /* #630: match the settings SAVE (POST) only — htmx 2.x reports the

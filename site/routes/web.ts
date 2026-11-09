@@ -746,20 +746,28 @@ export function createWebRouter(deps: WebDeps) {
         }
         if (path === "/clients" && method === "POST") {
           const form = await req.formData();
-          const r = db.query("INSERT INTO clients (name, color, rate) VALUES (?, ?, ?) RETURNING id")
+          /* #1160: the add form collects email at creation (the page-manage
+             mock always had it) — trimmed, blank stored as NULL, same rule
+             as the settings route's contact fields. */
+          const email = String(form.get("email") || "").trim();
+          const r = db.query("INSERT INTO clients (name, color, rate, email) VALUES (?, ?, ?, ?) RETURNING id")
             .get(String(form.get("name")), clientColor(form.get("color")),
-                 Number(form.get("rate") || 0)) as any;
+                 Number(form.get("rate") || 0), email || null) as any;
           /* #367: plain POST (see the add-client form) — land on the new
              client selected, on every width. */
           return new Response(null, { status: 302, headers: { Location: `/manage?client=${r.id}` } });
         }
-        /* #630: client settings modal — all seven editable client fields.
-           Replaces the old inline /name, /contact, /rate, and /terms routes.
-           Name is required; rate must be a number at or above 0 (blank → 0,
-           the column is NOT NULL); payment terms are blank (NULL → global
-           fallback) or a known key; contact fields are trimmed with blanks
-           stored as NULL; textarea newlines arrive as CRLF (multipart
-           normalization) — store plain LF. */
+        /* #630: client settings modal — all eight editable client fields
+           (#1160 added color). Replaces the old inline /name, /contact,
+           /rate, and /terms routes. Name is required; rate must be a number
+           at or above 0 (blank → 0, the column is NOT NULL); payment terms
+           are blank (NULL → global fallback) or a known key; contact fields
+           are trimmed with blanks stored as NULL; textarea newlines arrive
+           as CRLF (multipart normalization) — store plain LF. #1160: an
+           HTMX save that fails validation answers 422 with the form
+           re-rendered around the error and the submitted values (htmx
+           swaps it via the manage page's beforeSwap hook, so the error
+           shows inline in the dialog); plain posts keep the 400 text. */
         m = path.match(/^\/clients\/(\d+)\/settings$/);
         if (m && method === "GET") {
           const sel = clientSelection(m[1]);
@@ -769,18 +777,31 @@ export function createWebRouter(deps: WebDeps) {
         if (m && method === "POST") {
           const form = await req.formData();
           const name = String(form.get("name") || "").trim();
-          if (!name) return new Response("Client name is required.", { status: 400 });
           const rateRaw = String(form.get("rate") || "").trim();
           const rate = rateRaw === "" ? 0 : Number(rateRaw);
-          if (!Number.isFinite(rate) || rate < 0)
-            return new Response("Hourly rate must be a number at or above 0.", { status: 400 });
           const terms = String(form.get("payment_terms") || "").trim();
-          if (terms !== "" && !isPaymentTermsKey(terms)) return new Response("Unknown payment terms.", { status: 400 });
+          const fail = (msg: string) => {
+            if (!isHtmx(req)) return new Response(msg, { status: 400 });
+            const sel = clientSelection(m[1]);
+            const base = sel && sel.kind === "client" ? sel.client : { id: Number(m[1]) };
+            const submitted = {
+              ...base,
+              name: String(form.get("name") || ""), rate: rateRaw, payment_terms: terms,
+              email: String(form.get("email") || ""), phone: String(form.get("phone") || ""),
+              website: String(form.get("website") || ""), address: String(form.get("address") || ""),
+              color: String(form.get("color") || ""),
+            };
+            return html(clientSettingsForm(submitted, msg), 422);
+          };
+          if (!name) return fail("Client name is required.");
+          if (!Number.isFinite(rate) || rate < 0)
+            return fail("Hourly rate must be a number at or above 0.");
+          if (terms !== "" && !isPaymentTermsKey(terms)) return fail("Unknown payment terms.");
           const clean = (v: unknown) => { const s = String(v || "").trim(); return s || null; };
           const addr = clean(form.get("address"));
-          db.query("UPDATE clients SET name = ?, rate = ?, payment_terms = ?, email = ?, phone = ?, website = ?, address = ? WHERE id = ?")
+          db.query("UPDATE clients SET name = ?, rate = ?, payment_terms = ?, email = ?, phone = ?, website = ?, address = ?, color = ? WHERE id = ?")
             .run(name, rate, terms || null, clean(form.get("email")), clean(form.get("phone")),
-                 clean(form.get("website")), addr && addr.replace(/\r\n/g, "\n"), Number(m[1]));
+                 clean(form.get("website")), addr && addr.replace(/\r\n/g, "\n"), clientColor(form.get("color")), Number(m[1]));
           if (isHtmx(req)) {
             const sel = clientSelection(m[1]);
             return html(sel && sel.kind === "client" ? clientSettingsForm(sel.client) : "");

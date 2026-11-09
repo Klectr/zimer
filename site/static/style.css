@@ -360,7 +360,7 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .ui-form-spacer { flex: 1; }
 .ui-add-project-form { display: flex; gap: var(--spacing-sm); align-items: flex-end; margin-bottom: var(--spacing-sm); }
 .ui-add-project-grow { flex: 1; min-width: 0; }
-.ui-settings-actions { display: flex; justify-content: flex-end; }
+.ui-settings-actions { display: flex; justify-content: flex-end; gap: var(--spacing-sm); }
 .ui-settings-note { margin: 0; font-size: var(--font-size-sm); line-height: var(--line-height-sm); color: var(--color-text-tertiary); }
 .ui-page-title { font-size: var(--font-size-heading-3); font-weight: var(--font-weight-strong); margin: 0; }
 .ui-settings-stack { display: grid; gap: var(--spacing-md); }
