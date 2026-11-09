@@ -417,8 +417,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     for (let i = 0; i < 7; i++) lanes.push(dayColumnHtml(addDays(sun, i), wd, i * 40));
     const hourLabels = Array.from({ length: 24 }, (_, h) => {
       const ampm = h === 0 ? "12 AM" : h < 12 ? `${h} AM` : h === 12 ? "12 PM" : `${h - 12} PM`;
-      const night = h < 6 || h >= 19;
-      return `<span class="cal-hour-label${night ? " night" : ""}" style="top:${(h * calHourPx - 8).toFixed(0)}px">${ampm}</span>`;
+      return `<span class="cal-hour-label" style="top:${(h * calHourPx - 8).toFixed(0)}px">${ampm}</span>`;
     }).join("");
     return `
       <div class="cal-scroll" data-enter="3">
