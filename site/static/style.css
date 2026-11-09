@@ -213,6 +213,7 @@
 .ui-icon-btn:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 .ui-icon-btn-danger { color: var(--color-error); }
 .ui-icon-btn-danger:hover { background: var(--color-error-bg); color: var(--color-error); }
+.ui-icon-btn.copied { color: var(--color-primary); }
 .ui-icon-btn:disabled { color: var(--color-text-quaternary); cursor: not-allowed; }
 
 .ui-logo { display: inline-flex; align-items: center; gap: var(--spacing-xs); font-size: var(--font-size-lg); font-weight: var(--font-weight-strong); color: var(--color-text); }
