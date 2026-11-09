@@ -428,6 +428,11 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .ui-btn[data-tip]:hover::before, .ui-btn[data-tip]:focus-visible::before, .ui-btn[data-tip].tip-show::before, .ui-icon-btn[data-tip]:hover::before, .ui-icon-btn[data-tip]:focus-visible::before, .ui-icon-btn[data-tip].tip-show::before { opacity: 1; transform: translateX(-50%) translateY(0); max-width: 200px; overflow: visible; }
 .ui-btn[data-tip].tip-right::before, .ui-icon-btn[data-tip].tip-right::before { left: auto; right: 0; transform: translateY(-2px); }
 .ui-btn[data-tip].tip-right:hover::before, .ui-btn[data-tip].tip-right:focus-visible::before, .ui-btn[data-tip].tip-right.tip-show::before, .ui-icon-btn[data-tip].tip-right:hover::before, .ui-icon-btn[data-tip].tip-right:focus-visible::before, .ui-icon-btn[data-tip].tip-right.tip-show::before { transform: translateY(0); }
+/* #1119: sidebar-footer buttons sit at the viewport's bottom edge — their
+   tooltips open upward, left-aligned to the button so they stay inside
+   both the sidebar and the viewport. */
+.ui-side-foot .ui-btn[data-tip]::before, .ui-side-foot .ui-icon-btn[data-tip]::before { top: auto; bottom: calc(100% + var(--spacing-xs)); left: 0; transform: translateY(2px); }
+.ui-side-foot .ui-btn[data-tip]:hover::before, .ui-side-foot .ui-btn[data-tip]:focus-visible::before, .ui-side-foot .ui-btn[data-tip].tip-show::before, .ui-side-foot .ui-icon-btn[data-tip]:hover::before, .ui-side-foot .ui-icon-btn[data-tip]:focus-visible::before, .ui-side-foot .ui-icon-btn[data-tip].tip-show::before { transform: translateY(0); }
 .ui-row.selected { background: var(--color-primary-bg); }
 .ui-row-lead-dot { width: 10px; height: 10px; border-radius: 9999px; flex: none; }
 .ui-row-lead-icon { display: inline-flex; flex: none; color: var(--color-text-tertiary); }
@@ -2360,7 +2365,7 @@ body.app-fixed .cal-gutter-spacer {
 
 /* ---------------- print ---------------- */
 @media print {
-  .ui-side, .ui-mobile-head, .ui-mobile-nav, .nav-drawer-scrim, .no-print, .page-head { display: none !important; }
+  .ui-side, .ui-mobile-head, .ui-mobile-nav, .nav-drawer-scrim, .trial-banner, .no-print, .page-head { display: none !important; }
   .invoice-list-pane { display: none !important; } /* #364: print only the invoice document */
   .invoice-list-detail { display: block; }
   .invoice-detail-pane { overflow: visible; }

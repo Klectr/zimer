@@ -68,6 +68,18 @@ describe("sidebar width (#1119)", () => {
     expect(side.get("width")).toBe("208px");
     expect(side.get("background")).toBe("var(--color-bg-container)");
   });
+
+  test("sidebar footer tooltips open upward, inside the viewport", () => {
+    expect(css).toContain(".ui-side-foot .ui-icon-btn[data-tip]::before");
+    const decls = declarations(ruleBlock(".ui-side-foot .ui-btn[data-tip]::before, .ui-side-foot .ui-icon-btn[data-tip]::before"));
+    expect(decls.get("top")).toBe("auto");
+    expect(decls.get("bottom")).toBe("calc(100% + var(--spacing-xs))");
+    expect(decls.get("left")).toBe("0");
+  });
+
+  test("the trial banner never prints", () => {
+    expect(css).toMatch(/@media print\s*\{\s*[^}]*\.trial-banner[^}]*display: none !important/);
+  });
 });
 
 describe("update-check progress state (#406)", () => {
