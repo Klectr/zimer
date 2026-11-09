@@ -1814,6 +1814,7 @@ body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
 /* #969: the preview sheet centers in its pane. The sheet is a document
    surface: it carries its own card base (previously the shared md-card). */
 .invoice-sheet { max-width: 720px; margin: 0 auto 16px; background: var(--md-sys-color-surface-container-high); border-radius: var(--radius-lg); padding: 20px; }
+.invoice-sheet .muted { color: var(--md-sys-color-on-surface-variant); }
 
 /* Public client invoice page: centered summary card, no app chrome. */
 .page-public-invoice { max-width: 800px; margin: 0 auto; padding: 32px 24px 48px; }
