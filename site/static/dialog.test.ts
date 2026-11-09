@@ -191,7 +191,7 @@ describe("tkTrapTab", () => {
   });
 });
 
-/** #464: shared M3 confirm dialog. The fake DOM above is just enough for the
+/** #464: shared confirm dialog. The fake DOM above is just enough for the
  *  explicit createElement construction in dialog.js: structure is navigated
  *  through children, clicks through captured handlers, timers are real. */
 function lastScrim() {
@@ -216,9 +216,9 @@ describe("tkConfirm", () => {
   test("the destructive OK button's runtime class keeps its error-color rule", () => {
     tkConfirm("Delete this entry?");
     const { ok } = dlgParts(lastScrim());
-    expect(ok.className).toBe("md-text-button danger");
+    expect(ok.className).toBe("ui-btn ui-btn-primary ui-btn-danger");
     const css = readFileSync(join(import.meta.dir, "style.css"), "utf8");
-    expect(css).toContain(".md-text-button.danger");
+    expect(css).toContain(".ui-btn-primary.ui-btn-danger");
   });
 
   test("renders the message as headline and focuses Cancel", () => {
@@ -229,6 +229,8 @@ describe("tkConfirm", () => {
     expect(box.getAttribute("role")).toBe("alertdialog");
     expect(box.getAttribute("aria-modal")).toBe("true");
     expect(title.textContent).toBe("Delete this entry?");
+    expect(title.className).toBe("ui-dialog-title");
+    expect(cancel.className).toBe("ui-btn ui-btn-ghost");
     expect(cancel.textContent).toBe("Cancel");
     expect(ok.textContent).toBe("Delete");
     expect(g.document.activeElement).toBe(cancel);
