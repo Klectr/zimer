@@ -57,6 +57,17 @@ describe("rows", () => {
     expect(html).toContain('<span class="ui-chip ui-chip-overdue">12d overdue</span>');
   });
 
+  test("zinvoiceRow carries the selected state, hit class, aria label, and raw client html", () => {
+    const html = zinvoiceRow({
+      number: "INV-0042", client: "Northwind Legal", clientHtml: "<em>No client</em>", status: "sent",
+      amount: "$2,550.00", meta: "", href: "/invoices?invoice=1042",
+      ariaLabel: "View zinvoice INV-0042", selected: true, className: "inv-row-hit",
+    });
+    expect(html).toContain('<a href="/invoices?invoice=1042" class="ui-row selected inv-row-hit" aria-label="View zinvoice INV-0042">');
+    expect(html).toContain('<div class="ui-row-meta"><em>No client</em></div>');
+    expect(html).not.toContain("Northwind Legal");
+  });
+
   test("rows use div wrappers (no div-inside-span nesting)", () => {
     const html = zinvoiceRow({ number: "INV-1", client: "C", status: "draft", amount: "$1", meta: "m", href: "/x" });
     expect(html).toContain('<div class="ui-row-main">');

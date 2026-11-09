@@ -5,11 +5,15 @@ import { statusChip, type ZinvoiceStatus } from "./status-chip";
 export interface ZinvoiceRowOptions {
   number: string;
   client: string;
+  clientHtml?: string;
   status: ZinvoiceStatus;
   overdueDays?: number;
   amount: string;
   meta: string;
   href: string;
+  ariaLabel?: string;
+  selected?: boolean;
+  className?: string;
 }
 
 export function zinvoiceRow(opts: ZinvoiceRowOptions): string {
@@ -17,14 +21,18 @@ export function zinvoiceRow(opts: ZinvoiceRowOptions): string {
     opts.overdueDays != null
       ? `<span class="ui-chip ui-chip-overdue">${esc(String(opts.overdueDays))}d overdue</span>`
       : "";
+  const cls = `ui-row${opts.selected ? " selected" : ""}${opts.className ? ` ${opts.className}` : ""}`;
+  const label = opts.ariaLabel ? ` aria-label="${esc(opts.ariaLabel)}"` : "";
+  const client = opts.clientHtml ?? esc(opts.client);
+  const sideMeta = opts.meta ? `<div class="ui-row-meta">${esc(opts.meta)}</div>` : "";
   return (
-    `<a href="${esc(opts.href)}" class="ui-row">` +
+    `<a href="${esc(opts.href)}" class="${cls}"${label}>` +
     `<div class="ui-row-main"><span class="ui-row-title">${esc(opts.number)}</span>` +
-    `<div class="ui-row-meta">${esc(opts.client)}</div></div>` +
+    `<div class="ui-row-meta">${client}</div></div>` +
     statusChip(opts.status) +
     overdue +
     `<div class="ui-row-side"><span class="ui-row-amount">${esc(opts.amount)}</span>` +
-    `<div class="ui-row-meta">${esc(opts.meta)}</div></div></a>`
+    `${sideMeta}</div></a>`
   );
 }
 
