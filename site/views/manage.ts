@@ -207,8 +207,8 @@ export function createManageViews(deps: ManageViewDeps) {
      focus trap, lazy-loaded body). Rendered once per manage page, outside
      every HTMX-swapped region. */
   function clientSettingsDialog(): string {
-    return `<div class="cal-scrim" id="client-settings-scrim" hidden>
-      <div class="settings-dialog" role="dialog" aria-modal="true" aria-labelledby="client-settings-title">
+    return `<div class="cal-scrim ui-scrim" id="client-settings-scrim" hidden>
+      <div class="settings-dialog ui-dialog" role="dialog" aria-modal="true" aria-labelledby="client-settings-title">
         <div class="settings-dialog-head">
           <div>
             <h2 class="ui-dialog-title" id="client-settings-title">Client settings</h2>

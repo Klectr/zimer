@@ -407,8 +407,8 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       refresh (#65) never destroys its bindings. Rendered once in the page
       skeleton; the carousel strips never include it. */
   function calDialog(): string {
-    return `<div class="cal-scrim" id="cal-scrim" hidden>
-        <div class="cal-dialog" role="dialog" aria-modal="true" aria-labelledby="cal-dialog-title">
+    return `<div class="cal-scrim ui-scrim" id="cal-scrim" hidden>
+        <div class="cal-dialog ui-dialog" role="dialog" aria-modal="true" aria-labelledby="cal-dialog-title">
           <div class="cal-dialog-head">
             <h2 class="ui-dialog-title" id="cal-dialog-title">New entry</h2>
             <button class="ui-icon-btn" id="cal-close" type="button" aria-label="Close dialog">${icon("close")}</button>
