@@ -24,6 +24,7 @@ import {
 } from "../lib/billing.ts";
 import { originMatches } from "../lib/http.ts"; /* #912 */
 import { settingsSection } from "../ui/settings-section.ts";
+import { planCard } from "../ui/plan-card.ts";
 import { tag } from "../ui/tag.ts";
 import { button } from "../ui/button.ts";
 import { card } from "../ui/card.ts";
@@ -115,10 +116,16 @@ export function createBillingSection(opts: {
     const action = sub?.stripe_customer_id
       ? `<form method="post" action="/billing/portal" style="margin:0">${button({ label: "Manage subscription", type: "submit" })}</form>`
       : `<form method="post" action="/billing/checkout" style="margin:0">${button({ label: "Subscribe · $12/month", type: "submit", variant: "primary" })}</form>`;
-    const body =
-      `<div style="display:flex;align-items:baseline;gap:8px"><span class="ui-plan-amount">$12</span><span class="muted">/ month · flat, no seats</span><span style="margin-left:auto">${statusTag}</span></div>` +
-      `<p class="ui-settings-note">${line}</p>`;
-    return settingsSection({ level: 2, id: "billing-section", title: "Billing — Hosted plan", bodyHtml: body, actionsHtml: action });
+    const body = planCard({
+      name: "Hosted",
+      amount: "$12",
+      period: "/ month · flat, no seats",
+      blurb: line,
+      features: [],
+      ctaHtml: action,
+      statusHtml: statusTag,
+    });
+    return settingsSection({ level: 2, id: "billing-section", title: "Billing — Hosted plan", bodyHtml: body });
   };
 }
 

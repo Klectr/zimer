@@ -96,6 +96,12 @@ describe("settings section + plan card", () => {
   test("non-current plan has no chip", () => {
     const html = planCard({ name: "Self-host", amount: "$0", features: [], ctaHtml: "" });
     expect(html).not.toContain("Current plan");
+    expect(html).toContain('<span class="ui-card-head-end"></span>');
+  });
+
+  test("statusHtml renders in the card head end", () => {
+    const html = planCard({ name: "Hosted", amount: "$12", features: [], ctaHtml: "", statusHtml: '<span class="ui-tag ui-tag-success">Active</span>' });
+    expect(html).toContain('<span class="ui-card-head-end"><span class="ui-tag ui-tag-success">Active</span></span>');
   });
 });
 
