@@ -97,7 +97,9 @@ describe("#736: billing wall page + subscription gate", () => {
     expect(body).toContain('action="/billing/checkout"');
     expect(body).toContain("Subscribe");
     expect(body).not.toContain('href="/billing/portal"');
-    expect(body).toContain("md-filled-button");
+    expect(body).toContain("ui-btn ui-btn-primary");
+    expect(body).toContain("ui-card");
+    expect(body).not.toContain("md-");
   });
 
   test("past_due subscriber sees the payment-failed headline", async () => {
