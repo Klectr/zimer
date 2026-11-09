@@ -734,7 +734,7 @@ describe("zinvoices stat cards (#1121)", () => {
     { ...baseRow, id: 1, status: "sent", subtotal: 2090, paid_at: null },
     { ...baseRow, id: 2, status: "sent", subtotal: 640, paid_at: null },
     { ...baseRow, id: 3, status: "draft", subtotal: 1827.5, paid_at: null },
-    { ...baseRow, id: 4, status: "paid", subtotal: 425, paid_at: `${new Date().toISOString().slice(0, 8)}15` },
+    { ...baseRow, id: 4, status: "paid", subtotal: 425, paid_at: `${(() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-15`; })()}` },
     { ...baseRow, id: 5, status: "paid", subtotal: 900, paid_at: "2020-01-15" },
   ];
   test("cards split outstanding (sent only), drafts, and paid this month", () => {

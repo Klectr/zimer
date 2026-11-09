@@ -1281,6 +1281,9 @@ body.app-fixed .ui-shell-main { min-height: 0; }
   .invoice-list-pane, .invoice-detail-pane { flex: 1; min-height: 0; overflow-y: auto; }
   .invoice-list-detail.has-selection .invoice-list-pane { display: none; }
   .invoice-list-detail:not(.has-selection) .invoice-detail-pane { display: none; }
+  /* #1121: single-pane detail opens on the document, not the stat cards —
+     they belong to the list state the pane just left. */
+  main:has(.invoice-list-detail.has-selection) #inv-stats { display: none; }
 }
 /* #442: date phrases in list rows never split mid-date; the supporting line
    wraps at the middot separators instead. */

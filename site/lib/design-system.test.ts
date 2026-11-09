@@ -62,6 +62,12 @@ describe("shell actions locked spec (#654)", () => {
   });
 });
 
+describe("zinvoices mobile detail (#1121)", () => {
+  test("single-pane detail hides the stat cards", () => {
+    expect(css).toContain("main:has(.invoice-list-detail.has-selection) #inv-stats { display: none; }");
+  });
+});
+
 describe("ui button anchors (#1121)", () => {
   test("link buttons never render with the UA underline", () => {
     const btn = declarations(ruleBlock(".ui-btn"));
