@@ -291,8 +291,10 @@ export function createManageViews(deps: ManageViewDeps) {
         var dlgClose = document.getElementById("client-settings-close");
         var dlgTitle = document.getElementById("client-settings-title");
         var dlgSub = document.getElementById("client-settings-sub");
+        var dlgGen = 0;
         function openClientSettings(id){
           if(!dlgScrim || !dlgBody || !window.htmx) return;
+          dlgGen++;
           if(dlgTitle) dlgTitle.textContent = "Client settings";
           if(dlgSub) dlgSub.hidden = true;
           dlgBody.innerHTML = '<p class="muted">Loading…</p>';
@@ -303,6 +305,7 @@ export function createManageViews(deps: ManageViewDeps) {
         }
         function closeClientSettings(refocus){
           if(!dlgScrim || dlgScrim.hidden) return;
+          dlgGen++;
           dlgScrim.classList.remove("open");
           document.removeEventListener("keydown", onClientSettingsKey, true);
           var done=false, finish=function(){ if(done) return; done=true; dlgScrim.hidden=true; };
@@ -315,6 +318,18 @@ export function createManageViews(deps: ManageViewDeps) {
           else if(e.key==="Tab" && window.tkTrapTab){ window.tkTrapTab(dlgScrim, e); }
         }
         if(dlgScrim){
+          document.body.addEventListener("htmx:beforeRequest", function(e){
+            var cfg=e.detail.requestConfig||{};
+            var pi=e.detail.pathInfo||{};
+            if(e.detail.target===dlgBody && (cfg.verb||"").toLowerCase()==="get" && /\/clients\/\d+\/settings$/.test(pi.requestPath||cfg.path||""))
+              e.detail.xhr.tkCsGen=dlgGen;
+          });
+          dlgBody.addEventListener("htmx:beforeSwap", function(e){
+            var cfg=e.detail.requestConfig||{};
+            if((cfg.verb||"").toLowerCase()!=="get") return;
+            var g=e.detail.xhr ? e.detail.xhr.tkCsGen : null;
+            if(g!=null && g!==dlgGen) e.detail.shouldSwap=false;
+          });
           dlgScrim.addEventListener("pointerdown", function(e){ if(e.target===dlgScrim) closeClientSettings(false); });
           if(dlgClose) dlgClose.addEventListener("click", function(){ closeClientSettings(true); });
           dlgBody.addEventListener("htmx:afterSwap", function(){

@@ -123,6 +123,25 @@ describe("client settings modal (#630)", () => {
     expect(load).toBeGreaterThan(reset);
   });
 
+  test("opener bumps the load generation before the fragment load (#1189)", () => {
+    const html = pageHtml();
+    const open = html.indexOf("function openClientSettings(id){");
+    const bump = html.indexOf("dlgGen++;", open);
+    const load = html.indexOf('window.htmx.ajax("GET", "/clients/" + id + "/settings"', open);
+    expect(open).toBeGreaterThan(-1);
+    expect(bump).toBeGreaterThan(open);
+    expect(load).toBeGreaterThan(bump);
+  });
+
+  test("stale client settings loads are stamped at request time and dropped before swap (#1189)", () => {
+    const html = pageHtml();
+    expect(html).toContain("e.detail.xhr.tkCsGen=dlgGen;");
+    expect(html).toContain("if(g!=null && g!==dlgGen) e.detail.shouldSwap=false;");
+    const close = html.indexOf("function closeClientSettings(refocus){");
+    expect(close).toBeGreaterThan(-1);
+    expect(html.indexOf("dlgGen++;", close)).toBeGreaterThan(close);
+  });
+
   test("settings form carries all eight client fields posting to /clients/:id/settings", () => {
     const { db, client } = testDb();
     db.query("UPDATE clients SET rate = ?, payment_terms = ?, email = ?, phone = ?, website = ?, address = ? WHERE id = ?")
