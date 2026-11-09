@@ -1,5 +1,5 @@
 import type { Story } from "../.zandbox/story";
-import { selectField, textField } from "../site/ui/field";
+import { selectField, textAreaField, textField } from "../site/ui/field";
 import { button } from "../site/ui/button";
 
 export const fieldStories: Story[] = [
@@ -41,6 +41,15 @@ export const fieldStories: Story[] = [
       `<div style="display:grid;gap:16px;max-width:420px">` +
       textField({ id: "f-target", label: "Daily hours target", name: "day_target_hours", type: "number", value: "8", suffix: "hr", min: "1", max: "24", step: "0.5", inputmode: "decimal" }) +
       textField({ id: "f-rate-affix", label: "Hourly rate", name: "rate", type: "number", value: "100", prefix: "$", suffix: "/hr" }) +
+      `</div>`,
+  },
+  {
+    id: "field-textarea",
+    group: "Field",
+    title: "Textarea field",
+    render: () =>
+      `<div style="display:grid;gap:16px;max-width:420px">` +
+      textAreaField({ id: "f-address", label: "Address", name: "address", value: "2643 Morningside Dr\nClearwater, FL 33759", rows: 3 }) +
       `</div>`,
   },
   {

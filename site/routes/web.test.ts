@@ -328,7 +328,7 @@ describe("/manage default selection (#835)", () => {
     expect(body).toContain("Projects not assigned to a client");
     expect(body).not.toContain("Select a client to manage");
     expect(body).not.toContain("has-selection");
-    expect(body).toContain("client-row selected");
+    expect(body).toContain("ui-row selected");
   });
 
   test("with clients: the first client fills the detail pane, no has-selection", async () => {
@@ -338,7 +338,7 @@ describe("/manage default selection (#835)", () => {
     expect(body).toContain("Manage client Acme");
     expect(body).not.toContain("Select a client to manage");
     expect(body).not.toContain("has-selection");
-    expect(body).toContain("client-row selected");
+    expect(body).toContain("ui-row selected");
   });
 });
 

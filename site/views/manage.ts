@@ -10,8 +10,9 @@ import { icon } from "../lib/icons.ts";
 import { THEMES, themeKey } from "../lib/theme.ts"; /* #884 */
 import { getMeta } from "../db.ts";
 import { settingsSection } from "../ui/settings-section.ts";
-import { selectField, textField } from "../ui/field.ts";
-import { button } from "../ui/button.ts";
+import { selectField, textAreaField, textField } from "../ui/field.ts";
+import { button, linkButton } from "../ui/button.ts";
+import { clientRow } from "../ui/rows.ts";
 import { dayTargetSecs } from "../lib/domain.ts"; /* #908: daily target setting */
 
 /* #367: the detail-pane selection. "none" is the pseudo-client holding
@@ -31,10 +32,9 @@ export function createManageViews(deps: ManageViewDeps) {
 
   /* #293: option list for the payment-terms dropdowns. The canned
      description rides on data-desc so the helper text can update live. */
-  function termsOptions(selected: string | null): string {
+  function termsOptions(): { value: string; label: string; desc: string }[] {
     return (Object.entries(PAYMENT_TERMS) as [PaymentTermsKey, { label: string; description: string }][]).map(([k, v]) =>
-      `<option value="${k}" data-desc="${esc(v.description)}"${k === selected ? " selected" : ""}>${esc(v.label)}</option>`
-    ).join("");
+      ({ value: k, label: v.label, desc: v.description }));
   }
 
   function manageData() {
@@ -69,34 +69,31 @@ export function createManageViews(deps: ManageViewDeps) {
   const selKey = (sel: ClientSel | null): number | "none" | null =>
     !sel ? null : sel.kind === "client" ? sel.client.id : "none";
 
-  const dot = (color: string, large = false) =>
-    `<span class="client-dot${large ? " large" : ""}" style="background:${esc(color)}" aria-hidden="true"></span>`;
-
   function clientListHtml(sel: ClientSel | null): string {
     const { clients, byClient, unassigned } = manageData();
     const sk = selKey(sel);
-    const row = (href: string, dotHtml: string, name: string, supporting: string, selected: boolean, label: string) =>
-      `<li class="md-list-item client-row${selected ? " selected" : ""}">
-        <a class="client-row-hit" href="${href}" aria-label="${esc(label)}">
-          ${dotHtml}
-          <div class="md-list-item-content">
-            <div class="md-list-item-headline">${esc(name)}</div>
-            <div class="md-list-item-supporting">${supporting}</div>
-          </div>
-          <div class="md-list-item-trailing">${icon("chevron_right")}</div>
-        </a>
-      </li>`;
     const rows = clients.map(c => {
       const n = (byClient.get(c.id) || []).length;
-      return row(`/manage?client=${c.id}`, dot(schemeColor(c.color) || "var(--md-sys-color-primary)"), c.name,
-        `${n} project${n === 1 ? "" : "s"}${c.rate ? ` · $${c.rate}/hr` : ""}`,
-        sk === c.id, `Manage client ${c.name}`);
+      return clientRow({
+        name: c.name,
+        meta: `${n} project${n === 1 ? "" : "s"}${c.rate ? ` · $${c.rate}/hr` : ""}`,
+        href: `/manage?client=${c.id}`,
+        ariaLabel: `Manage client ${c.name}`,
+        dot: schemeColor(c.color) || "var(--color-primary)",
+        selected: sk === c.id,
+        chevron: true,
+      });
     }).join("");
-    const noneRow = row("/manage?client=none",
-      `<span class="client-dot none" aria-hidden="true">${icon("group")}</span>`,
-      "No client", `${unassigned.length} unassigned project${unassigned.length === 1 ? "" : "s"}`,
-      sk === "none", "Manage projects with no client");
-    return `<ul class="md-list" id="client-list">${rows}${noneRow}</ul>`;
+    const noneRow = clientRow({
+      name: "No client",
+      meta: `${unassigned.length} unassigned project${unassigned.length === 1 ? "" : "s"}`,
+      href: "/manage?client=none",
+      ariaLabel: "Manage projects with no client",
+      iconDot: "group",
+      selected: sk === "none",
+      chevron: true,
+    });
+    return `<div class="ui-list" id="client-list">${rows}${noneRow}</div>`;
   }
 
   /* #367: out-of-band list refresh after a detail-pane action — the row
@@ -106,23 +103,17 @@ export function createManageViews(deps: ManageViewDeps) {
     return clientListHtml(sel).replace(`id="client-list"`, `id="client-list" hx-swap-oob="true"`);
   }
 
-  const projectRow = (p: any) => `<li class="md-list-item" style="min-height:56px">
-            <div class="md-list-item-content"><div class="md-list-item-headline">${esc(p.name)}</div></div>
-            <div class="md-list-item-trailing">
-              <form method="post" action="/projects/${p.id}/delete" class="inline" hx-post="/projects/${p.id}/delete" hx-target="#client-detail" hx-swap="outerHTML"><button class="md-icon-button danger" data-confirm="Delete project? Entries keep their history." aria-label="Delete project ${esc(p.name)}" data-tip="Delete">${icon("delete")}</button></form>
-            </div>
-          </li>`;
+  const projectRow = (p: any) => clientRow({
+    name: p.name,
+    actions: `<form method="post" action="/projects/${p.id}/delete" class="inline" hx-post="/projects/${p.id}/delete" hx-target="#client-detail" hx-swap="outerHTML"><button class="ui-icon-btn ui-icon-btn-danger" type="submit" data-confirm="Delete project? Entries keep their history." aria-label="Delete project ${esc(p.name)}" data-tip="Delete">${icon("delete")}</button></form>`,
+  });
 
-  const addProjectForm = (clientId: number | null) => `<li class="md-list-item add-project-row" style="min-height:56px">
-            <form method="post" action="/projects" class="add-project-form" hx-post="/projects" hx-target="#client-detail" hx-swap="outerHTML">
-              ${clientId == null ? "" : `<input type="hidden" name="client_id" value="${clientId}">`}
-              <div class="md-text-field compact">
-                <input type="text" id="mp-name" name="name" placeholder=" " required aria-label="New project name">
-                <label for="mp-name">New project</label>
-              </div>
-              <button class="md-icon-button" type="submit" data-tip="Add project" aria-label="Add project">${icon("add")}</button>
-            </form>
-          </li>`;
+  const addProjectForm = (clientId: number | null) => `
+      <form method="post" action="/projects" class="ui-add-project-form" hx-post="/projects" hx-target="#client-detail" hx-swap="outerHTML">
+        ${clientId == null ? "" : `<input type="hidden" name="client_id" value="${clientId}">`}
+        <div class="ui-add-project-grow">${textField({ id: "mp-name", label: "New project", name: "name", required: true })}</div>
+        <button class="ui-icon-btn" type="submit" data-tip="Add project" aria-label="Add project">${icon("add")}</button>
+      </form>`;
 
   /* #367: detail body as a fragment — project actions swap
      #client-detail in place instead of reloading the page.
@@ -135,29 +126,29 @@ export function createManageViews(deps: ManageViewDeps) {
     const projects = isClient ? (byClient.get(c.id) || []) : unassigned;
     return `<div id="client-detail">
       <div class="page-head no-print">
-        <a class="md-text-button detail-back" href="/manage">${icon("arrow_left")}Clients</a>
+        ${linkButton({ label: "Clients", href: "/manage", icon: "arrow_left", variant: "ghost", className: "detail-back" })}
       </div>
       <div class="client-detail-head${isClient ? " has-settings" : ""}">
         ${isClient
           ? `<div>
-          <h2 class="md-headline-small">${esc(c.name)}</h2>
+          <h2 class="ui-page-title">${esc(c.name)}</h2>
           <p class="muted" style="margin:4px 0 0">${projects.length} project${projects.length === 1 ? "" : "s"}${c.rate ? ` · $${c.rate}/hr` : ""}</p>
         </div>
-        <button class="md-icon-button client-settings-open" type="button" data-client-id="${c.id}" data-tip="Client settings" aria-label="Client settings for ${esc(c.name)}" aria-haspopup="dialog">${icon("settings")}</button>`
-          : `<span class="client-dot large none" aria-hidden="true">${icon("group")}</span>
+        <button class="ui-icon-btn client-settings-open" type="button" data-client-id="${c.id}" data-tip="Client settings" aria-label="Client settings for ${esc(c.name)}" aria-haspopup="dialog">${icon("settings")}</button>`
+          : `<span class="ui-row-lead-icon" aria-hidden="true">${icon("group")}</span>
         <div>
-          <h2 class="md-headline-small">No client</h2>
+          <h2 class="ui-page-title">No client</h2>
           <p class="muted" style="margin:4px 0 0">Projects not assigned to a client</p>
         </div>`}
       </div>
-      <h3 class="md-title-medium manage-subhead">Projects</h3>
-      <ul class="md-list">
+      <h3 class="ui-block-title">Projects</h3>
+      ${addProjectForm(isClient ? c.id : null)}
+      <div class="ui-list">
         ${projects.map(projectRow).join("")}
-        ${addProjectForm(isClient ? c.id : null)}
-      </ul>
+      </div>
       ${isClient ? `
       <form method="post" action="/clients/${c.id}/delete" class="detail-form">
-        <button class="md-text-button danger" type="submit" data-confirm="Delete this client? Its projects move to No client.">Delete client</button>
+        ${button({ label: "Delete client", variant: "ghost", danger: true, type: "submit", attrs: 'data-confirm="Delete this client? Its projects move to No client."' })}
       </form>` : ""}
     </div>`;
   }
@@ -170,36 +161,21 @@ export function createManageViews(deps: ManageViewDeps) {
      lazy-loaded into the settings modal. Same trimming/NULL/CRLF rules as
      the old inline forms; the route enforces them. */
   function clientSettingsForm(c: any): string {
-    const field = (type: string, name: string, label: string, val: string, extra = "") => `
-          <div class="md-text-field">
-            <input type="${type}" id="cs-${name}" name="${name}" value="${esc(val)}" placeholder=" " aria-label="${label}"${extra}>
-            <label for="cs-${name}">${label}</label>
-          </div>`;
-    return `<form method="post" action="/clients/${c.id}/settings" id="client-settings-form" class="manage-form" hx-post="/clients/${c.id}/settings" hx-swap="outerHTML">
-        ${field("text", "name", "Client name", c.name || "", " required")}
-        <div class="md-text-field has-prefix has-suffix">
-          <span class="affix prefix" aria-hidden="true">$</span>
-          <input type="number" id="cs-rate" name="rate" value="${c.rate || ""}" min="0" step="0.01" placeholder=" " aria-label="Hourly rate">
-          <label for="cs-rate">Hourly rate</label>
-          <span class="affix suffix" aria-hidden="true">/hr</span>
-        </div>
-        <div class="md-text-field">
-          <select name="payment_terms" id="cs-terms" class="terms-select" aria-label="Payment terms">
-            <option value="" data-desc="Falls back to the global payment terms."${c.payment_terms ? "" : " selected"}>Use global terms</option>
-            ${termsOptions(c.payment_terms)}
-          </select>
-          <label for="cs-terms">Payment terms</label>
-        </div>
-        <p class="terms-desc muted">${esc(termsDescription(termsKey(c.payment_terms, globalTerms())))}</p>
-        ${field("email", "email", "Email", c.email || "")}
-        ${field("tel", "phone", "Phone", c.phone || "")}
-        ${field("text", "website", "Website", c.website || "", ' autocapitalize="none" spellcheck="false"')}
-        <div class="md-text-field">
-          <textarea name="address" id="cs-address" placeholder=" " rows="3" aria-label="Client address">${esc(c.address || "")}</textarea>
-          <label for="cs-address">Address</label>
-        </div>
-        <button class="md-filled-button" type="submit">Save</button>
-      </form>`;
+    const options = [
+      { value: "", label: "Use global terms", desc: "Falls back to the global payment terms." },
+      ...termsOptions(),
+    ];
+    return `<form method="post" action="/clients/${c.id}/settings" id="client-settings-form" class="ui-settings-form" hx-post="/clients/${c.id}/settings" hx-swap="outerHTML">` +
+      textField({ id: "cs-name", label: "Client name", name: "name", value: c.name || "", required: true }) +
+      textField({ id: "cs-rate", label: "Hourly rate", name: "rate", type: "number", value: c.rate ? String(c.rate) : "", min: "0", step: "0.01", prefix: "$", suffix: "/hr" }) +
+      selectField({ id: "cs-terms", label: "Payment terms", name: "payment_terms", options, value: c.payment_terms || "", className: "terms-select" }) +
+      `<p class="terms-desc ui-settings-note">${esc(termsDescription(termsKey(c.payment_terms, globalTerms())))}</p>` +
+      textField({ id: "cs-email", label: "Email", name: "email", type: "email", value: c.email || "" }) +
+      textField({ id: "cs-phone", label: "Phone", name: "phone", type: "tel", value: c.phone || "" }) +
+      textField({ id: "cs-website", label: "Website", name: "website", value: c.website || "", attrs: 'autocapitalize="none" spellcheck="false"' }) +
+      textAreaField({ id: "cs-address", label: "Address", name: "address", value: c.address || "", rows: 3 }) +
+      `<div class="ui-settings-actions">${button({ label: "Save", type: "submit", variant: "primary" })}</div>` +
+      `</form>`;
   }
 
   /* #630: client settings modal. Same scrim/dialog pattern as the #245
@@ -210,10 +186,10 @@ export function createManageViews(deps: ManageViewDeps) {
     return `<div class="cal-scrim" id="client-settings-scrim" hidden>
       <div class="settings-dialog" role="dialog" aria-modal="true" aria-labelledby="client-settings-title">
         <div class="settings-dialog-head">
-          <h2 class="md-headline-small" id="client-settings-title">Client settings</h2>
-          <button class="md-icon-button" id="client-settings-close" type="button" aria-label="Close client settings">${icon("close")}</button>
+          <h2 class="ui-dialog-title" id="client-settings-title">Client settings</h2>
+          <button class="ui-icon-btn" id="client-settings-close" type="button" aria-label="Close client settings">${icon("close")}</button>
         </div>
-        <div id="client-settings-body"><p class="muted md-body-medium">Loading…</p></div>
+        <div id="client-settings-body"><p class="muted">Loading…</p></div>
       </div>
     </div>`;
   }
@@ -223,26 +199,18 @@ export function createManageViews(deps: ManageViewDeps) {
      not flip the single-pane shell to the detail on phones). */
   function addClientForm(): string {
     return `<div class="client-add">
-      <button class="md-text-button" type="button" id="client-add-toggle">${icon("add")}Add client</button>
-      <form method="post" action="/clients" id="client-add-form" class="manage-form" hidden>
-        <div class="md-text-field">
-          <input type="text" id="mc-name" name="name" placeholder=" " required aria-label="Client name">
-          <label for="mc-name">Client name</label>
-        </div>
-        <div class="manage-form-row">
-          <div class="md-text-field has-prefix has-suffix" style="max-width:172px">
-            <span class="affix prefix" aria-hidden="true">$</span>
-            <input type="number" id="mc-rate" name="rate" min="0" step="0.01" placeholder=" " aria-label="Hourly rate">
-            <label for="mc-rate">Hourly rate</label>
-            <span class="affix suffix" aria-hidden="true">/hr</span>
-          </div>
-          <label class="md-color-control">
+      ${button({ label: "Add client", icon: "add", variant: "ghost", id: "client-add-toggle" })}
+      <form method="post" action="/clients" id="client-add-form" class="ui-settings-form" hidden>
+        ${textField({ id: "mc-name", label: "Client name", name: "name", required: true })}
+        <div class="ui-form-row">
+          <div style="max-width:172px">${textField({ id: "mc-rate", label: "Hourly rate", name: "rate", type: "number", min: "0", step: "0.01", prefix: "$", suffix: "/hr" })}</div>
+          <label class="ui-color-control">
             ${icon("palette")}
             <span>Color</span>
             <input type="color" name="color" value="#fb923c" aria-label="Client color">
           </label>
-          <span class="manage-form-spacer"></span>
-          <button class="md-filled-button" type="submit">${icon("add")}Add</button>
+          <span class="ui-form-spacer"></span>
+          ${button({ label: "Add", icon: "add", type: "submit", variant: "primary" })}
         </div>
       </form>
     </div>`;
@@ -259,7 +227,7 @@ export function createManageViews(deps: ManageViewDeps) {
     return layout("Clients", `
       <div class="client-list-detail${sel && !isDefault ? " has-selection" : ""}" data-enter="2">
         <section class="client-list-pane" aria-label="Client list">
-          <h1 class="md-headline-small">Clients</h1>
+          <h1 class="ui-page-title">Clients</h1>
           ${addClientForm()}
           ${clientListHtml(sel)}
         </section>

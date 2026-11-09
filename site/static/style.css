@@ -355,6 +355,10 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .ui-section-head { margin-bottom: var(--spacing-sm); }
 .ui-section-title { font-size: var(--font-size-heading-5); font-weight: 600; margin: 0; }
 .ui-settings-form { display: grid; gap: var(--spacing-md); }
+.ui-form-row { display: flex; gap: var(--spacing-sm); align-items: flex-end; flex-wrap: wrap; }
+.ui-form-spacer { flex: 1; }
+.ui-add-project-form { display: flex; gap: var(--spacing-sm); align-items: flex-end; margin-bottom: var(--spacing-sm); }
+.ui-add-project-grow { flex: 1; min-width: 0; }
 .ui-settings-actions { display: flex; justify-content: flex-end; }
 .ui-settings-note { margin: 0; font-size: var(--font-size-sm); line-height: var(--line-height-sm); color: var(--color-text-tertiary); }
 .ui-settings-head { margin-bottom: var(--spacing-md); }
@@ -418,6 +422,15 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .ui-inv-mark[data-tip] { position: relative; overflow: visible; }
 .ui-inv-mark[data-tip]::after { content: attr(data-tip); position: absolute; left: 50%; top: calc(100% + var(--spacing-xs)); transform: translateX(-50%) translateY(-2px); background: var(--color-bg-spotlight); color: var(--color-text); border-radius: var(--radius-sm); padding: var(--spacing-xs) var(--spacing-sm); white-space: nowrap; max-width: 0; overflow: hidden; font-size: var(--font-size-sm); line-height: var(--line-height-sm); font-weight: 400; letter-spacing: 0; opacity: 0; pointer-events: none; z-index: 30; transition: opacity 0.15s ease, transform 0.15s ease; }
 .ui-inv-mark[data-tip]:hover::after, .ui-inv-mark[data-tip].tip-show::after { opacity: 1; transform: translateX(-50%) translateY(0); max-width: 200px; overflow: visible; }
+.ui-btn[data-tip], .ui-icon-btn[data-tip] { position: relative; overflow: visible; }
+.ui-btn[data-tip]::before, .ui-icon-btn[data-tip]::before { content: attr(data-tip); position: absolute; left: 50%; top: calc(100% + var(--spacing-xs)); transform: translateX(-50%) translateY(-2px); background: var(--color-bg-spotlight); color: var(--color-text); border-radius: var(--radius-sm); padding: var(--spacing-xs) var(--spacing-sm); white-space: nowrap; max-width: 0; overflow: hidden; font-size: var(--font-size-sm); line-height: var(--line-height-sm); font-weight: 400; opacity: 0; pointer-events: none; z-index: 30; transition: opacity 0.15s ease, transform 0.15s ease; }
+.ui-btn[data-tip]:hover::before, .ui-btn[data-tip]:focus-visible::before, .ui-btn[data-tip].tip-show::before, .ui-icon-btn[data-tip]:hover::before, .ui-icon-btn[data-tip]:focus-visible::before, .ui-icon-btn[data-tip].tip-show::before { opacity: 1; transform: translateX(-50%) translateY(0); max-width: 200px; overflow: visible; }
+.ui-row.selected { background: var(--color-primary-bg); }
+.ui-row-lead-dot { width: 10px; height: 10px; border-radius: 9999px; flex: none; }
+.ui-row-lead-icon { display: inline-flex; flex: none; color: var(--color-text-tertiary); }
+.ui-row-lead-icon svg { width: 24px; height: 24px; }
+.ui-row-chevron { display: inline-flex; flex: none; color: var(--color-text-tertiary); }
+.ui-row-chevron svg { width: 20px; height: 20px; }
 .ui-rev-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--spacing-sm); margin-bottom: var(--spacing-sm); }
 @container (max-width: 480px) { .ui-rev-cards { grid-template-columns: 1fr; } }
 .ui-rev-paid { color: var(--color-primary); }
@@ -1137,24 +1150,22 @@ input[type="number"] {
 .md-text-field.compact:has(label) textarea { padding-top: 18px; padding-bottom: 4px; min-height: 64px; }
 
 /* color control: tonal container with palette icon, label, and swatch */
-.md-color-control {
+.ui-color-control {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
-  height: 56px;
-  padding: 8px 12px 8px 16px;
-  background: var(--md-sys-color-surface-container-highest);
-  border: none;
-  border-radius: var(--md-sys-shape-corner-medium);
-  color: var(--md-sys-color-on-surface-variant);
-  font-size: 0.875rem;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-bg-container-secondary);
+  border: 1px solid var(--color-border-secondary);
+  border-radius: var(--radius);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
   font-weight: 500;
-  letter-spacing: 0.1px;
   cursor: pointer;
   flex: none;
 }
-.md-color-control svg { width: 20px; height: 20px; }
-.md-color-control input[type="color"] {
+.ui-color-control svg { width: 20px; height: 20px; }
+.ui-color-control input[type="color"] {
   width: 36px;
   height: 36px;
   border: none;
@@ -1162,9 +1173,9 @@ input[type="number"] {
   background: none;
   cursor: pointer;
 }
-.md-color-control input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
-.md-color-control input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
-.md-color-control input[type="color"]::-moz-color-swatch { border: none; border-radius: 50%; }
+.ui-color-control input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+.ui-color-control input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
+.ui-color-control input[type="color"]::-moz-color-swatch { border: none; border-radius: 50%; }
 
 /* ---------------- lists (expressive: rounded, inset dividers) ---------------- */
 .md-list {
@@ -1936,10 +1947,6 @@ body.app-fixed .cal-gutter-spacer {
 .form .row { display: flex; gap: 8px; align-items: center; }
 .form .row.end { justify-content: flex-end; }
 /* stacked add-forms: name row, then a control row with the primary action end-aligned */
-.manage-form { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
-.manage-form-row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
-.manage-form-row .grow { flex: 1; min-width: 140px; }
-.manage-form-spacer { flex: 1; }
 /* ---------------- clients list-detail (M3 canonical, #367) ----------------
  * Client → projects/rate/terms is a parent-child pairing, so M3 expects the
  * list-detail layout: two panes at expanded+, a single pane below. Mirrors
@@ -1952,23 +1959,13 @@ body.app-fixed .cal-gutter-spacer {
   .client-list-pane { flex: 0 0 400px; overflow-y: auto; }
   .client-detail-pane { flex: 1; min-width: 0; overflow-y: auto; }
   .client-detail-pane .detail-back { display: none; }
-  .client-row.selected { background: var(--md-sys-color-secondary-container); border-radius: 12px; }
 }
 @media (max-width: 839px) {
   .client-list-pane, .client-detail-pane { flex: 1; min-height: 0; overflow-y: auto; }
   .client-list-detail.has-selection .client-list-pane { display: none; }
   .client-list-detail:not(.has-selection) .client-detail-pane { display: none; }
 }
-/* whole-row tap target for client rows */
-.client-row-hit { display: flex; align-items: center; gap: 12px; width: 100%;
-  color: inherit; text-decoration: none; }
-.client-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-.client-dot.large { width: 16px; height: 16px; }
-.client-dot.none { width: 24px; height: 24px; background: transparent;
-  color: var(--md-sys-color-on-surface-variant); }
-.client-dot.none svg { width: 24px; height: 24px; }
 .client-detail-head { display: flex; align-items: center; gap: 12px; margin: 4px 0 16px; }
-.client-detail-head .md-headline-small { margin: 0; }
 /* #633: name left, cog pushed to the right edge via space-between. */
 .client-detail-head.has-settings { justify-content: space-between; }
 .client-detail-head .client-settings-open { flex: none; }
@@ -1978,9 +1975,6 @@ body.app-fixed .cal-gutter-spacer {
 #client-add-form { padding-left: 16px; }
 #client-add-form[hidden] { display: none; }
 .detail-form { margin-bottom: 12px; }
-.manage-subhead { margin: 20px 4px 8px; color: var(--md-sys-color-on-surface-variant); }
-.add-project-form { display: flex; align-items: center; gap: 8px; flex: 1 1 100%; }
-.add-project-form .md-text-field { flex: 1; min-width: 120px; }
 /* #293: canned payment-terms description under the dropdown (M3 supporting text). */
 .terms-desc { flex: 1 1 100%; margin: 0; font-size: 0.75rem; line-height: 1.4; }
 #client-detail .terms-desc { padding: 0 8px 4px 0; }

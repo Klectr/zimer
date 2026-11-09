@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { selectField, textField } from "./field";
+import { selectField, textAreaField, textField } from "./field";
 
 describe("textField", () => {
   test("renders the LobeHub field structure: visible label above the input", () => {
@@ -96,5 +96,25 @@ describe("selectField className", () => {
   test("extra class lands on the select for behavior hooks", () => {
     const html = selectField({ id: "t", label: "Terms", options: [{ value: "a", label: "A" }], className: "terms-select" });
     expect(html).toContain('class="ui-input ui-select terms-select"');
+  });
+});
+
+describe("textAreaField", () => {
+  test("renders the label above a textarea with the escaped value as its content", () => {
+    const html = textAreaField({ id: "addr", label: "Address", name: "address", value: "1 Main St\n<Suite 2>", rows: 3 });
+    expect(html).toContain('<label class="ui-field-label" for="addr">Address</label>');
+    expect(html).toContain('<textarea class="ui-input" id="addr" name="address" rows="3">1 Main St\n&lt;Suite 2&gt;</textarea>');
+  });
+
+  test("empty value renders an empty textarea; attrs pass through", () => {
+    const html = textAreaField({ id: "addr", label: "Address", attrs: 'spellcheck="false"' });
+    expect(html).toContain('spellcheck="false"></textarea>');
+  });
+});
+
+describe("textField attrs", () => {
+  test("raw attrs land on the input", () => {
+    const html = textField({ id: "w", label: "Website", attrs: 'autocapitalize="none" spellcheck="false"' });
+    expect(html).toContain('autocapitalize="none" spellcheck="false">');
   });
 });

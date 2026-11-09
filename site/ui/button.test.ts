@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { button } from "./button";
+import { button, linkButton } from "./button";
 
 describe("button", () => {
   test("defaults to the default (surface) variant, submit-free", () => {
@@ -51,6 +51,14 @@ describe("button icon", () => {
     expect(html).toContain("<svg");
     expect(html.indexOf("<svg")).toBeLessThan(html.indexOf("Save"));
     expect(button({ label: "Save" })).not.toContain("<svg");
+  });
+});
+
+describe("linkButton className", () => {
+  test("extra class lands on the anchor for behavior hooks", () => {
+    const html = linkButton({ label: "Clients", href: "/manage", icon: "arrow_left", variant: "ghost", className: "detail-back" });
+    expect(html).toContain('class="ui-btn ui-btn-ghost detail-back"');
+    expect(html).toContain('href="/manage"');
   });
 });
 

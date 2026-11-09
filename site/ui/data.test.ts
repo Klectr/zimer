@@ -82,6 +82,22 @@ describe("rows", () => {
     expect(html).toContain("&lt;b&gt;");
     expect(html).toContain("<button>Edit</button>");
   });
+
+  test("clientRow links the whole row when href is set, with dot, selected state, and chevron", () => {
+    const html = clientRow({
+      name: "Acme Studio", meta: "2 projects · $85/hr", href: "/manage?client=1",
+      ariaLabel: "Manage client Acme Studio", dot: "#fb923c", selected: true, chevron: true,
+    });
+    expect(html).toContain('<a class="ui-row selected client-row-hit" href="/manage?client=1" aria-label="Manage client Acme Studio">');
+    expect(html).toContain('<span class="ui-row-lead-dot" style="background:#fb923c" aria-hidden="true"></span>');
+    expect(html).toContain("ui-row-chevron");
+  });
+
+  test("clientRow omits the meta line when not given and renders the icon dot variant", () => {
+    const html = clientRow({ name: "No client", href: "/manage?client=none", iconDot: "group", chevron: true });
+    expect(html).not.toContain("ui-row-meta");
+    expect(html).toContain("ui-row-lead-icon");
+  });
 });
 
 describe("lineItemsTable", () => {

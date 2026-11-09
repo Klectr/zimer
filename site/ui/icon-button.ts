@@ -28,6 +28,6 @@ export function iconButton(opts: IconButtonOptions): string {
   }
   return (
     `<button type="${esc(opts.type ?? "button")}" class="${cls}"${id}${disabled}${attrs} ` +
-    `aria-label="${esc(opts.label)}" title="${esc(opts.label)}">${icon(opts.icon)}</button>`
+    `aria-label="${esc(opts.label)}" data-tip="${esc(opts.label)}">${icon(opts.icon)}</button>`
   );
 }
