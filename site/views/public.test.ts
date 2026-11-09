@@ -129,3 +129,45 @@ describe("indexing split (#1050)", () => {
     expect(v.publicInvoicePage(inv, "https://example.com", "/i/abc123")).toContain('content="noindex"');
   });
 });
+
+/** #1121: public surfaces follow the page mocks — ui pay CTA on the public
+ *  invoice, ui title/entry pattern on the changelog, ui headings on the
+ *  legal pages. */
+describe("public page-mock parity (#1121)", () => {
+  test("pay CTA is the ui primary lg block link button with the secure-payment note", () => {
+    const v = createPublicViews({
+      getInvoice: () => null,
+      invoiceTotals: () => ({ total: 120 }),
+      invoiceDocumentHtml: () => "<div>sheet</div>",
+      ensurePublicToken: () => "",
+    } as any) as any;
+    const inv: any = { id: 1, number: "INV-0001", tax_rate: 0, stripe_payment_link: "https://pay.example/x", items: [], public_token: "abc123" };
+    const html = v.publicInvoicePage(inv, "https://example.com", "/i/abc123");
+    expect(html).toContain('class="ui-btn ui-btn-primary ui-btn-lg ui-btn-block"');
+    expect(html).toContain('href="https://pay.example/x"');
+    expect(html).toContain("Pay $120.00");
+    expect(html).toContain("Secure payment by card.");
+    expect(html).toContain("never asks for your Zimer password");
+    expect(html).not.toContain("md-filled-button");
+  });
+
+  test("changelog uses the mock title and the ui entry pattern", () => {
+    const v = views as any;
+    const html = v.changelogPage([{ date: "Nov 9, 2026", items: ["Shipped <code>x</code>"] }], "https://example.com");
+    expect(html).toContain('<h1 class="ui-page-title">What&rsquo;s new in Zimer</h1>');
+    expect(html).toContain("Small, finished changes. Shipped means live, not announced.");
+    expect(html).toContain('class="ui-changelog-entry"');
+    expect(html).toContain('<span class="ui-changelog-date">Nov 9, 2026</span>');
+    expect(html).not.toContain("md-title-large");
+    expect(html).not.toContain("md-headline-small");
+  });
+
+  test("legal pages use ui title classes", () => {
+    const v = views as any;
+    for (const html of [v.termsPage([], "https://example.com"), v.privacyPage("https://example.com")]) {
+      expect(html).toContain('class="ui-page-title changelog-title"');
+      expect(html).not.toContain("md-headline-small");
+    }
+    expect(v.termsPage([{ heading: "H", body: "B" }], "https://example.com")).toContain('<h2 class="ui-app-title">H</h2>');
+  });
+});

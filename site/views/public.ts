@@ -10,6 +10,7 @@ import type { TermsSection } from "../lib/license-terms.ts"; /* #341 */
 import type { Invoice, InvoiceItem } from "../lib/types.ts";
 import { authCard } from "../ui/auth-card.ts";
 import { textField } from "../ui/field.ts";
+import { linkButton } from "../ui/button.ts";
 
 export interface PublicViewDeps {
   getInvoice: (id: number) => (Invoice & { items: InvoiceItem[] }) | null;
@@ -47,7 +48,8 @@ export function createPublicViews(deps: PublicViewDeps) {
     const t = invoiceTotals(inv.items, inv.tax_rate);
     const pay = inv.stripe_payment_link ? `
       <div class="no-print public-pay">
-        <a class="md-filled-button public-pay-btn" href="${esc(inv.stripe_payment_link)}" target="_blank" rel="noopener">${icon("card")}<span>Pay ${money(t.total)}</span></a>
+        ${linkButton({ label: `Pay ${money(t.total)}`, href: inv.stripe_payment_link, variant: "primary", size: "lg", block: true, external: true, icon: "card" })}
+        <p class="ui-public-note">Secure payment by card. Questions? Reply to the email this link came in.</p>
       </div>` : "";
     return `<!DOCTYPE html>
   <html lang="en">
@@ -64,7 +66,7 @@ export function createPublicViews(deps: PublicViewDeps) {
   <main class="page-public-invoice">
   ${invoiceDocumentHtml(inv)}
   ${pay}
-  <p class="muted tiny no-print public-foot">Shared securely via Zimer · <a href="/changelog">Changelog</a></p>
+  <p class="muted tiny no-print public-foot">Shared securely via Zimer · This page never asks for your Zimer password. · <a href="/changelog">Changelog</a></p>
   </main>
   </html>`;
   }
@@ -98,7 +100,7 @@ export function createPublicViews(deps: PublicViewDeps) {
     ];
     const body = sections.map(s => `
       <section class="changelog-release">
-        <h2 class="md-title-large">${esc(s.heading)}</h2>
+        <h2 class="ui-app-title">${esc(s.heading)}</h2>
         <p>${s.html ? s.body : esc(s.body)}</p>
       </section>`).join("");
     return `<!DOCTYPE html>
@@ -115,7 +117,7 @@ export function createPublicViews(deps: PublicViewDeps) {
   </head>
   <body>
   <main class="page-public page-changelog">
-  <h1 class="md-headline-small changelog-title">${logo(28)}<span>Zimer privacy policy</span></h1>
+  <h1 class="ui-page-title changelog-title">${logo(28)}<span>Zimer privacy policy</span></h1>
   ${body}
   <p class="muted tiny no-print public-foot">Shared securely via Zimer · <a href="/changelog">Changelog</a> · <a href="/terms">Terms</a></p>
   </main>
@@ -125,11 +127,11 @@ export function createPublicViews(deps: PublicViewDeps) {
   /* #303: public changelog — same minimal public chrome as the invoice page:
      no auth, no app nav. */
   function changelogPage(entries: ChangelogEntry[], origin: string): string {
-    const body = entries.length ? entries.map(e => `
-      <section class="changelog-release">
-        <h2 class="md-title-large">${esc(e.date)}</h2>
-        <ul>${e.items.map(i => `<li>${i}</li>`).join("")}</ul>
-      </section>`).join("") :
+    const body = entries.length ? `<div class="ui-changelog">${entries.map(e => `
+      <div class="ui-changelog-entry">
+        <div class="ui-changelog-head"><span class="ui-changelog-date">${esc(e.date)}</span></div>
+        <div class="ui-changelog-body"><ul>${e.items.map(i => `<li>${i}</li>`).join("")}</ul></div>
+      </div>`).join("")}</div>` :
       `<p class="muted">No release notes yet.</p>`;
     return `<!DOCTYPE html>
   <html lang="en">
@@ -145,7 +147,8 @@ export function createPublicViews(deps: PublicViewDeps) {
   </head>
   <body>
   <main class="page-public page-changelog">
-  <h1 class="md-headline-small changelog-title">${logo(28)}<span>Zimer changelog</span></h1>
+  <h1 class="ui-page-title">What&rsquo;s new in Zimer</h1>
+  <p class="ui-app-sub">Small, finished changes. Shipped means live, not announced.</p>
   ${body}
   <p class="muted tiny no-print public-foot">Shared securely via Zimer</p>
   </main>
@@ -157,7 +160,7 @@ export function createPublicViews(deps: PublicViewDeps) {
   function termsPage(sections: TermsSection[], origin: string): string {
     const body = sections.map(s => `
       <section class="changelog-release">
-        <h2 class="md-title-large">${esc(s.heading)}</h2>
+        <h2 class="ui-app-title">${esc(s.heading)}</h2>
         <p>${s.html ? s.body : esc(s.body)}</p>
       </section>`).join("");
     return `<!DOCTYPE html>
@@ -174,7 +177,7 @@ export function createPublicViews(deps: PublicViewDeps) {
   </head>
   <body>
   <main class="page-public page-changelog">
-  <h1 class="md-headline-small changelog-title">${logo(28)}<span>Zimer terms of service</span></h1>
+  <h1 class="ui-page-title changelog-title">${logo(28)}<span>Zimer terms of service</span></h1>
   ${body}
   <p class="muted tiny no-print public-foot">Shared securely via Zimer · <a href="/changelog">Changelog</a> · <a href="/privacy">Privacy</a></p>
   </main>
