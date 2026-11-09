@@ -477,3 +477,4 @@ function entryDialog(): string {
     });
   })();</script>`;
 }
+
