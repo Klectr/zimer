@@ -70,6 +70,23 @@ export const formsStories: Story[] = [
       }),
   },
   {
+    id: "forms-auth-error",
+    group: "Forms",
+    title: "Auth card — with an error",
+    render: () =>
+      authCard({
+        action: "/login",
+        title: "Welcome back",
+        sub: "Log in to your timers and Zinvoices.",
+        error: "That email and password don't match.",
+        fieldsHtml:
+          textField({ id: "auth-err-email", label: "Email", type: "email", value: "you@studio.com", autocomplete: "email" }) +
+          textField({ id: "auth-err-password", label: "Password", type: "password", autocomplete: "current-password" }),
+        submitLabel: "Log in",
+        footerHtml: `<span>New here? <a href="/signup">Start free</a></span><a href="/forgot">Forgot password</a>`,
+      }),
+  },
+  {
     id: "forms-settings-profile",
     group: "Forms",
     title: "Settings — profile & billing sections",

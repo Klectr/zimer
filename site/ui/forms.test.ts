@@ -60,6 +60,14 @@ describe("auth card", () => {
     expect(html).toContain("Self-hosting note.");
   });
 
+  test("an error renders as an alert between the sub and the form, escaped", () => {
+    const html = authCard({ action: "/login", title: "T", sub: "S", fieldsHtml: "", submitLabel: "Log in", error: "Wrong <token>." });
+    expect(html).toContain('<p class="error" role="alert">Wrong &lt;token&gt;.</p>');
+    expect(html.indexOf('role="alert"')).toBeLessThan(html.indexOf("<form"));
+    const clean = authCard({ action: "/login", title: "T", sub: "S", fieldsHtml: "", submitLabel: "Log in" });
+    expect(clean).not.toContain('role="alert"');
+  });
+
   test("submit label is a verb phrase rendered through button()", () => {
     const html = authCard({ action: "/signup", title: "T", sub: "S", fieldsHtml: "", submitLabel: "Create account" });
     expect(html).toContain("Create account");
