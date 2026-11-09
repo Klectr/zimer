@@ -6,7 +6,7 @@ import { createPublicViews } from "./public.ts";
 const views = createPublicViews({
   getInvoice: () => null,
   invoiceTotals: () => ({}),
-  invoiceDocumentHtml: () => "",
+  businessName: () => "",
   ensurePublicToken: () => "",
 } as any);
 
@@ -138,7 +138,7 @@ describe("public page-mock parity (#1121)", () => {
     const v = createPublicViews({
       getInvoice: () => null,
       invoiceTotals: () => ({ total: 120 }),
-      invoiceDocumentHtml: () => "<div>sheet</div>",
+      businessName: () => "Acme Studio",
       ensurePublicToken: () => "",
     } as any) as any;
     const inv: any = { id: 1, number: "INV-0001", tax_rate: 0, stripe_payment_link: "https://pay.example/x", items: [], public_token: "abc123" };
@@ -169,5 +169,96 @@ describe("public page-mock parity (#1121)", () => {
       expect(html).not.toContain("md-headline-small");
     }
     expect(v.termsPage([{ heading: "H", body: "B" }], "https://example.com")).toContain('<h2 class="ui-app-title">H</h2>');
+  });
+});
+
+/** #1136: the public invoice page is the mocked summary card fed from the
+ *  stored invoice — business title, status tag, per-item lines, tax lines,
+ *  sender notes. */
+describe("public invoice summary (#1136)", () => {
+  const v = createPublicViews({
+    getInvoice: () => null,
+    invoiceTotals: (items: any[], rate: number) => {
+      const subtotal = items.reduce((s: number, i: any) => s + i.amount, 0);
+      const tax = Math.round(subtotal * rate) / 100;
+      return { subtotal, tax, total: subtotal + tax };
+    },
+    businessName: () => "Studio — Triston Armstrong",
+    ensurePublicToken: () => "",
+  } as any) as any;
+  const inv: any = {
+    id: 7, number: "INV-2001", status: "sent", tax_rate: 0,
+    issue_date: "2026-11-05", due_date: "2099-11-19", notes: "Thanks for your business.",
+    stripe_payment_link: "https://pay.example/x", public_token: "abc123",
+    items: [
+      { description: "Intake form fixes", hours: 9.5, rate: 95, amount: 902.5 },
+      { description: "Review call", hours: 1.5, rate: 95, amount: 142.5 },
+    ],
+  };
+  test("renders the mocked card with business, meta, due tag, lines, total, notes", () => {
+    const html = v.publicInvoicePage(inv, "https://example.com", "/i/abc123");
+    expect(html).toContain('class="ui-public-sheet"');
+    expect(html).toContain("Studio — Triston Armstrong");
+    expect(html).toContain("Zinvoice INV-2001 · Issued Nov 5, 2026");
+    expect(html).toContain("Due Nov 19");
+    expect(html).toContain("Intake form fixes — 9.5h");
+    expect(html).toContain("$902.50");
+    expect(html).toContain("Total due");
+    expect(html).toContain("$1,045.00");
+    expect(html).toContain("Thanks for your business.");
+    expect(html).not.toContain("invoice-sheet");
+  });
+  test("tax adds Subtotal and Tax lines; paid swaps the tag and total label", () => {
+    const taxed: any = { ...inv, tax_rate: 10, status: "paid", stripe_payment_link: "" };
+    const html = v.publicInvoicePage(taxed, "https://example.com", "/i/abc123");
+    expect(html).toContain("Subtotal");
+    expect(html).toContain("Tax (10%)");
+    expect(html).toContain("$104.50");
+    expect(html).toContain("Paid");
+    expect(html).toContain("Total paid");
+    expect(html).not.toContain("ui-btn-primary");
+  });
+  test("an elapsed due date reads Overdue", () => {
+    const late: any = { ...inv, due_date: "2020-01-15" };
+    const html = v.publicInvoicePage(late, "https://example.com", "/i/abc123");
+    expect(html).toContain("Overdue");
+    expect(html).toContain("ui-tag-error");
+  });
+});
+
+describe("public invoice status edges (#1136 review)", () => {
+  const mk = (globalTerms: string) => createPublicViews({
+    getInvoice: () => null,
+    invoiceTotals: (items: any[]) => {
+      const total = items.reduce((s: number, i: any) => s + i.amount, 0);
+      return { subtotal: total, tax: 0, total };
+    },
+    businessName: () => "Studio",
+    paymentTerms: () => globalTerms,
+    ensurePublicToken: () => "",
+  } as any) as any;
+  const base: any = {
+    id: 9, number: "INV-2009", tax_rate: 0, issue_date: "2026-11-05",
+    due_date: "2020-01-15", notes: "", stripe_payment_link: "", public_token: "tok",
+    client_payment_terms: null,
+    items: [{ description: "Work", hours: 2, rate: 50, amount: 100 }],
+  };
+  test("a draft never reads as money due", () => {
+    const html = mk("net_30").publicInvoicePage({ ...base, status: "draft" }, "https://example.com", "/i/tok");
+    expect(html).toContain("Draft");
+    expect(html).toContain("Total");
+    expect(html).not.toContain("Total due");
+    expect(html).not.toContain("Overdue");
+  });
+  test("pay-when-paid terms never flag overdue (#291)", () => {
+    const html = mk("pay_when_paid").publicInvoicePage({ ...base, status: "sent" }, "https://example.com", "/i/tok");
+    expect(html).not.toContain("Overdue");
+    expect(html).not.toContain("Due Jan 15");
+    expect(html).toContain("Sent");
+  });
+  test("numeric terms keep the overdue flag; a client override wins", () => {
+    const v = mk("pay_when_paid");
+    const html = v.publicInvoicePage({ ...base, status: "sent", client_payment_terms: "net_15" }, "https://example.com", "/i/tok");
+    expect(html).toContain("Overdue");
   });
 });

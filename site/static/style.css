@@ -475,6 +475,7 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .ui-public-sheet { background: var(--color-bg-container); border: 1px solid var(--color-border-secondary); border-radius: var(--radius); padding: var(--spacing-lg); }
 .ui-public-meta { font-size: var(--font-size-sm); color: var(--color-text-secondary); margin-top: var(--spacing-xxs); }
 .ui-public-lines { border-top: 1px solid var(--color-border-secondary); margin: var(--spacing-sm) 0 var(--spacing-md); }
+.ui-public-notes { font-size: var(--font-size-sm); line-height: var(--line-height-sm); color: var(--color-text-secondary); white-space: pre-wrap; margin: 0 0 var(--spacing-md); }
 .ui-public-note { font-size: var(--font-size-sm); line-height: var(--line-height-sm); color: var(--color-text-tertiary); text-align: center; margin-top: var(--spacing-sm); }
 .ui-public-footer { font-size: var(--font-size-sm); color: var(--color-text-tertiary); text-align: center; margin-top: var(--spacing-sm); }
 .ui-hero { text-align: center; padding: var(--spacing-xl) var(--spacing-md) var(--spacing-lg); }
@@ -2104,9 +2105,8 @@ body.app-fixed .cal-gutter-spacer {
    surface: it carries its own card base (previously the shared md-card). */
 .invoice-sheet { max-width: 720px; margin: 0 auto 16px; background: var(--md-sys-color-surface-container-high); border-radius: var(--radius-lg); padding: 20px; }
 
-/* Public client invoice page: centered sheet, no app chrome. */
+/* Public client invoice page: centered summary card, no app chrome. */
 .page-public-invoice { max-width: 800px; margin: 0 auto; padding: 32px 24px 48px; }
-.page-public-invoice .invoice-sheet { max-width: none; }
 /* #303: public changelog shares the minimal public chrome. */
 .page-changelog { max-width: 720px; margin: 0 auto; padding: 32px 24px 48px; }
 .changelog-title { display: flex; align-items: center; gap: 12px; margin-bottom: 8px;
@@ -2122,7 +2122,6 @@ body.app-fixed .cal-gutter-spacer {
   color: var(--md-sys-color-on-surface, #e3e3e3);
   border-radius: 4px; padding: 1px 6px; white-space: nowrap; }
 .public-foot { text-align: center; margin-top: 28px; }
-.public-pay { text-align: center; margin: 28px 0 8px; }
 .ui-changelog-body ul { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
 /* #731: hosted landing page (rebuilt #1098 on the Lobe token system;
    #1110: layout system ported from the Zandbox landing — the container
@@ -2352,6 +2351,15 @@ body.app-fixed .cal-gutter-spacer {
 @media print {
   .ui-side, .ui-mobile-head, .ui-mobile-nav, .nav-drawer-scrim, .trial-banner, .no-print, .page-head, .ui-app-head, .ui-stat-row { display: none !important; }
   .invoice-list-pane { display: none !important; } /* #364: print only the invoice document */
+  .ui-public-sheet .ui-btn, .ui-public-footer, .ui-public-note { display: none !important; } /* #1136: the public summary prints without its pay action or web footer */
+  /* #1136: the public summary on paper — dark text, visible tag outline,
+     hairlines that survive without backgrounds. */
+  .ui-public-sheet { background: #fff; color: #111; border-color: #999; }
+  .ui-public-meta, .ui-public-notes { color: #333; }
+  .ui-public-lines { border-top-color: #ccc; }
+  .ui-public-lines .ui-summary-line { border-bottom-color: #ddd; }
+  .ui-summary-total .num { color: #111; }
+  .ui-public .ui-tag { border: 1px solid #999; background: #fff !important; color: #111 !important; }
   .invoice-list-detail { display: block; }
   .invoice-detail-pane { overflow: visible; }
   body { background: #fff; color: #111; }
