@@ -70,7 +70,6 @@ export const feedbackStories: Story[] = [
         body: "INV-0043 for Harbor Dental ($1,827.00) will be permanently deleted.",
         confirmLabel: "Delete draft",
         danger: true,
-        open: true,
       }) +
       DEMO_SCRIPT,
   },
