@@ -5,9 +5,10 @@ with no rendering library and no build step. Components are server-template
 functions and Web Components; Zandbox renders them in every state against the
 project's own stylesheets, with fictional data only.
 
-Zandbox is developed inside the Zimer repo under this `.zandbox/` directory,
-deliberately self-contained so the directory can be lifted into its own repo
-unchanged. The engine imports nothing from the host project.
+This is Zimer's vendored copy of the Zandbox engine. Zandbox's home is its
+own repo, github.com/Klectr/zandbox — the `engine/` directory there is this
+same payload; engine changes land there first and are re-vendored here. The
+engine imports nothing from the host project.
 
 ## Initializing a project
 
