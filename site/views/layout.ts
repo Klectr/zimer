@@ -369,6 +369,7 @@ function settingsDialog(): string {
     var open_=false, focusOnSwap=false, opener=menuItem;
     function open(){
       open_=true;
+      body.innerHTML='<p class="muted">Loading…</p>';
       scrim.hidden=false; void scrim.offsetWidth; scrim.classList.add('open');
       /* Fresh form on every open — the profile may have changed elsewhere. */
       focusOnSwap=true;
@@ -432,6 +433,7 @@ function entryDialog(): string {
     var open_=false, opener=null;
     function open(id){
       open_=true; opener=document.activeElement;
+      body.innerHTML='<p class="muted">Loading…</p>';
       scrim.hidden=false; void scrim.offsetWidth; scrim.classList.add('open');
       htmx.ajax('GET','/entries/'+id+'/edit','#entry-dialog-body');
       document.addEventListener('keydown',onKey,true);
