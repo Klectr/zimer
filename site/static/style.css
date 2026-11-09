@@ -646,6 +646,11 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .ui-toast-info .ui-toast-chip { background: var(--color-info-bg); color: var(--color-info); }
 .ui-toast-title { font-weight: 500; }
 .ui-toast-body { font-size: var(--font-size-sm); line-height: var(--line-height-sm); color: var(--color-text-secondary); margin-top: var(--spacing-xxs); }
+.ui-toast-live { position: fixed; left: 50%; bottom: 24px; z-index: 200; opacity: 0; pointer-events: none; transform: translateX(-50%) translateY(16px); transition: opacity 200ms cubic-bezier(0.05, 0.7, 0.1, 1), transform 200ms cubic-bezier(0.05, 0.7, 0.1, 1); }
+.ui-toast-live.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+@media (prefers-reduced-motion: reduce) {
+  .ui-toast-live { transition: none; }
+}
 
 .ui-menu { background: var(--color-bg-elevated); border: 1px solid var(--color-border-secondary); border-radius: var(--radius-lg); box-shadow: var(--box-shadow-secondary); padding: var(--spacing-xxs); min-width: 180px; box-sizing: border-box; }
 .ui-menu-item { display: flex; align-items: center; gap: var(--spacing-xs); width: 100%; padding: var(--spacing-xs) var(--spacing-sm); border-radius: var(--radius-sm); color: var(--color-text); font-size: var(--font-size); text-decoration: none; background: none; border: 0; cursor: pointer; box-sizing: border-box; text-align: left; font-family: inherit; }
@@ -1248,7 +1253,7 @@ body.app-fixed .ui-shell-main { min-height: 0; }
   /* compact clearance: the fixed bar overlays the bottom 80px */
   body main { padding-bottom: calc(96px + var(--md-nav-bar-height)); }
   body.app-fixed main { padding-bottom: calc(16px + var(--md-nav-bar-height)); }
-  .tk-snackbar { bottom: calc(24px + var(--md-nav-bar-height)); }
+  .ui-toast-live { bottom: calc(24px + var(--md-nav-bar-height)); }
 }
 
 /* ---------------- invoices list-detail (M3 canonical, #364) ----------------
@@ -1544,19 +1549,6 @@ body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
 #biz-profile .terms-desc { margin-top: 8px; }
 
 .page-head-actions { display: flex; gap: 8px; align-items: center; }
-/* Milestone 16.2: M3 snackbar for the global timer shortcut. */
-.tk-snackbar {
-  position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(16px);
-  background: var(--md-sys-color-inverse-surface); color: var(--md-sys-color-inverse-on-surface);
-  padding: 14px 20px; border-radius: 8px; font-size: 0.875rem;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
-  opacity: 0; pointer-events: none; z-index: 200;
-  transition: opacity 200ms cubic-bezier(0.05, 0.7, 0.1, 1), transform 200ms cubic-bezier(0.05, 0.7, 0.1, 1);
-}
-.tk-snackbar.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-@media (prefers-reduced-motion: reduce) {
-  .tk-snackbar { transition: none; }
-}
 /* Milestone 11: demo onboarding banner. */
 .demo-banner {
   display: flex; align-items: center; gap: 12px; flex-wrap: wrap; /* #300: two CTAs now */
@@ -1613,7 +1605,7 @@ body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
 }
 
 /* #353: content-driven thresholds, not M3 window size classes. Main's extra
-   bottom padding keeps the fixed snackbar from covering trailing content on
+   bottom padding keeps the fixed toast from covering trailing content on
    narrower viewports. */
 @media (max-width: 900px) {
   main { padding-bottom: 120px; }

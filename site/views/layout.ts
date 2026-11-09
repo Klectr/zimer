@@ -404,7 +404,7 @@ function settingsDialog(): string {
       open();
     });
     /* #247: visible save confirmation — the form re-renders silently, so
-       announce success with the shared M3 snackbar. Delegated on body so it
+       announce success with the shared ui toast. Delegated on body so it
        survives the #biz-profile outerHTML swap. */
     document.body.addEventListener('htmx:afterRequest',function(e){
       var elt=e.detail.elt;
