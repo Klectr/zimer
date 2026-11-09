@@ -57,6 +57,7 @@ describe("rows", () => {
     expect(html).toContain("ui-chip-sent");
     expect(html).toContain('<span class="ui-row-amount">$2,550.00</span>');
     expect(html).not.toContain("ui-chip-overdue");
+    expect(html).not.toContain("aria-current");
   });
 
   test("zinvoiceRow renders the overdue chip beside the status chip when overdueDays is set", () => {
@@ -70,7 +71,7 @@ describe("rows", () => {
       amount: "$2,550.00", meta: "", href: "/invoices?invoice=1042",
       ariaLabel: "View zinvoice INV-0042", selected: true, className: "inv-row-hit",
     });
-    expect(html).toContain('<a href="/invoices?invoice=1042" class="ui-row selected inv-row-hit" aria-label="View zinvoice INV-0042">');
+    expect(html).toContain('<a href="/invoices?invoice=1042" class="ui-row selected inv-row-hit" aria-label="View zinvoice INV-0042" aria-current="true">');
     expect(html).toContain('<div class="ui-row-meta"><em>No client</em></div>');
     expect(html).not.toContain("Northwind Legal");
   });
@@ -106,9 +107,16 @@ describe("rows", () => {
       name: "Acme Studio", meta: "2 projects · $85/hr", href: "/manage?client=1",
       ariaLabel: "Manage client Acme Studio", dot: "#fb923c", selected: true, chevron: true,
     });
-    expect(html).toContain('<a class="ui-row selected client-row-hit" href="/manage?client=1" aria-label="Manage client Acme Studio">');
+    expect(html).toContain('<a class="ui-row selected client-row-hit" href="/manage?client=1" aria-label="Manage client Acme Studio" aria-current="true">');
     expect(html).toContain('<span class="ui-row-lead-dot" style="background:#fb923c" aria-hidden="true"></span>');
     expect(html).toContain("ui-row-chevron");
+  });
+
+  test("clientRow marks the selected row with aria-current and omits it when unselected", () => {
+    const div = clientRow({ name: "Acme Studio", selected: true });
+    expect(div).toContain('<div class="ui-row selected" aria-current="true">');
+    const link = clientRow({ name: "Acme Studio", href: "/manage?client=1" });
+    expect(link).not.toContain("aria-current");
   });
 
   test("clientRow omits the meta line when not given and renders the icon dot variant", () => {
