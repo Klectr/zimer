@@ -128,6 +128,9 @@ export interface WebDeps {
      is authenticated but past entitlement. Optional so older callers keep
      compiling; server.ts always passes it in hosted mode. */
   inactiveAuthedUser?: (req: Request) => boolean;
+  /* #1121: hosted Billing section for the settings body; absent on
+     self-host, where the route renders no billing section. */
+  billingSectionHtml?: (req: Request) => string;
   /* #741: hosted cross-tenant public-invoice routing. When set (hosted),
      /i/:token resolves by scanning the tenant DBs instead of using the
      session tenant; self-host never sets them. */
@@ -141,7 +144,7 @@ export function createWebRouter(deps: WebDeps) {
     shareOrigin, PORT, loginPage, signupPage, hostedLoginPage, HOSTED, accounts,
     changelogPage, termsPage, privacyPage, noSuchInvoicePage, rateLimitPage,
     notFoundPage: publicNotFound, errorPage: publicError,
-    invoicePdf, stripeConfigured,
+    invoicePdf, stripeConfigured, billingSectionHtml,
     workspaceEmpty, demoIds, seedDemoData, removeDemoData, entryToJson,
     inactiveAuthedUser, /* #736 */
     dataDir, tenantById, /* #741 */
@@ -717,7 +720,7 @@ export function createWebRouter(deps: WebDeps) {
         if (path === "/settings" && method === "GET") {
           const updates = updateSectionHtml();
           const support = `<p class="ui-settings-support">Need help? <a href="mailto:support@klectr.dev">support@klectr.dev</a></p>`;
-          const body = bizProfileSection() + dailyTargetSection() + themeSectionHtml() + updates + support;
+          const body = bizProfileSection() + dailyTargetSection() + themeSectionHtml() + (billingSectionHtml ? billingSectionHtml(req) : "") + updates + support;
           if (isHtmx(req)) return html(body);
           /* #693: direct visits get the full app layout — the bare fragment
              renders unstyled. */

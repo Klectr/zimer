@@ -24,6 +24,10 @@ import {
   type Subscription,
 } from "../lib/billing.ts";
 import { originMatches } from "../lib/http.ts"; /* #912 */
+import { settingsSection } from "../ui/settings-section.ts";
+import { tag } from "../ui/tag.ts";
+import { button } from "../ui/button.ts";
+import { shortYmd } from "../lib/format.ts";
 
 export interface BillingDeps {
   HOSTED: boolean;
@@ -60,6 +64,61 @@ export function createSubscriptionGate(opts: {
     );
   }
   return { inactiveAuthedUser };
+}
+
+/* #1121: the mock's Billing section for the settings body — plan line,
+ * status tag, and the manage/subscribe action. Hosted only; self-host
+ * and signed-out requests render nothing. The CTA follows #783: users
+ * with a Stripe customer get the portal, everyone else checkout. */
+export function createBillingSection(opts: {
+  HOSTED: boolean;
+  accounts: AccountsDb | null;
+  billing: Billing | null;
+}) {
+  const { HOSTED, accounts, billing } = opts;
+  return function billingSectionHtml(req: Request): string {
+    if (!HOSTED || !accounts || !billing) return "";
+    const user = accounts.sessionUserFromRequest(req);
+    if (!user) return "";
+    const sub = billing.getSubscriptionStatus(user.id);
+    const day = (iso: string | null | undefined) => (iso ? shortYmd(iso.slice(0, 10)) : null);
+    let statusTag: string;
+    let line: string;
+    if (!sub) {
+      const createdMs = Date.parse(user.created_at);
+      const trialEndMs = createdMs + TRIAL_DAYS * 24 * 3600 * 1000;
+      if (Number.isFinite(createdMs) && Date.now() < trialEndMs) {
+        statusTag = tag({ label: "Trial", tone: "primary" });
+        line = `Trial ends ${day(new Date(trialEndMs).toISOString())}. Subscribe any time to keep your data flowing.`;
+      } else {
+        statusTag = tag({ label: "No subscription", tone: "neutral" });
+        line = "Subscribe to keep using Zimer.";
+      }
+    } else if (sub.status === "trialing") {
+      statusTag = tag({ label: "Trialing", tone: "primary" });
+      line = sub.trial_ends_at ? `Trial ends ${day(sub.trial_ends_at)}.` : "Your trial is running.";
+    } else if (sub.status === "active") {
+      statusTag = tag({ label: "Active", tone: "success" });
+      line = sub.current_period_end ? `Next charge ${day(sub.current_period_end)}. Early rate locked — your price doesn't rise when new signups move up.` : "Your plan is active.";
+    } else if (sub.status === "past_due") {
+      statusTag = tag({ label: "Past due", tone: "error" });
+      line = "Your last payment failed — update your card to keep Zimer running.";
+    } else if (sub.status === "canceled") {
+      statusTag = tag({ label: "Canceled", tone: "neutral" });
+      const end = day(sub.current_period_end);
+      line = end && Date.parse(sub.current_period_end!) > Date.now() ? `Access runs until ${end}.` : "Your subscription has ended.";
+    } else {
+      statusTag = tag({ label: sub.status || "Unknown", tone: "neutral" });
+      line = "Manage your subscription in the billing portal.";
+    }
+    const action = sub?.stripe_customer_id
+      ? `<form method="post" action="/billing/portal" style="margin:0">${button({ label: "Manage subscription", type: "submit" })}</form>`
+      : `<form method="post" action="/billing/checkout" style="margin:0">${button({ label: "Subscribe · $12/month", type: "submit", variant: "primary" })}</form>`;
+    const body =
+      `<div style="display:flex;align-items:baseline;gap:8px"><span class="ui-plan-amount">$12</span><span class="muted">/ month · flat, no seats</span><span style="margin-left:auto">${statusTag}</span></div>` +
+      `<p class="ui-settings-note">${line}</p>`;
+    return settingsSection({ level: 2, id: "billing-section", title: "Billing — Hosted plan", bodyHtml: body, actionsHtml: action });
+  };
 }
 
 /** #736: the subscription wall. Minimal M3 public chrome (same as the
