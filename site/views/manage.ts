@@ -378,9 +378,7 @@ export function createManageViews(deps: ManageViewDeps) {
   function settingsPage(settingsBody: string): string {
     return layout("Settings", `
       <div class="page-narrow" data-enter="2">
-      <div class="ui-settings-head">
-        <h1 class="ui-page-title">Settings</h1>
-      </div>
+      ${appHeader({ title: "Settings", sub: "Changes save per section — the button tells you it saved." })}
       <div class="ui-settings-stack">${settingsBody}</div>
       </div>`, "settings");
   }

@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createHmac } from "node:crypto";
 import { createAccountsDb } from "../lib/accounts.ts";
-import { createBillingRouter } from "./billing.ts";
+import { createBillingRouter, createBillingSection } from "./billing.ts";
 import { verifyWebhookSignature } from "../stripe.ts";
 import { json } from "../lib/http.ts";
 
@@ -472,5 +472,49 @@ describe("#728: billing routes", () => {
     expect(row.stripe_customer_id).toBe("cus_123");
     expect(row.status).toBe("trialing");
     expect(row.trial_ends_at).toBe(new Date(1790000000 * 1000).toISOString());
+  });
+});
+
+/** #1121: the settings Billing section — hosted only, status from the
+ *  subscription row, CTA follows #783 (customer → portal, else checkout). */
+describe("settings billing section (#1121)", () => {
+  const reqWith = (cookie?: string) => new Request("http://localhost/settings", { headers: cookie ? { cookie } : {} });
+
+  test("renders nothing self-host or signed out", async () => {
+    const { accounts, billing } = setup(true);
+    const { cookie } = await authedCookie(accounts);
+    expect(createBillingSection({ HOSTED: false, accounts, billing })(reqWith(cookie))).toBe("");
+    expect(createBillingSection({ HOSTED: true, accounts, billing })(reqWith())).toBe("");
+  });
+
+  test("pre-checkout trial shows the Trial tag and the checkout CTA", async () => {
+    const { accounts, billing } = setup(true);
+    const { cookie } = await authedCookie(accounts);
+    const html = createBillingSection({ HOSTED: true, accounts, billing })(reqWith(cookie));
+    expect(html).toContain("Billing — Hosted plan");
+    expect(html).toContain('<span class="ui-tag ui-tag-primary">Trial</span>');
+    expect(html).toContain("Trial ends");
+    expect(html).toContain('action="/billing/checkout"');
+    expect(html).toContain("Subscribe · $12/month");
+  });
+
+  test("active subscription shows Active, the next charge, and the portal CTA", async () => {
+    const { accounts, billing } = setup(true);
+    const { user, cookie } = await authedCookie(accounts);
+    accounts.db.query("INSERT INTO subscriptions (user_id, stripe_customer_id, stripe_subscription_id, status, current_period_end) VALUES (?, 'cus_1', 'sub_1', 'active', '2026-12-01T00:00:00.000Z')").run(user.id);
+    const html = createBillingSection({ HOSTED: true, accounts, billing })(reqWith(cookie));
+    expect(html).toContain('<span class="ui-tag ui-tag-success">Active</span>');
+    expect(html).toContain("Next charge Dec 1");
+    expect(html).toContain('action="/billing/portal"');
+    expect(html).toContain("Manage subscription");
+  });
+
+  test("past_due shows the error tag and keeps the portal CTA", async () => {
+    const { accounts, billing } = setup(true);
+    const { user, cookie } = await authedCookie(accounts);
+    accounts.db.query("INSERT INTO subscriptions (user_id, stripe_customer_id, status) VALUES (?, 'cus_1', 'past_due')").run(user.id);
+    const html = createBillingSection({ HOSTED: true, accounts, billing })(reqWith(cookie));
+    expect(html).toContain('<span class="ui-tag ui-tag-error">Past due</span>');
+    expect(html).toContain('action="/billing/portal"');
   });
 });

@@ -34,7 +34,7 @@ import { createCalendarViews } from "./views/calendar.ts";
 import { createManageViews } from "./views/manage.ts";
 import { createInvoiceViews } from "./views/invoices.ts";
 import { createApiRouter, type ApiTenant } from "./routes/api.ts"; /* #733: +ApiTenant */
-import { createBillingRouter, createSubscriptionGate } from "./routes/billing.ts"; /* #728, #736 */
+import { createBillingRouter, createSubscriptionGate, createBillingSection } from "./routes/billing.ts"; /* #728, #736 */
 import { createLandingRouter } from "./routes/landing.ts"; /* #731 */
 import { createWebRouter, type WebTenant } from "./routes/web.ts"; /* #733: +WebTenant */
 
@@ -208,6 +208,7 @@ const { handleBilling, billing } = createBillingRouter({ /* #728: before handleW
 });
 /* #736: hosted subscription gate — shared by the page and API routers. */
 const { inactiveAuthedUser } = createSubscriptionGate({ HOSTED, accounts, billing });
+const billingSectionHtml = createBillingSection({ HOSTED, accounts, billing }); /* #1121 */
 const { handleApi } = createApiRouter({
   getTenant, TOKEN,
   /* #732: hosted API calls also accept a valid account session cookie. */
@@ -240,6 +241,7 @@ const { handleWeb } = createWebRouter({
   invoicePdf, stripeConfigured,
   workspaceEmpty, demoIds, seedDemoData, removeDemoData, entryToJson,
   inactiveAuthedUser, /* #736 */
+  billingSectionHtml, /* #1121 */
   dataDir: hostedDataDir, tenantById, /* #741 */
 });
 
