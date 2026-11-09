@@ -25,7 +25,7 @@ export interface ManageViewDeps {
   layout: (title: string, body: string, active?: "timer" | "calendar" | "manage" | "invoices", fixed?: boolean) => string;
   /* #1121: per-client rounded unbilled time for the row meta (the same
      figures the Zinvoices page's Unbilled section reports). */
-  unbilledByClient?: () => { id: number; name: string; secs: number }[];
+  unbilledByClient: () => { id: number; name: string; secs: number }[];
 }
 
 export function createManageViews(deps: ManageViewDeps) {
@@ -76,7 +76,7 @@ export function createManageViews(deps: ManageViewDeps) {
   function clientListHtml(sel: ClientSel | null): string {
     const { clients, byClient, unassigned } = manageData();
     const sk = selKey(sel);
-    const unbilled = new Map((deps.unbilledByClient?.() ?? []).map(u => [u.id, u.secs]));
+    const unbilled = new Map(deps.unbilledByClient().map(u => [u.id, u.secs]));
     const rows = clients.map(c => {
       const n = (byClient.get(c.id) || []).length;
       const unbilledSecs = unbilled.get(c.id) || 0;
@@ -105,8 +105,16 @@ export function createManageViews(deps: ManageViewDeps) {
   /* #367: out-of-band list refresh after a detail-pane action — the row
      supporting text (project count) must not go stale, and the pushed-URL
      history snapshot restores the right selection on back. */
+  /* #1121: the header counts ride along — a project add/delete changes
+     the project total, and the row OOB alone would leave the sub stale. */
+  function countsSub(): string {
+    const { clients, projects } = manageData();
+    return `${clients.length} client${clients.length === 1 ? "" : "s"} · ${projects.length} project${projects.length === 1 ? "" : "s"}`;
+  }
+
   function clientListOob(sel: ClientSel | null): string {
-    return clientListHtml(sel).replace(`id="client-list"`, `id="client-list" hx-swap-oob="true"`);
+    return clientListHtml(sel).replace(`id="client-list"`, `id="client-list" hx-swap-oob="true"`)
+      + `<p class="ui-app-sub" id="mg-sub" hx-swap-oob="true">${esc(countsSub())}</p>`;
   }
 
   const projectRow = (p: any) => clientRow({
@@ -230,9 +238,8 @@ export function createManageViews(deps: ManageViewDeps) {
        plays once per page load and never replays on swaps.
        #245: the business profile section moved into the settings modal
        behind the account menu button; the Manage page is clients & projects only. */
-    const { clients, projects } = manageData();
     return layout("Clients", `
-      ${appHeader({ title: "Clients", sub: `${clients.length} client${clients.length === 1 ? "" : "s"} · ${projects.length} project${projects.length === 1 ? "" : "s"}` })}
+      ${appHeader({ title: "Clients", sub: countsSub(), subId: "mg-sub" })}
       <div class="client-list-detail${sel && !isDefault ? " has-selection" : ""}" data-enter="2">
         <section class="client-list-pane" aria-label="Client list">
           ${addClientForm()}

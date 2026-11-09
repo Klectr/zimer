@@ -12,7 +12,7 @@ import { createManageViews } from "../views/manage.ts";
 function setup() {
   const db = createDb(mkdtempSync(join(tmpdir(), "tk-settings-"))).db;
   /* Mark the layout so the test can tell the bare fragment from the full page. */
-  const views = createManageViews({ db, layout: (t: string, b: string) => `<!DOCTYPE html><title>${t}</title>${b}` });
+  const views = createManageViews({ db, layout: (t: string, b: string) => `<!DOCTYPE html><title>${t}</title>${b}`, unbilledByClient: () => [] });
   const noop = () => "";
   /* #733: data deps resolve per request through getTenant now. */
   const tenant = {

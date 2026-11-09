@@ -80,7 +80,7 @@ function invoicePages() {
 }
 
 function managePages() {
-  const views = createManageViews({ db: stubDb, layout });
+  const views = createManageViews({ db: stubDb, layout, unbilledByClient: () => [] });
   return {
     manage: views.managePage({ kind: "none" }),
     settings: views.settingsPage(""),
