@@ -202,7 +202,13 @@ describe("DESIGN.md token layer (#1092)", () => {
       "--color-text-quaternary": "#52525b",
       "--color-bg-layout": "#08090a",
       "--color-bg-container": "#0d0d0f",
+      "--color-bg-container-secondary": "#0a0b0c",
       "--color-bg-elevated": "#16171a",
+      "--color-primary-bg": "color-mix(in srgb, var(--color-primary) 16%, transparent)",
+      "--color-success-bg": "color-mix(in srgb, var(--color-success) 16%, transparent)",
+      "--color-warning-bg": "color-mix(in srgb, var(--color-warning) 16%, transparent)",
+      "--color-error-bg": "color-mix(in srgb, var(--color-error) 16%, transparent)",
+      "--color-info-bg": "color-mix(in srgb, var(--color-info) 16%, transparent)",
       "--color-bg-spotlight": "#1e1f23",
       "--color-border": "rgba(255, 255, 255, 0.14)",
       "--color-border-secondary": "rgba(255, 255, 255, 0.08)",
@@ -234,9 +240,11 @@ describe("DESIGN.md token layer (#1092)", () => {
       "--control-height-sm": "28px",
       "--control-height": "36px",
       "--control-height-lg": "40px",
-      "--box-shadow-tertiary": "0 3px 1px -1px rgba(0, 0, 0, 0.2)",
-      "--box-shadow-secondary": "0 8px 16px -4px rgba(0, 0, 0, 0.35)",
-      "--box-shadow": "0 20px 20px -8px rgba(0, 0, 0, 0.45)",
+      "--line-height": "1.5714",
+      "--line-height-sm": "1.6667",
+      "--box-shadow-tertiary": "0 3px 1px -1px rgba(26, 26, 26, 0.06)",
+      "--box-shadow-secondary": "0 8px 16px -4px rgba(0, 0, 0, 0.2)",
+      "--box-shadow": "0 20px 20px -8px rgba(0, 0, 0, 0.24)",
     };
     for (const [name, value] of Object.entries(expected)) {
       expect(tokens.get(name)).toBe(value);
@@ -248,6 +256,6 @@ describe("DESIGN.md token layer (#1092)", () => {
   test("the layer is complete: no DESIGN.md color is missing from the pins", () => {
     const tokens = rootTokens();
     const colorNames = [...tokens.keys()].filter((k) => k.startsWith("--color-"));
-    expect(colorNames.length).toBe(19);
+    expect(colorNames.length).toBe(25);
   });
 });
