@@ -26,24 +26,30 @@ Manifest V3 browser extension. No frontend build step, anywhere.
 
 This is the most violated thing by new agents, so it's up front, not linked:
 
-- **Google Material 3, dark theme.** Follow the M3 spec, don't improvise.
-- **No hard borders.** Separate content with whitespace, color, shade, and tone —
-  never `1px solid` dividers.
-- **Accent:** pumpkin `#fb923c` (primary), `#442100` on-primary. Use sparingly:
-  primary actions and active states only.
-- **Tonal, borderless fields.** Soft shadows, M3 shape scale (4/8/12/16/28px).
+- **LobeHub design system, Zimer colors, dark theme.** The canonical spec is
+  `DESIGN.md` at the repo root — follow it, don't improvise. (Material 3 and
+  the old rules in `docs/design-system.md` are superseded.)
+- **Borders first.** Translucent 1px borders are the primary separator;
+  hierarchy comes from tonal surfaces (lighter as they rise) and borders.
+  Shadows only for floating layers, per the DESIGN.md tiers.
+- **Accent:** pumpkin `#fb923c` (primary). Use sparingly: the single most
+  important action per view, the running-timer state, and links.
+- **Scales, no exceptions.** Type 12/14/16 with headings 38/30/24/20 (no
+  off-scale sizes), radius 4/6/8/12, spacing on the 4px scale, control
+  heights 28/36/40. Components read semantic tokens, never hard-code hex.
 - **Icons, never emoji/glyphs.** Actions use the `icon(name)` system in
-  `site/lib/icons.ts` (inline SVG, M3 outlined 24px, no icon font). Never use
-  emoji or text glyphs (🗑️, ✎, ▶, ←) as action icons.
+  `site/lib/icons.ts` (inline SVG, no icon font). Never use emoji or text
+  glyphs (🗑️, ✎, ▶, ←) as action icons.
 - **Text-field affixes.** Units and currency go in prefix/suffix affixes
-  (`$` … `/hr`), never crammed into the floating label.
+  (`$` … `/hr`), never crammed into the label.
 - **Selects are custom.** Native `<select>` keeps its OS arrow, which ignores
-  our radius — always `appearance: none` + the custom chevron (see
-  `docs/design-system.md`).
-- **No horizontal scrolling, ever.** Layouts must fit their container.
+  our radius — always `appearance: none` + the custom chevron.
+- **No horizontal scrolling, ever.** Layouts fit their container or change
+  pattern (see the calendar rule in DESIGN.md).
 - **Calendar conventions:** single-lane days showing tracked time only;
   entries are full-width, never side-by-side; overlaps get a soft upward
-  layered shadow.
+  layered shadow. The drag visualizer's interactions (drag to move, handles
+  to resize, 15-minute snap) are a keeper — restyle, never remove.
 
 ## Product decisions — don't relitigate
 
@@ -71,8 +77,9 @@ This is the most violated thing by new agents, so it's up front, not linked:
 
 ## Detail docs
 
-- [docs/design-system.md](docs/design-system.md) — full M3 tokens, components,
-  and UI patterns
+- [DESIGN.md](DESIGN.md) — the canonical design spec (tokens, components,
+  voice); [docs/design-system.md](docs/design-system.md) is the superseded
+  M3 document, kept as history
 - [docs/workflow.md](docs/workflow.md) — pushing without git auth, local dev,
   issue/slice conventions
 - [PLAN.md](PLAN.md) — architecture, data model, API contract
