@@ -1975,8 +1975,6 @@ body.app-fixed .cal-gutter-spacer {
 #client-add-form { padding-left: 16px; }
 #client-add-form[hidden] { display: none; }
 .detail-form { margin-bottom: 12px; }
-.add-project-form { display: flex; align-items: center; gap: 8px; flex: 1 1 100%; }
-.add-project-form .md-text-field { flex: 1; min-width: 120px; }
 /* #293: canned payment-terms description under the dropdown (M3 supporting text). */
 .terms-desc { flex: 1 1 100%; margin: 0; font-size: 0.75rem; line-height: 1.4; }
 #client-detail .terms-desc { padding: 0 8px 4px 0; }
