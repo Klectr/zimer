@@ -199,7 +199,7 @@ describe("manage parity (#1121)", () => {
   test("page head is appHeader with client/project counts", () => {
     const html = pageHtml();
     expect(html).toContain('<h1 class="ui-app-title">Clients</h1>');
-    expect(html).toContain('<p class="ui-app-sub">1 client · 1 project</p>');
+    expect(html).toContain('<p class="ui-app-sub" id="mg-sub">1 client · 1 project</p>');
   });
 
   test("add-client form is open in place — no toggle, no hidden form", () => {
