@@ -160,6 +160,35 @@ describe("layout lazy dialogs drop stale loads (#1189)", () => {
   });
 });
 
+/** #1195: the nav drawer's close fade gets the #1192 treatment — a reopen
+ *  during the fade bumps the drawer generation, so the stale finish()
+ *  captured at close time no-ops instead of hiding the reopened drawer. */
+describe("layout nav drawer close fade (#1195)", () => {
+  test("drawer opener and close both bump the drawer generation", () => {
+    const { layout } = createLayoutViews(noRunning);
+    const body = layout("T", "body");
+    const script = body.indexOf("getElementById('nav-drawer-scrim')");
+    const open = body.indexOf("function open(){", script);
+    expect(open).toBeGreaterThan(-1);
+    expect(body.indexOf("drawerGen++;", open)).toBeGreaterThan(open);
+    const close = body.indexOf("function close(refocus){", script);
+    expect(close).toBeGreaterThan(-1);
+    expect(body.indexOf("drawerGen++;", close)).toBeGreaterThan(close);
+  });
+
+  test("drawer close captures the generation so a reopen during the fade cancels the hide", () => {
+    const { layout } = createLayoutViews(noRunning);
+    const body = layout("T", "body");
+    const script = body.indexOf("getElementById('nav-drawer-scrim')");
+    const close = body.indexOf("function close(refocus){", script);
+    expect(close).toBeGreaterThan(-1);
+    const bump = body.indexOf("drawerGen++;", close);
+    const capture = body.indexOf("var gen=drawerGen, done=false,", close);
+    expect(capture).toBeGreaterThan(bump);
+    expect(body.indexOf("if(done||gen!==drawerGen) return;", close)).toBeGreaterThan(capture);
+  });
+});
+
 /** #923: trial-expiry nudge banner — pure view logic + layout wiring. */
 
 const DAY = 86400000;
