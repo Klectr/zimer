@@ -412,7 +412,7 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .pane-layout .ui-card { margin-bottom: var(--spacing); }
 /* #1131: the timer page is fixed-viewport — its cards sit in the permanent
    stack above the entries scroll region, so they pad tighter vertically. */
-.pane-layout .ui-stat-row .ui-card { padding-top: var(--spacing-sm); padding-bottom: var(--spacing-sm); }
+#today-stats .ui-card { padding-top: var(--spacing-sm); padding-bottom: var(--spacing-sm); }
 .pane-layout #timer-card { padding-top: var(--spacing-sm); padding-bottom: var(--spacing-sm); }
 .pane-layout .ui-timer-panel .ui-timer { margin: var(--spacing-xs) 0 var(--spacing-xxs); }
 .pane-supporting .ui-page-title { margin-bottom: var(--spacing-sm); }
