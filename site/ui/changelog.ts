@@ -13,7 +13,7 @@ export interface ChangelogEntry {
   date: string;
   kind?: ChangelogKind;
   body?: string;
-  items?: string[];
+  itemsHtml?: string[];
 }
 
 export function changelogList(entries: ChangelogEntry[]): string {
@@ -24,8 +24,8 @@ export function changelogList(entries: ChangelogEntry[]): string {
       const head =
         `<div class="ui-changelog-head"><span class="ui-changelog-date">${esc(e.date)}</span>` +
         `${k ? tag({ label: k.label, tone: k.tone }) : ""}</div>`;
-      const body = e.items
-        ? `<div class="ui-changelog-body"><ul>${e.items.map((i) => `<li>${i}</li>`).join("")}</ul></div>`
+      const body = e.itemsHtml?.length
+        ? `<div class="ui-changelog-body"><ul>${e.itemsHtml.map((i) => `<li>${i}</li>`).join("")}</ul></div>`
         : `<p class="ui-changelog-body">${esc(e.body ?? "")}</p>`;
       return `<div class="ui-changelog-entry">${head}${body}</div>`;
     })

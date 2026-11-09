@@ -171,7 +171,9 @@ export function createPublicViews(deps: PublicViewDeps) {
   /* #303: public changelog — same minimal public chrome as the invoice page:
      no auth, no app nav. */
   function changelogPage(entries: ChangelogEntry[], origin: string): string {
-    const body = changelogList(entries);
+    const body = entries.length
+      ? changelogList(entries.map((e) => ({ date: e.date, itemsHtml: e.items })))
+      : `<p class="muted">No release notes yet.</p>`;
     return `<!DOCTYPE html>
   <html lang="en">
   <head>
