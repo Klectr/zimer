@@ -29,6 +29,7 @@ const baseDeps = {
   layout: (_t: string, b: string) => b,
   demoBanner: () => "",
   projectOptions: () => "",
+  projectOptionRows: () => [],
   revenueTotals: () => ({ invoiced: 0, paid: 0, outstanding: 0 }),
   revenueMonthly: () => [],
   revenueByClient: () => [],
@@ -147,7 +148,7 @@ describe("running entry row delete guard (#462)", () => {
   });
   test("Edit opens the dialog instead of navigating (#903)", () => {
     const html = row(stoppedEntry);
-    expect(html).toContain('<button class="md-icon-button" type="button" data-edit-entry="1"');
+    expect(html).toContain('<button class="ui-icon-btn" type="button" data-edit-entry="1"');
     expect(html).toContain('aria-label="Edit entry" data-tip="Edit"');
     expect(html).not.toContain("/entries/1/edit");
   });
@@ -158,15 +159,15 @@ describe("running entry row live duration (#469)", () => {
   function row(entry: typeof runningEntry) {
     return createTimerViews({ ...baseDeps, qRunning: stubQuery() } as any).entryRow(entry as any);
   }
-  test("running entry row carries data-live-start for the card ticker", () => {
-    expect(row(runningEntry)).toContain('data-live-start="2026-09-23T10:00:00.000Z"');
+  test("running entry row carries data-live-duration for the card ticker", () => {
+    expect(row(runningEntry)).toContain("data-live-duration");
   });
   test("finished entry row has no live duration hook", () => {
-    expect(row(stoppedEntry)).not.toContain("data-live-start");
+    expect(row(stoppedEntry)).not.toContain("data-live-duration");
   });
   test("card tick script updates the live row with a fmtDur mirror", () => {
     const html = partial(true);
-    expect(html).toContain("querySelector('#today-list [data-live-start]')");
+    expect(html).toContain("querySelector('#today-list [data-live-duration]')");
     // mirror of site/lib/format.ts fmtDur: "1h" / "1h 02m" / "3m 24s" / "3m" / "45s"
     expect(html).toContain("return m>0?h+'h '+String(m).padStart(2,'0')+'m':h+'h'");
     expect(html).toContain("return m+'m'+(sec>0?' '+String(sec).padStart(2,'0')+'s':'')");
@@ -174,7 +175,7 @@ describe("running entry row live duration (#469)", () => {
   });
   test("stopped card renders no live ticker", () => {
     // the stopped card only retires the old interval — no row-ticking logic
-    expect(partial(false)).not.toContain("data-live-start");
+    expect(partial(false)).not.toContain("data-live-duration");
   });
 });
 
@@ -245,7 +246,7 @@ describe("timer card stop button (#475)", () => {
     const html = partial(true);
     // .timer-top-row .stop positions the button top-right; without the
     // class it drops below the TRACKING label in normal flow.
-    expect(html).toContain('class="md-filled-button stop" hx-post="/timer/stop"');
+    expect(html).toContain('class="ui-btn ui-btn-primary" hx-post="/timer/stop"');
   });
   test("idle card has no stop button", () => {
     expect(partial(false)).not.toContain("/timer/stop");
@@ -261,33 +262,33 @@ describe("tracking label project name (#718)", () => {
     };
     return createTimerViews(deps as any).timerPartial();
   }
-  test("project name rides in a no-wrap span, never bare text", () => {
-    // the span keeps the label from splitting the name mid-phrase on narrow
-    // screens — style.css ellipsizes it instead. The "·" separator rides
-    // inside the span so it can't detach from the name.
+  test("project name rides in the no-wrap context span, never bare text", () => {
+    // the context span keeps the label from splitting the name mid-phrase
+    // on narrow screens — style.css ellipsizes .ui-timer-context instead.
     expect(partialWithProject("Brand refresh")).toContain(
-      '<span class="timer-state-proj">· Brand refresh</span>');
+      '<span class="ui-timer-context">Brand refresh · deep work</span>');
   });
-  test("no project renders no span", () => {
-    expect(partialWithProject(null)).not.toContain("timer-state-proj");
+  test("no project leaves the context to the description alone", () => {
+    expect(partialWithProject(null)).toContain(
+      '<span class="ui-timer-context">deep work</span>');
   });
 });
 
 describe("running card description ellipsis (#761)", () => {
-  test("description carries timer-desc so it ellipsizes clear of the Stop button", () => {
-    // the Stop button is absolutely positioned — without the class a long
-    // description slides under it and clips mid-word on narrow screens.
+  test("description rides in the ellipsizing context span", () => {
+    // .ui-timer-context is one no-wrap line with an ellipsis, so a long
+    // description truncates cleanly instead of wrapping the panel.
     expect(partial(true)).toContain(
-      '<div class="md-title-medium timer-desc">deep work</div>');
+      '<span class="ui-timer-context">deep work</span>');
   });
-  test("blank description still gets the class", () => {
+  test("blank description still gets the context span", () => {
     const entry = { ...runningEntry, description: "" };
     const deps = {
       ...baseDeps,
       qRunning: { get: () => entry } as unknown as Statement,
     };
     expect(createTimerViews(deps as any).timerPartial()).toContain(
-      '<div class="md-title-medium timer-desc">No description</div>');
+      '<span class="ui-timer-context">No description</span>');
   });
 });
 
@@ -336,7 +337,7 @@ describe("entry row tooltips (#484)", () => {
     const html = row({ ...finished, invoice_number: "INV-0042", invoice_status: "sent" } as any);
     // native title shows an OS-styled tooltip and never fires on touch —
     // the chip joins the M3 plain tooltip system (450ms long-press, #496).
-    expect(html).toContain('class="inv-mark "');
+    expect(html).toContain('class="ui-inv-mark"');
     expect(html).toContain('data-tip="Zinvoiced on INV-0042"');
     expect(html).not.toContain('title="Zinvoiced on INV-0042"');
   });
@@ -474,7 +475,7 @@ describe("start-form labels (#827)", () => {
     const html = partial(false);
     for (const id of ["tm-desc", "tm-project"]) {
       expect(html).toContain(`id="${id}"`);
-      expect(html).toContain(`<label for="${id}">`);
+      expect(html).toContain(`<label class="ui-field-label" for="${id}"`);
     }
   });
 });
@@ -491,7 +492,7 @@ describe("today pacing bar follows the daily target (#908)", () => {
   test("label reflects the custom target", () => {
     const html = todayHtml(6 * 3600);
     expect(html).toContain("Today · 0s / 6h");
-    expect(html).toContain("Today's hours target, 6 hours");
+    expect(html).toContain("hours target, 6 hours");
   });
   test("default label is unchanged at 8h", () => {
     expect(todayHtml(8 * 3600)).toContain("Today · 0s / 8h");

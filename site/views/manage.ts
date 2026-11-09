@@ -416,7 +416,7 @@ export function createManageViews(deps: ManageViewDeps) {
     return layout("Settings", `
       <div class="page-narrow" data-enter="2">
       <div class="ui-settings-head">
-        <h1 class="ui-settings-title">Settings</h1>
+        <h1 class="ui-page-title">Settings</h1>
       </div>
       <div class="ui-settings-stack">${settingsBody}</div>
       </div>`);

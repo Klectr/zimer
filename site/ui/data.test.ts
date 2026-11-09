@@ -116,3 +116,14 @@ describe("lineItemsTable", () => {
     expect(html).toContain('<td colspan="5">No line items.</td>');
   });
 });
+
+describe("entryRow extensions (#1102)", () => {
+  test("id, metaHtml, and dot land; plain meta still escapes", () => {
+    const html = entryRow({ id: "entry-7", title: "Acme — Design", metaHtml: "<span>9:04 AM – now</span>", duration: "1h 24m", dot: "#fb923c", running: true });
+    expect(html).toContain('id="entry-7"');
+    expect(html).toContain('<span class="ui-row-dot" style="background:#fb923c"');
+    expect(html).toContain("<span>9:04 AM – now</span>");
+    expect(html).toContain("data-live-duration");
+    expect(entryRow({ title: "T", meta: "<b>x</b>", duration: "1h" })).toContain("&lt;b&gt;");
+  });
+});

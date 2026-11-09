@@ -28,11 +28,14 @@ export function zinvoiceRow(opts: ZinvoiceRowOptions): string {
 }
 
 export interface EntryRowOptions {
+  id?: string;
   title: string;
-  meta: string;
+  meta?: string;
+  metaHtml?: string;
   duration: string;
   amount?: string;
   mark?: string;
+  dot?: string;
   running?: boolean;
   actions?: string;
 }
@@ -41,11 +44,14 @@ export function entryRow(opts: EntryRowOptions): string {
   const amount = opts.amount ? `<div class="ui-row-meta">${esc(opts.amount)}</div>` : "";
   const mark = opts.mark ? ` <span class="ui-row-meta">· ${esc(opts.mark)}</span>` : "";
   const live = opts.running ? ` data-live-duration` : "";
-  const actions = opts.actions ? `<span>${opts.actions}</span>` : "";
+  const actions = opts.actions ? `<span class="ui-row-actions">${opts.actions}</span>` : "";
+  const id = opts.id ? ` id="${esc(opts.id)}"` : "";
+  const dot = opts.dot ? `<span class="ui-row-dot" style="background:${esc(opts.dot)}" aria-hidden="true"></span>` : "";
+  const meta = opts.metaHtml ? `<div class="ui-row-meta">${opts.metaHtml}</div>` : `<div class="ui-row-meta">${esc(opts.meta ?? "")}</div>`;
   return (
-    `<div class="ui-row${opts.running ? " is-running" : ""}">` +
-    `<div class="ui-row-main"><span class="ui-row-title">${esc(opts.title)}</span>${mark}` +
-    `<div class="ui-row-meta">${esc(opts.meta)}</div></div>` +
+    `<div class="ui-row${opts.running ? " is-running" : ""}"${id}>` +
+    `<div class="ui-row-main"><span class="ui-row-title">${dot}${esc(opts.title)}</span>${mark}` +
+    `${meta}</div>` +
     `<div class="ui-row-side"><span class="ui-row-amount"${live}>${esc(opts.duration)}</span>${amount}</div>${actions}</div>`
   );
 }
