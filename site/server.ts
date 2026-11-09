@@ -126,7 +126,7 @@ function buildTenantTree(bundle: DbBundle, dbPath: string): WebTenant & ApiTenan
     calHourPx: CAL_HOUR_PX,
   });
   const { managePage, clientSelection, clientDetailBody, clientListOob, bizProfileSection, dailyTargetSection, clientSettingsForm, settingsPage, themeSectionHtml } =
-    createManageViews({ db, layout });
+    createManageViews({ db, layout, unbilledByClient });
   const {
     invoicesPage, defaultNewInvParams, invoiceNewPage, invoiceStep2, invoiceSheet,
     invoiceDoc, invoiceDetailBody, invoiceListOob,

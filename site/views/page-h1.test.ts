@@ -115,7 +115,7 @@ describe("page-level h1 (#701)", () => {
     expect(timerPage()).toContain('<h1 class="ui-app-title">Today</h1>');
   });
   test("manage page h1 carries the ui title class (migrated in #1105)", () => {
-    expect(managePages().manage).toContain('<h1 class="ui-page-title">Clients</h1>');
+    expect(managePages().manage).toContain('<h1 class="ui-app-title">Clients</h1>');
   });
   test("zinvoices page h1s carry the ui title class (list: appHeader, #1121)", () => {
     expect(invoicePages().list).toContain('<h1 class="ui-app-title">Zinvoices</h1>');

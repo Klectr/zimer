@@ -191,6 +191,36 @@ describe("manage labels (#827)", () => {
   });
 });
 
+/** #1121: Manage follows its mock — appHeader with the counts sub, the
+ *  add-client form open at the top of the list pane, and the unbilled
+ *  figure in each client row's meta. */
+describe("manage parity (#1121)", () => {
+  test("page head is appHeader with client/project counts", () => {
+    const html = pageHtml();
+    expect(html).toContain('<h1 class="ui-app-title">Clients</h1>');
+    expect(html).toContain('<p class="ui-app-sub">1 client · 1 project</p>');
+  });
+
+  test("add-client form is open in place — no toggle, no hidden form", () => {
+    const html = pageHtml();
+    expect(html).toContain('<form method="post" action="/clients" id="client-add-form" class="ui-settings-form">');
+    expect(html).not.toContain("client-add-toggle");
+    expect(html).not.toContain('id="client-add-form" class="ui-settings-form" hidden');
+    expect(html.indexOf('id="client-add-form"')).toBeLessThan(html.indexOf('id="client-list"'));
+  });
+
+  test("client row meta carries the unbilled figure", () => {
+    const { db, client } = testDb();
+    const views = createManageViews({
+      db,
+      layout: (_t: string, b: string) => b,
+      unbilledByClient: () => [{ id: client.id, name: "Acme", secs: 5400 }],
+    });
+    const html = views.managePage({ kind: "client", client });
+    expect(html).toContain("1 project · 1h 30m unbilled");
+  });
+});
+
 describe("theme section (#884)", () => {
   function themeHtml(): string {
     const { db } = testDb();

@@ -4,7 +4,7 @@
  *  and deletion. */
 
 import type { Database } from "bun:sqlite";
-import { esc, PAYMENT_TERMS, schemeColor, termsDescription, termsKey } from "../lib/format.ts";
+import { esc, fmtDur, PAYMENT_TERMS, schemeColor, termsDescription, termsKey } from "../lib/format.ts";
 import type { PaymentTermsKey } from "../lib/format.ts";
 import { icon } from "../lib/icons.ts";
 import { THEMES, themeKey } from "../lib/theme.ts"; /* #884 */
@@ -14,6 +14,7 @@ import { selectField, textAreaField, textField } from "../ui/field.ts";
 import { button, linkButton } from "../ui/button.ts";
 import { clientRow } from "../ui/rows.ts";
 import { dayTargetSecs } from "../lib/domain.ts"; /* #908: daily target setting */
+import { appHeader } from "../ui/app-header.ts";
 
 /* #367: the detail-pane selection. "none" is the pseudo-client holding
    projects with no client assigned. */
@@ -22,6 +23,9 @@ export type ClientSel = { kind: "client"; client: any } | { kind: "none" };
 export interface ManageViewDeps {
   db: Database;
   layout: (title: string, body: string, active?: "timer" | "calendar" | "manage" | "invoices", fixed?: boolean) => string;
+  /* #1121: per-client rounded unbilled time for the row meta (the same
+     figures the Zinvoices page's Unbilled section reports). */
+  unbilledByClient?: () => { id: number; name: string; secs: number }[];
 }
 
 export function createManageViews(deps: ManageViewDeps) {
@@ -52,7 +56,7 @@ export function createManageViews(deps: ManageViewDeps) {
         if (list) list.push(p); else byClient.set(p.client_id, [p]);
       }
     }
-    return { clients, byClient, unassigned };
+    return { clients, projects, byClient, unassigned };
   }
 
   /* #367: resolve ?client= — a numeric id, "none", or null (nothing
@@ -72,11 +76,13 @@ export function createManageViews(deps: ManageViewDeps) {
   function clientListHtml(sel: ClientSel | null): string {
     const { clients, byClient, unassigned } = manageData();
     const sk = selKey(sel);
+    const unbilled = new Map((deps.unbilledByClient?.() ?? []).map(u => [u.id, u.secs]));
     const rows = clients.map(c => {
       const n = (byClient.get(c.id) || []).length;
+      const unbilledSecs = unbilled.get(c.id) || 0;
       return clientRow({
         name: c.name,
-        meta: `${n} project${n === 1 ? "" : "s"}${c.rate ? ` · $${c.rate}/hr` : ""}`,
+        meta: `${n} project${n === 1 ? "" : "s"}${c.rate ? ` · $${c.rate}/hr` : ""}${unbilledSecs ? ` · ${fmtDur(unbilledSecs)} unbilled` : ""}`, 
         href: `/manage?client=${c.id}`,
         ariaLabel: `Manage client ${c.name}`,
         dot: schemeColor(c.color) || "var(--color-primary)",
@@ -194,13 +200,13 @@ export function createManageViews(deps: ManageViewDeps) {
     </div>`;
   }
 
-  /* Add-client lives in the list pane behind a toggle — a plain POST so the
-     new client opens selected on every width (an in-place HTMX swap could
-     not flip the single-pane shell to the detail on phones). */
+  /* #1121: add-client opens in place at the top of the list pane (the
+     mock's pattern) instead of hiding behind a toggle. A plain POST so
+     the new client opens selected on every width (an in-place HTMX swap
+     could not flip the single-pane shell to the detail on phones). */
   function addClientForm(): string {
     return `<div class="client-add">
-      ${button({ label: "Add client", icon: "add", variant: "ghost", id: "client-add-toggle" })}
-      <form method="post" action="/clients" id="client-add-form" class="ui-settings-form" hidden>
+      <form method="post" action="/clients" id="client-add-form" class="ui-settings-form">
         ${textField({ id: "mc-name", label: "Client name", name: "name", required: true })}
         <div class="ui-form-row">
           <div style="max-width:172px">${textField({ id: "mc-rate", label: "Hourly rate", name: "rate", type: "number", min: "0", step: "0.01", prefix: "$", suffix: "/hr" })}</div>
@@ -224,10 +230,11 @@ export function createManageViews(deps: ManageViewDeps) {
        plays once per page load and never replays on swaps.
        #245: the business profile section moved into the settings modal
        behind the account menu button; the Manage page is clients & projects only. */
+    const { clients, projects } = manageData();
     return layout("Clients", `
+      ${appHeader({ title: "Clients", sub: `${clients.length} client${clients.length === 1 ? "" : "s"} · ${projects.length} project${projects.length === 1 ? "" : "s"}` })}
       <div class="client-list-detail${sel && !isDefault ? " has-selection" : ""}" data-enter="2">
         <section class="client-list-pane" aria-label="Client list">
-          <h1 class="ui-page-title">Clients</h1>
           ${addClientForm()}
           ${clientListHtml(sel)}
         </section>
@@ -237,14 +244,6 @@ export function createManageViews(deps: ManageViewDeps) {
       </div>
       ${clientSettingsDialog()}
       <script>(function(){
-        /* #367: add-client toggle. The form is outside every HTMX-swapped
-           region, so its id is safe to query directly. */
-        var tgl = document.getElementById("client-add-toggle");
-        var frm = document.getElementById("client-add-form");
-        if (tgl && frm) tgl.addEventListener("click", function(){
-          frm.hidden = !frm.hidden;
-          if (!frm.hidden) { var i = frm.querySelector('input[name="name"]'); if (i) i.focus(); }
-        });
         /* #367: two-pane selection, mirrors the invoices list-detail (#364).
            At ≥840px a row click swaps the detail pane in place (the fragment
            pushes ?client=<id> and OOB-marks the selected row); below that
