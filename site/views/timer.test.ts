@@ -370,11 +370,11 @@ describe("timer shortcut hint (#532)", () => {
     expect(html).toContain('data-tip="Stop (t)"');
     expect(html).toContain('aria-keyshortcuts="t"');
   });
-  test("filled-button tooltip styles exist in the house data-tip system", async () => {
+  test("button tooltip styles exist in the house data-tip system", async () => {
     const css = await Bun.file("site/static/style.css").text();
-    expect(css).toContain(".md-filled-button[data-tip]");
-    expect(css).toContain(".md-filled-button[data-tip]:focus-visible::before");
-    expect(css).toContain(".md-filled-button[data-tip].tip-show::before");
+    expect(css).toContain(".ui-btn[data-tip]");
+    expect(css).toContain(".ui-btn[data-tip]:focus-visible::before");
+    expect(css).toContain(".ui-btn[data-tip].tip-show::before");
   });
 });
 
