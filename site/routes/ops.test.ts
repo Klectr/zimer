@@ -18,7 +18,7 @@ function setup(authed = true) {
   const views = createPublicViews({
     getInvoice: () => null,
     invoiceTotals: () => ({ subtotal: 0, tax: 0, total: 0 }),
-    invoiceDocumentHtml: () => "",
+    businessName: () => "Acme Studio",
     ensurePublicToken: () => "",
   });
   /* #733: data deps resolve per request through getTenant now. */
@@ -169,7 +169,7 @@ describe("public dead ends, hosted (#1060)", () => {
     const views = createPublicViews({
       getInvoice: () => null,
       invoiceTotals: () => ({ subtotal: 0, tax: 0, total: 0 }),
-      invoiceDocumentHtml: () => "",
+      businessName: () => "Acme Studio",
       ensurePublicToken: () => "",
     });
     const { handleWeb } = createWebRouter({

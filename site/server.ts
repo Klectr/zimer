@@ -146,7 +146,8 @@ function buildTenantTree(bundle: DbBundle, dbPath: string): WebTenant & ApiTenan
       .run(invoiceSheet(inv), id);
   };
   const { publicInvoicePage } = createPublicViews({
-    getInvoice, invoiceTotals, invoiceDocumentHtml, ensurePublicToken,
+    getInvoice, invoiceTotals, ensurePublicToken,
+    businessName: () => getMeta(db, "business_name"),
   });
 
   return {
@@ -194,7 +195,6 @@ const unreachableDomain = (name: string) => () => {
 const { loginPage, signupPage, hostedLoginPage, changelogPage, termsPage, privacyPage } = createPublicViews({
   getInvoice: unreachableDomain("getInvoice"),
   invoiceTotals: unreachableDomain("invoiceTotals"),
-  invoiceDocumentHtml: unreachableDomain("invoiceDocumentHtml"),
   ensurePublicToken: unreachableDomain("ensurePublicToken"),
 });
 /* #733: public-chrome 404/500 + invoice-link dead-ends for the pre-auth

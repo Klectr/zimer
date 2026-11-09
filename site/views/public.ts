@@ -3,24 +3,25 @@
  *  ensurePublicToken) stay owned by server.ts until the invoices view slice
  *  (#171) and are injected here, so these pages render unchanged. */
 
-import { esc, money } from "../lib/format.ts";
+import { esc, money, shortYmd, todayStr } from "../lib/format.ts";
 import { icon, logo } from "../lib/icons.ts";
 import type { ChangelogEntry } from "../lib/changelog.ts"; /* #303 */
 import type { TermsSection } from "../lib/license-terms.ts"; /* #341 */
 import type { Invoice, InvoiceItem } from "../lib/types.ts";
 import { authCard } from "../ui/auth-card.ts";
 import { textField } from "../ui/field.ts";
-import { linkButton } from "../ui/button.ts";
+import { publicInvoice, type PublicInvoiceOptions } from "../ui/public-invoice.ts";
+import { tag } from "../ui/tag.ts";
 
 export interface PublicViewDeps {
   getInvoice: (id: number) => (Invoice & { items: InvoiceItem[] }) | null;
   invoiceTotals: (items: InvoiceItem[], taxRate: number) => { subtotal: number; tax: number; total: number };
-  invoiceDocumentHtml: (inv: Invoice & { items: InvoiceItem[] }) => string; /* #301: frozen at send, live for drafts */
+  businessName?: () => string;
   ensurePublicToken: (id: number) => string;
 }
 
 export function createPublicViews(deps: PublicViewDeps) {
-  const { getInvoice, invoiceTotals, invoiceDocumentHtml, ensurePublicToken } = deps;
+  const { getInvoice, invoiceTotals, ensurePublicToken } = deps;
 
   /** #924: shared OG + Twitter card tags for public pages. Unfurlers ignore
       relative URLs, so image and url are absolute. Keep invoice tags generic —
@@ -43,14 +44,55 @@ export function createPublicViews(deps: PublicViewDeps) {
   <meta name="twitter:image:alt" content="${card.alt}">`;
   }
 
-  /** Public client invoice page: no auth, read-only, no actions or navigation. */
+  const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  function longYmd(ymd: string | null | undefined): string {
+    if (!ymd) return "";
+    const [y, m, d] = ymd.split("-").map(Number);
+    if (!y || !m || !d) return ymd;
+    return `${MONTHS[m - 1]} ${d}, ${y}`;
+  }
+  function hoursLabel(hours: number): string {
+    if (!hours) return "";
+    const h = (Math.round(hours * 100) / 100).toFixed(2).replace(/0$/, "");
+    return ` — ${h}h`;
+  }
+
+  /** Public client invoice page: no auth, read-only. #1136: the mocked
+      summary card (ui library publicInvoice) fed from the stored invoice;
+      the frozen document still backs the internal detail view. */
   function publicInvoicePage(inv: Invoice & { items: InvoiceItem[] }, origin: string, tokenPath: string): string {
     const t = invoiceTotals(inv.items, inv.tax_rate);
-    const pay = inv.stripe_payment_link ? `
-      <div class="no-print public-pay">
-        ${linkButton({ label: `Pay ${money(t.total)}`, href: inv.stripe_payment_link, variant: "primary", size: "lg", block: true, external: true, icon: "card" })}
-        <p class="ui-public-note">Secure payment by card. Questions? Reply to the email this link came in.</p>
-      </div>` : "";
+    const business = deps.businessName?.() || "";
+    const lines: PublicInvoiceOptions["lines"] = inv.items.map((it) => ({
+      label: `${it.description}${hoursLabel(it.hours)}`,
+      amount: money(it.amount),
+    }));
+    if (t.tax > 0) {
+      lines.push({ label: "Subtotal", amount: money(t.subtotal) });
+      lines.push({ label: `Tax (${inv.tax_rate}%)`, amount: money(t.tax) });
+    }
+    let chipHtml: string | undefined;
+    if (inv.status === "paid") chipHtml = tag({ label: "Paid", tone: "success" });
+    else if (inv.status === "sent" && inv.due_date) {
+      chipHtml = inv.due_date < todayStr()
+        ? tag({ label: "Overdue", tone: "error" })
+        : tag({ label: `Due ${shortYmd(inv.due_date)}`, tone: "warning" });
+    } else if (inv.status === "sent") chipHtml = tag({ label: "Sent", tone: "neutral" });
+    const issued = longYmd(inv.issue_date);
+    const sheet = publicInvoice({
+      business: business || `Zinvoice ${inv.number}`,
+      meta: business
+        ? `Zinvoice ${inv.number}${issued ? ` · Issued ${issued}` : ""}`
+        : `${issued ? `Issued ${issued}` : ""}`,
+      chipHtml,
+      lines,
+      totalLabel: inv.status === "paid" ? "Total paid" : "Total due",
+      total: money(t.total),
+      pay: inv.stripe_payment_link ? { label: `Pay ${money(t.total)}`, href: inv.stripe_payment_link } : undefined,
+      note: inv.stripe_payment_link ? "Secure payment by card. Questions? Reply to the email this link came in." : undefined,
+      notes: inv.notes || undefined,
+      footer: "Powered by Zimer · This page never asks for your Zimer password — you don't have one.",
+    });
     return `<!DOCTYPE html>
   <html lang="en">
   <head>
@@ -64,9 +106,7 @@ export function createPublicViews(deps: PublicViewDeps) {
   </head>
   <body>
   <main class="page-public-invoice">
-  ${invoiceDocumentHtml(inv)}
-  ${pay}
-  <p class="muted tiny no-print public-foot">Shared securely via Zimer · This page never asks for your Zimer password. · <a href="/changelog">Changelog</a></p>
+  ${sheet}
   </main>
   </html>`;
   }
