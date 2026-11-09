@@ -135,6 +135,18 @@ describe("client settings (#630)", () => {
     expect(row.color).toBe("#fb923c");
   });
 
+  /* #1160 review: a save that omits the color field (a pre-#1160 form, any
+     caller that never had the field) keeps the stored color. */
+  test("a settings save without a color field keeps the stored color", async () => {
+    const { db, client, handleWeb } = setup();
+    db.query("UPDATE clients SET color = '#a78bfa' WHERE id = ?").run(client.id);
+    const { color: _omit, ...noColor } = full as any;
+    const res = await postSettings(handleWeb, client.id, noColor);
+    expect(res!.status).toBe(200);
+    const row = db.query("SELECT color FROM clients WHERE id = ?").get(client.id) as any;
+    expect(row.color).toBe("#a78bfa");
+  });
+
   /* #1160: HTMX validation failures answer 422 with the form re-rendered
      around the error (the dialog swaps it in); the row stays untouched. */
   test("empty name is rejected with a 422 inline error and leaves the row untouched", async () => {

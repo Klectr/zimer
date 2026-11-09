@@ -51,7 +51,7 @@ export interface WebTenant {
   clientListOob: (sel: ClientSel | null) => string; /* #367 */
   bizProfileSection: () => string;
   dailyTargetSection: () => string; /* #908 */
-  clientSettingsForm: (c: any) => string; /* #630 */
+  clientSettingsForm: (c: any, error?: string) => string; /* #630 */
   settingsPage: (body: string) => string; /* #693 */
   themeSectionHtml: () => string; /* #884 */
   invoicesPage: (selected: (Invoice & { items: InvoiceItem[] }) | null, origin: string) => string;
@@ -780,6 +780,8 @@ export function createWebRouter(deps: WebDeps) {
           const rateRaw = String(form.get("rate") || "").trim();
           const rate = rateRaw === "" ? 0 : Number(rateRaw);
           const terms = String(form.get("payment_terms") || "").trim();
+          const existingSel = clientSelection(m[1]);
+          const existingColor = existingSel && existingSel.kind === "client" ? existingSel.client.color : undefined;
           const fail = (msg: string) => {
             if (!isHtmx(req)) return new Response(msg, { status: 400 });
             const sel = clientSelection(m[1]);
@@ -789,7 +791,7 @@ export function createWebRouter(deps: WebDeps) {
               name: String(form.get("name") || ""), rate: rateRaw, payment_terms: terms,
               email: String(form.get("email") || ""), phone: String(form.get("phone") || ""),
               website: String(form.get("website") || ""), address: String(form.get("address") || ""),
-              color: String(form.get("color") || ""),
+              color: form.has("color") ? String(form.get("color")) : (base as any).color,
             };
             return html(clientSettingsForm(submitted, msg), 422);
           };
@@ -801,7 +803,7 @@ export function createWebRouter(deps: WebDeps) {
           const addr = clean(form.get("address"));
           db.query("UPDATE clients SET name = ?, rate = ?, payment_terms = ?, email = ?, phone = ?, website = ?, address = ?, color = ? WHERE id = ?")
             .run(name, rate, terms || null, clean(form.get("email")), clean(form.get("phone")),
-                 clean(form.get("website")), addr && addr.replace(/\r\n/g, "\n"), clientColor(form.get("color")), Number(m[1]));
+                 clean(form.get("website")), addr && addr.replace(/\r\n/g, "\n"), form.has("color") ? clientColor(form.get("color")) : (existingColor ?? clientColor(null)), Number(m[1]));
           if (isHtmx(req)) {
             const sel = clientSelection(m[1]);
             return html(sel && sel.kind === "client" ? clientSettingsForm(sel.client) : "");
