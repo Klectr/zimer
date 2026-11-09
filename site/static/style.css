@@ -1827,26 +1827,26 @@ body.app-fixed .cal-gutter-spacer {
    its hanging indent because the text lives in its own flex child. */
 .status-row { display: flex; align-items: flex-start; gap: 16px; margin: 0; }
 .status-row > svg { flex: none; width: 24px; height: 24px; margin-top: 2px;
-  color: var(--md-sys-color-on-surface-variant); }
+  color: var(--color-text-secondary); }
 /* #404: per-status update icons — an available update prompts a primary
    action, so it takes primary; unreachable is an error state. */
-.status-row-primary > svg { color: var(--md-sys-color-primary); }
-.status-row-error > svg { color: var(--md-sys-color-error, #ffb4ab); }
-.status-row-error .status-row-headline { color: var(--md-sys-color-error, #ffb4ab); }
+.status-row-primary > svg { color: var(--color-primary); }
+.status-row-error > svg { color: var(--color-error); }
+.status-row-error .status-row-headline { color: var(--color-error); }
 .status-row-text { flex: 1; min-width: 0; }
 .status-row-headline { margin: 0; font-size: 1rem; line-height: 24px;
-  letter-spacing: 0.5px; color: var(--md-sys-color-on-surface); }
+  color: var(--color-text); }
 .status-row-supporting { margin: 2px 0 0; font-size: 0.875rem; line-height: 20px;
-  letter-spacing: 0.25px; color: var(--md-sys-color-on-surface-variant); }
+  color: var(--color-text-secondary); }
 .status-row-supporting code { font-size: 0.8125rem; }
 /* #340: update command shown by the update check — tonal, monospace, wraps. */
 .update-cmd { display: block; font-family: ui-monospace, monospace; font-size: 0.8125rem;
-  background: var(--md-sys-color-surface-container-highest, #2b2b2b);
-  color: var(--md-sys-color-on-surface, #e3e3e3);
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
   border-radius: 8px; padding: 10px 12px; overflow-wrap: anywhere; }
 /* #300: first-run empty states — centered icon, headline, copy, actions. */
 .empty-state { text-align: center; padding: 56px 24px; max-width: 440px; margin: 0 auto; }
-.empty-state > svg { width: 48px; height: 48px; color: var(--md-sys-color-on-surface-variant); }
+.empty-state > svg { width: 48px; height: 48px; color: var(--color-text-secondary); }
 .empty-state h3 { margin: 16px 0 8px; }
 .empty-state p { margin: 0 0 20px; }
 .empty-state .row { display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap; }
