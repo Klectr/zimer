@@ -291,17 +291,18 @@ function navDrawer(demoRowHtml: string = ""): string {
     var btn=document.getElementById('appbar-menu-btn');
     if(!scrim||!btn) return;
     var open_=false;
+    var drawerGen=0;
     function open(){
-      open_=true;
+      open_=true; drawerGen++;
       scrim.hidden=false; void scrim.offsetWidth; scrim.classList.add('open');
       document.addEventListener('keydown',onKey,true);
       var first=scrim.querySelector('.nav-drawer-row'); if(first) first.focus();
     }
     function close(refocus){
-      if(!open_) return; open_=false;
+      if(!open_) return; open_=false; drawerGen++;
       scrim.classList.remove('open');
       document.removeEventListener('keydown',onKey,true);
-      var done=false, finish=function(){ if(done) return; done=true; scrim.hidden=true; };
+      var gen=drawerGen, done=false, finish=function(){ if(done||gen!==drawerGen) return; done=true; scrim.hidden=true; };
       var onEnd=function(e){ if(e.target===scrim&&e.propertyName==='opacity'){ scrim.removeEventListener('transitionend',onEnd); finish(); } };
       scrim.addEventListener('transitionend',onEnd); setTimeout(finish,300);
       if(refocus) btn.focus();
