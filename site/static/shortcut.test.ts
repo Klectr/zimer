@@ -157,6 +157,66 @@ async function flush() {
   for (let i = 0; i < 10; i++) await Promise.resolve();
 }
 
+/* #1165: the shared toast (window.tkSnackbar) builds the ui toast
+   component's markup — tinted icon chip + title — instead of the old
+   M3 snackbar bar. Element creation is captured per test and restored
+   after, same pattern as the fetch/FormData fakes below. */
+describe("shared toast", () => {
+  const realCreateElement = g.document.createElement;
+  const realGetElementById = g.document.getElementById;
+  let created: any[] = [];
+  beforeEach(() => {
+    created = [];
+    g.document.createElement = (_tag: string) => {
+      const el = fakeDiv();
+      created.push(el);
+      return el;
+    };
+    g.document.getElementById = (_id: string) => null;
+  });
+  afterEach(() => {
+    g.document.createElement = realCreateElement;
+    g.document.getElementById = realGetElementById;
+  });
+
+  test("builds ui toast markup, success tone by default, auto-hides at 3000ms", () => {
+    g.window.tkSnackbar("Client settings saved");
+    expect(created.length).toBe(1);
+    const bar = created[0];
+    expect(bar.id).toBe("tk-toast");
+    expect(bar.className).toBe("ui-toast ui-toast-success ui-toast-live");
+    expect(bar.innerHTML).toContain("ui-toast-chip");
+    expect(bar.innerHTML).toContain('<polyline points="20 6 9 17 4 12"/>');
+    expect(bar.innerHTML).toContain("ui-toast-title");
+    expect(bar.innerHTML).toContain("Client settings saved");
+    expect(bar._class.has("show")).toBe(true);
+    expect([...timers.values()].map((t) => t.ms)).toEqual([3000]);
+    fireTimers();
+    expect(bar._class.has("show")).toBe(false);
+  });
+
+  test("error tone swaps the chip treatment and the role", () => {
+    const attrs: Record<string, string> = {};
+    g.document.createElement = (_tag: string) => {
+      const el = fakeDiv();
+      el.setAttribute = (k: string, v: string) => { attrs[k] = v; };
+      created.push(el);
+      return el;
+    };
+    g.window.tkSnackbar("Couldn't toggle the timer", "error");
+    const bar = created[0];
+    expect(bar.className).toContain("ui-toast-error");
+    expect(attrs.role).toBe("alert");
+    expect(bar.innerHTML).toContain("M12 9v4");
+  });
+
+  test("the message is escaped into the title, like the component's esc()", () => {
+    g.window.tkSnackbar("<b>bold</b>");
+    expect(created[0].innerHTML).toContain("&lt;b&gt;bold&lt;/b&gt;");
+    expect(created[0].innerHTML).not.toContain("<b>bold</b>");
+  });
+});
+
 const key = on("keydown");
 function keyT(repeat = false) {
   key({
