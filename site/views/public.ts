@@ -8,6 +8,8 @@ import { icon, logo } from "../lib/icons.ts";
 import type { ChangelogEntry } from "../lib/changelog.ts"; /* #303 */
 import type { TermsSection } from "../lib/license-terms.ts"; /* #341 */
 import type { Invoice, InvoiceItem } from "../lib/types.ts";
+import { authCard } from "../ui/auth-card.ts";
+import { textField } from "../ui/field.ts";
 
 export interface PublicViewDeps {
   getInvoice: (id: number) => (Invoice & { items: InvoiceItem[] }) | null;
@@ -179,7 +181,7 @@ export function createPublicViews(deps: PublicViewDeps) {
   </html>`;
   }
 
-  function loginPage(): string {
+  function loginPage(error?: string): string {
     return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
   <title>Log in · Zimer</title>
@@ -187,20 +189,20 @@ export function createPublicViews(deps: PublicViewDeps) {
   <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
   <script src="/static/motion.js" defer></script></head>
   <body><main class="login">
-  <div class="md-card" style="border-radius:28px;padding:28px">
-  <h1 class="md-headline-small" style="margin-top:0;display:flex;align-items:center;gap:12px">${logo(32)}<span>Zimer</span></h1>
-  <form method="post" action="/login" class="form">
-  <div class="md-text-field">
-    <input type="password" id="login-token" name="token" autocomplete="off" required placeholder=" " aria-label="API token">
-    <label for="login-token">API token</label>
-  </div>
-  <button class="md-filled-button" type="submit">Log in</button>
-  <p class="muted tiny">Printed in the server log on first run, or set via TIMEKEEP_TOKEN.</p>
-  </form></div></main></body></html>`;
+  ${authCard({
+    action: "/login",
+    headingLevel: 1,
+    title: "Log in",
+    sub: "Printed in the server log on first run, or set via TIMEKEEP_TOKEN.",
+    fieldsHtml: textField({ id: "login-token", label: "API token", name: "token", type: "password", autocomplete: "off", required: true }),
+    submitLabel: "Log in",
+    error,
+  })}
+  </main></body></html>`;
   }
 
-  /* #732: hosted signup + login pages. Same M3 card as the token login. */
-  function authShell(title: string, form: string, error?: string): string {
+  /* #732: hosted signup + login pages. Same ui auth card as the token login. */
+  function authShell(title: string, cardHtml: string): string {
     return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
   <title>${title} · Zimer</title>
@@ -209,42 +211,38 @@ export function createPublicViews(deps: PublicViewDeps) {
   <script src="/static/motion.js" defer></script>
   <script src="/static/utm.js" defer></script></head>
   <body><main class="login">
-  <div class="md-card" style="border-radius:28px;padding:28px">
-  <h1 class="md-headline-small" style="margin-top:0;display:flex;align-items:center;gap:12px">${logo(32)}<span>Zimer</span></h1>
-  ${form}${error ? `<p class="error" role="alert">${esc(error)}</p>` : ""}
-  </div></main></body></html>`;
+  ${cardHtml}
+  </main></body></html>`;
   }
 
   function signupPage(error?: string): string {
-    return authShell("Sign up", `
-  <form method="post" action="/signup" class="form">
-  <div class="md-text-field">
-    <input type="email" id="su-email" name="email" autocomplete="email" required placeholder=" " aria-label="Email">
-    <label for="su-email">Email</label>
-  </div>
-  <div class="md-text-field">
-    <input type="password" id="su-password" name="password" autocomplete="new-password" required minlength="8" placeholder=" " aria-label="Password">
-    <label for="su-password">Password</label>
-  </div>
-  <button class="md-filled-button" type="submit">Create account</button>
-  <p class="muted tiny">14-day free trial, then $12/month. <a href="/#pricing">Pricing</a> · <a href="/login">Log in</a> instead.</p>
-  </form>`, error);
+    return authShell("Sign up", authCard({
+      action: "/signup",
+      headingLevel: 1,
+      title: "Sign up",
+      sub: "14-day free trial, then $12/month.",
+      fieldsHtml:
+        textField({ id: "su-email", label: "Email", name: "email", type: "email", autocomplete: "email", required: true }) +
+        textField({ id: "su-password", label: "Password", name: "password", type: "password", autocomplete: "new-password", required: true, attrs: 'minlength="8"' }),
+      submitLabel: "Create account",
+      footerHtml: `<span>Have an account? <a href="/login">Log in</a></span><a href="/#pricing">Pricing</a>`,
+      error,
+    }));
   }
 
   function hostedLoginPage(error?: string): string {
-    return authShell("Log in", `
-  <form method="post" action="/login" class="form">
-  <div class="md-text-field">
-    <input type="email" id="li-email" name="email" autocomplete="email" required placeholder=" " aria-label="Email">
-    <label for="li-email">Email</label>
-  </div>
-  <div class="md-text-field">
-    <input type="password" id="li-password" name="password" autocomplete="current-password" required placeholder=" " aria-label="Password">
-    <label for="li-password">Password</label>
-  </div>
-  <button class="md-filled-button" type="submit">Log in</button>
-  <p class="muted tiny">No account yet? <a href="/signup">Sign up</a> · <a href="/#pricing">Pricing</a>.</p>
-  </form>`, error);
+    return authShell("Log in", authCard({
+      action: "/login",
+      headingLevel: 1,
+      title: "Welcome back",
+      sub: "Log in to your timers and Zinvoices.",
+      fieldsHtml:
+        textField({ id: "li-email", label: "Email", name: "email", type: "email", autocomplete: "email", required: true }) +
+        textField({ id: "li-password", label: "Password", name: "password", type: "password", autocomplete: "current-password", required: true }),
+      submitLabel: "Log in",
+      footerHtml: `<span>No account yet? <a href="/signup">Sign up</a></span><a href="/#pricing">Pricing</a>`,
+      error,
+    }));
   }
 
   return { loginPage, signupPage, hostedLoginPage, publicInvoicePage, changelogPage, termsPage, privacyPage };

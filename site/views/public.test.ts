@@ -14,14 +14,14 @@ describe("auth labels (#827)", () => {
   test("token login label is wired", () => {
     const html = views.loginPage();
     expect(html).toContain('id="login-token"');
-    expect(html).toContain('<label for="login-token">');
+    expect(html).toContain('<label class="ui-field-label" for="login-token">');
   });
 
   test("signup labels are wired", () => {
     const html = views.signupPage();
     for (const id of ["su-email", "su-password"]) {
       expect(html).toContain(`id="${id}"`);
-      expect(html).toContain(`<label for="${id}">`);
+      expect(html).toContain(`<label class="ui-field-label" for="${id}">`);
     }
   });
 
@@ -29,7 +29,7 @@ describe("auth labels (#827)", () => {
     const html = views.hostedLoginPage();
     for (const id of ["li-email", "li-password"]) {
       expect(html).toContain(`id="${id}"`);
-      expect(html).toContain(`<label for="${id}">`);
+      expect(html).toContain(`<label class="ui-field-label" for="${id}">`);
     }
   });
 
