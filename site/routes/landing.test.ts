@@ -80,6 +80,7 @@ describe("#731: landing page router", () => {
     expect(body).toContain("Start with your next job");
     expect(body).toContain("No seats, no meters, no per-client pricing.");
     expect(body).toContain("Cancel anytime, and your data goes with you.");
+    expect(body).toContain("your data is never sold, never shared with advertisers, and never used to track you around the web.");
     /* The demo figures carry the story fixtures: the zinvoice sheet and the ticking timers. */
     expect(body).toContain("ZINVOICE #1041");
     expect(body).toContain("$2,090.00");

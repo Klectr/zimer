@@ -163,7 +163,7 @@ export function createLandingViews(posthogHead?: () => string) {
   </section>
   <section class="ui-landing-join" id="pricing">
   <h2 class="ui-landing-title">Start with your next job</h2>
-  <p class="ui-landing-join-copy">Hosted at $12/month flat with a 14-day free trial, or self-host it free forever. No seats, no meters, no per-client pricing. Cancel anytime, and your data goes with you.</p>
+  <p class="ui-landing-join-copy">Hosted at $12/month flat with a 14-day free trial, or self-host it free forever. No seats, no meters, no per-client pricing. Cancel anytime, and your data goes with you. On hosted, your data is never sold, never shared with advertisers, and never used to track you around the web.</p>
   <div class="ui-landing-join-btns">${linkButton({ label: "Start free trial", href: "/signup", variant: "primary", size: "lg" })}${linkButton({ label: "View on GitHub", href: "https://github.com/Klectr/zimer", external: true, size: "lg" })}${linkButton({ label: "Changelog", href: "/changelog", size: "lg" })}</div>
   </section>
   <footer class="ui-landing-foot">
