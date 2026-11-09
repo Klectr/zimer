@@ -532,4 +532,20 @@ describe("timer mock parity (#1121)", () => {
     const html = createTimerViews({ ...baseDeps, qRunning: stubQuery() } as any).entryRow(entry as any);
     expect(html).not.toContain('ui-row-meta">$');
   });
+
+  test("dashboard composes the mock header, stat row, and entries card", () => {
+    const deps = { ...baseDeps, qRunning: { get: () => null } as unknown as Statement };
+    const html = createTimerViews(deps as any).dashboardPage();
+    expect(html).toContain('<header class="ui-app-head">');
+    expect(html).toContain('<h1 class="ui-app-title">Today</h1>');
+    expect(html).toContain("here's your day so far.");
+    expect(html).toContain('id="invoice-week"');
+    expect(html).toContain('<div class="ui-stat-row">');
+    for (const label of ["Today", "This week", "Unbilled"]) {
+      expect(html).toContain(`<div class="ui-stat-label">${label}</div>`);
+    }
+    expect(html).toContain("Create Zinvoice");
+    expect(html).toContain('<div class="ui-block-title">Today\'s entries</div>');
+    expect(html).not.toContain("page-head");
+  });
 });
