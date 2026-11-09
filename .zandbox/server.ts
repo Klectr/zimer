@@ -152,7 +152,7 @@ function assetType(path: string): string {
   return ASSET_TYPES[dot === -1 ? "" : path.slice(dot)] ?? "application/octet-stream";
 }
 
-const FAVICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 180 180"><rect width="180" height="180" rx="40" fill="#fbbf24"/><text x="90" y="128" font-family="Arial, sans-serif" font-weight="700" font-size="104" fill="#442100" text-anchor="middle">Z</text></svg>`;
+const FAVICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 180 180"><rect width="180" height="180" rx="40" fill="#fb923c"/><text x="90" y="128" font-family="Arial, sans-serif" font-weight="700" font-size="104" fill="#442100" text-anchor="middle">Z</text></svg>`;
 const FAVICON_LINK = `<link rel="icon" href="data:image/svg+xml,${encodeURIComponent(FAVICON_SVG)}" type="image/svg+xml">`;
 
 function page(title: string, body: string): string {
