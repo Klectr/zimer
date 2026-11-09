@@ -155,7 +155,7 @@
   padding: 0 var(--spacing-sm); font-family: var(--font-family);
   font-size: var(--font-size); font-weight: 500; color: var(--color-text);
   background: var(--color-fill-secondary); border: 1px solid var(--color-border);
-  border-radius: var(--radius); cursor: pointer;
+  border-radius: var(--radius); cursor: pointer; text-decoration: none;
   transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 .ui-btn:hover { background: var(--color-fill); }
@@ -2138,7 +2138,7 @@ body.app-fixed .cal-gutter-spacer {
 .changelog-title { display: flex; align-items: center; gap: 12px; margin-bottom: 8px;
   color: var(--md-sys-color-primary); } /* branded pumpkin */
 .changelog-release { margin-top: 24px; }
-.changelog-release h2 { margin: 0 0 8px; color: var(--md-sys-color-primary); }
+.changelog-release h2 { margin: 0 0 8px; color: var(--color-primary); }
 .changelog-release ul { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
 /* #867: inline code spans in release notes — tonal, monospace, M3 4px radius. */
 /* #873: nowrap — a hyphen-minus is a legal break point, so a --var name
@@ -2149,7 +2149,7 @@ body.app-fixed .cal-gutter-spacer {
   border-radius: 4px; padding: 1px 6px; white-space: nowrap; }
 .public-foot { text-align: center; margin-top: 28px; }
 .public-pay { text-align: center; margin: 28px 0 8px; }
-.public-pay-btn { font-size: 1.0625rem; padding: 14px 32px; border-radius: 999px; }
+.ui-changelog-body ul { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
 /* #731: hosted landing page (rebuilt #1098 on the Lobe token system;
    #1110: layout system ported from the Zandbox landing — the container
    below is the only width constraint, the glow wash hangs off
