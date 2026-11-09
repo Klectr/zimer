@@ -159,6 +159,7 @@
 .ui-chip-draft { background: var(--color-text-tertiary); }
 .ui-chip-sent { background: var(--color-info); }
 .ui-chip-paid { background: var(--color-success); }
+.ui-chip-overdue { background: var(--color-error); }
 
 .ui-field { display: flex; flex-direction: column; gap: var(--spacing-xxs); }
 .ui-field-label { font-size: var(--font-size); font-weight: 500; color: var(--color-text); }
@@ -250,6 +251,38 @@
 .ui-tab:hover { color: var(--color-text); }
 .ui-tab:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 .ui-tab.is-active { background: var(--color-primary); color: var(--on-primary); border-color: transparent; font-weight: var(--font-weight-strong); }
+
+.ui-stat-label { font-size: var(--font-size-sm); letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-text-tertiary); }
+.ui-stat-value { font-family: var(--font-family-code); font-size: var(--font-size-heading-3); font-weight: var(--font-weight-strong); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; margin-top: var(--spacing-xxs); }
+.ui-stat-sub { font-size: var(--font-size-sm); color: var(--color-text-secondary); margin-top: var(--spacing-xxs); }
+
+.ui-progress { height: 6px; background: var(--color-fill); border-radius: var(--radius-xs); overflow: hidden; }
+.ui-progress-fill { display: block; height: 100%; background: var(--color-primary); border-radius: var(--radius-xs); }
+
+.ui-steps { display: flex; gap: var(--spacing-xs); }
+.ui-step { flex: 1; }
+.ui-step-bar { height: 4px; border-radius: var(--radius-xs); background: var(--color-fill); }
+.ui-step.is-done .ui-step-bar, .ui-step.is-current .ui-step-bar { background: var(--color-primary); }
+.ui-step-label { display: block; font-size: var(--font-size-sm); color: var(--color-text-tertiary); margin-top: var(--spacing-xs); }
+.ui-step.is-current .ui-step-label { color: var(--color-text); font-weight: var(--font-weight-strong); }
+
+.ui-list { display: flex; flex-direction: column; }
+.ui-row { display: flex; align-items: center; gap: var(--spacing-sm); padding: var(--spacing-sm); color: var(--color-text); text-decoration: none; border-bottom: 1px solid var(--color-border-secondary); }
+.ui-list .ui-row:last-child { border-bottom: 0; }
+a.ui-row { transition: background-color 0.15s ease; }
+a.ui-row:hover { background: var(--color-fill-quaternary); }
+a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.ui-row-main { flex: 1; min-width: 0; }
+.ui-row-title { font-weight: 500; }
+.ui-row-meta { font-size: var(--font-size-sm); color: var(--color-text-secondary); margin-top: var(--spacing-xxs); }
+.ui-row-side { text-align: right; flex: none; }
+.ui-row-amount { font-family: var(--font-family-code); font-variant-numeric: tabular-nums; }
+
+.ui-table { width: 100%; border-collapse: collapse; font-size: var(--font-size); }
+.ui-table th { font-size: var(--font-size-sm); font-weight: 500; color: var(--color-text-tertiary); text-align: left; padding: var(--spacing-xs) var(--spacing-sm); border-bottom: 1px solid var(--color-border); }
+.ui-table td { padding: var(--spacing-sm); border-bottom: 1px solid var(--color-border-secondary); }
+.ui-table .num { text-align: right; font-family: var(--font-family-code); font-variant-numeric: tabular-nums; }
+.ui-table tfoot td { border-bottom: 0; font-weight: var(--font-weight-strong); }
 
 /* ---------------- sys tokens: layout (M3 window size classes) ----------------
  * Breakpoints (dp map 1:1 to px on web): compact <600 · medium 600–839 ·
