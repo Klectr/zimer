@@ -53,3 +53,12 @@ describe("button icon", () => {
     expect(button({ label: "Save" })).not.toContain("<svg");
   });
 });
+
+describe("button spinner", () => {
+  test("spinner renders the logo mark span for htmx-request progress states", () => {
+    const html = button({ label: "Check for updates", spinner: true });
+    expect(html).toContain('<span class="btn-spinner" aria-hidden="true">');
+    expect(html).toContain("tk-logo-hands");
+    expect(button({ label: "Plain" })).not.toContain("btn-spinner");
+  });
+});

@@ -701,7 +701,7 @@ export function createWebRouter(deps: WebDeps) {
            retired $59 key. */
         if (path === "/settings" && method === "GET") {
           const updates = updateSectionHtml();
-          const support = `<p class="muted tiny" style="margin-top:24px">Need help? <a href="mailto:support@klectr.dev">support@klectr.dev</a></p>`;
+          const support = `<p class="ui-settings-support">Need help? <a href="mailto:support@klectr.dev">support@klectr.dev</a></p>`;
           const body = bizProfileSection() + dailyTargetSection() + themeSectionHtml() + updates + support;
           if (isHtmx(req)) return html(body);
           /* #693: direct visits get the full app layout — the bare fragment

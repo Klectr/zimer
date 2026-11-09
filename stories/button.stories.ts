@@ -46,6 +46,15 @@ export const buttonStories: Story[] = [
       `</div>`,
   },
   {
+    id: "button-spinner",
+    group: "Button",
+    title: "With request spinner (logo hands replace the icon in flight)",
+    render: () =>
+      `<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">` +
+      button({ label: "Check for updates", icon: "refresh", spinner: true, attrs: 'id="check-updates-btn"' }) +
+      `</div>`,
+  },
+  {
     id: "button-disabled",
     group: "Button",
     title: "Disabled",

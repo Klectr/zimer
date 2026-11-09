@@ -352,6 +352,18 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .ui-btn-block { width: 100%; }
 .ui-section-head { margin-bottom: var(--spacing-sm); }
 .ui-section-title { font-size: var(--font-size-heading-5); font-weight: 600; margin: 0; }
+.ui-settings-form { display: grid; gap: var(--spacing-md); }
+.ui-settings-actions { display: flex; justify-content: flex-end; }
+.ui-settings-note { margin: 0; font-size: var(--font-size-sm); line-height: var(--line-height-sm); color: var(--color-text-tertiary); }
+.ui-settings-head { margin-bottom: var(--spacing-md); }
+.ui-settings-title { font-size: var(--font-size-heading-3); font-weight: var(--font-weight-strong); margin: 0; }
+.ui-settings-stack { display: grid; gap: var(--spacing-md); }
+.ui-settings-support { margin: 0; font-size: var(--font-size-sm); line-height: var(--line-height-sm); color: var(--color-text-tertiary); }
+.ui-theme-dots { display: flex; flex-wrap: wrap; gap: var(--spacing-sm); }
+.ui-theme-dot { width: 40px; height: 40px; border-radius: 9999px; background: var(--dot); border: 1px solid var(--color-border); padding: 0; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: transform 120ms ease; }
+.ui-theme-dot:hover { transform: scale(1.08); }
+.ui-theme-dot.selected { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--dot); }
+.ui-theme-dot svg { width: 20px; height: 20px; color: rgba(0, 0, 0, 0.75); }
 .ui-section-hint { font-size: var(--font-size-sm); line-height: var(--line-height-sm); color: var(--color-text-secondary); margin-top: var(--spacing-xxs); }
 .ui-section-actions { display: flex; align-items: center; gap: var(--spacing-sm); margin-top: var(--spacing-md); flex-wrap: wrap; }
 .ui-plan { display: flex; flex-direction: column; gap: var(--spacing-sm); }
@@ -1743,24 +1755,8 @@ body.app-fixed .cal-gutter-spacer {
 .cal-scrim.open .settings-dialog { transform: scale(1); opacity: 1; }
 .settings-dialog-head { display: flex; align-items: center; justify-content: space-between; }
 .settings-dialog-head h2 { margin: 0; }
+#settings-body { display: grid; gap: var(--spacing-md); align-content: start; }
 #settings-body p { margin: 0; }
-#biz-profile h2 { margin: 0 0 4px; }
-/* #884: theme dots — accent swatches in the settings modal. #895: the active
-   theme gets a white border/ring so the selection is obvious; each dot is a
-   true circle in its own theme color. The check is dark-on-light for every
-   palette. Focus uses the global :focus-visible ring. */
-#theme-section h2 { margin: 0 0 4px; }
-.theme-dots { display: flex; flex-wrap: wrap; gap: 12px; margin: 4px 0 8px; }
-.theme-dot {
-  width: 40px; height: 40px; border-radius: 50%;
-  background: var(--dot);
-  border: none; padding: 0; cursor: pointer;
-  display: inline-flex; align-items: center; justify-content: center;
-  transition: transform 120ms ease;
-}
-.theme-dot:hover { transform: scale(1.08); }
-.theme-dot.selected { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--dot); }
-.theme-dot svg { width: 20px; height: 20px; color: rgba(0, 0, 0, 0.75); }
 /* #355: the calendar dialog gets the same title/close header row as the
    settings dialog; the close button is compact-only (600px+ keeps the
    centered basic-dialog treatment with its Cancel/Save actions). */

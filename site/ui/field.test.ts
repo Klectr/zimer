@@ -83,3 +83,18 @@ describe("textField affixes and numeric attrs", () => {
     expect(textField({ id: "p", label: "Plain" })).not.toContain("ui-input-wrap");
   });
 });
+
+describe("selectField option descriptions", () => {
+  test("desc rides on the option as data-desc for live helper text", () => {
+    const html = selectField({ id: "t", label: "Terms", options: [{ value: "net15", label: "Net 15", desc: "Due 15 days after issue." }, { value: "due", label: "Due on receipt" }], value: "net15" });
+    expect(html).toContain('data-desc="Due 15 days after issue."');
+    expect(html).toContain('<option value="due">Due on receipt</option>');
+  });
+});
+
+describe("selectField className", () => {
+  test("extra class lands on the select for behavior hooks", () => {
+    const html = selectField({ id: "t", label: "Terms", options: [{ value: "a", label: "A" }], className: "terms-select" });
+    expect(html).toContain('class="ui-input ui-select terms-select"');
+  });
+});

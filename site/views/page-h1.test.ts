@@ -105,6 +105,9 @@ describe("page-level h1 (#701)", () => {
   test("manage page has exactly one h1: Clients", () => {
     expect(h1Texts(managePages().manage)).toEqual(["Clients"]);
   });
+  test("settings page h1 carries the ui title class (migrated in #1100)", () => {
+    expect(managePages().settings).toContain('<h1 class="ui-settings-title">Settings</h1>');
+  });
   test("settings page has exactly one h1: Settings", () => {
     expect(h1Texts(managePages().settings)).toEqual(["Settings"]);
   });
@@ -115,7 +118,6 @@ describe("page-level h1 (#701)", () => {
       invoicePages().list,
       invoicePages().form,
       managePages().manage,
-      managePages().settings,
     ]) {
       expect(html).toContain('<h1 class="md-headline-small">');
     }

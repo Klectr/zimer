@@ -43,6 +43,7 @@ export function textField(opts: TextFieldOptions): string {
 export interface SelectOption {
   value: string;
   label: string;
+  desc?: string;
 }
 
 export interface SelectFieldOptions {
@@ -52,6 +53,7 @@ export interface SelectFieldOptions {
   options: SelectOption[];
   value?: string;
   required?: boolean;
+  className?: string;
 }
 
 export function selectField(opts: SelectFieldOptions): string {
@@ -60,12 +62,12 @@ export function selectField(opts: SelectFieldOptions): string {
   const options = opts.options
     .map(
       (o) =>
-        `<option value="${esc(o.value)}"${o.value === opts.value ? " selected" : ""}>${esc(o.label)}</option>`,
+        `<option value="${esc(o.value)}"${o.desc ? ` data-desc="${esc(o.desc)}"` : ""}${o.value === opts.value ? " selected" : ""}>${esc(o.label)}</option>`,
     )
     .join("");
   return (
     `<div class="ui-field">` +
     `<label class="ui-field-label" for="${esc(opts.id)}">${esc(opts.label)}</label>` +
-    `<select class="ui-input ui-select" id="${esc(opts.id)}"${name}${required}>${options}</select></div>`
+    `<select class="ui-input ui-select${opts.className ? ` ${esc(opts.className)}` : ""}" id="${esc(opts.id)}"${name}${required}>${options}</select></div>`
   );
 }

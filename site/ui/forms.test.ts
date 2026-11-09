@@ -129,3 +129,11 @@ describe("zinvoice form pieces", () => {
     expect(button({ label: "Save draft", block: true })).toContain("ui-btn-block");
   });
 });
+
+describe("settingsSection id", () => {
+  test("id lands on the card root so htmx can target the section", () => {
+    const html = settingsSection({ title: "Theme", bodyHtml: "<p>x</p>", id: "theme-section" });
+    expect(html).toContain('id="theme-section"');
+    expect(settingsSection({ title: "Theme", bodyHtml: "<p>x</p>" })).not.toContain('id="theme-section"');
+  });
+});
