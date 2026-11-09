@@ -209,6 +209,22 @@ describe("DESIGN.md token layer (#1092)", () => {
       "--color-warning-bg": "color-mix(in srgb, var(--color-warning) 16%, transparent)",
       "--color-error-bg": "color-mix(in srgb, var(--color-error) 16%, transparent)",
       "--color-info-bg": "color-mix(in srgb, var(--color-info) 16%, transparent)",
+      "--color-primary-hover": "color-mix(in srgb, var(--color-primary) 85%, white)",
+      "--color-primary-active": "color-mix(in srgb, var(--color-primary) 85%, black)",
+      "--color-primary-border": "color-mix(in srgb, var(--color-primary) 45%, transparent)",
+      "--color-error-hover": "color-mix(in srgb, var(--color-error) 85%, white)",
+      "--color-error-active": "color-mix(in srgb, var(--color-error) 85%, black)",
+      "--color-error-border": "color-mix(in srgb, var(--color-error) 45%, transparent)",
+      "--color-error-bg-hover": "color-mix(in srgb, var(--color-error) 24%, transparent)",
+      "--color-success-hover": "color-mix(in srgb, var(--color-success) 85%, white)",
+      "--color-success-active": "color-mix(in srgb, var(--color-success) 85%, black)",
+      "--color-success-border": "color-mix(in srgb, var(--color-success) 45%, transparent)",
+      "--color-warning-hover": "color-mix(in srgb, var(--color-warning) 85%, white)",
+      "--color-warning-active": "color-mix(in srgb, var(--color-warning) 85%, black)",
+      "--color-warning-border": "color-mix(in srgb, var(--color-warning) 45%, transparent)",
+      "--color-info-hover": "color-mix(in srgb, var(--color-info) 85%, white)",
+      "--color-info-active": "color-mix(in srgb, var(--color-info) 85%, black)",
+      "--color-info-border": "color-mix(in srgb, var(--color-info) 45%, transparent)",
       "--color-bg-spotlight": "#1e1f23",
       "--color-border": "rgba(255, 255, 255, 0.14)",
       "--color-border-secondary": "rgba(255, 255, 255, 0.08)",
@@ -256,6 +272,6 @@ describe("DESIGN.md token layer (#1092)", () => {
   test("the layer is complete: no DESIGN.md color is missing from the pins", () => {
     const tokens = rootTokens();
     const colorNames = [...tokens.keys()].filter((k) => k.startsWith("--color-"));
-    expect(colorNames.length).toBe(25);
+    expect(colorNames.length).toBe(41);
   });
 });

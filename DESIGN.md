@@ -68,7 +68,7 @@ Consume tokens by name (`--color-text`, `--color-bg-container`, …). Never hard
 - `colorPrimary` is pumpkin `#fb923c` — Zimer's deliberate brand exception to LobeHub's monochrome default. It is reserved for the single most important action per view, the running-timer state, and links. Don't spread it as decoration.
 - No ambient glow or decorative color wash anywhere. Color carries state and hierarchy, not decoration.
 - Status is a tinted chip + a word, never color alone: the functional color's derived Bg tint behind its own hue as text — Draft (neutral), Sent (info), Paid (success), Overdue (error), Running (success, with dot).
-- Each functional color exposes a derived Bg tint token (`--color-primary-bg`, `--color-success-bg`, …) for tinted chips and washes; consume the token instead of hand-mixing.
+- Each functional color exposes derived ramp tokens (`--color-*-bg` tints for chips and washes, `--color-*-hover` / `--color-*-active` for solid fills, `--color-*-border`); consume the tokens instead of hand-mixing.
 
 ## Typography
 
