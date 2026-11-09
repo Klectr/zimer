@@ -10,6 +10,7 @@ export interface VizEntry {
   running?: boolean;
   invoiced?: boolean;
   locked?: boolean;
+  lockedLabel?: string;
   overlap?: boolean;
 }
 
@@ -79,8 +80,8 @@ export function visualizer(opts: VisualizerOptions): string {
     .map((day) => {
       const blocks = day.entries
         .map((e) => {
-          const top = ((e.startMin - dayStart) / 60) * hourPx + 2;
           const blockHeight = Math.max(((e.endMin - e.startMin) / 60) * hourPx - 4, 22);
+          const top = Math.min(((e.startMin - dayStart) / 60) * hourPx + 2, height - blockHeight);
           const cls =
             "ui-viz-block" +
             (e.invoiced ? " is-invoiced" : "") +
@@ -101,7 +102,7 @@ export function visualizer(opts: VisualizerOptions): string {
             `data-id="${esc(e.id)}" data-date="${esc(day.date)}" data-start="${hhmm(e.startMin)}" data-end="${hhmm(e.endMin)}"` +
             (e.projectId ? ` data-project-id="${esc(e.projectId)}"` : "") +
             (e.desc ? ` data-desc="${esc(e.desc)}"` : "") +
-            (e.locked ? ` data-locked="1"` : "") +
+            (e.locked ? ` data-locked="${esc(e.lockedLabel || "1")}"` : "") +
             ` style="top:${top}px;height:${blockHeight}px">${handles}` +
             `<div class="ui-viz-block-title">${esc(e.title)}</div>` +
             `<div class="ui-viz-block-meta">${esc(meta)}</div></div>`

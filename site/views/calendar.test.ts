@@ -8,16 +8,42 @@ import type { Database, Statement } from "bun:sqlite";
 import { createCalendarViews } from "./calendar.ts";
 
 describe("calendar dialog delete guard (#462)", () => {
+  const stubQuery = () => ({
+    get: (..._a: unknown[]) => ({ n: 1 }),
+    all: (..._a: unknown[]) => [],
+  });
   test("openEdit hides Delete for running entries, not just locked ones", async () => {
     const src = await Bun.file("site/views/calendar.ts").text();
     const openEdit = src.slice(src.indexOf("function openEdit(el)"), src.indexOf("function close(){"));
-    expect(openEdit).toContain("classList.contains('running')");
+    expect(openEdit).toContain("classList.contains('is-running')");
     expect(openEdit).toMatch(/delBtn\.hidden\s*=\s*!!locked\s*\|\|\s*running/);
   });
 
-  test("grid marks running entries so openEdit can find them", async () => {
-    const src = await Bun.file("site/views/calendar.ts").text();
-    expect(src).toContain('cal-entry${running ? " running" : ""}');
+  test("grid marks running entries so openEdit can find them", () => {
+    const running = {
+      id: 13, description: "live work", project_id: null, project_name: null,
+      client_name: null, client_color: null, invoice_id: null,
+      invoice_number: null, invoice_status: null,
+      start_time: "2026-09-21T15:00:00.000Z", end_time: null,
+    };
+    const db = {
+      query: (_sql: string) => ({ get: () => ({ n: 1 }), all: () => [running] }),
+    } as unknown as Database;
+    const views = createCalendarViews({
+      db,
+      qOne: stubQuery(),
+      qRange: stubQuery(),
+      entrySelect: "SELECT",
+      layout: (_t: string, b: string) => b,
+      projectOptionRows: () => [],
+      weekTargetBar: () => "",
+      calHourPx: 64,
+    } as any);
+    const html = views.weekInner("2026-09-20", "America/Chicago");
+    const tags = html.match(/<div class="ui-viz-block[^>]*>/g) || [];
+    const tag = tags.find((t) => t.includes('data-id="13"'));
+    expect(tag).toBeDefined();
+    expect(tag!).toContain("is-running");
   });
 });
 
@@ -196,7 +222,7 @@ describe("calendar week carousel (#572)", () => {
     } as any);
   }
   const stripCount = (html: string) => (html.match(/class="cal-strip"/g) || []).length;
-  const laneCount = (html: string) => (html.match(/class="cal-day[ "]/g) || []).length;
+  const laneCount = (html: string) => (html.match(/class="ui-viz-col/g) || []).length;
 
   test("weekInner renders three strips tagged with their Sundays", () => {
     const html = views().weekInner("2026-09-20", "America/Chicago");
@@ -249,8 +275,9 @@ describe("calendar week carousel (#572)", () => {
 });
 
 /** #500: finish the data-tip sweep — the calendar entry card's invoiced-mark
- *  info was the last native title= tooltip on the grid; it now uses the house
- *  M3 plain tooltip (data-tip) like the timer page's inv-mark chip (#498). */
+ *  info was the last native title= tooltip on the grid. On the ui visualizer
+ *  the mark rides the block itself: the is-invoiced class plus the invoice
+ *  number in data-locked (sent/paid time is locked), never a native title. */
 describe("calendar entry invoiced-mark tooltip (#500)", () => {
   const stubQuery = () => ({
     get: (..._a: unknown[]) => ({ n: 1 }),
@@ -285,20 +312,24 @@ describe("calendar entry invoiced-mark tooltip (#500)", () => {
     return views.weekInner("2026-09-20", "America/Chicago");
   }
   function cardTag(html: string, id: number): string {
-    const m = html.match(new RegExp(`<div class="cal-entry[^>]*data-id="${id}"[^>]*>`));
-    if (!m) throw new Error(`no cal-entry card with data-id=${id}`);
-    return m[0];
+    const tags = html.match(/<div class="ui-viz-block[^>]*>/g) || [];
+    const tag = tags.find((t) => t.includes(`data-id="${id}"`));
+    if (!tag) throw new Error(`no ui-viz-block with data-id=${id}`);
+    return tag;
   }
-  test("invoiced entry card uses data-tip, not the native title", () => {
+  test("invoiced entry block is marked and carries its invoice number, no native title", () => {
     const html = weekInnerHtml([plain, invoiced]);
     const tag = cardTag(html, 21);
-    expect(tag).toContain('data-tip="Zinvoiced on INV-0042"');
+    expect(tag).toContain("is-invoiced");
+    expect(tag).toContain('data-locked="INV-0042"');
     expect(tag).not.toContain("title=");
   });
-  test("plain entries get no mark tip at all", () => {
+  test("plain entries get no mark at all", () => {
     const html = weekInnerHtml([plain, invoiced]);
     const tag = cardTag(html, 20);
+    expect(tag).not.toContain("is-invoiced");
     expect(tag).not.toContain("data-tip=");
+    expect(tag).not.toContain("data-locked");
     expect(tag).not.toContain("title=");
   });
   test("resize handles carry no native title", () => {
@@ -352,8 +383,8 @@ describe("calendar week-only carousel (#572)", () => {
     } as any);
   }
 
-  const laneCount = (html: string) => (html.match(/class="cal-day[ "]/g) || []).length;
-  const agSectionCount = (html: string) => (html.match(/class="cal-ag-day[ "]/g) || []).length;
+  const laneCount = (html: string) => (html.match(/class="ui-viz-col/g) || []).length;
+  const agSectionCount = (html: string) => (html.match(/class="ui-agenda-day"/g) || []).length;
 
   test("weekInner renders three full weeks: 21 lanes and 21 agenda sections", () => {
     const html = viewsFor([monEntry, tueEntry]).weekInner("2026-09-20", "America/Chicago");
@@ -542,7 +573,7 @@ describe("calendar entry keyboard activation (#530)", () => {
     );
     expect(handler).toContain("e.key==='Enter'");
     expect(handler).toContain("e.key===' '");
-    expect(handler).toMatch(/closest\('\.cal-entry,.cal-ag-row'\)/);
+    expect(handler).toMatch(/closest\('\.ui-viz-block,\[data-entry-row\]'\)/);
     expect(handler).toContain("openEdit(card)");
     expect(handler).toContain("e.preventDefault()");
   });
@@ -638,29 +669,25 @@ describe("calendar dialog placement (#669)", () => {
   });
 });
 
-/** #704: the 30s placeNow tick grows the running card's height as the timer
- *  runs. It never synced the cal-compact class, so a timer started short
- *  kept its 999px pill radius and stretched into an oval until the next
- *  reload. The tick must toggle the class on the true (unfloored) height,
- *  with the same <26px threshold the server render uses. */
-describe("running entry pill sync (#704)", () => {
+/** The 30s placeNow tick grows the running block's height as the timer
+ *  runs, in the visualizer's geometry (height -4, 22px floor), capped at
+ *  the lane's midnight edge so a late-night timer can't stretch past it. */
+describe("running entry growth tick (#704, #857)", () => {
   async function placeNowSrc() {
     const src = await Bun.file("site/views/calendar.ts").text();
     return src.slice(src.indexOf("function placeNow(){"), src.indexOf("/* Scroll one strip"));
   }
 
-  test("placeNow toggles cal-compact on the running entry", async () => {
+  test("placeNow grows running blocks on the tick", async () => {
     const s = await placeNowSrc();
-    expect(s).toContain("classList.toggle('cal-compact',trueH<26)");
+    expect(s).toContain("querySelectorAll('.ui-viz-block.is-running')");
+    expect(s).toMatch(/var trueH=\(\(nowMin-sm\)\/60\)\*HOUR-4;/);
+    expect(s).toMatch(/style\.height=Math\.min\(Math\.max\(trueH,22\),Math\.max\(capH,trueH\)\)/);
   });
 
-  test("the toggle keys off the unfloored height, not the 26px floor", async () => {
+  test("placeNow caps the running block's growth at midnight", async () => {
     const s = await placeNowSrc();
-    expect(s).toMatch(/var trueH=\(\(nowMin-sm\)\/60\)\*HOUR;/);
-    /* #857: the tick now caps the floor at midnight; the toggle still keys
-       off unfloored trueH. */
-    expect(s).toMatch(/var capH=\(\(1440-sm\)\/60\)\*HOUR-2;/);
-    expect(s).toMatch(/style\.height=Math\.min\(Math\.max\(trueH,26\),Math\.max\(capH,trueH\)\)/);
+    expect(s).toContain("((1440-sm)/60)*HOUR-2");
   });
 });
 
@@ -792,285 +819,6 @@ describe("calendar pane hint (#766)", () => {
   });
 });
 
-/** #841: slots stored under the legacy gold default render with the theme
- *  primary variable, so a scheme change needs no data migration. */
-describe("calendar slot theme color (#841)", () => {
-  const stubQuery = () => ({
-    get: (..._a: unknown[]) => ({ n: 1 }),
-    all: (..._a: unknown[]) => [],
-  });
-  const goldEntry = {
-    id: 30, description: "legacy gold client", project_id: null, project_name: null,
-    client_name: "Acme", client_color: "#f2c14e", invoice_id: null,
-    invoice_number: null, invoice_status: null,
-    start_time: "2026-09-21T15:00:00.000Z", end_time: "2026-09-21T16:00:00.000Z",
-  };
-  const blueEntry = { ...goldEntry, id: 31, client_color: "#7cc4ff" };
-  function weekInnerHtml(entries: unknown[]) {
-    const db = {
-      query: (_sql: string) => ({ get: () => ({ n: 1 }), all: () => entries }),
-    } as unknown as Database;
-    const views = createCalendarViews({
-      db,
-      qOne: stubQuery(),
-      qRange: stubQuery(),
-      entrySelect: "SELECT",
-      layout: (_t: string, b: string) => b,
-      projectOptionRows: () => [],
-      weekTargetBar: () => "",
-      calHourPx: 64,
-    } as any);
-    return views.weekInner("2026-09-20", "America/Chicago");
-  }
-  function cardTag(html: string, id: number): string {
-    const m = html.match(new RegExp(`<div class="cal-entry[^>]*data-id="${id}"[^>]*>`));
-    if (!m) throw new Error(`no cal-entry card with data-id=${id}`);
-    return m[0];
-  }
-  test("legacy gold client color renders the theme primary variable", () => {
-    const tag = cardTag(weekInnerHtml([goldEntry]), 30);
-    expect(tag).toContain("--c:var(--color-primary)");
-    expect(tag).not.toContain("#f2c14e");
-  });
-  test("explicit client colors pass through untouched", () => {
-    const tag = cardTag(weekInnerHtml([blueEntry]), 31);
-    expect(tag).toContain("--c:#7cc4ff");
-  });
-});
-
-/** #845/#847: day columns keep rounded top/bottom corners at every scroll
- *  position. #845 put the rounded top on the sticky header itself, but the
- *  lane's purple night band scrolled underneath and peeked through the
- *  header's rounded corner cutouts (#847). Now the sticky header is opaque
- *  page-bg and square (nothing can peek through it); a ::before top cutter
- *  on the lane re-rounds the lane's visible top edge, and the ::after bottom
- *  cutter re-rounds the visible bottom edge. #849: the top cutter moved from
- *  the header to the lane so it paints below entries (z-0 vs entries z-1) —
- *  the header-anchored cutter bit dark specks out of entries touching the
- *  lane top. #877: the top cutter moved to z-1, above the translucent night
- *  bands (z-auto) — at scroll-top the band's opaque top-12px backing covered
- *  the z-0 cutter, but scrolled past 12px the band's translucent region slid
- *  over the cutter's dark crescents and they read through as notches; above
- *  the band the crescents are clean dark cuts at every scroll offset. Entries
- *  moved to z-2 to stay above the cutters. */
-describe("calendar column rounding (#845, #847, #849)", () => {
-  test("sticky day header is opaque page-bg and square — no corner cutouts to peek through", async () => {
-    const css = await Bun.file("site/static/style.css").text();
-    const head = css.match(/body\.app-fixed \.cal-day-head,\s*body\.app-fixed \.cal-gutter-spacer\s*\{[^}]*\}/);
-    expect(head).not.toBeNull();
-    expect(head![0]).toMatch(/background:\s*var\(--md-sys-color-surface\)/);
-    expect(head![0]).not.toMatch(/border-radius/);
-  });
-  test("top cutter re-rounds the lane's visible top edge directly under the header", async () => {
-    const css = await Bun.file("site/static/style.css").text();
-    const cutter = css.match(/\.cal-day-col::before\s*\{[^}]*\}/);
-    expect(cutter).not.toBeNull();
-    expect(cutter![0]).toMatch(/position:\s*sticky/);
-    expect(cutter![0]).toMatch(/top:\s*var\(--cal-head-h\)/);
-    expect(cutter![0]).toMatch(/z-index:\s*3/);
-    expect(cutter![0]).toMatch(/background:\s*var\(--color-bg-layout\)/);
-    expect(cutter![0]).toMatch(/pointer-events:\s*none/);
-    expect(cutter![0]).toMatch(/mask:/);
-  });
-  test("#849: entries paint above both corner cutters so cutters can't bite them", async () => {
-    const css = await Bun.file("site/static/style.css").text();
-    const entry = css.match(/\.cal-entry\s*\{[^}]*\}/);
-    expect(entry).not.toBeNull();
-    expect(entry![0]).toMatch(/z-index:\s*2/);
-    const bottomCutter = css.match(/\.cal-day-col::after\s*\{[^}]*\}/);
-    expect(bottomCutter).not.toBeNull();
-    expect(bottomCutter![0]).toMatch(/z-index:\s*0/);
-  });
-  test("#877: top cutter paints above the lane so its page-bg crescents round the visible top edge", async () => {
-    const css = await Bun.file("site/static/style.css").text();
-    const cutter = css.match(/\.cal-day-col::before\s*\{[^}]*\}/);
-    expect(cutter).not.toBeNull();
-    expect(cutter![0]).toMatch(/z-index:\s*3/);
-    // entries stay above the cutter (the #849 fringe fix, now at z-2)
-    const entry = css.match(/\.cal-entry\s*\{[^}]*\}/);
-    expect(entry).not.toBeNull();
-    expect(entry![0]).toMatch(/z-index:\s*2/);
-  });
-  test("#881: now-dot straddles the lane edge; sticky headers overlap the gutters so the dot hides with the line", async () => {
-    const css = await Bun.file("site/static/style.css").text();
-    // the dot straddling the lane edge (left:-5px) is the correct design —
-    // #880 tucked it inside the lane instead; reverted
-    const dot = css.match(/\.cal-now::before\s*\{[^}]*\}/);
-    expect(dot).not.toBeNull();
-    expect(dot![0]).toMatch(/left:\s*-5px/);
-    expect(dot![0]).toMatch(/top:\s*-4px/);
-    // each day head overlaps 4px into the gutters on both sides, closing the
-    // 8px inter-lane gaps in the header band (the dot's gutter half then
-    // hides under the opaque sticky header with the line)
-    const head = css.match(/\.cal-grid\s*>\s*\.cal-day\s+\.cal-day-head\s*\{[^}]*\}/);
-    expect(head).not.toBeNull();
-    expect(head![0]).toMatch(/margin-left:\s*-4px/);
-    expect(head![0]).toMatch(/margin-right:\s*-4px/);
-    // Sunday is the last grid child — its head must not overhang the grid edge
-    const sun = css.match(/\.cal-grid\s*>\s*\.cal-day:nth-child\(8\)\s+\.cal-day-head\s*\{[^}]*\}/);
-    expect(sun).not.toBeNull();
-    expect(sun![0]).toMatch(/margin-right:\s*0/);
-    // the line itself stays full lane width, above entries
-    const line = css.match(/\.cal-now\s*\{[^}]*\}/);
-    expect(line).not.toBeNull();
-    expect(line![0]).toMatch(/left:\s*0/);
-    expect(line![0]).toMatch(/right:\s*0/);
-    expect(line![0]).toMatch(/z-index:\s*4/);
-  });
-  test("lane tone is a shared variable across day states", async () => {
-    const css = await Bun.file("site/static/style.css").text();
-    expect(css).toMatch(/\.cal-day\s*\{\s*--lane-bg:/);
-    expect(css).toMatch(/\.cal-day\.today\s*\{\s*--lane-bg:/);
-    expect(css).toMatch(/\.cal-day\.paced-short\s*\{\s*--lane-bg:/);
-    expect(css).toMatch(/\.cal-day-col\s*\{[^}]*background-color:\s*var\(--lane-bg\)/);
-  });
-  test("lane keeps full rounding; sticky cutter re-rounds the visible bottom", async () => {
-    const css = await Bun.file("site/static/style.css").text();
-    const lane = css.match(/\.cal-day-col\s*\{[^}]*\}/);
-    expect(lane).not.toBeNull();
-    expect(lane![0]).toMatch(/border-radius:\s*var\(--radius-lg\)/);
-    const cutter = css.match(/\.cal-day-col::after\s*\{[^}]*\}/);
-    expect(cutter).not.toBeNull();
-    expect(cutter![0]).toMatch(/position:\s*sticky/);
-    expect(cutter![0]).toMatch(/bottom:\s*0/);
-    expect(cutter![0]).toMatch(/margin-top:\s*auto/);
-    expect(cutter![0]).toMatch(/pointer-events:\s*none/);
-    expect(cutter![0]).toMatch(/mask:/);
-  });
-});
-
-/** #853: cal-edge-top — entries starting at 00:00 touch the lane's top edge
- *  and paint above the z-0 cutter, so they get the lane's radius on their
- *  top corners — mirrors #851's cal-edge-bottom. (The AM night band this
- *  describe originally covered was removed in #1132.) */
-describe("calendar top-edge rounding (#853)", () => {
-  test("cal-edge-top gives midnight-start entries the lane's medium top radius (compact pills excluded)", async () => {
-    const css = await Bun.file("site/static/style.css").text();
-    const rule = css.match(/\.cal-entry\.cal-edge-top:not\(\.cal-compact\)\s*\{[^}]*\}/);
-    expect(rule).not.toBeNull();
-    expect(rule![0]).toMatch(/border-top-left-radius:\s*var\(--radius-lg\)/);
-    expect(rule![0]).toMatch(/border-top-right-radius:\s*var\(--radius-lg\)/);
-  });
-
-  const stubQuery = () => ({
-    get: (..._a: unknown[]) => ({ n: 1 }),
-    all: (..._a: unknown[]) => [],
-  });
-  /* 2026-09-21 is CDT (UTC-5): 05:00Z is local midnight. */
-  const midnightEntry = {
-    id: 31, description: "midnight start", project_id: null, project_name: null,
-    client_name: null, client_color: null, invoice_id: null,
-    invoice_number: null, invoice_status: null,
-    start_time: "2026-09-21T05:00:00.000Z", end_time: "2026-09-21T06:30:00.000Z",
-  };
-  const middayEntry = {
-    id: 32, description: "midday", project_id: null, project_name: null,
-    client_name: null, client_color: null, invoice_id: null,
-    invoice_number: null, invoice_status: null,
-    start_time: "2026-09-21T15:00:00.000Z", end_time: "2026-09-21T16:00:00.000Z",
-  };
-  const compactMidnight = {
-    id: 33, description: "compact midnight", project_id: null, project_name: null,
-    client_name: null, client_color: null, invoice_id: null,
-    invoice_number: null, invoice_status: null,
-    start_time: "2026-09-21T05:00:00.000Z", end_time: "2026-09-21T05:15:00.000Z",
-  };
-  function weekInnerHtml(entries: unknown[]) {
-    const db = {
-      query: (_sql: string) => ({ get: () => ({ n: 1 }), all: () => entries }),
-    } as unknown as Database;
-    const views = createCalendarViews({
-      db,
-      qOne: stubQuery(),
-      qRange: stubQuery(),
-      entrySelect: "SELECT",
-      layout: (_t: string, b: string) => b,
-      projectOptionRows: () => [],
-      weekTargetBar: () => "",
-      calHourPx: 64,
-    } as any);
-    return views.weekInner("2026-09-20", "America/Chicago");
-  }
-  function classesFor(html: string, id: number): string {
-    const m = html.match(new RegExp(`data-id="${id}"[^>]*class="([^"]*)"|class="([^"]*)"[^>]*data-id="${id}"`));
-    if (!m) throw new Error(`no cal-entry with data-id=${id}`);
-    return (m[1] ?? m[2] ?? "");
-  }
-  test("entry starting at 00:00 is flagged cal-edge-top; others are not", () => {
-    const html = weekInnerHtml([midnightEntry, middayEntry, compactMidnight]);
-    expect(classesFor(html, 31)).toContain("cal-edge-top");
-    expect(classesFor(html, 32)).not.toContain("cal-edge-top");
-    /* compact pills keep their 999px rounding — never flagged. */
-    expect(classesFor(html, 33)).not.toContain("cal-edge-top");
-    expect(classesFor(html, 33)).toContain("cal-compact");
-  });
-});
-
-/** #857: a short entry starting near midnight got the 22px minimum-height
- *  floor with no room cap, so its card poked past the lane's bottom edge.
- *  Midnight now caps the floor (same shape as #279's next-entry cap), and
- *  the placeNow tick applies the same cap to running entries. */
-describe("calendar midnight lane cap (#857)", () => {
-  const stubQuery = () => ({
-    get: (..._a: unknown[]) => ({ n: 1 }),
-    all: (..._a: unknown[]) => [],
-  });
-  /* 2026-09-21 is CDT (UTC-5): 04:50Z is 23:50 local. */
-  const lateEntry = {
-    id: 34, description: "almost midnight", project_id: null, project_name: null,
-    client_name: null, client_color: null, invoice_id: null,
-    invoice_number: null, invoice_status: null,
-    start_time: "2026-09-22T04:50:00.000Z", end_time: "2026-09-22T04:55:00.000Z",
-  };
-  const middayShortEntry = {
-    id: 35, description: "midday short", project_id: null, project_name: null,
-    client_name: null, client_color: null, invoice_id: null,
-    invoice_number: null, invoice_status: null,
-    start_time: "2026-09-21T15:00:00.000Z", end_time: "2026-09-21T15:05:00.000Z",
-  };
-  function weekInnerHtml(entries: unknown[]) {
-    const db = {
-      query: (_sql: string) => ({ get: () => ({ n: 1 }), all: () => entries }),
-    } as unknown as Database;
-    const views = createCalendarViews({
-      db,
-      qOne: stubQuery(),
-      qRange: stubQuery(),
-      entrySelect: "SELECT",
-      layout: (_t: string, b: string) => b,
-      projectOptionRows: () => [],
-      weekTargetBar: () => "",
-      calHourPx: 64,
-    } as any);
-    return views.weekInner("2026-09-20", "America/Chicago");
-  }
-  function cardBox(html: string, id: number): { top: number; height: number; cls: string } {
-    const m = html.match(new RegExp(`style="top:([0-9.]+)px;height:([0-9.]+)px[^"]*"[^>]*data-id="${id}"`));
-    if (!m) throw new Error(`no cal-entry card with data-id=${id}`);
-    const c = html.match(new RegExp(`class="([^"]*)"[^>]*data-id="${id}"`));
-    return { top: parseFloat(m[1]), height: parseFloat(m[2]), cls: c ? c[1] : "" };
-  }
-  test("last entry of the day never extends past the lane bottom (24 * 64px)", () => {
-    const html = weekInnerHtml([lateEntry]);
-    const box = cardBox(html, 34);
-    expect(box.top + box.height).toBeLessThanOrEqual(24 * 64);
-    /* still compact — the floor treatment is capped, not removed. */
-    expect(box.cls).toContain("cal-compact");
-  });
-  test("midday short entries still get the full 22px floor", () => {
-    const html = weekInnerHtml([middayShortEntry]);
-    const box = cardBox(html, 35);
-    /* 22px floor minus the 4px #273 inset. */
-    expect(box.height).toBeCloseTo(18, 0);
-    expect(box.cls).toContain("cal-compact");
-  });
-  test("placeNow caps the running-entry floor at midnight", async () => {
-    const src = await Bun.file("site/views/calendar.ts").text();
-    const placeNow = src.slice(src.indexOf("function placeNow()"), src.indexOf("function syncCalHint()"));
-    expect(placeNow).toContain("((1440-sm)/60)*HOUR");
-  });
-});
-
 /** #946: on mobile, starting a scroll with the finger on a time entry opened
  *  the entry editor instead of scrolling — the pointerdown handler called
  *  openEdit immediately. The fix defers openEdit to pointerup behind a
@@ -1078,7 +826,7 @@ describe("calendar midnight lane cap (#857)", () => {
 describe("calendar entry tap-vs-scroll (#946)", () => {
   function downHandler(src: string) {
     return src.slice(
-      src.indexOf("document.addEventListener('pointerdown'"),
+      src.indexOf("function startTap("),
       src.indexOf("/* #213: the server's clock")
     );
   }
@@ -1178,15 +926,18 @@ describe("calendar project pickers (#1121)", () => {
 /** #1132: entries use the ui tint treatment (the viz-block pattern), and
  *  the M3 night-sky decoration is gone from markup and CSS. */
 describe("calendar de-Material restyle (#1132)", () => {
-  test("entry blocks are tinted, bordered, and box-sized", async () => {
+  test("entry blocks are the ui-viz tint treatment; no cal-entry rules remain", async () => {
     const css = await Bun.file("site/static/style.css").text();
-    const entry = css.match(/\.cal-entry\s*\{[^}]*\}/);
-    expect(entry).not.toBeNull();
-    expect(entry![0]).toContain("background: color-mix(in srgb, var(--c, var(--color-primary)) 22%, transparent)");
-    expect(entry![0]).toContain("border: 1px solid color-mix(in srgb, var(--c, var(--color-primary)) 38%, transparent)");
-    expect(entry![0]).toContain("box-sizing: border-box");
-    expect(entry![0]).toContain("border-radius: var(--radius-sm)");
-    expect(entry![0]).not.toContain("md-sys");
+    const block = css.match(/\.ui-viz-block \{[^}]*\}/);
+    expect(block).not.toBeNull();
+    expect(block![0]).toContain("background: var(--color-primary-bg)");
+    expect(block![0]).toContain("border: 1px solid var(--color-primary-border)");
+    expect(block![0]).toContain("box-sizing: border-box");
+    expect(block![0]).toContain("border-radius: var(--radius-sm)");
+    expect(css).not.toContain(".cal-entry");
+    const src = await Bun.file("site/views/calendar.ts").text();
+    expect(src).not.toContain("cal-entry");
+    expect(src).not.toContain("cal-ag-row");
   });
 
   test("no night bands, stars, or waves remain", async () => {

@@ -47,9 +47,6 @@
   --md-sys-shape-corner-extra-large: 28px;
   --md-sys-shape-corner-full: 999px;
 
-  /* #849: sticky day-header height — the lane's top cutter pins just under it */
-  --cal-head-h: 64px;
-
   /* state-layer opacities */
   --md-state-hover: 0.08;
   --md-state-focus: 0.1;
@@ -604,6 +601,7 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .ui-week-entry-meta { color: var(--color-text-tertiary); font-family: var(--font-family-code); font-size: var(--font-size-sm); }
 .ui-day-more { font-size: var(--font-size-sm); color: var(--color-text-tertiary); padding: var(--spacing-xxs) var(--spacing-xs); }
 .ui-agenda-day { margin-bottom: var(--spacing-md); }
+.ui-week.ui-week-agenda-only > .ui-week-agenda { display: block; }
 
 .ui-viz { display: grid; grid-template-columns: 44px repeat(7, 1fr); gap: 0 var(--spacing-xs); }
 .ui-viz-heads { display: grid; grid-template-columns: subgrid; grid-column: 1 / -1; margin-bottom: var(--spacing-xs); }
@@ -629,6 +627,8 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .ui-viz-grip { width: 24px; height: 3px; border-radius: 999px; background: var(--color-text-tertiary); opacity: 0; transition: opacity 0.15s ease; }
 .ui-viz-block:hover .ui-viz-grip, .ui-viz-block.is-selected .ui-viz-grip { opacity: 1; }
 .ui-viz-now { position: absolute; left: 0; right: 0; height: 2px; background: var(--color-error); pointer-events: none; }
+.ui-viz-block.is-preview { opacity: .65; pointer-events: none; }
+.ui-viz-block.cal-flash { animation: cal-flash 1.2s var(--motion-easing-standard); }
 
 .ui-scrim { position: fixed; inset: 0; background: rgb(0 0 0 / 0.5); display: grid; place-items: center; padding: var(--spacing); z-index: 60; }
 .ui-scrim[hidden] { display: none; }
@@ -1378,236 +1378,18 @@ body.app-fixed .ui-shell-main { min-height: 0; }
 /* calendar specifics: the week grid is the scroll region, headers stick */
 body.app-fixed #week { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
-body.app-fixed .cal-day-head,
-body.app-fixed .cal-gutter-spacer {
-  position: sticky; top: 0; z-index: 5;
-  background: var(--md-sys-color-surface);
-}
-/* #881: the sticky day headers are per-lane, so the 8px inter-lane gutters
-   broke the header band — the now-line dot (which correctly straddles the
-   lane edge at left:-5px) stayed visible through the gap after scrolling
-   past the now-line. Each head overlaps 4px into the gutters on both sides
-   (4+4 covers the 8px gap, so the header band is continuous and the dot's
-   gutter half hides under it with the line). Symmetric, so centered day
-   names/numbers don't shift. Sunday's right margin is zeroed: nothing may
-   overhang the grid's right edge. Lane gaps BELOW the header band stay 8px
-   page-bg — only the header band closes. (#880 moved the dot inside the
-   lane instead; reverted — the straddle is the correct design.) */
-.cal-grid > .cal-day .cal-day-head { margin-left: -4px; margin-right: -4px; }
-.cal-grid > .cal-day:nth-child(8) .cal-day-head { margin-right: 0; }
-/* #847: the sticky header is opaque page-bg and square. #845 gave it the lane
-   tone + rounded top, but the scrolling lane underneath peeked through
-   the header's rounded corner cutouts. Square and
-   opaque, nothing can ever peek through it. The lane's visible top edge is
-   re-rounded below it by the lane's ::before cutter, so columns still read rounded
-   on top at every scroll position. (::after is the day-stats tooltip.) */
-/* #849: the top cutter lives on the lane itself (not the header) so it paints
-   BELOW entries. First flex child, sticky just under the sticky header; the
-   negative margin collapses its layout footprint. Entries (z-2) cover it, so
-   it can never bite an entry's top corners the way the old header-anchored
-   cutter did. Same crescent mask as the ::after bottom cutter, mirrored.
-   #877: z-1, above the lane surface — the lane sliding under the cutter
-   must never cover its page-bg crescents, and
-   they read through as notches. Above the band, the crescents are clean
-   dark cuts at every scroll offset; opaque entries still paint over it. */
-.cal-day-col::before {
-  content: ""; display: block; flex: none; width: 100%;
-  height: var(--radius-lg);
-  margin-bottom: calc(-1 * var(--radius-lg));
-  position: sticky; top: var(--cal-head-h); z-index: 3;
-  background: var(--color-bg-layout);
-  -webkit-mask:
-    radial-gradient(circle var(--radius-lg) at 100% 100%, transparent calc(var(--radius-lg) - 1px), #000 var(--radius-lg)) left top / var(--radius-lg) var(--radius-lg) no-repeat,
-    radial-gradient(circle var(--radius-lg) at 0 100%, transparent calc(var(--radius-lg) - 1px), #000 var(--radius-lg)) right top / var(--radius-lg) var(--radius-lg) no-repeat;
-  mask:
-    radial-gradient(circle var(--radius-lg) at 100% 100%, transparent calc(var(--radius-lg) - 1px), #000 var(--radius-lg)) left top / var(--radius-lg) var(--radius-lg) no-repeat,
-    radial-gradient(circle var(--radius-lg) at 0 100%, transparent calc(var(--radius-lg) - 1px), #000 var(--radius-lg)) right top / var(--radius-lg) var(--radius-lg) no-repeat;
-  pointer-events: none;
-}
-/* ---------------- calendar: tonal day lanes, no hard dividers ----------------
- * Separation comes from spacing (8px gutters) + tone (lane surfaces). */
+.cal-scroll .ui-viz-heads { position: sticky; top: 0; z-index: 5; background: var(--color-bg-layout); }
 .cal-scroll { overflow-x: clip; border-radius: var(--radius-lg); }
-.cal-grid {
-  display: grid;
-  grid-template-columns: 44px repeat(7, minmax(0, 1fr));
-  gap: 8px;
-}
-.cal-gutter-spacer { height: var(--cal-head-h); } /* matches the two-line day header */
-.cal-gutter { position: relative; }
-.cal-hours { height: calc(var(--cal-hour) * 24); }
-.cal-hour-label {
-  position: absolute; right: 8px; transform: translateY(-50%);
-  font-size: 0.6875rem; color: var(--color-text-tertiary); white-space: nowrap;
-}
-.cal-day { display: flex; flex-direction: column; min-width: 0; }
-/* Grid entrance (#49): columns stagger in left→right inside the #48 region
-   entrance; per-column delay rendered inline by the server. */
-.cal-grid .cal-day {
-  animation: cal-day-enter var(--motion-duration-medium2) var(--motion-easing-emphasized-decelerate) backwards;
-}
-@keyframes cal-day-enter { from { opacity: 0; transform: translateY(12px); } }
-/* #69: header is two lines (weekday + date) — per-day stats moved into an M3 plain tooltip */
-.cal-day-head { position: relative; text-align: center; padding: 10px 4px 8px; min-height: var(--cal-head-h); }
-.cal-day-head[data-tip] { cursor: default; }
-.cal-day-head[data-tip]::after {
-  content: attr(data-tip);
-  position: absolute; left: 50%; top: calc(100% + 4px); /* M3: 4dp anchor gap */
-  transform: translateX(-50%) translateY(-2px);
-  background: var(--color-bg-spotlight);
-  color: var(--color-text);
-  border-radius: var(--radius-xs);
-  padding: 4px 8px; /* M3 plain tooltip padding */
-  white-space: nowrap; max-width: 0; overflow: hidden; /* #556: collapse while hidden */
-  font-size: 0.75rem; line-height: 16px;
-  opacity: 0; pointer-events: none; z-index: 30;
-  transition: opacity var(--motion-duration-short2) var(--motion-easing-standard),
-    transform var(--motion-duration-short2) var(--motion-easing-standard);
-}
-.cal-day-head[data-tip]:hover::after,
-.cal-day-head[data-tip]:focus-visible::after,
-.cal-day-head[data-tip].tip-show::after {
-  opacity: 1; transform: translateX(-50%) translateY(0);
-  max-width: 200px; overflow: visible; /* #556 */
-}
-/* keep edge-column tooltips inside the scroll region instead of clipping */
-.cal-day:first-child .cal-day-head[data-tip]::after { left: 0; transform: translateY(-2px); }
-.cal-day:last-child .cal-day-head[data-tip]::after { left: auto; right: 0; transform: translateX(0) translateY(-2px); }
-.cal-day:first-child .cal-day-head[data-tip]:hover::after,
-.cal-day:first-child .cal-day-head[data-tip]:focus-visible::after,
-.cal-day:first-child .cal-day-head[data-tip].tip-show::after,
-.cal-day:last-child .cal-day-head[data-tip]:hover::after,
-.cal-day:last-child .cal-day-head[data-tip]:focus-visible::after,
-.cal-day:last-child .cal-day-head[data-tip].tip-show::after { transform: translateY(0); }
-.cal-day-num { font-size: var(--font-size-heading-4); line-height: 28px; }
-.cal-day-num.today {
-  /* #69: today is marked with the primary color, not a filled badge */
-  color: var(--color-primary); font-weight: 700;
-}
-/* #845: per-day lane tone. #847: the sticky header no longer shares it — it is
-   opaque page-bg so the scrolling lane can never peek through
-   rounded corner cutouts; the ::before top cutter re-rounds the lane's
-   visible top edge instead. */
-.cal-day { --lane-bg: color-mix(in srgb, var(--color-text) 5%, var(--color-bg-layout)); }
-.cal-day.today { --lane-bg: color-mix(in srgb, var(--color-primary) 10%, color-mix(in srgb, var(--color-text) 5%, var(--color-bg-layout))); }
-/* Past days under 8h get a subtle one-step tonal lift; today and future
-   days are never tinted. Background only, so no layout shift. */
-.cal-day.paced-short { --lane-bg: color-mix(in srgb, var(--color-text) 8%, var(--color-bg-layout)); }
-.cal-day-col {
-  position: relative; height: calc(var(--cal-hour) * 24); flex: none;
-  display: flex; flex-direction: column;
-  background-color: var(--lane-bg);
-  border-radius: var(--radius-lg);
-  background-image: repeating-linear-gradient(to bottom,
-    transparent 0, transparent calc(var(--cal-hour) - 1px),
-    var(--color-border-secondary) calc(var(--cal-hour) - 1px),
-    var(--color-border-secondary) var(--cal-hour));
-  cursor: crosshair; touch-action: none;
-}
-/* #845: the lane's own rounded bottom scrolls out of view — a sticky cutter
-   re-rounds the visible bottom edge at every scroll position. Only the two
-   bottom-corner crescents paint (page bg). #849: the cutter sits at z-0,
-   below entries (z-1) so it can never bite them; the lane sliding
-   underneath still gets clean rounded cutouts instead of square cuts. */
-.cal-day-col::after {
-  content: ""; display: block; flex: none;
-  /* margin-top: auto parks the cutter at the lane's end in normal flow, so
-     sticky bottom:0 pins it to the viewport's bottom edge whenever the lane's
-     end is scrolled below it. At max scroll it sits exactly over the lane's
-     own rounded corners and its crescents blend invisibly into them. */
-  margin-top: auto;
-  position: sticky; bottom: 0; z-index: 0;
-  height: var(--radius-lg);
-  background: var(--color-bg-layout);
-  -webkit-mask:
-    radial-gradient(circle var(--radius-lg) at 100% 0, transparent calc(var(--radius-lg) - 1px), #000 var(--radius-lg)) left bottom / var(--radius-lg) var(--radius-lg) no-repeat,
-    radial-gradient(circle var(--radius-lg) at 0 0, transparent calc(var(--radius-lg) - 1px), #000 var(--radius-lg)) right bottom / var(--radius-lg) var(--radius-lg) no-repeat;
-  mask:
-    radial-gradient(circle var(--radius-lg) at 100% 0, transparent calc(var(--radius-lg) - 1px), #000 var(--radius-lg)) left bottom / var(--radius-lg) var(--radius-lg) no-repeat,
-    radial-gradient(circle var(--radius-lg) at 0 0, transparent calc(var(--radius-lg) - 1px), #000 var(--radius-lg)) right bottom / var(--radius-lg) var(--radius-lg) no-repeat;
-  pointer-events: none;
-}
-.cal-entry {
-  position: absolute; left: 4px; right: 4px; border-radius: var(--radius-sm);
-  box-sizing: border-box;
-  background: color-mix(in srgb, var(--c, var(--color-primary)) 22%, transparent);
-  border: 1px solid color-mix(in srgb, var(--c, var(--color-primary)) 38%, transparent);
-  color: color-mix(in srgb, var(--c, var(--color-primary)) 55%, white);
-  padding: 4px 8px; overflow: hidden; cursor: pointer;
-  font-size: 0.75rem; line-height: 1.35;
-  min-width: 0;
-  /* #849: above the lane's ::before/::after corner cutters (z-1) so they can
-     never bite an entry's corners; still below the sticky header (z-5).
-     #877: the top cutter moved to z-1 (above the lane surface),
-     so entries move to z-2 to stay above the cutters. */
-  z-index: 2;
-}
-/* #275: sub-30-minute entries render at the 22px floor — tighter padding,
-   smaller single-line text, and no duration line (no room for two lines).
-   #281: refine into a true single-line pill — the line is vertically
-   centered (flex), full chip rounding like an M3 chip, desc takes the free
-   space with ellipsis. No client dot: the card is already client-colored,
-   which is what the reference app's avatar is for on its monochrome cards.
-   #287: the text line must fit the 16px-painted / 12px-content box of a
-   15-min slot at 80px/hr exactly — 12px text @ line-height 1 since #1132
-   (the 1px border + 1px vertical padding leave a 12px content box). */
-.cal-entry.cal-compact {
-  display: flex; align-items: center;
-  padding: 1px 10px; font-size: var(--font-size-sm); line-height: 1;
-  border-radius: var(--radius-sm);
-}
-.cal-entry.cal-compact .cal-entry-desc { flex: 1; min-width: 0; }
-.cal-entry.cal-compact .cal-entry-dur { display: none; }
-.cal-entry:hover { filter: brightness(1.08); }
-/* #851: an entry touching the lane's bottom edge (server-flagged
-   cal-edge-bottom) gets the lane's medium corner radius on its bottom corners.
-   Pre-#849 the z-6 bottom cutter stamped that rounding over entries; post-#849
-   the cutter sits below entries so it can't fringe them, but edge entries fell
-   back to small corners and read as sharp. Compact entries keep their small radius. */
-.cal-entry.cal-edge-bottom:not(.cal-compact) {
-  border-bottom-left-radius: var(--radius-lg);
-  border-bottom-right-radius: var(--radius-lg);
-}
-/* #853: an entry starting at midnight touches the lane's top edge
-   (server-flagged cal-edge-top) gets the lane's medium corner radius on its
-   top corners. Mirrors cal-edge-bottom (#851): entries paint above the z-0
-   top cutter, so without this their small corners would cover the cutter's
-   rounding and read as sharp. Compact entries keep their small radius. */
-.cal-entry.cal-edge-top:not(.cal-compact) {
-  border-top-left-radius: var(--radius-lg);
-  border-top-right-radius: var(--radius-lg);
-}
 /* In-place week refresh (#65): load-entrance animations are suppressed while
    the #week section is swapped, so saving an entry never replays the page. */
 #week.no-enter [data-enter],
-#week.no-enter .nudge-chip,
-#week.no-enter .cal-day { animation: none !important; }
+#week.no-enter .nudge-chip { animation: none !important; }
 /* One-time highlight on the entry that was just created/updated. */
-.cal-entry.cal-flash { animation: cal-flash 1.2s var(--motion-easing-standard); }
 @keyframes cal-flash {
   0% { filter: brightness(1.7); }
   100% { filter: brightness(1); }
 }
-/* overlap: soft layered top shadow (tailwind-style), reads as elevation.
-   #283: tightened — same color, less spread. */
-.cal-entry.overlap {
-  box-shadow: 0 -4px 8px -2px rgb(0 0 0 / 0.3), 0 -2px 4px -2px rgb(0 0 0 / 0.25);
-}
-.cal-entry:focus-visible { outline: 2px solid var(--color-text); outline-offset: 1px; }
-.cal-entry.running { border: 1px dashed color-mix(in srgb, var(--c, var(--color-primary)) 70%, white); }
-.cal-entry-desc { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cal-entry-desc strong { font-weight: 700; }
-.cal-entry-dur { opacity: 0.75; white-space: nowrap; }
-.cal-now { position: absolute; left: 0; right: 0; height: 2px; background: var(--color-error); z-index: 4; pointer-events: none; }
-.cal-now::before {
-  content: ""; position: absolute; left: -5px; top: -4px;
-  width: 10px; height: 10px; border-radius: 50%;
-  background: var(--color-error);
-}
-.cal-drag-preview {
-  position: absolute; left: 2px; right: 2px; border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--color-primary) 35%, transparent);
-  border: 1px solid var(--color-primary); pointer-events: none; z-index: 3;
-}
+
 /* M3 dialog */
 .cal-scrim {
   position: fixed; inset: 0; z-index: 60;
@@ -1780,24 +1562,6 @@ body.app-fixed .cal-gutter-spacer {
 #biz-profile .terms-desc { margin-top: 8px; }
 
 .page-head-actions { display: flex; gap: 8px; align-items: center; }
-/* Milestone 17: bottom-edge resize handle for calendar entries. */
-.cal-resize {
-  position: absolute; left: 0; right: 0; bottom: 0; height: 12px;
-  cursor: ns-resize; border-radius: 0 0 8px 8px; touch-action: none;
-}
-.cal-resize.top { top: 0; bottom: auto; border-radius: 8px 8px 0 0; }
-.cal-resize.top::after { top: 4px; bottom: auto; }
-.cal-resize::after {
-  content: ""; position: absolute; left: 50%; bottom: 4px; transform: translateX(-50%);
-  width: 32px; height: 3px; border-radius: 2px;
-  background: currentColor; opacity: 0; transition: opacity 150ms cubic-bezier(0.05, 0.7, 0.1, 1);
-}
-.cal-entry:hover .cal-resize::after, .cal-entry:focus-visible .cal-resize::after { opacity: 0.55; }
-.cal-entry.resizing { z-index: 5; transition: none; }
-.cal-entry.resizing .cal-resize::after { opacity: 0.9; }
-@media (prefers-reduced-motion: reduce) {
-  .cal-resize::after { transition: none; }
-}
 /* Milestone 16.2: M3 snackbar for the global timer shortcut. */
 .tk-snackbar {
   position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(16px);
@@ -1889,44 +1653,6 @@ body.app-fixed .cal-gutter-spacer {
 /* (the status .pill retired with the zinvoices migration — statusChip is its successor) */
 
 /* #330: "Invoiced"/"Draft" mark on timer entry rows — tonal pill, no border. */
-/* #500: house M3 plain tooltip for the calendar entry card's invoiced mark
-   (hover + :focus-visible + 450ms touch long-press via the site-wide
-   [data-tip] handler). Mirrors the inv-mark tooltip (#498); the card uses no
-   other pseudo-element. overflow:visible scoped to [data-tip] so the tooltip
-   paints outside the card — the desc keeps its own overflow:hidden ellipsis. */
-.cal-entry[data-tip] { overflow: visible; }
-.cal-entry[data-tip]::after {
-  content: attr(data-tip);
-  position: absolute; left: 50%; top: calc(100% + 4px); /* M3: 4dp anchor gap */
-  transform: translateX(-50%) translateY(-2px);
-  background: var(--md-sys-color-inverse-surface);
-  color: var(--md-sys-color-inverse-on-surface);
-  border-radius: var(--md-sys-shape-corner-extra-small); /* M3 plain tooltip shape */
-  padding: 4px 8px; /* M3 plain tooltip padding */
-  white-space: nowrap; max-width: 0; overflow: hidden; /* #556: collapse while hidden */
-  font-size: 0.75rem; line-height: 16px; font-weight: 400;
-  opacity: 0; pointer-events: none; z-index: 30;
-  transition: opacity var(--motion-duration-short2) var(--motion-easing-standard),
-    transform var(--motion-duration-short2) var(--motion-easing-standard);
-}
-.cal-entry[data-tip]:hover::after,
-.cal-entry[data-tip]:focus-visible::after,
-.cal-entry[data-tip].tip-show::after {
-  opacity: 1; transform: translateX(-50%) translateY(0);
-  max-width: 200px; overflow: visible; /* #556 */
-}
-/* #659: the entry-card tooltip centers on the card, so in the first/last day
-   columns it runs past the scroll container edge and clips under
-   overflow-x: clip. Anchor it to the column edge instead — mirrors the
-   day-header tooltip rules above. */
-.cal-day:first-child .cal-entry[data-tip]::after { left: 0; transform: translateY(-2px); }
-.cal-day:last-child .cal-entry[data-tip]::after { left: auto; right: 0; transform: translateY(-2px); }
-.cal-day:first-child .cal-entry[data-tip]:hover::after,
-.cal-day:first-child .cal-entry[data-tip]:focus-visible::after,
-.cal-day:first-child .cal-entry[data-tip].tip-show::after,
-.cal-day:last-child .cal-entry[data-tip]:hover::after,
-.cal-day:last-child .cal-entry[data-tip]:focus-visible::after,
-.cal-day:last-child .cal-entry[data-tip].tip-show::after { transform: translateY(0); }
 .two-field { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 /* #353: content-driven — form field stacking, not an M3 window size class. */
 @media (max-width: 560px) { .two-field { grid-template-columns: 1fr; } }
@@ -2448,21 +2174,8 @@ body.app-fixed .cal-gutter-spacer {
 .skel-stack { display: flex; flex-direction: column; gap: 12px; }
 .skel-row { height: 64px; border-radius: var(--radius-lg); }
 
-/* -------- calendar skeleton (#322): mirrors .cal-pane-layout so the htmx
-   week swap has no layout flash. Same grid areas and 840px breakpoint as the
-   real grid; lanes echo the 80px hour rhythm of .cal-day-col. The aside width
-   tracks the real pane through --layout-supporting-pane. */
-/* (dead pre-carousel skeleton rules removed, #576; bare .cal-skel grid removed, #685) */
-.cal-skel-grid { grid-area: grid; display: grid; min-width: 0; min-height: 0;
-  grid-template-columns: 44px repeat(7, minmax(0, 1fr)); gap: 8px; }
-.cal-skel-day { display: flex; flex-direction: column; gap: 8px; min-width: 0; min-height: 0; }
-.cal-skel-head { height: 64px; flex: none; border-radius: var(--radius-lg); }
-.cal-skel-lane { flex: 1; min-height: 120px; border-radius: var(--radius-lg);
-  background-color: var(--md-sys-color-surface-container-low);
-  background-image: repeating-linear-gradient(to bottom,
-    transparent 0, transparent 79px,
-    color-mix(in srgb, var(--md-sys-color-outline-variant) 30%, transparent) 79px,
-    color-mix(in srgb, var(--md-sys-color-outline-variant) 30%, transparent) 80px); }
+/* -------- calendar skeleton (#322): the placeholder mirrors
+   .cal-pane-layout so the htmx week swap lands without a layout flash. */
 /* #572: week carousel — three pre-rendered week strips in an overflow-hidden
    viewport; chevron pans translate the track one viewport (±100%) on a pure
    transform. Each strip is a container: wide strips show the 24h grid, narrow
@@ -2476,7 +2189,7 @@ body.app-fixed .cal-gutter-spacer {
   display: flex; flex-direction: column; container-type: inline-size; }
 .cal-strip > .cal-scroll { flex: 1; min-height: 0; min-width: 0; }
 /* Recycled strips repopulate in the background — no entrance replay. */
-.cal-strip.no-enter [data-enter], .cal-strip.no-enter .cal-grid .cal-day { animation: none !important; }
+.cal-strip.no-enter [data-enter] { animation: none !important; }
 @media (prefers-reduced-motion: reduce) {
   .cal-track { transition: none; }
 }
@@ -2485,31 +2198,12 @@ body.app-fixed .cal-gutter-spacer {
    narrow well below the viewport — 799px of container was ~1300px of
    viewport, so ordinary laptops got the fallback. 639px keeps the grid
    (lanes >= ~85px) on laptop widths; phones still get the agenda. */
-.cal-agenda { display: none; }
+.cal-strip > .ui-week { display: none; }
 @container (max-width: 639px) {
   .cal-strip > .cal-scroll { display: none; }
-  .cal-agenda { display: flex; flex-direction: column; gap: 8px; flex: 1; min-height: 0;
+  .cal-strip > .ui-week { display: flex; flex-direction: column; gap: 8px; flex: 1; min-height: 0;
     overflow-y: auto; padding: 2px 2px 16px; }
 }
-/* -------- week agenda (narrow calendar strips, #572) -------- */
-.cal-ag-day { background: color-mix(in srgb, var(--color-text) 5%, var(--color-bg-layout));
-  border-radius: var(--radius-lg); padding: 10px 12px; }
-.cal-ag-day.today { background: color-mix(in srgb, var(--color-primary) 10%, color-mix(in srgb, var(--color-text) 5%, var(--color-bg-layout))); }
-.cal-ag-head { display: flex; align-items: center; gap: 10px; }
-.cal-ag-num { font-size: var(--font-size-heading-4); line-height: 28px; }
-.cal-ag-num.today { color: var(--color-primary); font-weight: 700; }
-.cal-ag-row { display: flex; align-items: baseline; gap: 10px; padding: 8px 10px;
-  margin-top: 6px; border-radius: var(--radius);
-  background: color-mix(in srgb, var(--c, var(--color-primary)) 24%, transparent);
-  cursor: pointer; }
-.cal-ag-row.invoiced { opacity: .55; } /* match the grid's frozen-record dim */
-.cal-ag-time { white-space: nowrap; flex: none; font-size: var(--font-size-sm); font-weight: 500; color: var(--color-text-secondary); }
-.cal-ag-desc { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--font-size); }
-.cal-ag-dur { flex: none; font-size: var(--font-size-sm); font-weight: 500; }
-.cal-ag-wd { font-size: var(--font-size); font-weight: 500; }
-.cal-ag-total { font-size: var(--font-size-sm); font-weight: 500; color: var(--color-text-secondary); }
-.cal-wd-name { font-size: var(--font-size); font-weight: 500; color: var(--color-text-secondary); }
-.cal-ag-empty { margin: 6px 0 2px; }
 /* #781: the week-summary hint teaches the grid's drag-to-create gesture, but
    on the narrow agenda the gesture is the per-day + button. Both variants
    render; the client toggles .cal-agenda-hint on <body> by strip width. A
