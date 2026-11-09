@@ -150,7 +150,7 @@ function billingWallPage(sub: Subscription | null): string {
   <title>${headline} · Zimer</title>
   <link rel="stylesheet" href="/static/style.css">
   <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
-  <script src="/static/motion.js" defer></script></head>
+  </head>
   <body><main class="login">
   ${card({ content })}
   </main></body></html>`;

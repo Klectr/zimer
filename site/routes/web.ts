@@ -151,7 +151,7 @@ export function createWebRouter(deps: WebDeps) {
   } = deps;
 
   /* #308: rate limits for the public surface — in-memory, per client IP.
-     A page view pulls ~4 subrequests (html, css, logo, motion.js). */
+     A page view pulls ~4 subrequests (html, css, logo). */
   const invoiceLimiter = createRateLimiter({ windowMs: 60_000, max: 60 });
   const loginLimiter = createRateLimiter({ windowMs: 5 * 60_000, max: 10 });
 

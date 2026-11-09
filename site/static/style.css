@@ -708,26 +708,26 @@ a.ui-menu-item:active, button.ui-menu-item:active { background: var(--color-fill
 /* ---------------- global scrollbars (M3 tonal, #191) ---------------- */
 /* Thin rounded tonal thumbs, transparent track — every scroll region
    (calendar grid, lists, dialogs, page) inherits this. Pumpkin stays
-   reserved for CTAs, so thumbs use surface tokens only. */
+   reserved for CTAs, so thumbs use neutral fill/border tokens only. */
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--md-sys-color-surface-container-highest) transparent;
+  scrollbar-color: var(--color-fill) transparent;
 }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-corner { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background-color: var(--md-sys-color-surface-container-highest);
+  background-color: var(--color-fill);
   background-clip: padding-box;
   border: 3px solid transparent;
-  border-radius: var(--md-sys-shape-corner-full);
+  border-radius: 999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background-color: var(--md-sys-color-outline-variant);
+  background-color: var(--color-border);
   border-width: 2px;
 }
 ::-webkit-scrollbar-thumb:active {
-  background-color: var(--md-sys-color-outline);
+  background-color: var(--color-text-tertiary);
   border-width: 2px;
 }
 
@@ -738,8 +738,8 @@ a.ui-menu-item:active, button.ui-menu-item:active { background: var(--color-fill
 *, *::before, *::after { box-sizing: border-box; }
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: var(--md-sys-color-surface);
-  color: var(--md-sys-color-on-surface);
+  background: var(--color-bg-layout);
+  color: var(--color-text);
   margin: 0;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
@@ -748,15 +748,15 @@ body {
 .md-title-medium { font-size: 1rem; line-height: 24px; font-weight: 500; letter-spacing: 0.15px; }
 .md-body-medium { font-size: 0.875rem; line-height: 20px; letter-spacing: 0.25px; }
 
-.muted { color: var(--md-sys-color-on-surface-variant); }
+.muted { color: var(--color-text-secondary); }
 .tiny { font-size: 0.75rem; }
-.error { color: var(--md-sys-color-error); }
+.error { color: var(--color-error); }
 /* the UA [hidden] rule loses to component display styles; enforce it */
 [hidden] { display: none !important; }
 
 /* visible focus everywhere (M3: focus +10% state layer + ring) */
 :focus-visible {
-  outline: 2px solid var(--md-sys-color-primary);
+  outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
 
@@ -1602,7 +1602,7 @@ body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
 .empty-state .row { display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap; }
 /* #300: first-run hint inside the calendar supporting pane. */
 .cal-first-run { margin-top: 12px; padding: 12px 14px; border-radius: 12px;
-  background: var(--md-sys-color-surface-container); }
+  background: var(--color-bg-elevated); }
 .cal-first-run p { margin: 8px 0; font-size: var(--font-size); font-weight: 500; }
 /* #949: below 600px the in-content demo cards hide — the load/remove action
    lives in the drawer instead (demoDrawerRow). Placed after the base rules
@@ -1803,13 +1803,13 @@ body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
 
 /* ---------------- form info callout (tonal container + leading icon) ---------------- */
 .form-info { display: flex; gap: 12px; align-items: flex-start;
-  background: var(--md-sys-color-surface-container-highest);
-  color: var(--md-sys-color-on-surface-variant);
+  background: var(--color-bg-elevated);
+  color: var(--color-text-secondary);
   border-radius: 12px; padding: 12px 16px; margin: 0 0 16px;
   font-size: 0.8125rem; line-height: 1.5; }
-.form-info svg { flex: none; width: 20px; height: 20px; margin-top: 1px; color: var(--md-sys-color-primary); }
+.form-info svg { flex: none; width: 20px; height: 20px; margin-top: 1px; color: var(--color-primary); }
 .form-info p { margin: 0; }
-.form-info a { color: var(--md-sys-color-primary); }
+.form-info a { color: var(--color-primary); }
 
 /* #969: the preview sheet centers in its pane. The sheet is a document
    surface: it carries its own card base (previously the shared md-card). */
@@ -2194,27 +2194,6 @@ body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
 .cal-hint-agenda { display: none; }
 .cal-agenda-hint .cal-hint-grid { display: none; }
 .cal-agenda-hint .cal-hint-agenda { display: inline; }
-
-/* M3 press ripple (JS-driven, see motion.js). Buttons already clip with
-   overflow: hidden; the span paints above the ::after state layer. */
-.md-ripple {
-  position: absolute;
-  border-radius: 50%;
-  background: currentColor;
-  opacity: 0;
-  transform: translate(-50%, -50%) scale(0);
-  pointer-events: none;
-}
-.md-ripple.go {
-  transition: transform var(--motion-duration-medium2) var(--motion-easing-emphasized),
-    opacity var(--motion-duration-short4) var(--motion-easing-standard);
-  transform: translate(-50%, -50%) scale(1);
-  opacity: 0.14;
-}
-.md-ripple.go.fade {
-  transition: opacity var(--motion-duration-short3) var(--motion-easing-standard);
-  opacity: 0;
-}
 
 /* #753: Zimer mascot placements — subtle, never competing with CTAs. */
 .empty-mascot { width: 132px; height: auto; }

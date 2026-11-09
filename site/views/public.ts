@@ -106,7 +106,6 @@ export function createPublicViews(deps: PublicViewDeps) {
   <title>Invoice ${esc(inv.number)} · Zimer</title>${ogTags("Zinvoice · Zimer", "View and pay your Zinvoice securely.", origin + tokenPath, origin + "/static/og-image.png", OG_BRAND)}
   <link rel="stylesheet" href="/static/style.css">
   <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
-  <script src="/static/motion.js" defer></script>
   </head>
   <body>
   <main class="page-public-invoice">
@@ -157,7 +156,6 @@ export function createPublicViews(deps: PublicViewDeps) {
   <link rel="canonical" href="${origin}/privacy">${ogTags("Privacy policy · Zimer", "Zimer privacy policy: what we store, where it lives, what we never do with your data, and how to delete your account.", origin + "/privacy", origin + "/static/og-image-v3.png")}
   <link rel="stylesheet" href="/static/style.css">
   <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
-  <script src="/static/motion.js" defer></script>
   </head>
   <body>
   <main class="page-public page-changelog">
@@ -184,7 +182,6 @@ export function createPublicViews(deps: PublicViewDeps) {
   <link rel="canonical" href="${origin}/changelog">${ogTags("Changelog · Zimer", "What's new in Zimer: release notes, fixes, and product changes.", origin + "/changelog", origin + "/static/og-image-v3.png")}
   <link rel="stylesheet" href="/static/style.css">
   <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
-  <script src="/static/motion.js" defer></script>
   </head>
   <body>
   <main class="page-public page-changelog">
@@ -214,7 +211,6 @@ export function createPublicViews(deps: PublicViewDeps) {
   <link rel="canonical" href="${origin}/terms">${ogTags("Terms of service · Zimer", "Zimer terms of service: the $12/month hosted plan with a 14-day free trial, 30-day refunds, and the free-forever self-hosted option.", origin + "/terms", origin + "/static/og-image-v3.png")}
   <link rel="stylesheet" href="/static/style.css">
   <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
-  <script src="/static/motion.js" defer></script>
   </head>
   <body>
   <main class="page-public page-changelog">
@@ -231,7 +227,7 @@ export function createPublicViews(deps: PublicViewDeps) {
   <title>Log in · Zimer</title>
   <link rel="stylesheet" href="/static/style.css">
   <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
-  <script src="/static/motion.js" defer></script></head>
+  </head>
   <body><main class="login">
   ${authCard({
     action: "/login",
@@ -252,7 +248,6 @@ export function createPublicViews(deps: PublicViewDeps) {
   <title>${title} · Zimer</title>
   <link rel="stylesheet" href="/static/style.css">
   <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
-  <script src="/static/motion.js" defer></script>
   <script src="/static/utm.js" defer></script></head>
   <body><main class="login">
   ${cardHtml}
