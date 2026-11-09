@@ -15,6 +15,7 @@ import { card } from "../ui/card.ts";
 import { selectField, textField } from "../ui/field.ts";
 import { clientRow, zinvoiceRow } from "../ui/rows.ts";
 import { appHeader } from "../ui/app-header.ts";
+import { iconButton } from "../ui/icon-button.ts";
 import { emptyState } from "../ui/empty-state.ts";
 import { statBlock } from "../ui/stat.ts";
 import { formSection } from "../ui/zinvoice-form.ts";
@@ -625,7 +626,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
         <span class="proof-icons">
           <a class="ui-icon-btn" href="/invoices/${inv.id}/payment-proof/${p.id}" download="${esc(p.filename)}" data-tip="Download" aria-label="Download proof">${icon("download")}</a>
           <form method="post" action="/invoices/${inv.id}/payment-proof/${p.id}/delete" class="inline">
-            <button class="ui-icon-btn ui-icon-btn-danger" type="submit" data-tip="Delete proof" aria-label="Delete proof" data-confirm="Delete this proof of payment?">${icon("delete")}</button>
+            ${iconButton({ icon: "delete", label: "Delete proof", danger: true, type: "submit", attrs: `data-confirm="Delete this proof of payment?"` })}
           </form>
         </span>
       </div>`).join("");
@@ -723,10 +724,10 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       document.querySelectorAll(\".share-lines\").forEach(wire);
     })();</script>`;
     const copyBtn = (url: string) => `
-      <button class="ui-icon-btn" type="button" data-copy data-url="${esc(url)}" data-tip="Copy link" aria-label="Copy link">${icon("copy")}</button>`;
+      ${iconButton({ icon: "copy", label: "Copy link", attrs: `data-copy data-url="${esc(url)}"` })}`;
     const actBtn = (action: string, ic: string, label: string, cls = "", confirm = "", confirmLabel = "Delete", tip = label) => `
       <form method="post" action="${action}" hx-post="${action}" ${hxDetail}>
-        <button class="ui-icon-btn ${cls}" type="submit" data-tip="${tip}" aria-label="${label}"${confirm ? ` data-confirm="${confirm}" data-confirm-label="${confirmLabel}"` : ""}>${icon(ic)}</button>
+        ${iconButton({ icon: ic, label, tip, danger: cls === "ui-icon-btn-danger", type: "submit", attrs: confirm ? `data-confirm="${confirm}" data-confirm-label="${confirmLabel}"` : undefined })}
       </form>`;
     const clientLine = clientLink ? `
       <div class="share-line">
@@ -790,10 +791,10 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
           <a class="ui-icon-btn tip-right" href="/invoices/${inv.id}.pdf" download data-tip="Download PDF" aria-label="Download PDF">${icon("download")}</a>
           ${next ? `<form method="post" action="/invoices/${inv.id}/status" class="inline" hx-post="/invoices/${inv.id}/status" ${hxDetail}>
             <input type="hidden" name="status" value="${next}">
-            <button class="ui-icon-btn tip-right" type="submit" data-tip="${nextLabel}" aria-label="${nextLabel}" data-confirm="${nextConfirm}" data-confirm-label="${nextLabel}">${icon("check")}</button>
+            ${iconButton({ icon: "check", label: nextLabel, className: "tip-right", type: "submit", attrs: `data-confirm="${nextConfirm}" data-confirm-label="${nextLabel}"` })}
           </form>` : ""}
           ${inv.status === "draft" ? `<form method="post" action="/invoices/${inv.id}/delete" class="inline">
-            <button class="ui-icon-btn ui-icon-btn-danger tip-right" type="submit" data-tip="Delete draft" aria-label="Delete draft" data-confirm="Delete this draft zinvoice? Its entries become unbilled again.">${icon("delete")}</button>
+            ${iconButton({ icon: "delete", label: "Delete draft", danger: true, className: "tip-right", type: "submit", attrs: `data-confirm="Delete this draft zinvoice? Its entries become unbilled again."` })}
           </form>` : ""}
         </div>
       </div>

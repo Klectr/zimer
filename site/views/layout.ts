@@ -71,7 +71,7 @@ export function trialBannerHtml(opts: {
     <form class="trial-banner-cta" method="POST" action="/billing/checkout">
       <button class="ui-btn ui-btn-primary" type="submit">Subscribe · $12/month</button>
     </form>
-    <button class="ui-icon-btn" type="button" data-trial-banner-close aria-label="Dismiss trial reminder">${icon("close")}</button>
+    ${iconButton({ icon: "close", label: "Dismiss trial reminder", tip: null, attrs: "data-trial-banner-close" })}
   </div>
   <script>(function(){
     var KEY="zimer-trial-banner-dismissed", el=document.getElementById("trial-banner");
@@ -143,8 +143,7 @@ export function createLayoutViews(qRunning: Statement, themeCss?: () => string, 
     <div class="ui-shell-main">
       <header class="ui-mobile-head" data-enter="1">
         ${logoLockup()}
-        <button class="ui-icon-btn" id="appbar-menu-btn" type="button"
-          aria-label="Open menu" aria-haspopup="dialog">${icon("menu")}</button>
+        ${iconButton({ icon: "menu", label: "Open menu", id: "appbar-menu-btn", tip: null, attrs: `aria-haspopup="dialog"` })}
       </header>
       ${/* #923: trial-expiry nudge — strip at the top of the content column;
            the thunk resolves the hosted trial state per user. */ trialBanner ? trialBanner() : ""}
@@ -351,7 +350,7 @@ function settingsDialog(): string {
     <div class="settings-dialog ui-dialog" role="dialog" aria-modal="true" aria-labelledby="settings-dialog-title">
       <div class="settings-dialog-head">
         <h2 class="ui-dialog-title" id="settings-dialog-title">Settings</h2>
-        <button class="ui-icon-btn" id="settings-close" type="button" aria-label="Close settings">${icon("close")}</button>
+        ${iconButton({ icon: "close", label: "Close settings", id: "settings-close", tip: null })}
       </div>
       <div id="settings-body"><p class="muted">Loading…</p></div>
     </div>

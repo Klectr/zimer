@@ -147,7 +147,7 @@ describe("running entry row delete guard (#462)", () => {
   });
   test("Edit opens the dialog instead of navigating (#903)", () => {
     const html = row(stoppedEntry);
-    expect(html).toContain('<button class="ui-icon-btn" type="button" data-edit-entry="1"');
+    expect(html).toContain('<button type="button" class="ui-icon-btn" data-edit-entry="1"');
     expect(html).toContain('aria-label="Edit entry" data-tip="Edit"');
     expect(html).not.toContain("/entries/1/edit");
   });

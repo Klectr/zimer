@@ -10,6 +10,7 @@ import { workspaceEmpty } from "../lib/demo.ts"; /* #300: first-run hint */
 import { button, linkButton } from "../ui/button.ts";
 import { selectField, textField } from "../ui/field.ts";
 import { weekView, type WeekDay, type WeekEntry } from "../ui/week-view.ts";
+import { iconButton } from "../ui/icon-button.ts";
 import { visualizer, type VizDay, type VizEntry } from "../ui/visualizer.ts";
 import type { Entry } from "../lib/types.ts";
 
@@ -264,7 +265,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
         date: day,
         total: totalSecs > 0 ? fmtDur(totalSecs) : "",
         isToday: day === wd.today,
-        addHtml: `<button type="button" class="ui-icon-btn" data-ag-new="${day}" aria-label="Log time ${wdName}">${icon("add")}</button>`,
+        addHtml: iconButton({ icon: "add", label: `Log time ${wdName}`, tip: null, attrs: `data-ag-new="${day}"` }),
         entries,
       });
     }
@@ -411,7 +412,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
         <div class="cal-dialog ui-dialog" role="dialog" aria-modal="true" aria-labelledby="cal-dialog-title">
           <div class="cal-dialog-head">
             <h2 class="ui-dialog-title" id="cal-dialog-title">New entry</h2>
-            <button class="ui-icon-btn" id="cal-close" type="button" aria-label="Close dialog">${icon("close")}</button>
+            ${iconButton({ icon: "close", label: "Close dialog", id: "cal-close", tip: null })}
           </div>
           <p class="muted" id="cal-dialog-date"></p>
           ${textField({ id: "cal-desc", label: "Description", autocomplete: "off", list: "tk-desc-suggest-dialog" })}
@@ -1154,7 +1155,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     return `
       <div class="cal-dialog-head">
         <h2 class="ui-dialog-title" id="entry-dialog-title">${locked ? "Entry" : "Edit entry"}</h2>
-        <button class="ui-icon-btn" data-close-entry type="button" aria-label="Close dialog">${icon("close")}</button>
+        ${iconButton({ icon: "close", label: "Close dialog", tip: null, attrs: "data-close-entry" })}
       </div>
       ${locked ? `<p class="muted">Zinvoiced on ${esc(e.invoice_number || "")} — this time can\u2019t be edited.</p>` : ""}
       <form hx-post="/entries/${e.id}" hx-swap="none" class="form" id="edit-entry-form">
