@@ -102,10 +102,11 @@ describe("client settings modal (#630)", () => {
     expect(html).toContain('id="client-settings-scrim"');
     expect(html).toContain('id="client-settings-body"');
     expect(html).toContain('id="client-settings-title"');
+    expect(html).toContain('id="client-settings-sub"');
     expect(html).toContain('role="dialog"');
   });
 
-  test("settings form carries all seven client fields posting to /clients/:id/settings", () => {
+  test("settings form carries all eight client fields posting to /clients/:id/settings", () => {
     const { db, client } = testDb();
     db.query("UPDATE clients SET rate = ?, payment_terms = ?, email = ?, phone = ?, website = ?, address = ? WHERE id = ?")
       .run(45, "net_15", "ap@bytebot.io", "555-0100", "bytebot.io", "2643 Morningside Dr\nClearwater, FL 33759", client.id);
@@ -125,6 +126,29 @@ describe("client settings modal (#630)", () => {
     expect(html).toContain('name="phone" value="555-0100"');
     expect(html).toContain('name="website" value="bytebot.io"');
     expect(html).toContain(">2643 Morningside Dr\nClearwater, FL 33759</textarea>");
+    /* #1160: color is editable here too, not just at creation. */
+    expect(html).toContain('name="color" value="#fb923c"');
+    expect(html).toContain('data-client-name="Acme"');
+  });
+
+  /* #1160: the dialog names the client, offers Cancel next to Save, and a
+     failed save re-renders with the error line + submitted values. */
+  test("settings form carries a Cancel button beside Save", () => {
+    const { db, client } = testDb();
+    const views = createManageViews({ db, layout: (_t: string, b: string) => b, unbilledByClient: () => [] });
+    const html = views.clientSettingsForm(client);
+    expect(html).toContain('id="client-settings-cancel"');
+    expect(html.indexOf('id="client-settings-cancel"')).toBeLessThan(html.indexOf(">Save</button>"));
+  });
+
+  test("settings form with an error renders the alert line and keeps submitted values", () => {
+    const { db, client } = testDb();
+    const views = createManageViews({ db, layout: (_t: string, b: string) => b, unbilledByClient: () => [] });
+    const html = views.clientSettingsForm({ ...client, name: "Renamed", rate: "-5" }, "Hourly rate must be a number at or above 0.");
+    expect(html).toContain('<p class="error" role="alert">Hourly rate must be a number at or above 0.</p>');
+    expect(html).toContain('name="name" value="Renamed"');
+    const clean = views.clientSettingsForm(client);
+    expect(clean).not.toContain('role="alert"');
   });
 
   test("settings form renders empty fields when the record has none", () => {
@@ -208,6 +232,15 @@ describe("manage parity (#1121)", () => {
     expect(html).not.toContain("client-add-toggle");
     expect(html).not.toContain('id="client-add-form" class="ui-settings-form" hidden');
     expect(html.indexOf('id="client-add-form"')).toBeLessThan(html.indexOf('id="client-list"'));
+  });
+
+  /* #1160: the page-manage mock's add form collects email at creation. */
+  test("add-client form collects email", () => {
+    const html = pageHtml();
+    expect(html).toContain('id="mc-email"');
+    expect(html).toContain('name="email"');
+    expect(html).toContain('placeholder="billing@client.example"');
+    expect(html.indexOf('id="mc-email"')).toBeLessThan(html.indexOf('id="client-list"'));
   });
 
   test("list OOB refresh carries the header counts sub", () => {
