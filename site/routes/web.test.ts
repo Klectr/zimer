@@ -14,7 +14,7 @@ function setup() {
   const db = createDb(mkdtempSync(join(tmpdir(), "tk-web-"))).db;
   db.query("INSERT INTO clients (name, color, rate) VALUES ('Bytebot', '#fb923c', 40)").run();
   const client = db.query("SELECT * FROM clients").get() as any;
-  const views = createManageViews({ db, layout: (_t: string, b: string) => b });
+  const views = createManageViews({ db, layout: (_t: string, b: string) => b, unbilledByClient: () => [] });
   const noop = () => "";
   /* #733: data deps resolve per request through getTenant now. */
   const tenant = {
@@ -264,7 +264,7 @@ describe("/manage default selection (#835)", () => {
   function setupWith(rows: string[]) {
     const db = createDb(mkdtempSync(join(tmpdir(), "tk-web-835-"))).db;
     for (const name of rows) db.query("INSERT INTO clients (name) VALUES (?)").run(name);
-    const views = createManageViews({ db, layout: (_t: string, b: string) => b });
+    const views = createManageViews({ db, layout: (_t: string, b: string) => b, unbilledByClient: () => [] });
     const noop = () => "";
     const tenant = {
       db, dbPath: "",

@@ -35,7 +35,7 @@ function mockFetch() {
 function setup() {
   const db = createDb(mkdtempSync(join(tmpdir(), "tk-signup-"))).db;
   const accounts = createAccountsDb(mkdtempSync(join(tmpdir(), "tk-signup-acct-")));
-  const views = createManageViews({ db, layout: (_t: string, b: string) => b });
+  const views = createManageViews({ db, layout: (_t: string, b: string) => b, unbilledByClient: () => [] });
   const noop = () => "";
   const tenant = {
     db, dbPath: "",

@@ -18,7 +18,7 @@ function testDb() {
 
 function detailHtml(): string {
   const { db, client } = testDb();
-  const views = createManageViews({ db, layout: (_t: string, b: string) => b });
+  const views = createManageViews({ db, layout: (_t: string, b: string) => b, unbilledByClient: () => [] });
   return views.clientDetailBody({ kind: "client", client });
 }
 
@@ -26,7 +26,7 @@ function detailHtml(): string {
    client detail — render the full page for assertions covering it. */
 function pageHtml(): string {
   const { db, client } = testDb();
-  const views = createManageViews({ db, layout: (_t: string, b: string) => b });
+  const views = createManageViews({ db, layout: (_t: string, b: string) => b, unbilledByClient: () => [] });
   return views.managePage({ kind: "client", client });
 }
 
@@ -63,6 +63,7 @@ describe("manage document title (#863)", () => {
     const views = createManageViews({
       db,
       layout: (t: string, b: string) => { captured = t; return b; },
+      unbilledByClient: () => [],
     });
     views.managePage({ kind: "client", client });
     expect(captured).toBe("Clients");
@@ -109,7 +110,7 @@ describe("client settings modal (#630)", () => {
     db.query("UPDATE clients SET rate = ?, payment_terms = ?, email = ?, phone = ?, website = ?, address = ? WHERE id = ?")
       .run(45, "net_15", "ap@bytebot.io", "555-0100", "bytebot.io", "2643 Morningside Dr\nClearwater, FL 33759", client.id);
     const c = db.query("SELECT * FROM clients WHERE id = ?").get(client.id) as any;
-    const views = createManageViews({ db, layout: (_t: string, b: string) => b });
+    const views = createManageViews({ db, layout: (_t: string, b: string) => b, unbilledByClient: () => [] });
     const html = views.clientSettingsForm(c);
     expect(html).toContain('id="client-settings-form"');
     expect(html).toContain(`action="/clients/${client.id}/settings"`);
@@ -128,7 +129,7 @@ describe("client settings modal (#630)", () => {
 
   test("settings form renders empty fields when the record has none", () => {
     const { db, client } = testDb();
-    const views = createManageViews({ db, layout: (_t: string, b: string) => b });
+    const views = createManageViews({ db, layout: (_t: string, b: string) => b, unbilledByClient: () => [] });
     const html = views.clientSettingsForm(client);
     expect(html).toContain('name="name" value="Acme"');
     expect(html).toContain('name="rate" value=""');
@@ -144,7 +145,7 @@ describe("client settings modal (#630)", () => {
 describe("#805: client list-detail default selection", () => {
   function render(isDefault: boolean): string {
     const { db, client } = testDb();
-    const views = createManageViews({ db, layout: (_t: string, b: string) => b });
+    const views = createManageViews({ db, layout: (_t: string, b: string) => b, unbilledByClient: () => [] });
     return views.managePage({ kind: "client", client }, isDefault);
   }
   test("explicit selection sets has-selection", () => {
@@ -162,7 +163,7 @@ describe("#805: client list-detail default selection", () => {
 describe("manage labels (#827)", () => {
   test("client settings form fields are wired via matching id/for", () => {
     const { db, client } = testDb();
-    const views = createManageViews({ db, layout: (_t: string, b: string) => b });
+    const views = createManageViews({ db, layout: (_t: string, b: string) => b, unbilledByClient: () => [] });
     const html = views.clientSettingsForm(client);
     for (const id of ["cs-name", "cs-rate", "cs-terms", "cs-email", "cs-phone", "cs-website", "cs-address"]) {
       expect(html).toContain(`id="${id}"`);
@@ -182,7 +183,7 @@ describe("manage labels (#827)", () => {
 
   test("business profile labels are wired via matching id/for", () => {
     const { db } = testDb();
-    const views = createManageViews({ db, layout: (_t: string, b: string) => b });
+    const views = createManageViews({ db, layout: (_t: string, b: string) => b, unbilledByClient: () => [] });
     const html = views.bizProfileSection();
     for (const id of ["bp-business_name", "bp-business_email", "bp-business_address", "bp-terms"]) {
       expect(html).toContain(`id="${id}"`);
@@ -191,10 +192,47 @@ describe("manage labels (#827)", () => {
   });
 });
 
+/** #1121: Manage follows its mock — appHeader with the counts sub, the
+ *  add-client form open at the top of the list pane, and the unbilled
+ *  figure in each client row's meta. */
+describe("manage parity (#1121)", () => {
+  test("page head is appHeader with client/project counts", () => {
+    const html = pageHtml();
+    expect(html).toContain('<h1 class="ui-app-title">Clients</h1>');
+    expect(html).toContain('<p class="ui-app-sub" id="mg-sub">1 client · 1 project</p>');
+  });
+
+  test("add-client form is open in place — no toggle, no hidden form", () => {
+    const html = pageHtml();
+    expect(html).toContain('<form method="post" action="/clients" id="client-add-form" class="ui-settings-form">');
+    expect(html).not.toContain("client-add-toggle");
+    expect(html).not.toContain('id="client-add-form" class="ui-settings-form" hidden');
+    expect(html.indexOf('id="client-add-form"')).toBeLessThan(html.indexOf('id="client-list"'));
+  });
+
+  test("list OOB refresh carries the header counts sub", () => {
+    const { db, client } = testDb();
+    const views = createManageViews({ db, layout: (_t: string, b: string) => b, unbilledByClient: () => [] });
+    const html = views.clientListOob({ kind: "client", client });
+    expect(html).toContain('<p class="ui-app-sub" id="mg-sub" hx-swap-oob="true">1 client · 1 project</p>');
+  });
+
+  test("client row meta carries the unbilled figure", () => {
+    const { db, client } = testDb();
+    const views = createManageViews({
+      db,
+      layout: (_t: string, b: string) => b,
+      unbilledByClient: () => [{ id: client.id, name: "Acme", secs: 5400 }],
+    });
+    const html = views.managePage({ kind: "client", client });
+    expect(html).toContain("1 project · 1h 30m unbilled");
+  });
+});
+
 describe("theme section (#884)", () => {
   function themeHtml(): string {
     const { db } = testDb();
-    return createManageViews({ db, layout: (_t: string, b: string) => b }).themeSectionHtml();
+    return createManageViews({ db, layout: (_t: string, b: string) => b, unbilledByClient: () => [] }).themeSectionHtml();
   }
   test("renders the section with all five dots", () => {
     const html = themeHtml();
@@ -209,7 +247,7 @@ describe("theme section (#884)", () => {
     expect(themeHtml()).toContain('aria-label="Pumpkin theme" aria-pressed="true"');
     const { db } = testDb();
     db.query("INSERT INTO meta (key, value) VALUES ('theme', 'blue')").run();
-    const html = createManageViews({ db, layout: (_t: string, b: string) => b }).themeSectionHtml();
+    const html = createManageViews({ db, layout: (_t: string, b: string) => b, unbilledByClient: () => [] }).themeSectionHtml();
     expect(html).toContain('aria-label="Blue theme" aria-pressed="true"');
     expect(html).not.toContain('aria-label="Pumpkin theme" aria-pressed="true"');
   });
