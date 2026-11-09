@@ -347,8 +347,8 @@ function navDrawer(demoRowHtml: string = ""): string {
     lazily via htmx on open so layout() needs no db access. Follows the
     .cal-scrim/.cal-dialog motion pattern (scrim fade + dialog scale/fade). */
 function settingsDialog(): string {
-  return `<div class="cal-scrim" id="settings-scrim" hidden>
-    <div class="settings-dialog" role="dialog" aria-modal="true" aria-labelledby="settings-dialog-title">
+  return `<div class="cal-scrim ui-scrim" id="settings-scrim" hidden>
+    <div class="settings-dialog ui-dialog" role="dialog" aria-modal="true" aria-labelledby="settings-dialog-title">
       <div class="settings-dialog-head">
         <h2 class="ui-dialog-title" id="settings-dialog-title">Settings</h2>
         <button class="ui-icon-btn" id="settings-close" type="button" aria-label="Close settings">${icon("close")}</button>
@@ -420,8 +420,8 @@ function settingsDialog(): string {
     lazy-loads via htmx on open, Escape/scrim-click close it, Tab is trapped
     via the shared tkTrapTab, and focus returns to the edit button. */
 function entryDialog(): string {
-  return `<div class="cal-scrim" id="entry-scrim" hidden>
-    <div class="cal-dialog" role="dialog" aria-modal="true" aria-labelledby="entry-dialog-title">
+  return `<div class="cal-scrim ui-scrim" id="entry-scrim" hidden>
+    <div class="cal-dialog ui-dialog" role="dialog" aria-modal="true" aria-labelledby="entry-dialog-title">
       <div id="entry-dialog-body"><p class="muted">Loading…</p></div>
     </div>
   </div>
