@@ -6,7 +6,7 @@
 import type { Statement } from "bun:sqlite";
 import { esc } from "../lib/format.ts";
 import { icon, logo } from "../lib/icons.ts";
-import { appSidebar, type NavItem } from "../ui/app-sidebar.ts";
+import { appSidebar, navItemsHtml, type NavItem } from "../ui/app-sidebar.ts";
 import { logoLockup } from "../ui/logo-lockup.ts";
 import { iconButton } from "../ui/icon-button.ts";
 import { button, linkButton } from "../ui/button.ts";
@@ -152,7 +152,7 @@ export function createLayoutViews(qRunning: Statement, themeCss?: () => string, 
     </div>
   </div>
   <nav class="ui-mobile-nav" aria-label="Primary">
-    ${navItems.slice(0, 4).map((d) => `<a href="${d.href}" class="ui-navitem${active === d.key ? " is-active" : ""}"${active === d.key ? ` aria-current="page"` : ""}>${icon(d.icon)}<span>${d.label}</span></a>`).join("")}
+    ${navItemsHtml({ items: navItems.slice(0, 4), active: active ?? "" })}
   </nav>
   ${/* #355: the settings scrim is a direct body child — inside the app bar it
        would be trapped in the header's stacking context and paint below the

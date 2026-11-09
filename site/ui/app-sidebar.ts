@@ -9,14 +9,13 @@ export interface NavItem {
   icon: keyof typeof ICONS;
 }
 
-export interface AppSidebarOptions {
+export interface NavItemsOptions {
   items: NavItem[];
   active: string;
-  footer?: string;
 }
 
-export function appSidebar(opts: AppSidebarOptions): string {
-  const links = opts.items
+export function navItemsHtml(opts: NavItemsOptions): string {
+  return opts.items
     .map((item) => {
       const active = item.key === opts.active;
       return (
@@ -25,6 +24,16 @@ export function appSidebar(opts: AppSidebarOptions): string {
       );
     })
     .join("");
+}
+
+export interface AppSidebarOptions {
+  items: NavItem[];
+  active: string;
+  footer?: string;
+}
+
+export function appSidebar(opts: AppSidebarOptions): string {
+  const links = navItemsHtml(opts);
   const footer = opts.footer ? `<div class="ui-side-foot">${opts.footer}</div>` : "";
   return `<aside class="ui-side">${logoLockup()}<nav aria-label="Primary">${links}</nav>${footer}</aside>`;
 }
