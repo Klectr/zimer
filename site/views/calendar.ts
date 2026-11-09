@@ -224,7 +224,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       days.push({
         date: day,
         label: `${weekdayOf(y, m, d).slice(0, 3)} ${MONTHS[m - 1]} ${d}`,
-        total: fmtDur(dayTotalSecs(day, wd)),
+        total: dayTotalSecs(day, wd) > 0 ? fmtDur(dayTotalSecs(day, wd)) : "0h",
         isToday: day === wd.today,
         entries,
       });
@@ -656,7 +656,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       if(!kbBlock||e.target!==kbBlock) return;
       if(kbBlock.dataset.start!==kbStart||kbBlock.dataset.end!==kbEnd){
         kbStart=kbBlock.dataset.start; kbEnd=kbBlock.dataset.end;
-        persistBlock(kbBlock);
+        persistBlock(kbBlock,true);
       }
     });
     function fail(msg){ err.textContent=msg; err.hidden=false; }
@@ -677,7 +677,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
        animations are suppressed for the swap (no-enter); the visible strip
        keeps its scroll position, and the new/updated entry gets a one-time
        highlight. */
-    function refreshWeek(highlightId){
+    function refreshWeek(highlightId,refocus){
       var weekEl=document.getElementById('week');
       var mid=trackStrips()[1];
       var sc=mid&&mid.querySelector('.cal-scroll');
@@ -694,7 +694,10 @@ export function createCalendarViews(deps: CalendarViewDeps) {
         if(sc2) sc2.scrollTop=st;
         if(highlightId){
           var el=weekEl.querySelector('.ui-viz-block[data-id="'+highlightId+'"]');
-          if(el) el.classList.add('cal-flash');
+          if(el){ el.classList.add('cal-flash');
+            /* Keyboard saves replace the focused block — hand focus back
+               to its re-rendered twin so arrow-key editing can continue. */
+            if(refocus) el.focus(); }
         }
         placeNow();
       }).catch(function(){ location.reload(); /* last resort: never leave stale data */ });
@@ -809,8 +812,11 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     }
     function paintGeo(el,a,b){
       var H=hourOf(el),S=startOf(el);
-      el.style.top=((a-S)/60*H+2)+'px';
-      el.style.height=Math.max((b-a)/60*H-4,22)+'px';
+      var h=Math.max((b-a)/60*H-4,22);
+      /* Same bottom clamp as the component: a floored short block near the
+         window's end shifts up instead of painting past the column. */
+      el.style.top=Math.min((a-S)/60*H+2,(endOf(el)-S)/60*H-h)+'px';
+      el.style.height=h+'px';
     }
     function paint(block,a,b){
       paintGeo(block,a,b);
@@ -830,7 +836,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     }
     /* Move/resize persistence — the same POST shape the dialog save uses;
        the week re-renders with the entry highlighted, or reverts on failure. */
-    function persistBlock(block){
+    function persistBlock(block,refocus){
       var id=block.dataset.id;
       var fd=new URLSearchParams();
       fd.set('description',block.dataset.desc||'');
@@ -839,7 +845,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       fd.set('end_time',block.dataset.date+'T'+block.dataset.end+tzSuffix());
       fetch('/entries/'+id,{method:'POST',body:fd}).then(function(resp){
         if(!resp.ok) throw new Error('save failed');
-        refreshWeek(id);
+        refreshWeek(id,refocus);
       }).catch(function(){ refreshWeek(null); /* revert on failure */ });
     }
     /* #946: on touch, starting a scroll with the finger on an entry opened
@@ -948,14 +954,22 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       function cup(ev){
         window.removeEventListener('pointermove',cmove);
         window.removeEventListener('pointerup',cup);
+        window.removeEventListener('pointercancel',ccancel);
         var m=dragMoved?minsAt(ev,col):a+60;
         var x=Math.min(a,m),y=Math.max(a,m);
         if(y-x<15) y=x+15;
         pv.remove();
         openCreate(col.dataset.date,x,Math.min(y,1439));
       }
+      function ccancel(){
+        window.removeEventListener('pointermove',cmove);
+        window.removeEventListener('pointerup',cup);
+        window.removeEventListener('pointercancel',ccancel);
+        pv.remove();
+      }
       window.addEventListener('pointermove',cmove);
       window.addEventListener('pointerup',cup);
+      window.addEventListener('pointercancel',ccancel);
     });
     /* #213: the server's clock may be in another timezone (e.g. a UTC VPS),
        so every "right now" presentation follows the viewer's local time:
