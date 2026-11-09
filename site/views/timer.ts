@@ -6,7 +6,6 @@
 
 import type { Database, Statement } from "bun:sqlite";
 import { addDays, dayBounds, durationSeconds, entryInvoiceMark, entryIsLocked, esc, fmtDur, greeting, money, schemeColor, sundayOf, todayStr } from "../lib/format.ts";
-import { icon } from "../lib/icons.ts";
 import { timerPanel } from "../ui/timer-display.ts";
 import { card } from "../ui/card.ts";
 import { selectField, textField } from "../ui/field.ts";
@@ -14,6 +13,7 @@ import { button, linkButton } from "../ui/button.ts";
 import { entryRow as uiEntryRow } from "../ui/rows.ts";
 import { progressBar } from "../ui/progress.ts";
 import { appHeader } from "../ui/app-header.ts";
+import { iconButton } from "../ui/icon-button.ts";
 import { statBlock } from "../ui/stat.ts";
 import { tag } from "../ui/tag.ts";
 import type { Entry } from "../lib/types.ts";
@@ -77,7 +77,7 @@ export function createTimerViews(deps: TimerViewDeps) {
     let actions = "";
     if (!entryIsLocked(e)) {
       const parts: string[] = [];
-      parts.push(`<button class="ui-icon-btn" type="button" data-edit-entry="${e.id}" aria-label="Edit entry" data-tip="Edit">${icon("edit")}</button>`);
+      parts.push(iconButton({ icon: "edit", label: "Edit entry", tip: "Edit", attrs: `data-edit-entry="${e.id}"` }));
       if (e.end_time) {
         /* #462: the timer card owns the running entry — deleting it from the
            list orphaned the card. Stop there first; delete lands on the
@@ -89,12 +89,10 @@ export function createTimerViews(deps: TimerViewDeps) {
           parts.push(`<form class="ui-repeat-form" hx-post="/timer/start" hx-target="#timer-card" hx-swap="outerHTML swap:200ms">
           <input type="hidden" name="description" value="${esc(e.description ?? "")}">
           <input type="hidden" name="project_id" value="${e.project_id ?? ""}">
-          <button class="ui-icon-btn" type="submit" aria-label="Repeat entry" data-tip="Repeat">${icon("repeat")}</button>
+          ${iconButton({ icon: "repeat", label: "Repeat entry", tip: "Repeat", type: "submit" })}
         </form>`);
         }
-        parts.push(`<button class="ui-icon-btn ui-icon-btn-danger" type="button" hx-delete="/entries/${e.id}"
-          hx-target="#entry-${e.id}" hx-swap="outerHTML swap:220ms" data-confirm="Delete this entry? This cannot be undone."
-          aria-label="Delete entry" data-tip="Delete">${icon("delete")}</button>`);
+        parts.push(iconButton({ icon: "delete", label: "Delete entry", tip: "Delete", danger: true, attrs: `hx-delete="/entries/${e.id}" hx-target="#entry-${e.id}" hx-swap="outerHTML swap:220ms" data-confirm="Delete this entry? This cannot be undone."` }));
       }
       actions = parts.join("");
     }

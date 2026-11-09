@@ -15,6 +15,7 @@ import { button, linkButton } from "../ui/button.ts";
 import { clientRow } from "../ui/rows.ts";
 import { dayTargetSecs } from "../lib/domain.ts"; /* #908: daily target setting */
 import { appHeader } from "../ui/app-header.ts";
+import { iconButton } from "../ui/icon-button.ts";
 
 /* #367: the detail-pane selection. "none" is the pseudo-client holding
    projects with no client assigned. */
@@ -119,14 +120,14 @@ export function createManageViews(deps: ManageViewDeps) {
 
   const projectRow = (p: any) => clientRow({
     name: p.name,
-    actions: `<form method="post" action="/projects/${p.id}/delete" class="inline" hx-post="/projects/${p.id}/delete" hx-target="#client-detail" hx-swap="outerHTML"><button class="ui-icon-btn ui-icon-btn-danger" type="submit" data-confirm="Delete project? Entries keep their history." aria-label="Delete project ${esc(p.name)}" data-tip="Delete">${icon("delete")}</button></form>`,
+    actions: `<form method="post" action="/projects/${p.id}/delete" class="inline" hx-post="/projects/${p.id}/delete" hx-target="#client-detail" hx-swap="outerHTML">${iconButton({ icon: "delete", label: `Delete project ${p.name}`, tip: "Delete", danger: true, type: "submit", attrs: `data-confirm="Delete project? Entries keep their history."` })}</form>`,
   });
 
   const addProjectForm = (clientId: number | null) => `
       <form method="post" action="/projects" class="ui-add-project-form" hx-post="/projects" hx-target="#client-detail" hx-swap="outerHTML">
         ${clientId == null ? "" : `<input type="hidden" name="client_id" value="${clientId}">`}
         <div class="ui-add-project-grow">${textField({ id: "mp-name", label: "New project", name: "name", required: true })}</div>
-        <button class="ui-icon-btn" type="submit" data-tip="Add project" aria-label="Add project">${icon("add")}</button>
+        ${iconButton({ icon: "add", label: "Add project", type: "submit" })}
       </form>`;
 
   /* #367: detail body as a fragment — project actions swap
@@ -148,7 +149,7 @@ export function createManageViews(deps: ManageViewDeps) {
           <h2 class="ui-page-title">${esc(c.name)}</h2>
           <p class="muted" style="margin:4px 0 0">${projects.length} project${projects.length === 1 ? "" : "s"}${c.rate ? ` · $${c.rate}/hr` : ""}</p>
         </div>
-        <button class="ui-icon-btn client-settings-open" type="button" data-client-id="${c.id}" data-tip="Client settings" aria-label="Client settings for ${esc(c.name)}" aria-haspopup="dialog">${icon("settings")}</button>`
+        ${iconButton({ icon: "settings", label: `Client settings for ${c.name}`, tip: "Client settings", className: "client-settings-open", attrs: `data-client-id="${c.id}" aria-haspopup="dialog"` })}`
           : `<span class="ui-row-lead-icon" aria-hidden="true">${icon("group")}</span>
         <div>
           <h2 class="ui-page-title">No client</h2>
@@ -214,7 +215,7 @@ export function createManageViews(deps: ManageViewDeps) {
             <h2 class="ui-dialog-title" id="client-settings-title">Client settings</h2>
             <p class="ui-settings-note" id="client-settings-sub" hidden>Client settings — rate, terms, color, and contact details invoicing uses.</p>
           </div>
-          <button class="ui-icon-btn" id="client-settings-close" type="button" aria-label="Close client settings">${icon("close")}</button>
+          ${iconButton({ icon: "close", label: "Close client settings", id: "client-settings-close", tip: null })}
         </div>
         <div id="client-settings-body"><p class="muted">Loading…</p></div>
       </div>
