@@ -418,6 +418,15 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .ui-inv-mark[data-tip] { position: relative; overflow: visible; }
 .ui-inv-mark[data-tip]::after { content: attr(data-tip); position: absolute; left: 50%; top: calc(100% + var(--spacing-xs)); transform: translateX(-50%) translateY(-2px); background: var(--color-bg-spotlight); color: var(--color-text); border-radius: var(--radius-sm); padding: var(--spacing-xs) var(--spacing-sm); white-space: nowrap; max-width: 0; overflow: hidden; font-size: var(--font-size-sm); line-height: var(--line-height-sm); font-weight: 400; letter-spacing: 0; opacity: 0; pointer-events: none; z-index: 30; transition: opacity 0.15s ease, transform 0.15s ease; }
 .ui-inv-mark[data-tip]:hover::after, .ui-inv-mark[data-tip].tip-show::after { opacity: 1; transform: translateX(-50%) translateY(0); max-width: 200px; overflow: visible; }
+.ui-btn[data-tip], .ui-icon-btn[data-tip] { position: relative; overflow: visible; }
+.ui-btn[data-tip]::before, .ui-icon-btn[data-tip]::before { content: attr(data-tip); position: absolute; left: 50%; top: calc(100% + var(--spacing-xs)); transform: translateX(-50%) translateY(-2px); background: var(--color-bg-spotlight); color: var(--color-text); border-radius: var(--radius-sm); padding: var(--spacing-xs) var(--spacing-sm); white-space: nowrap; max-width: 0; overflow: hidden; font-size: var(--font-size-sm); line-height: var(--line-height-sm); font-weight: 400; opacity: 0; pointer-events: none; z-index: 30; transition: opacity 0.15s ease, transform 0.15s ease; }
+.ui-btn[data-tip]:hover::before, .ui-btn[data-tip]:focus-visible::before, .ui-btn[data-tip].tip-show::before, .ui-icon-btn[data-tip]:hover::before, .ui-icon-btn[data-tip]:focus-visible::before, .ui-icon-btn[data-tip].tip-show::before { opacity: 1; transform: translateX(-50%) translateY(0); max-width: 200px; overflow: visible; }
+.ui-row.selected { background: var(--color-primary-bg); }
+.ui-row-lead-dot { width: 10px; height: 10px; border-radius: 9999px; flex: none; }
+.ui-row-lead-icon { display: inline-flex; flex: none; color: var(--color-text-tertiary); }
+.ui-row-lead-icon svg { width: 24px; height: 24px; }
+.ui-row-chevron { display: inline-flex; flex: none; color: var(--color-text-tertiary); }
+.ui-row-chevron svg { width: 20px; height: 20px; }
 .ui-rev-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--spacing-sm); margin-bottom: var(--spacing-sm); }
 @container (max-width: 480px) { .ui-rev-cards { grid-template-columns: 1fr; } }
 .ui-rev-paid { color: var(--color-primary); }

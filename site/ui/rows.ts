@@ -1,4 +1,5 @@
 import { esc } from "../lib/format";
+import { icon } from "../lib/icons";
 import { statusChip, type ZinvoiceStatus } from "./status-chip";
 
 export interface ZinvoiceRowOptions {
@@ -58,14 +59,30 @@ export function entryRow(opts: EntryRowOptions): string {
 
 export interface ClientRowOptions {
   name: string;
-  meta: string;
+  meta?: string;
   actions?: string;
+  href?: string;
+  ariaLabel?: string;
+  dot?: string;
+  iconDot?: string;
+  selected?: boolean;
+  chevron?: boolean;
 }
 
 export function clientRow(opts: ClientRowOptions): string {
-  const actions = opts.actions ? `<span>${opts.actions}</span>` : "";
-  return (
-    `<div class="ui-row"><div class="ui-row-main"><span class="ui-row-title">${esc(opts.name)}</span>` +
-    `<div class="ui-row-meta">${esc(opts.meta)}</div></div>${actions}</div>`
-  );
+  const actions = opts.actions ? `<span class="ui-row-actions">${opts.actions}</span>` : "";
+  const meta = opts.meta ? `<div class="ui-row-meta">${esc(opts.meta)}</div>` : "";
+  const lead = opts.dot
+    ? `<span class="ui-row-lead-dot" style="background:${esc(opts.dot)}" aria-hidden="true"></span>`
+    : opts.iconDot
+      ? `<span class="ui-row-lead-icon" aria-hidden="true">${icon(opts.iconDot)}</span>`
+      : "";
+  const chevron = opts.chevron ? `<span class="ui-row-chevron" aria-hidden="true">${icon("chevron_right")}</span>` : "";
+  const main = `<div class="ui-row-main"><span class="ui-row-title">${esc(opts.name)}</span>${meta}</div>`;
+  const cls = `ui-row${opts.selected ? " selected" : ""}`;
+  if (opts.href) {
+    const label = opts.ariaLabel ? ` aria-label="${esc(opts.ariaLabel)}"` : "";
+    return `<a class="${cls} client-row-hit" href="${esc(opts.href)}"${label}>${lead}${main}${actions}${chevron}</a>`;
+  }
+  return `<div class="${cls}">${lead}${main}${actions}${chevron}</div>`;
 }

@@ -18,6 +18,7 @@ export interface TextFieldOptions {
   step?: string;
   inputmode?: string;
   list?: string;
+  attrs?: string;
 }
 
 export function textField(opts: TextFieldOptions): string {
@@ -31,7 +32,8 @@ export function textField(opts: TextFieldOptions): string {
   const step = opts.step ? ` step="${esc(opts.step)}"` : "";
   const inputmode = opts.inputmode ? ` inputmode="${esc(opts.inputmode)}"` : "";
   const list = opts.list ? ` list="${esc(opts.list)}"` : "";
-  const input = `<input class="ui-input" type="${esc(opts.type ?? "text")}" id="${esc(opts.id)}"${name}${value}${placeholder}${required}${autocomplete}${min}${max}${step}${inputmode}${list}>`;
+  const attrs = opts.attrs ? ` ${opts.attrs}` : "";
+  const input = `<input class="ui-input" type="${esc(opts.type ?? "text")}" id="${esc(opts.id)}"${name}${value}${placeholder}${required}${autocomplete}${min}${max}${step}${inputmode}${list}${attrs}>`;
   const control = opts.prefix || opts.suffix
     ? `<div class="ui-input-wrap">${opts.prefix ? `<span class="ui-affix ui-affix-prefix">${esc(opts.prefix)}</span>` : ""}${input}${opts.suffix ? `<span class="ui-affix ui-affix-suffix">${esc(opts.suffix)}</span>` : ""}</div>`
     : input;
@@ -39,6 +41,29 @@ export function textField(opts: TextFieldOptions): string {
     `<div class="ui-field">` +
     `<label class="ui-field-label" for="${esc(opts.id)}">${esc(opts.label)}</label>` +
     `${control}</div>`
+  );
+}
+
+export interface TextAreaFieldOptions {
+  id: string;
+  label: string;
+  name?: string;
+  value?: string;
+  rows?: number;
+  required?: boolean;
+  placeholder?: string;
+  attrs?: string;
+}
+
+export function textAreaField(opts: TextAreaFieldOptions): string {
+  const name = opts.name ? ` name="${esc(opts.name)}"` : "";
+  const required = opts.required ? " required" : "";
+  const placeholder = opts.placeholder ? ` placeholder="${esc(opts.placeholder)}"` : "";
+  const attrs = opts.attrs ? ` ${opts.attrs}` : "";
+  return (
+    `<div class="ui-field">` +
+    `<label class="ui-field-label" for="${esc(opts.id)}">${esc(opts.label)}</label>` +
+    `<textarea class="ui-input" id="${esc(opts.id)}"${name} rows="${opts.rows ?? 3}"${required}${placeholder}${attrs}>${esc(opts.value ?? "")}</textarea></div>`
   );
 }
 

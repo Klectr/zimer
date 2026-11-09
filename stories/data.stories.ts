@@ -98,6 +98,41 @@ export const dataStories: Story[] = [
       ),
   },
   {
+    id: "data-client-rows-linked",
+    group: "Data",
+    title: "Client rows — linked (list-detail)",
+    render: () =>
+      wrap(
+        `<div class="ui-list">` +
+          clientRow({
+            name: "Acme Studio",
+            meta: "2 projects · $85/hr",
+            href: "/manage?client=1",
+            ariaLabel: "Manage client Acme Studio",
+            dot: "#fb923c",
+            selected: true,
+            chevron: true,
+          }) +
+          clientRow({
+            name: "Northwind Legal",
+            meta: "3 projects",
+            href: "/manage?client=2",
+            ariaLabel: "Manage client Northwind Legal",
+            dot: "#60a5fa",
+            chevron: true,
+          }) +
+          clientRow({
+            name: "No client",
+            meta: "1 unassigned project",
+            href: "/manage?client=none",
+            ariaLabel: "Manage projects with no client",
+            iconDot: "group",
+            chevron: true,
+          }) +
+          `</div>`,
+      ),
+  },
+  {
     id: "data-line-items",
     group: "Data",
     title: "Line items table",

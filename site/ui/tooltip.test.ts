@@ -34,9 +34,10 @@ describe("iconButton tooltip integration", () => {
     expect(() => iconButton({ icon: "edit", label: "Edit entry", tooltip: true })).toThrow();
   });
 
-  test("plain mode keeps the native title and no wrapper", () => {
+  test("plain mode uses the house data-tip and no wrapper (#1103)", () => {
     const html = iconButton({ icon: "edit", label: "Edit entry" });
-    expect(html).toContain('title="Edit entry"');
+    expect(html).toContain('data-tip="Edit entry"');
+    expect(html).not.toContain('title="Edit entry"');
     expect(html).not.toContain("ui-tooltip");
   });
 });
