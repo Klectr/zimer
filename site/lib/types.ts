@@ -9,6 +9,7 @@ export type Entry = {
   project_name: string | null;
   client_name: string | null;
   client_color: string | null;
+  client_rate: number | null;
   invoice_id: number | null;
   invoice_number: string | null; /* #330: LEFT JOIN invoices in ENTRY_SELECT */
   invoice_status: string | null; /* #330: "draft" | "sent" | "paid" | null */

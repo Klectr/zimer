@@ -498,3 +498,38 @@ describe("today pacing bar follows the daily target (#908)", () => {
     expect(todayHtml(8 * 3600)).toContain("Today · 0s / 8h");
   });
 });
+
+describe("timer mock parity (#1121)", () => {
+  test("running panel shows the started line, rate tag, and live worth tag", () => {
+    const entry = {
+      ...runningEntry, client_rate: 85,
+      project_name: "Website rebuild", client_name: "Acme Studio",
+    };
+    const deps = {
+      ...baseDeps,
+      qRunning: { get: () => entry } as unknown as Statement,
+    };
+    const html = createTimerViews(deps as any).timerPartial();
+    expect(html).toContain('Started <time data-ts="2026-09-23T10:00:00.000Z"></time>');
+    expect(html).toContain("$85 / hr");
+    expect(html).toContain('id="timer-worth" data-rate="85"');
+    expect(html).toContain("Worth $");
+  });
+
+  test("running panel without a rate renders no meta tags", () => {
+    expect(partial(true)).not.toContain('id="timer-worth"');
+    expect(partial(true)).not.toContain("ui-timer-meta");
+  });
+
+  test("finished rows carry the amount (duration x client rate)", () => {
+    const entry = { ...runningEntry, end_time: "2026-09-23T11:30:00.000Z", client_rate: 85 };
+    const html = createTimerViews({ ...baseDeps, qRunning: stubQuery() } as any).entryRow(entry as any);
+    expect(html).toContain('<div class="ui-row-meta">$127.50</div>');
+  });
+
+  test("rows without a rate carry no amount", () => {
+    const entry = { ...runningEntry, end_time: "2026-09-23T11:30:00.000Z" };
+    const html = createTimerViews({ ...baseDeps, qRunning: stubQuery() } as any).entryRow(entry as any);
+    expect(html).not.toContain('ui-row-meta">$');
+  });
+});
