@@ -210,7 +210,6 @@ describe("invoice detail proof section (#956)", () => {
       stripeConfigured: () => false,
       nextInvoiceNumber: () => "INV-0001",
       invoiceTotals: () => ({ subtotal: 3200, tax: 0, total: 3200 }),
-      statusPill: (s: string) => `<span>${s}</span>`,
       isOverdue: () => false,
       unbilledByClient: () => [],
     });

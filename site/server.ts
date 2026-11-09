@@ -13,7 +13,7 @@ import { basename, join, resolve } from "node:path";
 import type { Statement } from "bun:sqlite";
 import { invoicePdf } from "./pdf.ts";
 import { stripeConfigured, verifyWebhookSignature } from "./stripe.ts";
-import { entryToJson, csvResponse, statusPill } from "./lib/format.ts";
+import { entryToJson, csvResponse } from "./lib/format.ts";
 import { json, html, isHtmx, publicOrigin, secureResponse } from "./lib/http.ts";
 import { getToken, tokensEqual, authedApi, authedPage } from "./lib/auth.ts";
 import { createAccountsDb } from "./lib/accounts.ts"; /* #732 */
@@ -133,7 +133,7 @@ function buildTenantTree(bundle: DbBundle, dbPath: string): WebTenant & ApiTenan
     invoiceDocumentHtml, invoicePdfInput, /* #301 */
   } = createInvoiceViews({
     db, qInvoices, layout, clientOptions,
-    getPublicToken, stripeConfigured, nextInvoiceNumber, invoiceTotals, statusPill, isOverdue,
+    getPublicToken, stripeConfigured, nextInvoiceNumber, invoiceTotals, isOverdue,
     unbilledByClient,
   });
   /* #301: freeze the rendered HTML document at send time (re-frozen at the paid

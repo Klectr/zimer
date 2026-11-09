@@ -30,7 +30,6 @@ function views(rows: any[], opts: { publicToken?: string | null; db?: Database }
       const tax = subtotal * taxRate / 100;
       return { subtotal, tax, total: subtotal + tax };
     },
-    statusPill: (s: string) => `<span class="pill">${s}</span>`,
     isOverdue: () => false,
     unbilledByClient: () => [],
   });
@@ -74,17 +73,16 @@ describe("paid-on date", () => {
     expect(html).not.toContain("due ");
   });
 
-  test("#432: detail actions are icon buttons with M3 tooltips", () => {
+  test("#432: detail actions are icon buttons with tooltips", () => {
     const html = views([]).invoiceDetailBody(detailInv("draft", null) as any, "http://x");
     const row = html.match(/<div class="page-head no-print">[\s\S]*?<div class="row">([\s\S]*?)<\/div>\s*<\/div>/)?.[1] || "";
     expect(row).toContain('data-tip="Download PDF"');
     expect(row).toContain('data-tip="Mark sent"');
     expect(row).toContain('data-tip="Delete draft"');
     expect(row).toContain('aria-label="Download PDF"');
-    expect(row).not.toContain("md-filled-button");
-    expect(row).not.toContain("md-text-button");
+    expect(row).not.toContain('class="ui-btn');
     expect(row).not.toContain("inv-overflow-menu-");
-    const iconBtns = row.match(/md-icon-button/g) || [];
+    const iconBtns = row.match(/class="ui-icon-btn/g) || [];
     expect(iconBtns.length).toBe(3);
     expect(row.match(/tip-right/g)?.length).toBe(3); // #434: tooltips anchor right
   });
@@ -92,18 +90,18 @@ describe("paid-on date", () => {
   test("#432: paid invoice shows only the download icon button", () => {
     const html = views([]).invoiceDetailBody(detailInv("paid", "2026-09-21") as any, "http://x");
     const row = html.match(/<div class="page-head no-print">[\s\S]*?<div class="row">([\s\S]*?)<\/div>\s*<\/div>/)?.[1] || "";
-    const iconBtns = row.match(/md-icon-button/g) || [];
+    const iconBtns = row.match(/class="ui-icon-btn/g) || [];
     expect(iconBtns.length).toBe(1);
     expect(row).not.toContain("inv-overflow-menu-");
   });
 
-  test("#424: paid label is an M3 chip first in the detail actions row", () => {
+  test("#424: paid label is a ui chip first in the detail actions row", () => {
     const html = views([]).invoiceDetailBody(detailInv("paid", "2026-09-21") as any, "http://x");
     const actionsRow = html.match(/<div class="page-head no-print">[\s\S]*?<div class="row">([\s\S]*?)<\/div>\s*<\/div>/)?.[1] || "";
-    expect(actionsRow).toContain("md-chip");
+    expect(actionsRow).toContain("ui-chip ui-chip-paid");
     expect(actionsRow).toContain("Paid Sep 21");
     // chip leads the actions row, ahead of Download PDF
-    expect(actionsRow.indexOf("md-chip")).toBeLessThan(actionsRow.indexOf("Download PDF"));
+    expect(actionsRow.indexOf("ui-chip")).toBeLessThan(actionsRow.indexOf("Download PDF"));
     // title block untouched: back link only, no paid date
     const headBlock = html.match(/<div class="invoice-detail-head">[\s\S]*?<\/div>/)?.[0] || "";
     expect(headBlock).not.toContain("Paid Sep 21");
@@ -133,7 +131,7 @@ describe("paid-on date", () => {
 
   test("#481: no middot dangles in raw text between the date spans", () => {
     const html = views([{ ...baseRow, status: "paid", paid_at: "2026-09-21" }]).invoiceListOob(7);
-    const supporting = html.match(/<div class="md-list-item-supporting">([\s\S]*?)<\/div>/)?.[1] || "";
+    const supporting = html.match(/<div class="ui-row-meta">([\s\S]*?)<\/div>/)?.[1] || "";
     /* The middot is a leading separator inside each nowrap span, so a wrap
        breaks before a middot, never after one — no " · " in raw text.
        #770: a paid row has just one segment, so there is nothing to dangle. */
@@ -143,7 +141,7 @@ describe("paid-on date", () => {
 
   test("#772: unpaid row shows only the due date segment", () => {
     const html = views([{ ...baseRow, status: "sent", paid_at: null }]).invoiceListOob(0);
-    const supporting = html.match(/<div class="md-list-item-supporting">([\s\S]*?)<\/div>/)?.[1] || "";
+    const supporting = html.match(/<div class="ui-row-meta">([\s\S]*?)<\/div>/)?.[1] || "";
     /* One segment per row: the .inv-dates group can't wrap whole onto a
        second line with a dangling leading middot on narrow list panes. */
     expect(supporting).toContain('<span class="inv-dates"><span class="inv-date">· due Sep 30</span></span>');
@@ -152,7 +150,7 @@ describe("paid-on date", () => {
 
   test("#772: unpaid row with no due date falls back to the issued date", () => {
     const html = views([{ ...baseRow, status: "draft", paid_at: null, due_date: null }]).invoiceListOob(0);
-    const supporting = html.match(/<div class="md-list-item-supporting">([\s\S]*?)<\/div>/)?.[1] || "";
+    const supporting = html.match(/<div class="ui-row-meta">([\s\S]*?)<\/div>/)?.[1] || "";
     expect(supporting).toContain('<span class="inv-dates"><span class="inv-date">· issued Sep 1</span></span>');
     expect(supporting).not.toContain('inv-date">· due');
   });
@@ -174,28 +172,26 @@ describe("paid-on date", () => {
   test("#471: new-invoice rate/tax use affixes, not label-crammed units", () => {
     const html = views([]).invoiceNewPage(views([]).defaultNewInvParams());
     // rate: $ prefix affix, label is just "Hourly rate"
-    expect(html).toContain('class="md-text-field filled has-prefix"');
-    expect(html).toContain('<span class="affix prefix" aria-hidden="true">$</span>');
-    expect(html).toContain('aria-label="Hourly rate"><label for="inv-rate">Hourly rate</label>');
+    expect(html).toContain('<span class="ui-affix ui-affix-prefix">$</span>');
+    expect(html).toContain('<label class="ui-field-label" for="inv-rate">Hourly rate</label>');
     expect(html).not.toContain("Hourly rate ($)");
     // tax: % suffix affix, label is just "Tax"
-    expect(html).toContain('class="md-text-field filled has-suffix"');
-    expect(html).toContain('<span class="affix suffix" aria-hidden="true">%</span>');
-    expect(html).toContain('aria-label="Tax"><label for="inv-tax">Tax</label>');
+    expect(html).toContain('<span class="ui-affix ui-affix-suffix">%</span>');
+    expect(html).toContain('<label class="ui-field-label" for="inv-tax">Tax</label>');
     expect(html).not.toContain("Tax %");
   });
 
   test("#703: new-invoice Notes/Internal notes inputs have accessible names", () => {
     const html = views([]).invoiceNewPage(views([]).defaultNewInvParams());
-    expect(html).toContain('aria-label="Notes (optional)"><label for="inv-notes">Notes (optional)</label>');
-    expect(html).toContain('aria-label="Internal notes (only you see this)"><label for="inv-internal">Internal notes (only you see this)</label>');
+    expect(html).toContain('<label class="ui-field-label" for="inv-notes">Notes (optional)</label>');
+    expect(html).toContain('<label class="ui-field-label" for="inv-internal">Internal notes (only you see this)</label>');
   });
 
   test("#709/#827: new-invoice step-1 labels are wired via matching id/for", () => {
     const html = views([]).invoiceNewPage(views([]).defaultNewInvParams());
     for (const id of ["inv-from", "inv-to", "inv-number", "inv-issue", "inv-due", "inv-client", "inv-rate", "inv-tax", "inv-notes", "inv-internal"]) {
       expect(html).toContain(`id="${id}"`);
-      expect(html).toContain(`<label for="${id}">`);
+      expect(html).toContain(`<label class="ui-field-label" for="${id}">`);
     }
   });
 });
@@ -362,7 +358,6 @@ describe("#560: date phrases stay together", () => {
         const tax = subtotal * taxRate / 100;
         return { subtotal, tax, total: subtotal + tax };
       },
-      statusPill: (s: string) => `<span class="pill">${s}</span>`,
       isOverdue: () => false,
       unbilledByClient: () => [],
     }).invoiceSheet({ ...detailInv("sent", null), items } as any);
@@ -595,7 +590,6 @@ describe("#829: new-zinvoice due-date prefill follows global payment terms", () 
       stripeConfigured: () => false,
       nextInvoiceNumber: () => "INV-0001",
       invoiceTotals: () => ({ subtotal: 0, tax: 0, total: 0 }),
-      statusPill: (s: string) => s,
       isOverdue: () => false,
       unbilledByClient: () => [],
     });

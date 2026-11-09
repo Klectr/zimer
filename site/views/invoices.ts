@@ -10,6 +10,11 @@ import { workspaceEmpty } from "../lib/demo.ts"; /* #300: empty-state CTA */
 import type { Invoice, InvoiceItem, NewInvParams } from "../lib/types.ts";
 import type { PdfInvoice } from "../pdf.ts";
 import { listProofs } from "../lib/payment_proofs.ts"; /* #956 */
+import { button, linkButton } from "../ui/button.ts";
+import { card } from "../ui/card.ts";
+import { textField } from "../ui/field.ts";
+import { clientRow, zinvoiceRow } from "../ui/rows.ts";
+import { formSection } from "../ui/zinvoice-form.ts";
 
 export interface InvoiceViewDeps {
   db: Database;
@@ -20,7 +25,6 @@ export interface InvoiceViewDeps {
   stripeConfigured: () => boolean;
   nextInvoiceNumber: () => string;
   invoiceTotals: (items: InvoiceItem[], taxRate: number) => { subtotal: number; tax: number; total: number };
-  statusPill: (status: string) => string;
   isOverdue: (row: { status: string; due_date?: string | null; client_payment_terms?: string | null }) => boolean;
   unbilledByClient: () => { id: number; name: string; secs: number }[];
 }
@@ -28,7 +32,7 @@ export interface InvoiceViewDeps {
 export function createInvoiceViews(deps: InvoiceViewDeps) {
   const {
     db, qInvoices, layout, clientOptions,
-    getPublicToken, stripeConfigured, nextInvoiceNumber, invoiceTotals, statusPill, isOverdue,
+    getPublicToken, stripeConfigured, nextInvoiceNumber, invoiceTotals, isOverdue,
     unbilledByClient,
   } = deps;
 
@@ -48,11 +52,11 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
   function emptyInvoices(): string {
     const demoCta = workspaceEmpty(db) ? `
       <form method="post" action="/demo/load" class="inline">
-        <button class="md-text-button" type="submit">${icon("info")}<span>Load demo data</span></button>
+        ${button({ label: "Load demo data", icon: "info", variant: "ghost", type: "submit" })}
       </form>` : "";
     return `<div class="empty-state" data-enter="3">
       <img class="empty-mascot" src="/static/mascot-empty.png" alt="" width="132" height="132">
-      <h3 class="md-title-large">No zinvoices yet</h3>
+      <h3 class="ui-page-title">No zinvoices yet</h3>
       <p class="muted">Turn tracked time into a zinvoice — or explore first with fictional sample data.</p>
       <div class="row">${demoCta}</div>
     </div>`;
@@ -82,15 +86,19 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     const dates = r.status === "paid"
       ? (r.paid_at ? seg("paid", shortYmd(r.paid_at)) : "")
       : (r.due_date ? seg("due", shortYmd(r.due_date)) : seg("issued", shortYmd(r.issue_date)));
-    return `<li class="md-list-item inv-row${selected ? " selected" : ""}">
-      <a class="inv-row-hit" href="/invoices?invoice=${r.id}" aria-label="View zinvoice ${esc(r.number)}">
-        <div class="md-list-item-content">
-          <div class="md-list-item-headline">${esc(r.number)} ${statusPill(r.status)}${od ? ` <span class="attn-chip">${od}d overdue</span>` : ""}</div>
-          <div class="md-list-item-supporting">${r.client_name ? esc(r.client_name) : "<em>No client</em>"} <span class="inv-dates">${dates}</span></div>
-        </div>
-        <div class="md-list-item-trailing"><span class="dur">${money(round2(r.subtotal * (1 + (r.tax_rate || 0) / 100)))}</span></div>
-      </a>
-    </li>`;
+    return zinvoiceRow({
+      number: r.number,
+      client: r.client_name || "",
+      clientHtml: `${r.client_name ? esc(r.client_name) : "<em>No client</em>"} <span class="inv-dates">${dates}</span>`,
+      status: r.status,
+      overdueDays: od || undefined,
+      amount: money(round2(r.subtotal * (1 + (r.tax_rate || 0) / 100))),
+      meta: "",
+      href: `/invoices?invoice=${r.id}`,
+      ariaLabel: `View zinvoice ${r.number}`,
+      selected,
+      className: "inv-row-hit",
+    });
   }
 
   function outstandingTotal(rows: any[]): number {
@@ -100,7 +108,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
   }
 
   function invoiceListHtml(rows: any[], selectedId: number | null): string {
-    return `<ul class="md-list" id="inv-list">${rows.map(r => invoiceRow(r, selectedId === r.id)).join("")}</ul>`;
+    return `<div class="ui-list" id="inv-list">${rows.map(r => invoiceRow(r, selectedId === r.id)).join("")}</div>`;
   }
 
   /* #364: out-of-band refresh for the list pane after a detail-pane action
@@ -108,7 +116,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
      stale. The action's invoice stays selected: the detail pane is showing it. */
   function invoiceListOob(selectedId: number): string {
     const rows = qInvoices.all() as any[];
-    return `<ul class="md-list" id="inv-list" hx-swap-oob="true">${rows.map(r => invoiceRow(r, selectedId === r.id)).join("")}</ul>`
+    return `<div class="ui-list" id="inv-list" hx-swap-oob="true">${rows.map(r => invoiceRow(r, selectedId === r.id)).join("")}</div>`
       + `<p class="muted" id="inv-outstanding" hx-swap-oob="true">Outstanding: <strong>${money(outstandingTotal(rows))}</strong></p>`;
   }
 
@@ -126,10 +134,10 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     const rows = qInvoices.all() as any[];
     const head = `
       <div class="page-head page-head-invoices" data-enter="2">
-        <h1 class="md-headline-small">Zinvoices</h1>
+        <h1 class="ui-page-title">Zinvoices</h1>
         <div class="page-head-actions">
-          ${rows.length ? `<a class="md-text-button" href="/export/invoices.csv" download aria-label="Export CSV">${icon("download")}<span class="btn-label">Export CSV</span><span class="btn-label-short">CSV</span></a>` : ""}
-          <a class="md-filled-button" href="/invoices/new" aria-label="New zinvoice">${icon("add")}<span class="btn-label">New zinvoice</span></a>
+          ${rows.length ? `<a class="ui-btn ui-btn-ghost" href="/export/invoices.csv" download aria-label="Export CSV">${icon("download")}<span class="btn-label">Export CSV</span><span class="btn-label-short">CSV</span></a>` : ""}
+          <a class="ui-btn ui-btn-primary" href="/invoices/new" aria-label="New zinvoice">${icon("add")}<span class="btn-label">New zinvoice</span></a>
         </div>
       </div>`;
     if (!rows.length) {
@@ -172,15 +180,12 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     if (!rows.length) return "";
     const unbilled = unbilledByClient();
     if (!unbilled.length) return "";
-    return `<h3 class="md-title-medium unbilled-head">Unbilled time</h3>
-      <ul class="md-list">${unbilled.map(u => `
-        <li class="md-list-item">
-          <div class="md-list-item-content">
-            <div class="md-list-item-headline">${esc(u.name)}</div>
-            <div class="md-list-item-supporting">${fmtDur(u.secs)} unbilled</div>
-          </div>
-          <div class="md-list-item-trailing"><a class="md-text-button" href="/invoices/new?client_id=${u.id}">Zinvoice</a></div>
-        </li>`).join("")}</ul>`;
+    return `<h3 class="ui-block-title unbilled-head">Unbilled time</h3>
+      <div class="ui-list">${unbilled.map(u => clientRow({
+        name: u.name,
+        meta: `${fmtDur(u.secs)} unbilled`,
+        actions: linkButton({ label: "Zinvoice", href: `/invoices/new?client_id=${u.id}`, variant: "ghost", size: "sm" }),
+      })).join("")}</div>`;
   }
 
   /* Milestone 20: NewInvParams type lives in lib/types.ts. */
@@ -203,40 +208,34 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
   function invoiceNewPage(p: NewInvParams, preview?: { items: any[]; emptyMsg?: string }): string {
     const clients = db.query("SELECT id, name, rate FROM clients ORDER BY name").all() as any[];
     const selClient = clients.find(c => String(c.id) === p.client_id);
-    const step1 = `
-      <div class="md-card form-card">
-        <h3 class="md-title-medium">1 · Pick unbilled time</h3>
+    const step1 = card({ className: "form-card", content: formSection({ step: 1, title: "Pick unbilled time", bodyHtml: `
         <div class="form-info">
           ${icon("info")}
           <p>Only finished, unbilled entries on this client's projects are included. Client hourly rates can be set on the <a href="/manage">Clients page</a>.</p>
         </div>
         <form method="post" action="/invoices/preview" class="form" hx-post="/invoices/preview" hx-target="#invoice-step2" hx-swap="innerHTML">
-          <div class="md-text-field filled">
-            <select name="client_id" id="inv-client" required aria-label="Client">
+          <div class="ui-field"><label class="ui-field-label" for="inv-client">Client</label><select class="ui-input ui-select" name="client_id" id="inv-client" required>
               <option value="">Choose a client…</option>${clientOptions(p.client_id ? Number(p.client_id) : null)}
-            </select>
-            <label for="inv-client">Client</label>
-          </div>
+            </select></div>
           <div class="two-field" id="inv-range">
-            <div class="md-text-field filled"><input type="date" id="inv-from" name="from" value="${esc(p.from)}" required placeholder=" "><label for="inv-from">From</label></div>
-            <div class="md-text-field filled"><input type="date" id="inv-to" name="to" value="${esc(p.to)}" required placeholder=" "><label for="inv-to">To</label></div>
+            ${textField({ id: "inv-from", label: "From", name: "from", type: "date", value: p.from, required: true })}
+            ${textField({ id: "inv-to", label: "To", name: "to", type: "date", value: p.to, required: true })}
           </div>
           <div class="two-field">
-            <div class="md-text-field filled has-prefix"><span class="affix prefix" aria-hidden="true">$</span><input type="number" name="rate" id="inv-rate" value="${esc(p.rate || (selClient ? String(selClient.rate || "") : ""))}" min="0" step="0.01" placeholder=" " aria-label="Hourly rate"><label for="inv-rate">Hourly rate</label></div>
-            <div class="md-text-field filled has-suffix"><input type="number" name="tax_rate" id="inv-tax" value="${esc(p.tax_rate)}" min="0" step="0.01" placeholder=" " aria-label="Tax"><label for="inv-tax">Tax</label><span class="affix suffix" aria-hidden="true">%</span></div>
+            ${textField({ id: "inv-rate", label: "Hourly rate", name: "rate", type: "number", value: p.rate || (selClient ? String(selClient.rate || "") : ""), min: "0", step: "0.01", prefix: "$" })}
+            ${textField({ id: "inv-tax", label: "Tax", name: "tax_rate", type: "number", value: p.tax_rate, min: "0", step: "0.01", suffix: "%" })}
           </div>
           <div class="two-field">
-            <div class="md-text-field"><input type="text" id="inv-number" name="number" value="${esc(p.number)}" required placeholder=" "><label for="inv-number">Zinvoice number</label></div>
+            ${textField({ id: "inv-number", label: "Zinvoice number", name: "number", value: p.number, required: true })}
           </div>
           <div class="two-field">
-            <div class="md-text-field filled"><input type="date" name="issue_date" id="inv-issue" value="${esc(p.issue_date)}" required placeholder=" "><label for="inv-issue">Issue date</label></div>
-            <div class="md-text-field filled"><input type="date" name="due_date" id="inv-due" value="${esc(p.due_date)}" placeholder=" "><label for="inv-due">Due date</label></div>
+            ${textField({ id: "inv-issue", label: "Issue date", name: "issue_date", type: "date", value: p.issue_date, required: true })}
+            ${textField({ id: "inv-due", label: "Due date", name: "due_date", type: "date", value: p.due_date })}
           </div>
-          <div class="md-text-field"><input type="text" name="notes" id="inv-notes" value="${esc(p.notes)}" placeholder=" " aria-label="Notes (optional)"><label for="inv-notes">Notes (optional)</label></div>
-          <div class="md-text-field"><input type="text" name="internal_notes" id="inv-internal" value="${esc(p.internal_notes)}" placeholder=" " aria-label="Internal notes (only you see this)"><label for="inv-internal">Internal notes (only you see this)</label></div>
-          <div class="row end"><button class="md-filled-button" type="submit">Preview line items</button></div>
-        </form>
-      </div>
+          ${textField({ id: "inv-notes", label: "Notes (optional)", name: "notes", value: p.notes })}
+          ${textField({ id: "inv-internal", label: "Internal notes (only you see this)", name: "internal_notes", value: p.internal_notes })}
+          <div class="row end">${button({ label: "Preview line items", type: "submit", variant: "primary" })}</div>
+        </form>` }) }) + `
       <script>(function(){
         var sel=document.getElementById('inv-client'), rate=document.getElementById('inv-rate'),
             issue=document.getElementById('inv-issue'), due=document.getElementById('inv-due'),
@@ -294,8 +293,8 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     return layout("New zinvoice", `
       <div class="page-narrow" data-enter="2">
       <div class="page-head">
-        <h1 class="md-headline-small">New zinvoice</h1>
-        <a class="md-text-button" href="/invoices">Cancel</a>
+        <h1 class="ui-page-title">New zinvoice</h1>
+        ${linkButton({ label: "Cancel", href: "/invoices", variant: "ghost" })}
       </div>
       ${step1}<div id="invoice-step2">${invoiceStep2(p, preview)}</div>
       </div>`, "invoices");
@@ -322,9 +321,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
           <td class="num">${money(it.amount)}<input type="hidden" name="g${i}_ids" value="${it.entry_ids.join(",")}"><input type="hidden" name="g${i}_date_from" value="${esc(it.date_from || "")}"><input type="hidden" name="g${i}_date_to" value="${esc(it.date_to || "")}"></td>
         </tr>`).join("");
     const t = invoiceTotals(preview.items, Number(p.tax_rate) || 0);
-    return `
-      <div class="md-card form-card">
-        <h3 class="md-title-medium">2 · Review line items</h3>
+    return card({ className: "form-card", content: formSection({ step: 2, title: "Review line items", bodyHtml: `
         ${emptyNote}
         ${roundingNote}
         <form method="post" action="/invoices" class="form">
@@ -336,7 +333,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
           <input type="hidden" name="notes" value="${esc(p.notes)}">
           <input type="hidden" name="internal_notes" value="${esc(p.internal_notes)}">
           <input type="hidden" name="groups" value="${preview.items.length}">
-          <div class="table-wrap"><table class="md-table">
+          <div class="table-wrap"><table class="ui-table">
             <thead>${itemHead()}</thead>
             <tbody>${rows}</tbody>
             <tfoot>
@@ -345,11 +342,10 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
               <tr class="grand"><td colspan="4">Total</td><td class="num">${money(t.total)}</td></tr>
             </tfoot>
           </table></div>
-          <div class="row"><button type="button" class="md-text-button" data-add-item>${icon("add")}<span>Add line item</span></button></div>
+          <div class="row">${button({ label: "Add line item", icon: "add", variant: "ghost", attrs: "data-add-item" })}</div>
           <p class="muted tiny">Amounts recalculate on save. Entries are marked billed when the zinvoice is created.</p>
-          <div class="row end"><button class="md-filled-button" type="submit">Create zinvoice</button></div>
-        </form>
-      </div>`;
+          <div class="row end">${button({ label: "Create zinvoice", type: "submit", variant: "primary" })}</div>
+        </form>` }) });
   }
 
   /** #899: per-day tracked hours behind the invoice — the time-breakdown
@@ -407,7 +403,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     }).join("");
     const total = round2(buckets.reduce((a, b) => a + b.hours, 0));
     return `<section class="inv-breakdown" aria-label="Time breakdown">` +
-      `<div class="md-title-medium">Time breakdown</div>` +
+      `<div class="ui-block-title">Time breakdown</div>` +
       `<p class="muted inv-breakdown-sub">Tracked time per ${per} — ${total} hrs total</p>` +
       `<svg class="tb-chart" viewBox="0 0 ${W} 180" role="img" aria-label="Tracked time per ${per}">${bars}</svg>` +
       `</section>`;
@@ -485,9 +481,9 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
         ${datesLine}`;
     /* #859: only a sent zinvoice has something due — a draft was never sent,
        so the sheet's grand-total row reads "Total" like a paid one. */
-    return `<div class="md-card invoice-sheet template-modern" id="invoice-sheet">
+    return `<div class="invoice-sheet template-modern" id="invoice-sheet">
         ${head}
-        <div class="table-wrap"><table class="md-table">
+        <div class="table-wrap"><table class="inv-table">
           <thead>${itemHead()}</thead>
           <tbody>${items || `<tr><td colspan="5" class="muted">No line items.</td></tr>`}</tbody>
           <tfoot>
@@ -571,9 +567,9 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
         <a class="proof-name" href="/invoices/${inv.id}/payment-proof/${p.id}" target="_blank" rel="noopener">${esc(p.filename)}</a>
         <span class="proof-meta muted">${fmtSize(p.size)} · ${esc(shortYmd(p.created_at.slice(0, 10)))}</span>
         <span class="proof-icons">
-          <a class="md-icon-button" href="/invoices/${inv.id}/payment-proof/${p.id}" download="${esc(p.filename)}" data-tip="Download" aria-label="Download proof">${icon("download")}</a>
+          <a class="ui-icon-btn" href="/invoices/${inv.id}/payment-proof/${p.id}" download="${esc(p.filename)}" data-tip="Download" aria-label="Download proof">${icon("download")}</a>
           <form method="post" action="/invoices/${inv.id}/payment-proof/${p.id}/delete" class="inline">
-            <button class="md-icon-button danger" type="submit" data-tip="Delete proof" aria-label="Delete proof" data-confirm="Delete this proof of payment?">${icon("delete")}</button>
+            <button class="ui-icon-btn ui-icon-btn-danger" type="submit" data-tip="Delete proof" aria-label="Delete proof" data-confirm="Delete this proof of payment?">${icon("delete")}</button>
           </form>
         </span>
       </div>`).join("");
@@ -671,10 +667,10 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       document.querySelectorAll(\".share-lines\").forEach(wire);
     })();</script>`;
     const copyBtn = (url: string) => `
-      <button class="md-icon-button" type="button" data-copy data-url="${esc(url)}" data-tip="Copy link" aria-label="Copy link">${icon("copy")}</button>`;
+      <button class="ui-icon-btn" type="button" data-copy data-url="${esc(url)}" data-tip="Copy link" aria-label="Copy link">${icon("copy")}</button>`;
     const actBtn = (action: string, ic: string, label: string, cls = "", confirm = "", confirmLabel = "Delete", tip = label) => `
       <form method="post" action="${action}" hx-post="${action}" ${hxDetail}>
-        <button class="md-icon-button ${cls}" type="submit" data-tip="${tip}" aria-label="${label}"${confirm ? ` data-confirm="${confirm}" data-confirm-label="${confirmLabel}"` : ""}>${icon(ic)}</button>
+        <button class="ui-icon-btn ${cls}" type="submit" data-tip="${tip}" aria-label="${label}"${confirm ? ` data-confirm="${confirm}" data-confirm-label="${confirmLabel}"` : ""}>${icon(ic)}</button>
       </form>`;
     const clientLine = clientLink ? `
       <div class="share-line">
@@ -683,14 +679,14 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
         <span class="share-icons">
           ${copyBtn(clientLink)}
           ${actBtn(`/invoices/${inv.id}/public-token/regenerate`, "refresh", "Regenerate link (invalidates the old one)", "", "Regenerate the client link? The old URL will stop working.", "Regenerate", "Regenerate link")}
-          ${actBtn(`/invoices/${inv.id}/public-token/revoke`, "delete", "Revoke link", "danger", "Revoke the client link? The current URL will stop working.", "Revoke")}
+          ${actBtn(`/invoices/${inv.id}/public-token/revoke`, "delete", "Revoke link", "ui-icon-btn-danger", "Revoke the client link? The current URL will stop working.", "Revoke")}
         </span>
       </div>` : `
       <div class="share-line">
         <span class="share-label">Client link</span>
         <span class="share-icons">
           <form method="post" action="/invoices/${inv.id}/public-token/regenerate" hx-post="/invoices/${inv.id}/public-token/regenerate" ${hxDetail}>
-            <button class="md-tonal-button" type="submit">${icon("add")}<span>Create client link</span></button>
+            ${button({ label: "Create client link", icon: "add", type: "submit" })}
           </form>
         </span>
       </div>`;
@@ -721,22 +717,22 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
         ${copyScript}
       </section>`;
     /* #424: the paid label stays exactly where it always was — first in the
-       detail actions row. Only its styling changes: plain muted text becomes
-       an M3 chip (check icon + label). Nothing else in the header moves. */
+       detail actions row. Only its styling changes (now the ui paid chip:
+       check icon + label). Nothing else in the header moves. */
     return `<div id="invoice-detail">
       <div class="page-head no-print">
         <div class="invoice-detail-head">
-          <a class="md-text-button detail-back" href="/invoices">${icon("arrow_left")}Zinvoices</a>
+          ${linkButton({ label: "Zinvoices", href: "/invoices", icon: "arrow_left", variant: "ghost", className: "detail-back" })}
         </div>
         <div class="row">
-          ${inv.status === "paid" && inv.paid_at ? `<span class="md-chip">${icon("check")}Paid ${esc(shortYmd(inv.paid_at))}</span>` : ""}
-          <a class="md-icon-button tip-right" href="/invoices/${inv.id}.pdf" download data-tip="Download PDF" aria-label="Download PDF">${icon("download")}</a>
+          ${inv.status === "paid" && inv.paid_at ? `<span class="ui-chip ui-chip-paid">${icon("check")}Paid ${esc(shortYmd(inv.paid_at))}</span>` : ""}
+          <a class="ui-icon-btn tip-right" href="/invoices/${inv.id}.pdf" download data-tip="Download PDF" aria-label="Download PDF">${icon("download")}</a>
           ${next ? `<form method="post" action="/invoices/${inv.id}/status" class="inline" hx-post="/invoices/${inv.id}/status" ${hxDetail}>
             <input type="hidden" name="status" value="${next}">
-            <button class="md-icon-button tip-right" type="submit" data-tip="${nextLabel}" aria-label="${nextLabel}" data-confirm="${nextConfirm}" data-confirm-label="${nextLabel}">${icon("check")}</button>
+            <button class="ui-icon-btn tip-right" type="submit" data-tip="${nextLabel}" aria-label="${nextLabel}" data-confirm="${nextConfirm}" data-confirm-label="${nextLabel}">${icon("check")}</button>
           </form>` : ""}
           ${inv.status === "draft" ? `<form method="post" action="/invoices/${inv.id}/delete" class="inline">
-            <button class="md-icon-button danger tip-right" type="submit" data-tip="Delete draft" aria-label="Delete draft" data-confirm="Delete this draft zinvoice? Its entries become unbilled again.">${icon("delete")}</button>
+            <button class="ui-icon-btn ui-icon-btn-danger tip-right" type="submit" data-tip="Delete draft" aria-label="Delete draft" data-confirm="Delete this draft zinvoice? Its entries become unbilled again.">${icon("delete")}</button>
           </form>` : ""}
         </div>
       </div>

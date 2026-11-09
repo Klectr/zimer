@@ -33,7 +33,6 @@ function invoiceViews() {
       subtotal: 0, tax: 0,
       total: items.reduce((a: number, it: any) => a + Number(it.amount || 0), 0),
     }),
-    statusPill: (s: string) => `<span class="pill">${s}</span>`,
     isOverdue: () => false,
     unbilledByClient: () => [],
   });
