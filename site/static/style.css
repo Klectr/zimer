@@ -259,8 +259,8 @@
 .ui-navitem.is-active svg { color: var(--color-primary); }
 .ui-side-foot { margin-top: auto; border-top: 1px solid var(--color-border-secondary); padding-top: var(--spacing-sm); }
 
-.ui-app-head { display: flex; align-items: flex-start; gap: var(--spacing-sm); flex-wrap: wrap; margin-bottom: var(--spacing-md); }
-.ui-stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--spacing-md); margin-bottom: var(--spacing-md); }
+.ui-app-head { display: flex; align-items: flex-start; gap: var(--spacing-sm); flex-wrap: wrap; margin-bottom: var(--spacing); }
+.ui-stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--spacing-md); margin-bottom: var(--spacing); }
 .ui-stat-row .ui-progress, .ui-stat-row .ui-btn { margin-top: var(--spacing-sm); }
 @media (max-width: 639px) { .ui-stat-row { grid-template-columns: 1fr; } }
 .ui-app-title { font-size: var(--font-size-heading-4); font-weight: var(--font-weight-strong); margin: 0; }
@@ -410,6 +410,11 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .ui-timer-started { margin-left: auto; font-size: var(--font-size-sm); color: var(--color-text-tertiary); }
 .ui-timer-panel .ui-timer { margin: var(--spacing-sm) 0 var(--spacing-xs); }
 .pane-layout .ui-card { margin-bottom: var(--spacing); }
+/* #1131: the timer page is fixed-viewport — its cards sit in the permanent
+   stack above the entries scroll region, so they pad tighter vertically. */
+#today-stats .ui-card { padding-top: var(--spacing-sm); padding-bottom: var(--spacing-sm); }
+.pane-layout #timer-card { padding-top: var(--spacing-sm); padding-bottom: var(--spacing-sm); }
+.pane-layout .ui-timer-panel .ui-timer { margin: var(--spacing-xs) 0 var(--spacing-xxs); }
 .pane-supporting .ui-page-title { margin-bottom: var(--spacing-sm); }
 .ui-timer-form { display: flex; gap: var(--spacing-sm); align-items: flex-end; flex-wrap: wrap; margin-top: var(--spacing-sm); }
 .ui-timer-form-grow { flex: 2 1 220px; min-width: 0; }
@@ -776,7 +781,7 @@ body {
 /* Body margins follow the M3 window size classes: 16px on compact (<600px),
    24px on medium and wider (via --layout-body-margin). */
 /* #966: content spans the full width of the main region — no max-width caps. */
-main { padding: 24px var(--layout-body-margin) 96px; }
+main { padding: 16px var(--layout-body-margin) 96px; }
 main.login { max-width: 420px; margin: 0 auto; margin-top: 8vh; }
 /* #361: no horizontal inset — headings align with the M3 body-margin ruler. */
 h2.md-headline-small { margin: 24px 0 12px; }
