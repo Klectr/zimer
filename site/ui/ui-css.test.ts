@@ -21,6 +21,22 @@ const RULES = [
   ".ui-select {",
   ".ui-card {",
   ".ui-card.tracking {",
+  ".ui-icon-btn {",
+  ".ui-icon-btn-danger {",
+  ".ui-logo {",
+  ".ui-logo-mark {",
+  ".ui-side {",
+  ".ui-navitem {",
+  ".ui-side-foot {",
+  ".ui-app-head {",
+  ".ui-app-title {",
+  ".ui-app-sub {",
+  ".ui-app-actions {",
+  ".ui-tabs {",
+  ".ui-tab {",
+  ".ui-running {",
+  ".ui-running-dot {",
+  ".ui-running-time {",
 ];
 
 describe("ui component CSS", () => {
