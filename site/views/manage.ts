@@ -413,9 +413,9 @@ export function createManageViews(deps: ManageViewDeps) {
      The modal fragment alone renders unstyled without the app layout. */
   function settingsPage(settingsBody: string): string {
     return layout("Settings", `
-      <div class="page-narrow" data-enter="2">
+      <div data-enter="2">
       ${appHeader({ title: "Settings", sub: "Changes save per section — the button tells you it saved." })}
-      <div class="ui-settings-stack">${settingsBody}</div>
+      <div class="ui-settings-grid">${settingsBody}</div>
       </div>`, "settings");
   }
 

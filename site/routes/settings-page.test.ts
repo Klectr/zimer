@@ -81,6 +81,7 @@ describe("settings page (#693)", () => {
     const body = await res!.text();
     expect(body).toContain('id="biz-profile"');
     expect(body).not.toContain("<!DOCTYPE html>");
+    expect(body).not.toContain('class="ui-settings-grid"');
   });
 
   /* #1121: the hosted Billing section joins the body when the dep is
@@ -102,7 +103,7 @@ describe("settings page (#693)", () => {
     const body = await res!.text();
     expect(body).toContain("<!DOCTYPE html>");
     expect(body).toContain("<title>Settings</title>");
-    expect(body).toContain('class="ui-settings-stack"');
+    expect(body).toContain('class="ui-settings-grid"');
     expect(body).toContain('id="biz-profile"');
   });
 });
