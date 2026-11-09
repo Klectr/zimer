@@ -197,6 +197,13 @@
   border: 1px solid var(--color-border-secondary); border-radius: var(--radius-sm);
 }
 .ui-input::placeholder { color: var(--color-text-tertiary); }
+.ui-input-wrap { position: relative; }
+.ui-input-wrap .ui-input { width: 100%; box-sizing: border-box; }
+.ui-affix { position: absolute; top: 50%; transform: translateY(-50%); color: var(--color-text-tertiary); font-size: var(--font-size); pointer-events: none; }
+.ui-affix-prefix { left: var(--spacing-sm); }
+.ui-affix-suffix { right: var(--spacing-sm); }
+.ui-input-wrap:has(.ui-affix-prefix) .ui-input { padding-left: var(--spacing-xl); }
+.ui-input-wrap:has(.ui-affix-suffix) .ui-input { padding-right: var(--spacing-xl); }
 .ui-input:focus { outline: none; border-color: var(--color-primary); }
 .ui-input:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 .ui-select {

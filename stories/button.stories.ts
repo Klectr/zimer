@@ -36,6 +36,16 @@ export const buttonStories: Story[] = [
       `</div>`,
   },
   {
+    id: "button-icon",
+    group: "Button",
+    title: "With icon",
+    render: () =>
+      `<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">` +
+      button({ label: "Save", type: "submit", variant: "primary", icon: "save" }) +
+      button({ label: "Save", type: "submit", icon: "save" }) +
+      `</div>`,
+  },
+  {
     id: "button-disabled",
     group: "Button",
     title: "Disabled",

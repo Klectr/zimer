@@ -44,3 +44,12 @@ describe("button", () => {
     expect(html).toContain("&lt;script&gt;");
   });
 });
+
+describe("button icon", () => {
+  test("icon renders before the label via the icon system", () => {
+    const html = button({ label: "Save", type: "submit", icon: "save" });
+    expect(html).toContain("<svg");
+    expect(html.indexOf("<svg")).toBeLessThan(html.indexOf("Save"));
+    expect(button({ label: "Save" })).not.toContain("<svg");
+  });
+});
