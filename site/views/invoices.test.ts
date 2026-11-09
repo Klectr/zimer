@@ -21,7 +21,6 @@ function views(rows: any[], opts: { publicToken?: string | null; db?: Database }
     db: opts.db ?? stubDb,
     qInvoices: { all: () => rows } as unknown as Statement,
     layout: (_t: string, b: string) => b,
-    clientOptions: () => "",
     getPublicToken: () => opts.publicToken ?? null,
     stripeConfigured: () => false,
     nextInvoiceNumber: () => "INV-0001",
@@ -349,7 +348,6 @@ describe("#560: date phrases stay together", () => {
       db: metaDb,
       qInvoices: { all: () => [] } as unknown as Statement,
       layout: (_t: string, b: string) => b,
-      clientOptions: () => "",
       getPublicToken: () => null,
       stripeConfigured: () => false,
       nextInvoiceNumber: () => "INV-0001",
@@ -585,7 +583,6 @@ describe("#829: new-zinvoice due-date prefill follows global payment terms", () 
       db,
       qInvoices: { all: () => [] } as unknown as Statement,
       layout: (_t: string, b: string) => b,
-      clientOptions: () => "",
       getPublicToken: () => null,
       stripeConfigured: () => false,
       nextInvoiceNumber: () => "INV-0001",
@@ -792,6 +789,15 @@ describe("wizard + detail parity (#1121)", () => {
     const html = v.invoiceStep2(v.defaultNewInvParams(), { items: [{ description: "Work", hours: 1, rate: 85, amount: 85, entry_ids: [1], date_from: "2026-11-01", date_to: "2026-11-01" }] });
     expect(html).toContain('<div id="inv-steps" hx-swap-oob="true">');
     expect(html).toContain('<div class="ui-step is-done"><div class="ui-step-bar"></div><span class="ui-step-label">Client &amp; period</span></div>');
+    expect(html).toContain('<div class="ui-step is-current" aria-current="step"><div class="ui-step-bar"></div><span class="ui-step-label">Pick time</span></div>');
+  });
+
+  test("full-page preview renders exactly one steps indicator", () => {
+    const v = views([], { db: clientsDb });
+    const preview = { items: [{ description: "Work", hours: 1, rate: 85, amount: 85, entry_ids: [1], date_from: "2026-11-01", date_to: "2026-11-01" }] };
+    const html = v.invoiceNewPage(v.defaultNewInvParams(), preview);
+    expect(html.match(/id="inv-steps"/g)).toHaveLength(1);
+    expect(html).not.toContain('id="inv-steps" hx-swap-oob="true"');
     expect(html).toContain('<div class="ui-step is-current" aria-current="step"><div class="ui-step-bar"></div><span class="ui-step-label">Pick time</span></div>');
   });
 

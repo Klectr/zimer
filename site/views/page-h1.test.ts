@@ -66,7 +66,6 @@ function invoicePages() {
     db: stubDb,
     qInvoices: { all: () => [] } as unknown as Statement,
     layout,
-    clientOptions: () => "",
     getPublicToken: () => null,
     stripeConfigured: () => false,
     nextInvoiceNumber: () => "INV-0001",

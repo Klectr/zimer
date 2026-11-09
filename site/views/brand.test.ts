@@ -25,7 +25,6 @@ function invoiceViews() {
     db: stubDb,
     qInvoices: { all: () => [] } as unknown as Statement,
     layout: (_t: string, b: string) => b,
-    clientOptions: () => "",
     getPublicToken: () => null,
     stripeConfigured: () => false,
     nextInvoiceNumber: () => "INV-0001",

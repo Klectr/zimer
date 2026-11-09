@@ -350,12 +350,12 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       <div class="page-narrow" data-enter="2">
       ${appHeader({ title: "New Zinvoice", actions: linkButton({ label: "Cancel", href: "/invoices", variant: "ghost" }) })}
       <div id="inv-steps">${steps({ items: STEP_ITEMS, current: preview ? 1 : 0 })}</div>
-      ${step1}<div id="invoice-step2">${invoiceStep2(p, preview)}</div>
+      ${step1}<div id="invoice-step2">${invoiceStep2(p, preview, true)}</div>
       </div>`, "invoices");
   }
 
   /* #71: step-2 card as a fragment — the preview action swaps #invoice-step2 in place. */
-  function invoiceStep2(p: NewInvParams, preview?: { items: any[]; emptyMsg?: string; rounding?: number | null }): string {
+  function invoiceStep2(p: NewInvParams, preview?: { items: any[]; emptyMsg?: string; rounding?: number | null }, embedded = false): string {
     if (!preview) return "";
     const roundingNote = preview.rounding
       ? `<div class="form-info">${icon("info")}<p>Entry durations are rounded up to ${preview.rounding}-minute increments.</p></div>`
@@ -375,7 +375,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
           <td class="num">${money(it.amount)}<input type="hidden" name="g${i}_ids" value="${it.entry_ids.join(",")}"><input type="hidden" name="g${i}_date_from" value="${esc(it.date_from || "")}"><input type="hidden" name="g${i}_date_to" value="${esc(it.date_to || "")}"></td>
         </tr>`).join("");
     const t = invoiceTotals(preview.items, Number(p.tax_rate) || 0);
-    return `<div id="inv-steps" hx-swap-oob="true">${steps({ items: STEP_ITEMS, current: 1 })}</div>`
+    return (embedded ? "" : `<div id="inv-steps" hx-swap-oob="true">${steps({ items: STEP_ITEMS, current: 1 })}</div>`)
       + card({ className: "form-card", content: formSection({ step: 2, title: "Review line items", bodyHtml: `
         ${emptyNote}
         ${roundingNote}
