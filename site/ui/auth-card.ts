@@ -4,6 +4,7 @@ import { button } from "./button";
 
 export interface AuthCardOptions {
   action: string;
+  headingLevel?: 1 | 2;
   title: string;
   sub: string;
   fieldsHtml: string;
@@ -17,7 +18,7 @@ export function authCard(opts: AuthCardOptions): string {
   const note = opts.note ? `<div class="ui-auth-note">${esc(opts.note)}</div>` : "";
   return (
     `<div class="ui-auth-card">${logoLockup()}` +
-    `<h2 class="ui-auth-title">${esc(opts.title)}</h2>` +
+    `<h${opts.headingLevel ?? 2} class="ui-auth-title">${esc(opts.title)}</h${opts.headingLevel ?? 2}>` +
     `<p class="ui-auth-sub">${esc(opts.sub)}</p>` +
     `<form method="post" action="${esc(opts.action)}"><div class="ui-auth-fields">${opts.fieldsHtml}</div>` +
     button({ label: opts.submitLabel, variant: "primary", size: "lg", block: true, type: "submit" }) +

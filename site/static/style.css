@@ -344,7 +344,7 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .ui-auth-note { border-top: 1px solid var(--color-border-secondary); margin-top: var(--spacing-md); padding-top: var(--spacing-sm); font-size: var(--font-size-sm); line-height: var(--line-height-sm); color: var(--color-text-tertiary); }
 .ui-btn-block { width: 100%; }
 .ui-section-head { margin-bottom: var(--spacing-sm); }
-.ui-section-title { font-size: var(--font-size-heading-5); font-weight: 600; }
+.ui-section-title { font-size: var(--font-size-heading-5); font-weight: 600; margin: 0; }
 .ui-section-hint { font-size: var(--font-size-sm); line-height: var(--line-height-sm); color: var(--color-text-secondary); margin-top: var(--spacing-xxs); }
 .ui-section-actions { display: flex; align-items: center; gap: var(--spacing-sm); margin-top: var(--spacing-md); flex-wrap: wrap; }
 .ui-plan { display: flex; flex-direction: column; gap: var(--spacing-sm); }

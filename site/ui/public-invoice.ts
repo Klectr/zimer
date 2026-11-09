@@ -22,7 +22,7 @@ export function publicInvoice(opts: PublicInvoiceOptions): string {
   const footer = opts.footer ? `<p class="ui-public-footer">${esc(opts.footer)}</p>` : "";
   const sheet =
     `<div class="ui-public-sheet">` +
-    `<div class="ui-card-head"><span><span class="ui-section-title">${esc(opts.business)}</span>` +
+    `<div class="ui-card-head"><span><h1 class="ui-section-title">${esc(opts.business)}</h1>` +
     `<div class="ui-public-meta">${esc(opts.meta)}</div></span>${chip}</div>` +
     `<div class="ui-public-lines">${lines}</div>` +
     pay +

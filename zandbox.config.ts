@@ -11,6 +11,7 @@ import { calendarStories } from "./stories/calendar.stories";
 import { feedbackStories } from "./stories/feedback.stories";
 import { formsStories } from "./stories/forms.stories";
 import { surfacesStories } from "./stories/surfaces.stories";
+import { pagesStories } from "./stories/pages.stories";
 
 const config: ZandboxConfig = {
   name: "Zandbox",
@@ -26,6 +27,7 @@ const config: ZandboxConfig = {
     ...feedbackStories,
     ...formsStories,
     ...surfacesStories,
+    ...pagesStories,
     ...tokenStories,
   ],
   assets: {

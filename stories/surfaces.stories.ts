@@ -24,7 +24,7 @@ export const surfacesStories: Story[] = [
         startedLabel: "Started 9:04 AM",
         startedAt: "2026-11-08T09:04:00",
         elapsed: "01:24:08",
-        metaHtml: tag({ label: "$85 / hr", tone: "primary" }) + tag({ label: "Billable" }) + tag({ label: "Worth $119.17 so far" }),
+        metaHtml: tag({ label: "$85 / hr", tone: "primary" }) + tag({ label: "Billable" }) + tag({ label: "Worth $119.19 so far" }),
         actionsHtml: button({ label: "Stop", variant: "primary" }) + button({ label: "Pause" }),
       }) +
       timerPanel({
@@ -51,7 +51,7 @@ export const surfacesStories: Story[] = [
           `<div style="display:flex;gap:8px;margin-top:16px"><span style="flex:1">${button({ label: "Stop", variant: "primary", block: true })}</span>${button({ label: "Pause" })}</div>`,
         footerHtml:
           `<div style="font-size:var(--font-size-sm);color:var(--color-text-tertiary);margin-bottom:8px">Start new</div>` +
-          `<div style="display:flex;gap:8px">${textField({ id: "ext-desc", label: "Description" })}${button({ label: "Start", variant: "primary" })}</div>` +
+          `<div style="display:flex;gap:8px">${textField({ id: "ext-desc", label: "Description" })}${button({ label: "Start" })}</div>` +
           `<div style="display:flex;align-items:center;margin-top:10px">${selectField({ id: "ext-client", label: "Client", options: [{ value: "acme", label: "Acme Studio" }, { value: "northwind", label: "Northwind Legal" }], value: "acme" })}<a href="/" style="margin-left:auto;font-size:var(--font-size-sm)">Open app</a></div>`,
       }),
   },
