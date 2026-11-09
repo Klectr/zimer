@@ -117,13 +117,13 @@ export function createBillingSection(opts: {
       ? `<form method="post" action="/billing/portal" style="margin:0">${button({ label: "Manage subscription", type: "submit" })}</form>`
       : `<form method="post" action="/billing/checkout" style="margin:0">${button({ label: "Subscribe · $12/month", type: "submit", variant: "primary" })}</form>`;
     const body = planCard({
-      name: "Hosted",
       amount: "$12",
       period: "/ month · flat, no seats",
       blurb: line,
       features: [],
       ctaHtml: action,
       statusHtml: statusTag,
+      bare: true,
     });
     return settingsSection({ level: 2, id: "billing-section", title: "Billing — Hosted plan", bodyHtml: body });
   };

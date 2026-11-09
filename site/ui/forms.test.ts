@@ -103,6 +103,27 @@ describe("settings section + plan card", () => {
     const html = planCard({ name: "Hosted", amount: "$12", features: [], ctaHtml: "", statusHtml: '<span class="ui-tag ui-tag-success">Active</span>' });
     expect(html).toContain('<span class="ui-card-head-end"><span class="ui-tag ui-tag-success">Active</span></span>');
   });
+
+  test("bare renders the plan without the card chrome", () => {
+    const html = planCard({ name: "Hosted", amount: "$12", features: [], ctaHtml: "", bare: true });
+    expect(html.startsWith('<div class="ui-plan">')).toBe(true);
+    expect(html).not.toContain('class="ui-card"');
+    expect(html).not.toContain('<div class="ui-card ui-plan">');
+    expect(html).toContain('<span class="ui-section-title">Hosted</span>');
+  });
+
+  test("nameless with statusHtml renders a head row holding only the head end", () => {
+    const html = planCard({ amount: "$12", features: [], ctaHtml: "", statusHtml: '<span class="ui-tag ui-tag-success">Active</span>' });
+    expect(html).toContain('<div class="ui-card-head"><span class="ui-card-head-end"><span class="ui-tag ui-tag-success">Active</span></span></div>');
+    expect(html).not.toContain("ui-section-title");
+  });
+
+  test("nameless without head content renders no head row", () => {
+    const html = planCard({ amount: "$12", features: [], ctaHtml: "" });
+    expect(html).not.toContain("ui-card-head");
+    expect(html).not.toContain("ui-section-title");
+    expect(html.startsWith('<div class="ui-card ui-plan"><div class="ui-plan-price">')).toBe(true);
+  });
 });
 
 describe("zinvoice form pieces", () => {

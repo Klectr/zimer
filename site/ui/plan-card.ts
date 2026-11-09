@@ -3,7 +3,7 @@ import { icon } from "../lib/icons";
 import { card } from "./card";
 
 export interface PlanCardOptions {
-  name: string;
+  name?: string;
   amount: string;
   period?: string;
   blurb?: string;
@@ -11,6 +11,7 @@ export interface PlanCardOptions {
   ctaHtml: string;
   current?: boolean;
   statusHtml?: string;
+  bare?: boolean;
 }
 
 export function planCard(opts: PlanCardOptions): string {
@@ -21,11 +22,17 @@ export function planCard(opts: PlanCardOptions): string {
   const features = opts.features
     .map((f) => `<li>${icon("check")}<span>${esc(f)}</span></li>`)
     .join("");
+  const title = opts.name ? `<span class="ui-section-title">${esc(opts.name)}</span>` : "";
+  const head = title || headEnd
+    ? `<div class="ui-card-head">${title}<span class="ui-card-head-end">${headEnd}</span></div>`
+    : "";
   const inner =
-    `<div class="ui-card-head"><span class="ui-section-title">${esc(opts.name)}</span><span class="ui-card-head-end">${headEnd}</span></div>` +
+    head +
     `<div class="ui-plan-price"><span class="ui-plan-amount">${esc(opts.amount)}</span>${period}</div>` +
     blurb +
     `<ul class="ui-plan-features">${features}</ul>` +
     `<div class="ui-plan-cta">${opts.ctaHtml}</div>`;
-  return card({ content: inner, className: "ui-plan" + (opts.current ? " is-current" : "") });
+  const cls = "ui-plan" + (opts.current ? " is-current" : "");
+  if (opts.bare) return `<div class="${cls}">${inner}</div>`;
+  return card({ content: inner, className: cls });
 }
