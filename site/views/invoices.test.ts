@@ -698,24 +698,59 @@ describe("#899: time breakdown chart on the zinvoices sheet", () => {
   });
 });
 
-/** #948: mobile header compaction hooks — the list page-head carries a
- *  dedicated class for the phone media query, and the Export CSV label is
- *  wrapped so CSS can swap it for the short "CSV" label on narrow viewports
- *  (never icon-only, per #949 review). */
-describe("#948: mobile zinvoices header", () => {
-  test("list page-head has the page-head-invoices scoping class", () => {
+/** #948's intent, carried into the appHeader structure (#1121): the
+ *  header actions keep their full text labels at every width (the old
+ *  page-head hid them on phones behind label-swap spans) and always
+ *  carry an accessible name. */
+describe("#948: zinvoices header actions stay labeled", () => {
+  test("list head is the ui app header", () => {
     const html = views([{ ...baseRow, status: "sent", paid_at: null }]).invoicesPage(null, "http://x");
-    expect(html).toContain('class="page-head page-head-invoices"');
+    expect(html).toContain('<header class="ui-app-head">');
+    expect(html).toContain('<h1 class="ui-app-title">Zinvoices</h1>');
   });
-  test("Export CSV label is wrapped in .btn-label with a short mobile label and aria-label", () => {
+  test("Export CSV is a labeled link button with download and aria-label", () => {
     const html = views([{ ...baseRow, status: "sent", paid_at: null }]).invoicesPage(null, "http://x");
-    expect(html).toContain('<span class="btn-label">Export CSV</span>');
-    expect(html).toContain('<span class="btn-label-short">CSV</span>');
+    expect(html).toContain('href="/export/invoices.csv"');
+    expect(html).toContain(" download ");
     expect(html).toContain('aria-label="Export CSV"');
+    expect(html).toContain(">Export CSV</a>");
+    expect(html).not.toContain("btn-label");
   });
-  test("New zinvoice label is wrapped in .btn-label (hidden on phones) with an aria-label", () => {
+  test("New Zinvoice is a labeled primary link button", () => {
     const html = views([{ ...baseRow, status: "sent", paid_at: null }]).invoicesPage(null, "http://x");
-    expect(html).toContain('<span class="btn-label">New zinvoice</span>');
+    expect(html).toContain('class="ui-btn ui-btn-primary" href="/invoices/new"');
     expect(html).toContain('aria-label="New zinvoice"');
+    expect(html).toContain(">New Zinvoice</a>");
+  });
+});
+
+/** #1121: the list page's summary figures follow the page-zinvoices
+ *  mock — a stat-card row (Outstanding excludes drafts) under an
+ *  appHeader whose sub carries the same outstanding / paid-this-month
+ *  figures, and the OOB refresh re-emits both so detail actions never
+ *  leave them stale. */
+describe("zinvoices stat cards (#1121)", () => {
+  const statRows = () => [
+    { ...baseRow, id: 1, status: "sent", subtotal: 2090, paid_at: null },
+    { ...baseRow, id: 2, status: "sent", subtotal: 640, paid_at: null },
+    { ...baseRow, id: 3, status: "draft", subtotal: 1827.5, paid_at: null },
+    { ...baseRow, id: 4, status: "paid", subtotal: 425, paid_at: `${new Date().toISOString().slice(0, 8)}15` },
+    { ...baseRow, id: 5, status: "paid", subtotal: 900, paid_at: "2020-01-15" },
+  ];
+  test("cards split outstanding (sent only), drafts, and paid this month", () => {
+    const html = views(statRows()).invoicesPage(null, "http://x");
+    expect(html).toContain('<div class="ui-stat-row" id="inv-stats">');
+    expect(html).toContain('<div class="ui-stat-value">$2,730.00</div>');
+    expect(html).toContain("2 zinvoices waiting");
+    expect(html).toContain('<div class="ui-stat-value">$1,827.50</div>');
+    expect(html).toContain("1 draft");
+    expect(html).toContain('<div class="ui-stat-value">$425.00</div>');
+    expect(html).toContain("Outstanding $2,730.00 · Paid this month $425.00");
+    expect(html).not.toContain("inv-outstanding");
+  });
+  test("OOB refresh re-emits the stat row and the header sub", () => {
+    const html = views(statRows()).invoiceListOob(1);
+    expect(html).toContain('<div class="ui-stat-row" id="inv-stats" hx-swap-oob="true">');
+    expect(html).toContain('<p class="ui-app-sub" id="inv-sub" hx-swap-oob="true">Outstanding $2,730.00 · Paid this month $425.00</p>');
   });
 });

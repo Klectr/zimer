@@ -34,6 +34,8 @@ export interface LinkButtonOptions {
   external?: boolean;
   id?: string;
   className?: string;
+  download?: boolean;
+  ariaLabel?: string;
 }
 
 export function linkButton(opts: LinkButtonOptions): string {
@@ -46,7 +48,9 @@ export function linkButton(opts: LinkButtonOptions): string {
   const ext = opts.external ? ` target="_blank" rel="noopener"` : "";
   const iconHtml = opts.icon ? icon(opts.icon) : "";
   const id = opts.id ? ` id="${esc(opts.id)}"` : "";
-  return `<a class="${cls}" href="${esc(opts.href)}"${id}${ext}>${iconHtml}${esc(opts.label)}</a>`;
+  const dl = opts.download ? " download" : "";
+  const aria = opts.ariaLabel ? ` aria-label="${esc(opts.ariaLabel)}"` : "";
+  return `<a class="${cls}" href="${esc(opts.href)}"${id}${ext}${dl}${aria}>${iconHtml}${esc(opts.label)}</a>`;
 }
 
 export function button(opts: ButtonOptions): string {

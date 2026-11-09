@@ -60,6 +60,12 @@ describe("linkButton className", () => {
     expect(html).toContain('class="ui-btn ui-btn-ghost detail-back"');
     expect(html).toContain('href="/manage"');
   });
+  test("download and ariaLabel render on the anchor (#1121)", () => {
+    const html = linkButton({ label: "Export CSV", href: "/export/invoices.csv", download: true, ariaLabel: "Export CSV" });
+    expect(html).toContain(" download ");
+    expect(html).toContain('aria-label="Export CSV"');
+    expect(linkButton({ label: "X", href: "/x" })).not.toContain("download");
+  });
 });
 
 describe("button spinner", () => {
