@@ -225,3 +225,40 @@ describe("public invoice summary (#1136)", () => {
     expect(html).toContain("ui-tag-error");
   });
 });
+
+describe("public invoice status edges (#1136 review)", () => {
+  const mk = (globalTerms: string) => createPublicViews({
+    getInvoice: () => null,
+    invoiceTotals: (items: any[]) => {
+      const total = items.reduce((s: number, i: any) => s + i.amount, 0);
+      return { subtotal: total, tax: 0, total };
+    },
+    businessName: () => "Studio",
+    paymentTerms: () => globalTerms,
+    ensurePublicToken: () => "",
+  } as any) as any;
+  const base: any = {
+    id: 9, number: "INV-2009", tax_rate: 0, issue_date: "2026-11-05",
+    due_date: "2020-01-15", notes: "", stripe_payment_link: "", public_token: "tok",
+    client_payment_terms: null,
+    items: [{ description: "Work", hours: 2, rate: 50, amount: 100 }],
+  };
+  test("a draft never reads as money due", () => {
+    const html = mk("net_30").publicInvoicePage({ ...base, status: "draft" }, "https://example.com", "/i/tok");
+    expect(html).toContain("Draft");
+    expect(html).toContain("Total");
+    expect(html).not.toContain("Total due");
+    expect(html).not.toContain("Overdue");
+  });
+  test("pay-when-paid terms never flag overdue (#291)", () => {
+    const html = mk("pay_when_paid").publicInvoicePage({ ...base, status: "sent" }, "https://example.com", "/i/tok");
+    expect(html).not.toContain("Overdue");
+    expect(html).not.toContain("Due Jan 15");
+    expect(html).toContain("Sent");
+  });
+  test("numeric terms keep the overdue flag; a client override wins", () => {
+    const v = mk("pay_when_paid");
+    const html = v.publicInvoicePage({ ...base, status: "sent", client_payment_terms: "net_15" }, "https://example.com", "/i/tok");
+    expect(html).toContain("Overdue");
+  });
+});

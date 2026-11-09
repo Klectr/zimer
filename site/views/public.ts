@@ -3,7 +3,7 @@
  *  ensurePublicToken) stay owned by server.ts until the invoices view slice
  *  (#171) and are injected here, so these pages render unchanged. */
 
-import { esc, money, shortYmd, todayStr } from "../lib/format.ts";
+import { esc, money, shortYmd, termsDays, termsKey, todayStr } from "../lib/format.ts";
 import { icon, logo } from "../lib/icons.ts";
 import type { ChangelogEntry } from "../lib/changelog.ts"; /* #303 */
 import type { TermsSection } from "../lib/license-terms.ts"; /* #341 */
@@ -17,6 +17,7 @@ export interface PublicViewDeps {
   getInvoice: (id: number) => (Invoice & { items: InvoiceItem[] }) | null;
   invoiceTotals: (items: InvoiceItem[], taxRate: number) => { subtotal: number; tax: number; total: number };
   businessName?: () => string;
+  paymentTerms?: () => string;
   ensurePublicToken: (id: number) => string;
 }
 
@@ -48,7 +49,7 @@ export function createPublicViews(deps: PublicViewDeps) {
   function longYmd(ymd: string | null | undefined): string {
     if (!ymd) return "";
     const [y, m, d] = ymd.split("-").map(Number);
-    if (!y || !m || !d) return ymd;
+    if (!y || !m || !d || m < 1 || m > 12) return ymd;
     return `${MONTHS[m - 1]} ${d}, ${y}`;
   }
   function hoursLabel(hours: number): string {
@@ -67,13 +68,15 @@ export function createPublicViews(deps: PublicViewDeps) {
       label: `${it.description}${hoursLabel(it.hours)}`,
       amount: money(it.amount),
     }));
-    if (t.tax > 0) {
+    if (inv.tax_rate !== 0) {
       lines.push({ label: "Subtotal", amount: money(t.subtotal) });
       lines.push({ label: `Tax (${inv.tax_rate}%)`, amount: money(t.tax) });
     }
     let chipHtml: string | undefined;
     if (inv.status === "paid") chipHtml = tag({ label: "Paid", tone: "success" });
-    else if (inv.status === "sent" && inv.due_date) {
+    else if (inv.status === "draft") chipHtml = tag({ label: "Draft", tone: "neutral" });
+    else if (inv.status === "sent" && inv.due_date
+      && termsDays(termsKey(inv.client_payment_terms, deps.paymentTerms?.())) !== null) {
       chipHtml = inv.due_date < todayStr()
         ? tag({ label: "Overdue", tone: "error" })
         : tag({ label: `Due ${shortYmd(inv.due_date)}`, tone: "warning" });
@@ -86,7 +89,7 @@ export function createPublicViews(deps: PublicViewDeps) {
         : `${issued ? `Issued ${issued}` : ""}`,
       chipHtml,
       lines,
-      totalLabel: inv.status === "paid" ? "Total paid" : "Total due",
+      totalLabel: inv.status === "paid" ? "Total paid" : inv.status === "draft" ? "Total" : "Total due",
       total: money(t.total),
       pay: inv.stripe_payment_link ? { label: `Pay ${money(t.total)}`, href: inv.stripe_payment_link } : undefined,
       note: inv.stripe_payment_link ? "Secure payment by card. Questions? Reply to the email this link came in." : undefined,

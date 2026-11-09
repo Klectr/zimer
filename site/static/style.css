@@ -2350,7 +2350,15 @@ body.app-fixed .cal-gutter-spacer {
 @media print {
   .ui-side, .ui-mobile-head, .ui-mobile-nav, .nav-drawer-scrim, .trial-banner, .no-print, .page-head, .ui-app-head, .ui-stat-row { display: none !important; }
   .invoice-list-pane { display: none !important; } /* #364: print only the invoice document */
-  .ui-public-sheet .ui-btn, .ui-public-footer { display: none !important; } /* #1136: the public summary prints without its pay action or web footer */
+  .ui-public-sheet .ui-btn, .ui-public-footer, .ui-public-note { display: none !important; } /* #1136: the public summary prints without its pay action or web footer */
+  /* #1136: the public summary on paper — dark text, visible tag outline,
+     hairlines that survive without backgrounds. */
+  .ui-public-sheet { background: #fff; color: #111; border-color: #999; }
+  .ui-public-meta, .ui-public-notes { color: #333; }
+  .ui-public-lines { border-top-color: #ccc; }
+  .ui-public-lines .ui-summary-line { border-bottom-color: #ddd; }
+  .ui-summary-total .num { color: #111; }
+  .ui-public .ui-tag { border: 1px solid #999; background: #fff !important; color: #111 !important; }
   .invoice-list-detail { display: block; }
   .invoice-detail-pane { overflow: visible; }
   body { background: #fff; color: #111; }

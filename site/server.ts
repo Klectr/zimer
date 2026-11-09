@@ -148,6 +148,7 @@ function buildTenantTree(bundle: DbBundle, dbPath: string): WebTenant & ApiTenan
   const { publicInvoicePage } = createPublicViews({
     getInvoice, invoiceTotals, ensurePublicToken,
     businessName: () => getMeta(db, "business_name"),
+    paymentTerms: () => getMeta(db, "business_payment_terms"),
   });
 
   return {
