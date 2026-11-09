@@ -222,21 +222,6 @@ export function createDomain(deps: DomainDeps) {
 
   /* Milestone 20: sundayOf/addDays live in lib/format.ts. */
 
-  /** Shared M3 Expressive determinate progress track (#87). Under target: a
-      wave-masked pumpkin fill that ripples while motion is allowed, a tonal
-      remainder track, and a small pumpkin gap dot. At/over target: settles to a
-      flat full-width pumpkin fill with a one-pass completion sheen. `pct` is
-      clamped 0..100; `met` selects the settled state. */
-  function m3ProgressBar(pct: number, met: boolean, ariaLabel: string): string {
-    const bar = met
-      ? `<div class="m3-progress-fill" style="width:${pct.toFixed(1)}%" aria-hidden="true"></div>`
-      : `${pct > 0 ? `<div class="m3-progress-fill-wrap" style="width:calc((100% - 4px) * ${(pct / 100).toFixed(3)})" aria-hidden="true"><div class="m3-progress-fill-wave"></div></div>` : ""}
-         <div class="m3-progress-remainder" aria-hidden="true"></div>
-         <div class="m3-progress-dot" aria-hidden="true"></div>`;
-    return `<div class="m3-progress-track${met ? " complete" : ""}" role="progressbar" aria-valuenow="${Math.round(pct)}"
-        aria-valuemin="0" aria-valuemax="100" aria-label="${ariaLabel}">${bar}</div>`;
-  }
-
   /** Slim pacing bar under the week header: tracked hours vs the week target
       (five days at the user's daily target, #908). */
   function weekTargetBar(weekTotalSecs: number): string {
@@ -274,7 +259,7 @@ export function createDomain(deps: DomainDeps) {
   return {
     getInvoice, invoiceTotals, nextInvoiceNumber, stripeLinkFor,
     unbilledEntries, groupToLineItems, clientRestFrom, unbilledByClient,
-    projectOptions, projectOptionRows, m3ProgressBar, weekTargetBar,
+    projectOptions, projectOptionRows, weekTargetBar,
     newPublicToken, ensurePublicToken, getPublicToken, mintPublicToken,
   };
 }

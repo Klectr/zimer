@@ -30,7 +30,6 @@ export interface TimerViewDeps {
   revenueMonthly: () => { label: string; invoiced: number; paid: number }[];
   revenueByClient: () => { name: string; color: string | null; invoiced: number; paid: number; outstanding: number }[];
   revenueOverdue: () => { id: number; number: string; client_name: string | null; due_date: string | null; total: number; days_past_due: number; bucket: string }[];
-  m3ProgressBar: (pct: number, met: boolean, ariaLabel: string) => string;
   /* #908: per-request getter — the daily target is a user setting now, and
      the view deps are built once at server startup. */
   dayTargetSecs: () => number;
@@ -38,7 +37,7 @@ export interface TimerViewDeps {
 
 export function createTimerViews(deps: TimerViewDeps) {
   const { db, qRunning, qRange, layout, demoBanner, projectOptions, projectOptionRows,
-    revenueTotals, revenueMonthly, revenueByClient, revenueOverdue, m3ProgressBar, dayTargetSecs } = deps;
+    revenueTotals, revenueMonthly, revenueByClient, revenueOverdue, dayTargetSecs } = deps;
 
   /* #546: description suggestions for the start form — the 15 most recently
      used non-blank descriptions, deduped. Rendered as a browser-native
