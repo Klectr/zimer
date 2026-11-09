@@ -14,6 +14,7 @@ colors:
   colorTextQuaternary: "#52525b"
   colorBgLayout: "#08090a"
   colorBgContainer: "#0d0d0f"
+  colorBgContainerSecondary: "#0a0b0c"
   colorBgElevated: "#16171a"
   colorBgSpotlight: "#1e1f23"
   colorBorder: "rgba(255, 255, 255, 0.14)"
@@ -23,12 +24,14 @@ colors:
   colorFillTertiary: "rgba(255, 255, 255, 0.04)"
   colorFillQuaternary: "rgba(255, 255, 255, 0.02)"
 typography:
-  fontFamily: Geist, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif
-  fontFamilyCode: "Geist Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace
+  fontFamily: Geist, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Roboto, "Helvetica Neue", Arial, "HarmonyOS Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif
+  fontFamilyCode: "Geist Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, "Cascadia Code", Consolas, "HarmonyOS Sans SC", monospace
   fontSizeSM: 12
   fontSize: 14
   fontSizeLG: 16
   fontSizeXL: 20
+  lineHeight: 1.5714
+  lineHeightSM: 1.6667
   fontSizeHeading1: 38
   fontSizeHeading2: 30
   fontSizeHeading3: 24
@@ -39,36 +42,37 @@ spacing: { XXS: 4, XS: 8, SM: 12, base: 16, MD: 20, LG: 24, XL: 32 }
 radius: { borderRadiusXS: 4, borderRadiusSM: 6, borderRadius: 8, borderRadiusLG: 12 }
 controls: { controlHeightSM: 28, controlHeight: 36, controlHeightLG: 40 }
 elevation:
-  boxShadowTertiary: "0 3px 1px -1px rgba(0,0,0,0.2)"
-  boxShadowSecondary: "0 8px 16px -4px rgba(0,0,0,0.35)"
-  boxShadow: "0 20px 20px -8px rgba(0,0,0,0.45)"
+  boxShadowTertiary: "0 3px 1px -1px rgba(26,26,26,0.06)"
+  boxShadowSecondary: "0 8px 16px -4px rgba(0,0,0,0.2)"
+  boxShadow: "0 20px 20px -8px rgba(0,0,0,0.24)"
 ---
 
 # Zimer
 
 Zimer is a solo time tracker: timer to invoice in two clicks. Calm, dense where density helps, content-first. The user's work — timers, hours, invoices — stays in focus; the interface carries state and hierarchy, not decoration.
 
-Design values (from Ant Design, via LobeHub): **Natural · Certain · Meaningful · Growing.**
+Design values (LobeHub's, adopted from Ant Design): **Natural · Meaningful · Certainty · Growth.**
 
 - Natural — follow how people scan; the running timer is always the most prominent thing on its page.
-- Certain — same problem, same pattern, every surface including the extension popup. Explicit states, never guessed.
 - Meaningful — every element names its job or gets cut. Color carries meaning, not decoration.
-- Growing — start simple (two pricing options, one job), reveal depth as the user needs it.
+- Certainty — same problem, same pattern, every surface including the extension popup. Explicit states, never guessed.
+- Growth — start simple (two pricing options, one job), reveal depth as the user needs it.
 
 ## Colors
 
 Consume tokens by name (`--color-text`, `--color-bg-container`, …). Never hard-code the hex above in a component.
 
 - Text ranks with the neutral ramp: `colorText` → `colorTextSecondary` → `colorTextTertiary` → `colorTextQuaternary` (disabled). Rank information with this ramp before reaching for color.
-- Surfaces get lighter as they rise in dark: `colorBgLayout` (canvas) → `colorBgContainer` → `colorBgElevated` (popovers, menus, modals) → `colorBgSpotlight` (tooltips). Don't flatten the stack.
+- Surfaces get lighter as they rise in dark: `colorBgLayout` (canvas) → `colorBgContainer` → `colorBgElevated` (popovers, menus, modals) → `colorBgSpotlight` (tooltips). `colorBgContainerSecondary` gives subtle separation within a container. Don't flatten the stack.
 - Borders and fills are translucent white so they layer over any surface. `colorBorderSecondary` is the everyday divider; `colorBorder` is the stronger edge.
 - `colorPrimary` is pumpkin `#fb923c` — Zimer's deliberate brand exception to LobeHub's monochrome default. It is reserved for the single most important action per view, the running-timer state, and links. Don't spread it as decoration.
-- One ambient glow is permitted, behind the product panel on the landing hero only, in `colorPrimary` at low opacity. Nowhere else.
-- Status is a filled chip + a word, never color alone: Draft (neutral), Sent (info), Paid (success), Overdue (error), Running (success, with dot).
+- No ambient glow or decorative color wash anywhere. Color carries state and hierarchy, not decoration.
+- Status is a tinted chip + a word, never color alone: the functional color's derived Bg tint behind its own hue as text — Draft (neutral), Sent (info), Paid (success), Overdue (error), Running (success, with dot).
+- Each functional color exposes derived ramp tokens (`--color-*-bg` tints for chips and washes, `--color-*-hover` / `--color-*-active` for solid fills, `--color-*-border`); consume the tokens instead of hand-mixing.
 
 ## Typography
 
-Geist sets UI and prose (LobeHub's stack, Chinese fallbacks included); Geist Mono sets numbers, always tabular so totals align. Scale is 12 / 14 / 16 / 20 — there is no 13px; off-scale sizes are drift, round to the nearest step and rank with the text ramp instead. Headings 38 → 16 at weight 600, tight tracking (-0.02em to -0.045em) on large sizes only.
+Geist sets UI and prose (LobeHub's stack verbatim, Chinese fallbacks included); Geist Mono sets numbers, always tabular so totals align. Scale is 12 / 14 / 16 / 20 — there is no 13px; off-scale sizes are drift, round to the nearest step and rank with the text ramp instead. Headings 38 → 16 at weight 600, tight tracking (-0.02em to -0.045em) on large sizes only. Line height is 1.5714 for body text, 1.6667 for small text.
 
 ## Layout
 
@@ -92,7 +96,7 @@ Motion clarifies change; it is never decoration. 100–200ms for state changes a
 
 ## Shapes
 
-One radius family per view, LobeHub's scale with no exceptions: 4 (chips, tags), 6 (inputs, small controls), 8 (buttons, cards — the default), 12 (menus, modals, large surfaces). Fully round only for pills, avatars, and the selected accent dot (white ring on the selected dot).
+One radius family per view, LobeHub's scale with no exceptions: 4 (chips, tags), 6 (inputs, small controls), 8 (buttons, cards — the default), 12 (menus, modals, large surfaces). Fully round only for pills, avatars, and circular icon buttons.
 
 ## Components
 

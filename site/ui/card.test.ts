@@ -2,12 +2,12 @@ import { describe, expect, test } from "bun:test";
 import { card } from "./card";
 
 describe("card", () => {
-  test("renders a div with the card class and the given content, matching the views", () => {
-    expect(card({ content: "<p>Hello</p>" })).toBe('<div class="md-card"><p>Hello</p></div>');
+  test("renders a div with the ui-card class and the given content", () => {
+    expect(card({ content: "<p>Hello</p>" })).toBe('<div class="ui-card"><p>Hello</p></div>');
   });
 
   test("tracking variant adds the tracking class", () => {
-    expect(card({ content: "x", tracking: true })).toBe('<div class="md-card tracking">x</div>');
+    expect(card({ content: "x", tracking: true })).toBe('<div class="ui-card tracking">x</div>');
   });
 
   test("id is included and escaped", () => {

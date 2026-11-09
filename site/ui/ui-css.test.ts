@@ -1,0 +1,122 @@
+import { describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+const css = readFileSync(join(import.meta.dir, "../static/style.css"), "utf8");
+
+const INLINE_SET_VARS = ["--cal-hour", "--dot"];
+
+describe("style.css token references", () => {
+  test("every var() reference resolves to a definition (or an inline-set legacy var)", () => {
+    const defs = new Set([...css.matchAll(/(--[\w-]+)\s*:/g)].map((m) => m[1]));
+    const refs = new Set([...css.matchAll(/var\((--[\w-]+)\)/g)].map((m) => m[1]));
+    const unresolved = [...refs].filter((r) => !defs.has(r) && !INLINE_SET_VARS.includes(r));
+    expect(unresolved).toEqual([]);
+  });
+});
+
+const RULES = [
+  ".ui-btn {",
+  ".ui-btn-primary {",
+  ".ui-btn-ghost {",
+  ".ui-btn-danger {",
+  ".ui-btn-sm {",
+  ".ui-btn-lg {",
+  ".ui-chip {",
+  ".ui-chip-draft {",
+  ".ui-chip-sent {",
+  ".ui-chip-paid {",
+  ".ui-field {",
+  ".ui-field-label {",
+  ".ui-input {",
+  ".ui-select {",
+  ".ui-card {",
+  ".ui-card.tracking {",
+  ".ui-icon-btn {",
+  ".ui-icon-btn-danger {",
+  ".ui-logo {",
+  ".ui-logo-mark {",
+  ".ui-side {",
+  ".ui-navitem {",
+  ".ui-side-foot {",
+  ".ui-app-head {",
+  ".ui-app-title {",
+  ".ui-app-sub {",
+  ".ui-app-actions {",
+  ".ui-tabs {",
+  ".ui-tab {",
+  ".ui-running {",
+  ".ui-running-dot {",
+  ".ui-running-time {",
+  ".ui-stat-label {",
+  ".ui-stat-value {",
+  ".ui-stat-sub {",
+  ".ui-progress {",
+  ".ui-progress-fill {",
+  ".ui-steps {",
+  ".ui-step {",
+  ".ui-step-bar {",
+  ".ui-step-label {",
+  ".ui-list {",
+  ".ui-row {",
+  ".ui-row-main {",
+  ".ui-row-title {",
+  ".ui-row-meta {",
+  ".ui-row-side {",
+  ".ui-row-amount {",
+  ".ui-table {",
+  ".ui-table .num {",
+  ".ui-chip-overdue {",
+  ".ui-week {",
+  ".ui-week-grid {",
+  ".ui-week-agenda {",
+  ".ui-day {",
+  ".ui-day-head {",
+  ".ui-day-name {",
+  ".ui-day-dot {",
+  ".ui-day-total {",
+  ".ui-day-entries {",
+  ".ui-week-entry {",
+  ".ui-day-more {",
+  ".ui-agenda-day {",
+  ".ui-viz {",
+  ".ui-viz-heads {",
+  ".ui-viz-day-head {",
+  ".ui-viz-day-name {",
+  ".ui-viz-day-total {",
+  ".ui-viz-hours {",
+  ".ui-viz-hour {",
+  ".ui-viz-col {",
+  ".ui-viz-block {",
+  ".ui-viz-block-title {",
+  ".ui-viz-block-meta {",
+  ".ui-week-entry-title {",
+  ".ui-viz-handle {",
+  ".ui-viz-grip {",
+  ".ui-viz-now {",
+  ".ui-scrim {",
+  ".ui-dialog {",
+  ".ui-dialog-head {",
+  ".ui-dialog-title {",
+  ".ui-dialog-body {",
+  ".ui-dialog-actions {",
+  ".ui-toast {",
+  ".ui-toast-chip {",
+  ".ui-toast-title {",
+  ".ui-toast-body {",
+  ".ui-menu {",
+  ".ui-menu-item {",
+  ".ui-empty {",
+  ".ui-empty-icon {",
+  ".ui-empty-title {",
+  ".ui-empty-body {",
+  ".ui-empty-action {",
+];
+
+describe("ui component CSS", () => {
+  test("every class the site/ui components emit has a rule in style.css", () => {
+    for (const rule of RULES) {
+      expect(css).toContain(rule);
+    }
+  });
+});

@@ -9,5 +9,5 @@ export function statusChip(status: ZinvoiceStatus): string {
     throw new Error(`statusChip: unknown status ${JSON.stringify(status)} (expected ${STATUSES.join(", ")})`);
   }
   const label = status[0].toUpperCase() + status.slice(1);
-  return `<span class="pill pill-${esc(status)}">${esc(label)}</span>`;
+  return `<span class="ui-chip ui-chip-${esc(status)}">${esc(label)}</span>`;
 }
