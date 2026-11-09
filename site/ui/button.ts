@@ -8,6 +8,7 @@ export interface ButtonOptions {
   variant?: ButtonVariant;
   size?: ButtonSize;
   danger?: boolean;
+  block?: boolean;
   disabled?: boolean;
   type?: "button" | "submit";
   id?: string;
@@ -26,6 +27,7 @@ export function button(opts: ButtonOptions): string {
   if (opts.size === "sm") cls += " ui-btn-sm";
   if (opts.size === "lg") cls += " ui-btn-lg";
   if (opts.danger) cls += " ui-btn-danger";
+  if (opts.block) cls += " ui-btn-block";
   const id = opts.id ? ` id="${esc(opts.id)}"` : "";
   const disabled = opts.disabled ? " disabled" : "";
   const attrs = opts.attrs ? ` ${opts.attrs}` : "";
