@@ -494,6 +494,9 @@ describe("settings billing section (#1121)", () => {
     const { cookie } = await authedCookie(accounts);
     const html = createBillingSection({ HOSTED: true, accounts, billing })(reqWith(cookie));
     expect(html).toContain("Billing — Hosted plan");
+    expect(html).toContain("ui-plan");
+    expect(html).toContain('<span class="ui-plan-amount">$12</span>');
+    expect(html).toContain("/ month · flat, no seats");
     expect(html).toContain('<span class="ui-tag ui-tag-primary">Trial</span>');
     expect(html).toContain("Trial ends");
     expect(html).toContain('action="/billing/checkout"');
@@ -517,6 +520,7 @@ describe("settings billing section (#1121)", () => {
     accounts.db.query("INSERT INTO subscriptions (user_id, stripe_customer_id, status) VALUES (?, 'cus_1', 'past_due')").run(user.id);
     const html = createBillingSection({ HOSTED: true, accounts, billing })(reqWith(cookie));
     expect(html).toContain('<span class="ui-tag ui-tag-error">Past due</span>');
+    expect(html).toContain("Your last payment failed");
     expect(html).toContain('action="/billing/portal"');
   });
 });
