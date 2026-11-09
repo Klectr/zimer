@@ -4,7 +4,7 @@
  *  and deletion. */
 
 import type { Database } from "bun:sqlite";
-import { esc, PAYMENT_TERMS, schemeColor, termsDays, termsDescription, termsKey } from "../lib/format.ts";
+import { esc, PAYMENT_TERMS, schemeColor, termsDescription, termsKey } from "../lib/format.ts";
 import type { PaymentTermsKey } from "../lib/format.ts";
 import { icon } from "../lib/icons.ts";
 import { THEMES, themeKey } from "../lib/theme.ts"; /* #884 */
@@ -315,17 +315,6 @@ export function createManageViews(deps: ManageViewDeps) {
       })();</script>`, "manage", true);
   }
 
-  function clientOptions(selected: number | null = null): string {
-    const rows = db.query("SELECT id, name, rate, payment_terms FROM clients ORDER BY name").all() as any[];
-    const g = globalTerms();
-    return rows.map(c => {
-      /* #293: effective terms days ride along so the new-invoice form can
-         derive the due date when the client changes. */
-      const days = termsDays(c.payment_terms || g);
-      return `<option value="${c.id}" data-rate="${c.rate || 0}"${days === null ? "" : ` data-terms-days="${days}"`}${c.id === selected ? " selected" : ""}>${esc(c.name)}</option>`;
-    }).join("");
-  }
-
   /* #233: business profile — name/email/address printed in the FROM block
      of the Modern PDF template. Stored in meta; empty degrades gracefully.
      #243 added payment terms. */
@@ -390,5 +379,5 @@ export function createManageViews(deps: ManageViewDeps) {
       </div>`, "settings");
   }
 
-  return { managePage, clientSelection, clientDetailBody, clientListOob, clientOptions, bizProfileSection, dailyTargetSection, clientSettingsForm, settingsPage, themeSectionHtml };
+  return { managePage, clientSelection, clientDetailBody, clientListOob, bizProfileSection, dailyTargetSection, clientSettingsForm, settingsPage, themeSectionHtml };
 }

@@ -21,7 +21,6 @@ function views(rows: any[], opts: { publicToken?: string | null; db?: Database }
     db: opts.db ?? stubDb,
     qInvoices: { all: () => rows } as unknown as Statement,
     layout: (_t: string, b: string) => b,
-    clientOptions: () => "",
     getPublicToken: () => opts.publicToken ?? null,
     stripeConfigured: () => false,
     nextInvoiceNumber: () => "INV-0001",
@@ -349,7 +348,6 @@ describe("#560: date phrases stay together", () => {
       db: metaDb,
       qInvoices: { all: () => [] } as unknown as Statement,
       layout: (_t: string, b: string) => b,
-      clientOptions: () => "",
       getPublicToken: () => null,
       stripeConfigured: () => false,
       nextInvoiceNumber: () => "INV-0001",
@@ -585,7 +583,6 @@ describe("#829: new-zinvoice due-date prefill follows global payment terms", () 
       db,
       qInvoices: { all: () => [] } as unknown as Statement,
       layout: (_t: string, b: string) => b,
-      clientOptions: () => "",
       getPublicToken: () => null,
       stripeConfigured: () => false,
       nextInvoiceNumber: () => "INV-0001",
@@ -752,5 +749,62 @@ describe("zinvoices stat cards (#1121)", () => {
     const html = views(statRows()).invoiceListOob(1);
     expect(html).toContain('<div class="ui-stat-row" id="inv-stats" hx-swap-oob="true">');
     expect(html).toContain('<p class="ui-app-sub" id="inv-sub" hx-swap-oob="true">Outstanding $2,730.00 · Paid this month $425.00</p>');
+  });
+});
+
+/** #1121: the wizard and detail pane follow their mocks — the steps
+ *  indicator (advancing out-of-band when the preview loads), the client
+ *  picker as selectField with the rate/terms data the form script
+ *  reads, and the detail title head above the document. */
+describe("wizard + detail parity (#1121)", () => {
+  const clientsDb = {
+    query: (sql: string) => ({
+      all: () => sql.includes("FROM clients")
+        ? [{ id: 3, name: "Acme", rate: 85, payment_terms: "net_15" }, { id: 4, name: "Beta", rate: 0, payment_terms: null }]
+        : [],
+      get: () => undefined,
+      run: () => {},
+    }),
+  } as unknown as Database;
+
+  test("wizard opens on step 1 with the steps indicator", () => {
+    const v = views([], { db: clientsDb });
+    const html = v.invoiceNewPage(v.defaultNewInvParams());
+    expect(html).toContain('<div id="inv-steps">');
+    expect(html).toContain('<div class="ui-step is-current" aria-current="step"><div class="ui-step-bar"></div><span class="ui-step-label">Client &amp; period</span></div>');
+    expect(html).toContain('<span class="ui-step-label">Pick time</span>');
+    expect(html).toContain('<span class="ui-step-label">Review &amp; send</span>');
+  });
+
+  test("client picker is selectField with rate and terms-days data attributes", () => {
+    const v = views([], { db: clientsDb });
+    const html = v.invoiceNewPage(v.defaultNewInvParams());
+    expect(html).toContain('<select class="ui-input ui-select" id="inv-client" name="client_id" required>');
+    expect(html).toContain('<option value="3" data-rate="85" data-terms-days="15">Acme</option>');
+    expect(html).toContain('<option value="4" data-rate="0" data-terms-days="30">Beta</option>');
+  });
+
+  test("step-2 fragment advances the steps indicator out-of-band", () => {
+    const v = views([], { db: clientsDb });
+    const html = v.invoiceStep2(v.defaultNewInvParams(), { items: [{ description: "Work", hours: 1, rate: 85, amount: 85, entry_ids: [1], date_from: "2026-11-01", date_to: "2026-11-01" }] });
+    expect(html).toContain('<div id="inv-steps" hx-swap-oob="true">');
+    expect(html).toContain('<div class="ui-step is-done"><div class="ui-step-bar"></div><span class="ui-step-label">Client &amp; period</span></div>');
+    expect(html).toContain('<div class="ui-step is-current" aria-current="step"><div class="ui-step-bar"></div><span class="ui-step-label">Pick time</span></div>');
+  });
+
+  test("full-page preview renders exactly one steps indicator", () => {
+    const v = views([], { db: clientsDb });
+    const preview = { items: [{ description: "Work", hours: 1, rate: 85, amount: 85, entry_ids: [1], date_from: "2026-11-01", date_to: "2026-11-01" }] };
+    const html = v.invoiceNewPage(v.defaultNewInvParams(), preview);
+    expect(html.match(/id="inv-steps"/g)).toHaveLength(1);
+    expect(html).not.toContain('id="inv-steps" hx-swap-oob="true"');
+    expect(html).toContain('<div class="ui-step is-current" aria-current="step"><div class="ui-step-bar"></div><span class="ui-step-label">Pick time</span></div>');
+  });
+
+  test("detail pane opens with the mock's title head", () => {
+    const inv = { ...detailInv("sent", null), client_payment_terms: "net_15" };
+    const html = views([]).invoiceDetailBody(inv as any, "http://x");
+    expect(html).toContain('<h2 class="ui-section-title">Zinvoice INV-0007 — Acme</h2>');
+    expect(html).toContain("Issued Sep 1 · Due Sep 30 · Net 15");
   });
 });

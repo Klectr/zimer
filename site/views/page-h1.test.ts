@@ -66,7 +66,6 @@ function invoicePages() {
     db: stubDb,
     qInvoices: { all: () => [] } as unknown as Statement,
     layout,
-    clientOptions: () => "",
     getPublicToken: () => null,
     stripeConfigured: () => false,
     nextInvoiceNumber: () => "INV-0001",
@@ -100,8 +99,8 @@ describe("page-level h1 (#701)", () => {
   test("invoices list page has exactly one h1: Zinvoices", () => {
     expect(h1Texts(invoicePages().list)).toEqual(["Zinvoices"]);
   });
-  test("new invoice page has exactly one h1: New zinvoice", () => {
-    expect(h1Texts(invoicePages().form)).toEqual(["New zinvoice"]);
+  test("new invoice page has exactly one h1: New Zinvoice", () => {
+    expect(h1Texts(invoicePages().form)).toEqual(["New Zinvoice"]);
   });
   test("manage page has exactly one h1: Clients", () => {
     expect(h1Texts(managePages().manage)).toEqual(["Clients"]);
@@ -120,7 +119,7 @@ describe("page-level h1 (#701)", () => {
   });
   test("zinvoices page h1s carry the ui title class (list: appHeader, #1121)", () => {
     expect(invoicePages().list).toContain('<h1 class="ui-app-title">Zinvoices</h1>');
-    expect(invoicePages().form).toContain('<h1 class="ui-page-title">New zinvoice</h1>');
+    expect(invoicePages().form).toContain('<h1 class="ui-app-title">New Zinvoice</h1>');
   });
   test("the calendar week heading carries the ui page title (migrated in #1111)", () => {
     expect(calendarWeekHtml()).toContain('<h1 class="ui-page-title">');
