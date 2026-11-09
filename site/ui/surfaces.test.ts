@@ -101,3 +101,12 @@ describe("landing sections", () => {
     expect(html).toContain("Done well.");
   });
 });
+
+describe("timerPanel ids (#1102)", () => {
+  test("card id and elapsed id forward to the tick script hooks", () => {
+    const html = timerPanel({ id: "timer-card", elapsedId: "elapsed", running: true, statusHtml: "<span>Running</span>", context: "Acme", elapsed: "…", startedAt: "2026-11-08T09:04:00", actionsHtml: "<button>Stop</button>" });
+    expect(html).toContain('id="timer-card"');
+    expect(html).toContain('id="elapsed"');
+    expect(html).toContain('data-start="2026-11-08T09:04:00"');
+  });
+});

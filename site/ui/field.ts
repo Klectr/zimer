@@ -17,6 +17,7 @@ export interface TextFieldOptions {
   max?: string;
   step?: string;
   inputmode?: string;
+  list?: string;
 }
 
 export function textField(opts: TextFieldOptions): string {
@@ -29,7 +30,8 @@ export function textField(opts: TextFieldOptions): string {
   const max = opts.max ? ` max="${esc(opts.max)}"` : "";
   const step = opts.step ? ` step="${esc(opts.step)}"` : "";
   const inputmode = opts.inputmode ? ` inputmode="${esc(opts.inputmode)}"` : "";
-  const input = `<input class="ui-input" type="${esc(opts.type ?? "text")}" id="${esc(opts.id)}"${name}${value}${placeholder}${required}${autocomplete}${min}${max}${step}${inputmode}>`;
+  const list = opts.list ? ` list="${esc(opts.list)}"` : "";
+  const input = `<input class="ui-input" type="${esc(opts.type ?? "text")}" id="${esc(opts.id)}"${name}${value}${placeholder}${required}${autocomplete}${min}${max}${step}${inputmode}${list}>`;
   const control = opts.prefix || opts.suffix
     ? `<div class="ui-input-wrap">${opts.prefix ? `<span class="ui-affix ui-affix-prefix">${esc(opts.prefix)}</span>` : ""}${input}${opts.suffix ? `<span class="ui-affix ui-affix-suffix">${esc(opts.suffix)}</span>` : ""}</div>`
     : input;

@@ -27,6 +27,7 @@ const VARIANT_CLASS: Record<ButtonVariant, string> = {
 export interface LinkButtonOptions {
   label: string;
   href: string;
+  icon?: string;
   variant?: ButtonVariant;
   size?: ButtonSize;
   block?: boolean;
@@ -40,7 +41,8 @@ export function linkButton(opts: LinkButtonOptions): string {
   if (opts.size === "lg") cls += " ui-btn-lg";
   if (opts.block) cls += " ui-btn-block";
   const ext = opts.external ? ` target="_blank" rel="noopener"` : "";
-  return `<a class="${cls}" href="${esc(opts.href)}"${ext}>${esc(opts.label)}</a>`;
+  const iconHtml = opts.icon ? icon(opts.icon) : "";
+  return `<a class="${cls}" href="${esc(opts.href)}"${ext}>${iconHtml}${esc(opts.label)}</a>`;
 }
 
 export function button(opts: ButtonOptions): string {

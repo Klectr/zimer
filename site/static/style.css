@@ -305,6 +305,8 @@
 
 .ui-list { display: flex; flex-direction: column; }
 .ui-row { display: flex; align-items: center; gap: var(--spacing-sm); padding: var(--spacing-sm); color: var(--color-text); text-decoration: none; border-bottom: 1px solid var(--color-border-secondary); }
+.ui-row-actions { display: inline-flex; align-items: center; gap: var(--spacing-xxs); }
+.ui-row-dot { display: inline-block; width: 8px; height: 8px; border-radius: 9999px; margin-right: var(--spacing-xs); }
 .ui-list .ui-row:last-child { border-bottom: 0; }
 a.ui-row { transition: background-color 0.15s ease; }
 a.ui-row:hover { background: var(--color-fill-tertiary); }
