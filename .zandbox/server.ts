@@ -297,8 +297,7 @@ const server = Bun.serve({
   },
 });
 
-const groupCounts = new Map<string, number>();
-for (const s of STORIES) groupCounts.set(s.group, (groupCounts.get(s.group) ?? 0) + 1);
+const groupCount = new Set(STORIES.map((s) => s.group)).size;
 const failures: { id: string; message: string }[] = [];
 for (const s of STORIES) {
   try {
@@ -310,10 +309,7 @@ for (const s of STORIES) {
 const assetEntries = Object.entries(cfg.assets ?? {});
 console.log(`${NAME} · engine ${VERSION}`);
 console.log(`→ http://127.0.0.1:${server.port}`);
-console.log(
-  `Stories: ${STORIES.length} in ${groupCounts.size} groups — ` +
-    [...groupCounts.entries()].map(([g, n]) => `${g} ${n}`).join(" · "),
-);
+console.log(`Stories: ${STORIES.length} in ${groupCount} groups`);
 console.log(
   assetEntries.length === 0
     ? "Assets: none mapped (stories render unstyled)"
