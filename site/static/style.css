@@ -671,6 +671,7 @@ a.ui-menu-item:active, button.ui-menu-item:active { background: var(--color-fill
 .ui-empty-title { font-weight: 500; }
 .ui-empty-body { font-size: var(--font-size-sm); color: var(--color-text-secondary); margin-top: var(--spacing-xxs); }
 .ui-empty-action { margin-top: var(--spacing); }
+.ui-empty > .empty-mascot { margin-bottom: var(--spacing); }
 
 /* ---------------- sys tokens: layout (M3 window size classes) ----------------
  * Breakpoints (dp map 1:1 to px on web): compact <600 · medium 600–839 ·
@@ -1287,10 +1288,6 @@ body.app-fixed .ui-shell-main { min-height: 0; }
 /* #588: the list-row date phrases share one nowrap group, so a narrow pane
    wraps between the client name and the dates — never between segments. */
 .inv-dates { white-space: nowrap; }
-/* empty detail pane */
-.detail-placeholder { display: flex; flex-direction: column; align-items: center;
-  justify-content: center; gap: 12px; padding: 64px 24px; text-align: center; min-height: 320px; }
-.detail-placeholder > svg { width: 48px; height: 48px; color: var(--md-sys-color-on-surface-variant); }
 /* ---------------- supporting-pane layout (M3 canonical, timer page) ----------------
  * <840px: single stacked column — timer card stays pinned above, entries + revenue
  * share one scroll region. ≥840px (M3 expanded): focus pane (entries) + trailing
@@ -1593,11 +1590,6 @@ body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
   color: var(--color-text);
   border-radius: 8px; padding: 10px 12px; overflow-wrap: anywhere; }
 /* #300: first-run empty states — centered icon, headline, copy, actions. */
-.empty-state { text-align: center; padding: 56px 24px; max-width: 440px; margin: 0 auto; }
-.empty-state > svg { width: 48px; height: 48px; color: var(--color-text-secondary); }
-.empty-state h3 { margin: 16px 0 8px; }
-.empty-state p { margin: 0 0 20px; }
-.empty-state .row { display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap; }
 /* #300: first-run hint inside the calendar supporting pane. */
 .cal-first-run { margin-top: 12px; padding: 12px 14px; border-radius: 12px;
   background: var(--color-bg-elevated); }
@@ -1607,7 +1599,7 @@ body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
    above so the display:none wins at equal specificity. */
 @media (max-width: 599px) {
   .demo-banner, .cal-first-run { display: none; }
-  .empty-state form[action="/demo/load"] { display: none; }
+  .ui-empty form[action="/demo/load"] { display: none; }
 }
 
 /* #353: content-driven thresholds, not M3 window size classes. Main's extra

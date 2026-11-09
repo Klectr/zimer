@@ -15,6 +15,7 @@ import { card } from "../ui/card.ts";
 import { selectField, textField } from "../ui/field.ts";
 import { clientRow, zinvoiceRow } from "../ui/rows.ts";
 import { appHeader } from "../ui/app-header.ts";
+import { emptyState } from "../ui/empty-state.ts";
 import { statBlock } from "../ui/stat.ts";
 import { formSection } from "../ui/zinvoice-form.ts";
 import { steps } from "../ui/steps.ts";
@@ -57,12 +58,12 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       <form method="post" action="/demo/load" class="inline">
         ${button({ label: "Load demo data", icon: "info", variant: "ghost", type: "submit" })}
       </form>` : "";
-    return `<div class="empty-state" data-enter="3">
-      <img class="empty-mascot" src="/static/mascot-empty.png" alt="" width="132" height="132">
-      <h3 class="ui-page-title">No zinvoices yet</h3>
-      <p class="muted">Turn tracked time into a zinvoice — or explore first with fictional sample data.</p>
-      <div class="row">${demoCta}</div>
-    </div>`;
+    return emptyState({
+      image: { src: "/static/mascot-empty.png", width: 132, height: 132 },
+      title: "No zinvoices yet",
+      body: "Turn tracked time into a zinvoice — or explore first with fictional sample data.",
+      action: demoCta || undefined,
+    });
   }
 
   /* #364: one invoice row — the whole row is the tap target into the detail
@@ -158,7 +159,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
   }
 
   function detailPlaceholder(): string {
-    return `<div class="detail-placeholder">${icon("receipt")}<p class="muted">Select a zinvoice to preview it here.</p></div>`;
+    return emptyState({ icon: "receipt", body: "Select a zinvoice to preview it here." });
   }
 
   /* #364: M3 list-detail — the list pane owns unbilled time and invoice

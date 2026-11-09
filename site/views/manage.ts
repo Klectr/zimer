@@ -9,6 +9,7 @@ import type { PaymentTermsKey } from "../lib/format.ts";
 import { icon } from "../lib/icons.ts";
 import { THEMES, themeKey } from "../lib/theme.ts"; /* #884 */
 import { getMeta } from "../db.ts";
+import { emptyState } from "../ui/empty-state.ts";
 import { settingsSection } from "../ui/settings-section.ts";
 import { selectField, textAreaField, textField } from "../ui/field.ts";
 import { button, linkButton } from "../ui/button.ts";
@@ -168,7 +169,7 @@ export function createManageViews(deps: ManageViewDeps) {
   }
 
   function detailPlaceholder(): string {
-    return `<div class="detail-placeholder">${icon("group")}<p class="muted">Select a client to manage its projects and settings.</p></div>`;
+    return emptyState({ icon: "group", body: "Select a client to manage its projects and settings." });
   }
 
   /* #630: client settings form — all eight editable client fields,
