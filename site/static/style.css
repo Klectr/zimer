@@ -1644,12 +1644,13 @@ body.app-fixed .cal-gutter-spacer {
 /* Issue #245: settings modal — same scrim/dialog motion pattern as the
    calendar dialog, with a header row (title + close) and a scrollable body. */
 .settings-dialog {
-  background: var(--md-sys-color-surface-container-high);
-  border-radius: var(--md-sys-shape-corner-extra-large);
+  background: var(--color-bg-container);
+  border: 1px solid var(--color-border-secondary);
+  border-radius: var(--radius-lg);
   padding: 24px; width: min(480px, 100%);
   max-height: calc(100dvh - 64px); overflow-y: auto;
   display: grid; gap: 16px; align-content: start;
-  transform: scale(0.9);
+  transform: scale(0.96);
   opacity: 0;
   transition: transform var(--motion-duration-medium2) var(--motion-easing-emphasized),
     opacity var(--motion-duration-short4) var(--motion-easing-standard);
@@ -1681,7 +1682,7 @@ body.app-fixed .cal-gutter-spacer {
   .cal-dialog-head, .settings-dialog-head {
     margin: -24px -24px 0; padding: 12px 8px 12px 24px;
     position: sticky; top: -24px; z-index: 1;
-    background: var(--md-sys-color-surface-container-high);
+    background: var(--color-bg-container);
   }
   .cal-dialog-head .ui-icon-btn { display: inline-flex; }
 }
