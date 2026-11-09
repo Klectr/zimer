@@ -4,6 +4,8 @@ import { toast } from "../site/ui/toast";
 import { menu } from "../site/ui/menu";
 import { emptyState } from "../site/ui/empty-state";
 import { button } from "../site/ui/button";
+import { iconButton } from "../site/ui/icon-button";
+import { tooltip } from "../site/ui/tooltip";
 
 const DEMO_SCRIPT = `<script>
 (function () {
@@ -100,6 +102,24 @@ export const feedbackStories: Story[] = [
           { label: "Send (already sent)", icon: "save", disabled: true },
         ],
       }),
+  },
+  {
+    id: "feedback-tooltip",
+    group: "Feedback",
+    title: "Tooltip",
+    render: () =>
+      `<div style="display:flex;gap:12px;align-items:center;padding:28px 8px">` +
+      iconButton({ icon: "edit", label: "Edit entry", id: "tip-edit", tooltip: true }) +
+      iconButton({ icon: "copy", label: "Copy pay link", id: "tip-copy", tooltip: true }) +
+      iconButton({ icon: "delete", label: "Delete entry", id: "tip-delete", danger: true, tooltip: true }) +
+      tooltip({
+        id: "tip-pause-tip",
+        label: "Pause keeps the entry open",
+        placement: "bottom",
+        contentHtml: button({ label: "Pause", attrs: 'aria-describedby="tip-pause-tip"' }),
+      }) +
+      `</div>` +
+      `<p style="color:var(--color-text-secondary)">Hover or tab to a control — the label appears above it (below, for the Pause button). Icon buttons with tooltips drop the browser's native title so the two never stack.</p>`,
   },
   {
     id: "feedback-empty",
