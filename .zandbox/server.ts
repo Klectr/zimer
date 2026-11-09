@@ -22,9 +22,13 @@ const NAME = cfg.name ?? "Zandbox";
 const PORT = Number(process.env.ZANDBOX_PORT || cfg.port || 8935);
 if (!Number.isFinite(PORT)) throw new Error(`Zandbox port is not a number: ${process.env.ZANDBOX_PORT ?? cfg.port}`);
 
+const TOKENS: [string, string][] = cfg.designMd
+  ? parseDesignTokens(readFileSync(join(ROOT, cfg.designMd), "utf8"))
+  : [];
+
 function tokenStories(): Story[] {
   if (!cfg.designMd) return [];
-  const tokens = parseDesignTokens(readFileSync(join(ROOT, cfg.designMd), "utf8"));
+  const tokens = TOKENS;
   return [
     {
       id: "tokens-color",
@@ -243,10 +247,7 @@ function canvasPage(story: Story): string {
   return page(`${story.group} — ${story.title}`, `<div style="padding:20px">${renderStory(story)}</div>`);
 }
 
-const server = Bun.serve({
-  hostname: "127.0.0.1",
-  port: PORT,
-  fetch(req) {
+function handle(req: Request): Response {
     const url = new URL(req.url);
     const html = { "content-type": "text/html; charset=utf-8" };
     if (url.pathname === "/favicon.ico") {
@@ -279,7 +280,50 @@ const server = Bun.serve({
       if (story) return new Response(canvasPage(story), { headers: html });
     }
     return new Response("Not found", { status: 404, headers: { "content-type": "text/plain; charset=utf-8" } });
+}
+
+const VERSION = "0.1.0";
+
+const server = Bun.serve({
+  hostname: "127.0.0.1",
+  port: PORT,
+  fetch(req) {
+    const started = performance.now();
+    const res = handle(req);
+    const path = new URL(req.url).pathname;
+    if (path !== "/favicon.ico") {
+      console.log(`${req.method} ${path} ${res.status} ${Math.max(0, Math.round(performance.now() - started))}ms`);
+    }
+    return res;
   },
 });
 
-console.log(`${NAME} → http://127.0.0.1:${server.port} (${STORIES.length} stories)`);
+const groupCounts = new Map<string, number>();
+for (const s of STORIES) groupCounts.set(s.group, (groupCounts.get(s.group) ?? 0) + 1);
+const failures: { id: string; message: string }[] = [];
+for (const s of STORIES) {
+  try {
+    s.render();
+  } catch (err) {
+    failures.push({ id: s.id, message: err instanceof Error ? err.message : String(err) });
+  }
+}
+const assetEntries = Object.entries(cfg.assets ?? {});
+console.log(`${NAME} · engine ${VERSION}`);
+console.log(`→ http://127.0.0.1:${server.port}`);
+console.log(
+  `Stories: ${STORIES.length} in ${groupCounts.size} groups — ` +
+    [...groupCounts.entries()].map(([g, n]) => `${g} ${n}`).join(" · "),
+);
+console.log(
+  assetEntries.length === 0
+    ? "Assets: none mapped (stories render unstyled)"
+    : `Assets: ${assetEntries.map(([href, file]) => `${href} → ${file}`).join(" · ")}`,
+);
+if (cfg.designMd) console.log(`Tokens: ${TOKENS.length} colors from ${cfg.designMd}`);
+console.log(
+  failures.length === 0
+    ? `Render check: all ${STORIES.length} stories render`
+    : `Render check: ${failures.length} of ${STORIES.length} stories FAILED`,
+);
+for (const f of failures) console.log(`  FAILED ${f.id}: ${f.message}`);
