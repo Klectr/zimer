@@ -9,6 +9,7 @@ import type { ChangelogEntry } from "../lib/changelog.ts"; /* #303 */
 import type { TermsSection } from "../lib/license-terms.ts"; /* #341 */
 import type { Invoice, InvoiceItem } from "../lib/types.ts";
 import { authCard } from "../ui/auth-card.ts";
+import { changelogList } from "../ui/changelog.ts";
 import { textField } from "../ui/field.ts";
 import { publicInvoice, type PublicInvoiceOptions } from "../ui/public-invoice.ts";
 import { tag } from "../ui/tag.ts";
@@ -170,12 +171,7 @@ export function createPublicViews(deps: PublicViewDeps) {
   /* #303: public changelog — same minimal public chrome as the invoice page:
      no auth, no app nav. */
   function changelogPage(entries: ChangelogEntry[], origin: string): string {
-    const body = entries.length ? `<div class="ui-changelog">${entries.map(e => `
-      <div class="ui-changelog-entry">
-        <div class="ui-changelog-head"><span class="ui-changelog-date">${esc(e.date)}</span></div>
-        <div class="ui-changelog-body"><ul>${e.items.map(i => `<li>${i}</li>`).join("")}</ul></div>
-      </div>`).join("")}</div>` :
-      `<p class="muted">No release notes yet.</p>`;
+    const body = changelogList(entries);
     return `<!DOCTYPE html>
   <html lang="en">
   <head>
