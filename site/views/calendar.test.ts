@@ -59,6 +59,26 @@ describe("calendar entry aria-label (#479)", () => {
     return views.weekInner("2026-09-20", "America/Chicago");
   }
 
+  test("entry dialog actions render ui button classes (no unresolved variant)", () => {
+    const db = {
+      query: (_sql: string) => ({ get: () => ({ n: 1 }), all: () => [] }),
+    } as unknown as Database;
+    const views = createCalendarViews({
+      db,
+      qOne: stubQuery(),
+      qRange: stubQuery(),
+      entrySelect: "SELECT",
+      layout: (_t: string, b: string) => b,
+      projectOptions: () => "",
+      weekTargetBar: () => "",
+      calHourPx: 64,
+    } as any);
+    const html = views.weekGrid();
+    expect(html).not.toContain('class="undefined"');
+    expect(html).toContain('class="ui-btn ui-btn-ghost ui-btn-danger" id="cal-delete" hidden');
+    expect(html).toContain('class="ui-btn ui-btn-primary" id="cal-save"');
+  });
+
   function labelFor(html: string, id: number): string {
     const m = html.match(new RegExp(`data-id="${id}"[^>]*aria-label="([^"]*)"`));
     if (!m) throw new Error(`no cal-entry with data-id=${id}`);

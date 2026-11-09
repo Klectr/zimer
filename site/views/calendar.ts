@@ -517,7 +517,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
           <p class="muted tiny" id="cal-locked" hidden></p>
           <p class="error tiny" id="cal-error" hidden></p>
           <div class="cal-dialog-actions">
-            ${button({ label: "Delete", variant: "danger", id: "cal-delete", attrs: "hidden" })}
+            ${button({ label: "Delete", variant: "ghost", danger: true, id: "cal-delete", attrs: "hidden" })}
             <span class="cal-spacer"></span>
             ${button({ label: "Cancel", variant: "ghost", id: "cal-cancel" })}
             ${button({ label: "Save", variant: "primary", id: "cal-save" })}
