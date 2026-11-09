@@ -40,6 +40,51 @@ describe("layout entry edit dialog (#903)", () => {
   });
 });
 
+/** #1177: the lazy shell dialogs reset their body on open, so a stale form
+ *  from the previous open can't paint or be submitted while the next
+ *  fragment loads. Same treatment as the client settings dialog. */
+describe("layout lazy dialogs reset their body on open (#1177)", () => {
+  test("settings dialog body starts on the loading placeholder", () => {
+    const { layout } = createLayoutViews(noRunning);
+    const body = layout("T", "body");
+    expect(body).toContain('<div id="settings-body"><p class="muted">Loading…</p></div>');
+  });
+
+  test("settings opener resets the body before the dialog shows and the fragment load", () => {
+    const { layout } = createLayoutViews(noRunning);
+    const body = layout("T", "body");
+    const script = body.indexOf("getElementById('settings-body')");
+    const open = body.indexOf("function open(){", script);
+    const reset = body.indexOf("body.innerHTML='<p class=\"muted\">Loading…</p>';", open);
+    const show = body.indexOf("scrim.hidden=false;", open);
+    const load = body.indexOf("htmx.ajax('GET','/settings','#settings-body');", open);
+    expect(open).toBeGreaterThan(-1);
+    expect(reset).toBeGreaterThan(open);
+    expect(show).toBeGreaterThan(reset);
+    expect(load).toBeGreaterThan(reset);
+  });
+
+  test("entry dialog body starts on the loading placeholder", () => {
+    const { layout } = createLayoutViews(noRunning);
+    const body = layout("T", "body");
+    expect(body).toContain('<div id="entry-dialog-body"><p class="muted">Loading…</p></div>');
+  });
+
+  test("entry opener resets the body before the dialog shows and the fragment load", () => {
+    const { layout } = createLayoutViews(noRunning);
+    const body = layout("T", "body");
+    const script = body.indexOf("getElementById('entry-dialog-body')");
+    const open = body.indexOf("function open(id){", script);
+    const reset = body.indexOf("body.innerHTML='<p class=\"muted\">Loading…</p>';", open);
+    const show = body.indexOf("scrim.hidden=false;", open);
+    const load = body.indexOf("htmx.ajax('GET','/entries/'+id+'/edit','#entry-dialog-body');", open);
+    expect(open).toBeGreaterThan(-1);
+    expect(reset).toBeGreaterThan(open);
+    expect(show).toBeGreaterThan(reset);
+    expect(load).toBeGreaterThan(reset);
+  });
+});
+
 /** #923: trial-expiry nudge banner — pure view logic + layout wiring. */
 
 const DAY = 86400000;

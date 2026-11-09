@@ -106,6 +106,23 @@ describe("client settings modal (#630)", () => {
     expect(html).toContain('role="dialog"');
   });
 
+  test("settings dialog body starts on the loading placeholder", () => {
+    const html = pageHtml();
+    expect(html).toContain('<div id="client-settings-body"><p class="muted">Loading…</p></div>');
+  });
+
+  test("opener resets the body to the loading placeholder before the fragment load", () => {
+    const html = pageHtml();
+    const open = html.indexOf("function openClientSettings(id){");
+    const reset = html.indexOf("dlgBody.innerHTML = '<p class=\"muted\">Loading…</p>';", open);
+    const show = html.indexOf("dlgScrim.hidden = false;", open);
+    const load = html.indexOf('window.htmx.ajax("GET", "/clients/" + id + "/settings"', open);
+    expect(open).toBeGreaterThan(-1);
+    expect(reset).toBeGreaterThan(open);
+    expect(show).toBeGreaterThan(reset);
+    expect(load).toBeGreaterThan(reset);
+  });
+
   test("settings form carries all eight client fields posting to /clients/:id/settings", () => {
     const { db, client } = testDb();
     db.query("UPDATE clients SET rate = ?, payment_terms = ?, email = ?, phone = ?, website = ?, address = ? WHERE id = ?")

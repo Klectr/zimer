@@ -294,6 +294,7 @@ export function createManageViews(deps: ManageViewDeps) {
           if(!dlgScrim || !dlgBody || !window.htmx) return;
           if(dlgTitle) dlgTitle.textContent = "Client settings";
           if(dlgSub) dlgSub.hidden = true;
+          dlgBody.innerHTML = '<p class="muted">Loading…</p>';
           dlgScrim.hidden = false; void dlgScrim.offsetWidth; dlgScrim.classList.add("open");
           window.htmx.ajax("GET", "/clients/" + id + "/settings",
             { target: "#client-settings-body", swap: "innerHTML" });
