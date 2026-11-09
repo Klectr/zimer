@@ -25,6 +25,10 @@ describe("legacy snapshot compat", () => {
     const liveHead = css.match(/\.inv-table thead th \{[^}]*\}/);
     expect(liveHead).not.toBeNull();
     expect(liveHead![0]).not.toContain("text-transform");
+    const modernLive = css.match(/\.template-modern \.inv-table thead th \{[^}]*\}/);
+    expect(modernLive).not.toBeNull();
+    expect(modernLive![0]).toContain("background: transparent");
+    expect(modernLive![0]).toContain("text-transform: none");
   });
 });
 
