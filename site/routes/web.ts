@@ -20,6 +20,7 @@ import type { AccountsDb } from "../lib/accounts.ts"; /* #732 */
 import { findTenantByPublicToken } from "../lib/tenants.ts"; /* #741 */
 import { countProofs, deleteProof, getProof, insertProof, listProofs, sanitizeFilename, validateProofFile, PROOF_MAX_BYTES, PROOF_MAX_PER_INVOICE } from "../lib/payment_proofs.ts"; /* #956 */
 import { textField } from "../ui/field.ts";
+import { card } from "../ui/card.ts";
 
 /* #733: everything derived from one tenant's SQLite bundle. Resolved per
    request from the session (session → user → tenant tree, cached by user
@@ -81,10 +82,9 @@ function csrfBlockedPage(): string {
   <link rel="stylesheet" href="/static/style.css">
   <link rel="icon" type="image/svg+xml" href="/static/logo.svg"></head>
   <body><main class="login">
-  <div class="md-card" style="border-radius:28px;padding:28px;max-width:420px">
-  <h1 class="md-headline-small" style="margin-top:0">Request blocked</h1>
-  <p class="muted">This action was refused because it didn't come from the app itself. If you reached this page from inside Zimer, please try again.</p>
-  </div></main></body></html>`;
+  ${card({ content: `<h1 class="ui-page-title" style="margin-top:0">Request blocked</h1>
+  <p class="muted">This action was refused because it didn't come from the app itself. If you reached this page from inside Zimer, please try again.</p>` })}
+  </main></body></html>`;
 }
 
 export interface WebDeps {
@@ -101,7 +101,7 @@ export interface WebDeps {
   csvResponse: (filename: string, rows: string[][]) => Response;
   shareOrigin: (req: Request) => string;
   PORT: number;
-  loginPage: () => string;
+  loginPage: (error?: string) => string;
   signupPage: (error?: string) => string; /* #732 */
   hostedLoginPage: (error?: string) => string; /* #732 */
   HOSTED: boolean; /* #732 */
@@ -226,7 +226,7 @@ export function createWebRouter(deps: WebDeps) {
                 },
               });
             }
-            return html(loginPage().replace("</form>", `<p class="error">Wrong token.</p></form>`), 401);
+            return html(loginPage("Wrong token."), 401);
           }
         }
         /* #732: hosted signup — 404 in self-host mode. */
