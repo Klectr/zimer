@@ -128,8 +128,8 @@ describe("#731: landing page view", () => {
 describe("#1044: hero leads with the promise and the product", () => {
   test("the app screenshot renders inside the hero section", async () => {
     const { body } = await get(true, false, "/");
-    const hero = body!.slice(body!.indexOf('<section class="landing-hero">'), body!.indexOf("</section>"));
-    expect(hero).toContain("landing-shot");
+    const hero = body!.slice(body!.indexOf('<section class="ui-hero">'), body!.indexOf("</section>"));
+    expect(hero).toContain("ui-hero-shot");
     expect(hero).toContain("The time tracker that turns your hours into an invoice.");
   });
 });

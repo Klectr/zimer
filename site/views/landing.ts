@@ -3,14 +3,63 @@
  *  routes/landing.ts). Self-host mode never shows it (/ keeps bouncing
  *  to /login); authed hosted users fall through to the app.
  *
- *  Same minimal public chrome as /pricing: no app nav, M3 dark
- *  theme, pumpkin #fb923c for the CTA only, no emoji. Copy stays short:
- *  headline, what it does, $12/mo + 14-day trial, CTA to /signup. */
+ *  Composed from the site/ui library (heroSection, featureCard,
+ *  planCard, logoLockup, linkButton). Copy stays short: headline, what
+ *  it does, $12/mo + 14-day trial, CTA to /signup. */
 
-import { icon, logo } from "../lib/icons.ts";
+import { linkButton } from "../ui/button.ts";
+import { featureCard, heroSection } from "../ui/landing.ts";
+import { logoLockup } from "../ui/logo-lockup.ts";
+import { planCard } from "../ui/plan-card.ts";
 
 export function createLandingViews(posthogHead?: () => string) {
   function landingPage(origin: string): string {
+    const hero = heroSection({
+      tagLine: "Time tracking to zinvoicing",
+      title: "The time tracker that turns your hours into an invoice.",
+      sub: "Your Zimer is your Zinvoice. Start the Zimer while you work. When the work is done, Zimer turns your tracked hours into a clean Zinvoice you can send in one step.",
+      actionsHtml:
+        linkButton({ label: "Start free trial", href: "/signup", variant: "primary", size: "lg" }) +
+        linkButton({ label: "See pricing", href: "#pricing", size: "lg" }),
+      note: "$12/month. 14-day free trial. Cancel anytime. Prefer to run it yourself? Self-host is free forever.",
+      productHtml:
+        `<div class="ui-hero-mascot-wrap"><picture>` +
+        `<source srcset="/static/mascot.webp" type="image/webp">` +
+        `<img class="ui-hero-mascot" src="/static/mascot.png" alt="Klectr the Alien, the Zimer mascot" width="720" height="720" fetchpriority="low">` +
+        `</picture></div>` +
+        `<figure class="ui-hero-shot"><img src="/static/app-shot.webp" alt="The Zimer app on a phone: this week's tracked time by day, with totals per client and a Zinvoice this week button" width="780" height="1688" fetchpriority="high"></figure>`,
+    });
+
+    const featuresA =
+      featureCard({ icon: "timer", title: "One-tap Zimer", body: "Start, stop, and switch projects in a click. Every entry lands on your calendar on its own." }) +
+      featureCard({ icon: "calendar", title: "Week at a glance", body: "A Toggl-style week grid. Drag to create, click to edit, see the billable split for every day." }) +
+      featureCard({ icon: "receipt", title: "Zinvoice in one step", body: "Pick a date range, adjust the line items, download the PDF. Sent zinvoices freeze as snapshots." }) +
+      featureCard({ icon: "group", title: "Clients and rates", body: "Keep clients, projects, and rates in one place, with revenue broken down per client." });
+
+    const featuresB =
+      featureCard({ icon: "timer", title: "For one-person businesses", body: "Freelancers, contractors, and solo shops. No team seats, no payroll, no admin console to learn." }) +
+      featureCard({ icon: "database", title: "Your data stays yours", body: "Self-hosted time tracking on your own server, in one SQLite file you can copy. On hosted, your data is never sold, never shared with advertisers, and never used to track you around the web." }) +
+      featureCard({ icon: "card", title: "The bill stays the same", body: "Flat $12 a month. No per-seat pricing, no per-client meters. One tier, everything included." }) +
+      featureCard({ icon: "bolt", title: "Switching takes minutes", body: "Coming from Toggl or a spreadsheet? Start fresh in minutes: add your clients, set your rates, start the Zimer." });
+
+    const plans =
+      planCard({
+        name: "Hosted",
+        amount: "$12",
+        period: "/month",
+        blurb: "Your own workspace on our servers. Nothing to run, nothing to maintain.",
+        features: ["14-day free trial, no card up front", "Zimer, calendar, zinvoices, clients", "Cancel anytime"],
+        ctaHtml: linkButton({ label: "Start free trial", href: "/signup", variant: "primary", block: true }),
+      }) +
+      planCard({
+        name: "Self-host",
+        amount: "$0",
+        period: "forever",
+        blurb: "One Bun process and one SQLite file on your own server. Your data never leaves it.",
+        features: ["Every feature, no account", "Browser extension included", "Back up by copying one file"],
+        ctaHtml: linkButton({ label: "View on GitHub", href: "https://github.com/Klectr/zimer", external: true, block: true }),
+      });
+
     return `<!DOCTYPE html>
   <html lang="en">
   <head>
@@ -43,115 +92,29 @@ export function createLandingViews(posthogHead?: () => string) {
   </head>
   <body>
   <main class="page-landing">
-  <header class="landing-topbar">
-  <p class="landing-brand">${logo(28)}<span>Zimer</span></p>
-  <a class="md-text-button landing-signin" href="/login">Sign in</a>
+  <header class="ui-landing-top">
+  ${logoLockup()}
+  ${linkButton({ label: "Sign in", href: "/login" })}
   </header>
-  <section class="landing-hero">
-  <div class="landing-hero-copy" data-enter>
-  <p class="landing-eyebrow"><span class="landing-eyebrow-dot" aria-hidden="true"></span>Time tracking to zinvoicing</p>
-  <h1 class="landing-headline">The time tracker that turns your hours into an invoice.</h1>
-  <p class="landing-sub">Your Zimer is your Zinvoice. Start the Zimer while you work. When the work is done, Zimer turns your tracked hours into a clean Zinvoice you can send in one step.</p>
-  <div class="landing-cta-row">
-  <a class="md-filled-button landing-cta-btn" href="/signup">Start free trial</a>
-  <a class="md-text-button landing-text-btn" href="#pricing">See pricing</a>
-  </div>
-  <p class="muted landing-price"><strong>$12/month.</strong> 14-day free trial. Cancel anytime.</p>
-  <p class="muted landing-selfhost">Prefer to run it yourself? Self-host is free forever.</p>
-  </div>
-  <div class="landing-hero-visual" data-enter="2">
-  <picture>
-  <source srcset="/static/mascot.webp" type="image/webp">
-  <img class="landing-mascot" src="/static/mascot.png" alt="Klectr the Alien, the Zimer mascot" width="720" height="720" fetchpriority="low">
-  </picture>
-  </div>
-  <figure class="landing-shot" data-enter="3">
-  <img src="/static/app-shot.webp" alt="The Zimer app on a phone: this week's tracked time by day, with totals per client and a Zinvoice this week button" width="780" height="1688" fetchpriority="high">
-  </figure>
+  <div data-enter>${hero}</div>
+  <section class="ui-landing-section" data-enter="4">
+  <h2 class="ui-landing-title">Everything from first tap to paid</h2>
+  <p class="ui-landing-sub">One app for the whole loop: track the time, send the Zinvoice, watch the money land.</p>
+  <div class="ui-landing-grid">${featuresA}</div>
   </section>
-  <section class="landing-section" data-enter="4">
-  <h2 class="landing-section-title">Everything from first tap to paid</h2>
-  <p class="muted landing-section-sub">One app for the whole loop: track the time, send the Zinvoice, watch the money land.</p>
-  <div class="landing-feature-grid">
-  <article class="landing-feature">
-  <span class="landing-feature-icon">${icon("timer")}</span>
-  <h3 class="landing-feature-title">One-tap Zimer</h3>
-  <p class="md-body-medium muted">Start, stop, and switch projects in a click. Every entry lands on your calendar on its own.</p>
-  </article>
-  <article class="landing-feature">
-  <span class="landing-feature-icon">${icon("calendar")}</span>
-  <h3 class="landing-feature-title">Week at a glance</h3>
-  <p class="md-body-medium muted">A Toggl-style week grid. Drag to create, click to edit, see the billable split for every day.</p>
-  </article>
-  <article class="landing-feature">
-  <span class="landing-feature-icon">${icon("receipt")}</span>
-  <h3 class="landing-feature-title">Zinvoice in one step</h3>
-  <p class="md-body-medium muted">Pick a date range, adjust the line items, download the PDF. Sent zinvoices freeze as snapshots.</p>
-  </article>
-  <article class="landing-feature">
-  <span class="landing-feature-icon">${icon("group")}</span>
-  <h3 class="landing-feature-title">Clients and rates</h3>
-  <p class="md-body-medium muted">Keep clients, projects, and rates in one place, with revenue broken down per client.</p>
-  </article>
-  </div>
+  <section class="ui-landing-section" data-enter="5">
+  <h2 class="ui-landing-title">Built for freelancers and solo work</h2>
+  <p class="ui-landing-sub">Most time trackers are built for teams and payroll departments. Zimer is built for one person who bills by the hour.</p>
+  <div class="ui-landing-grid">${featuresB}</div>
   </section>
-  <section class="landing-section" data-enter="5">
-  <h2 class="landing-section-title">Built for freelancers and solo work</h2>
-  <p class="muted landing-section-sub">Most time trackers are built for teams and payroll departments. Zimer is built for one person who bills by the hour.</p>
-  <div class="landing-feature-grid">
-  <article class="landing-feature">
-  <span class="landing-feature-icon">${icon("timer")}</span>
-  <h3 class="landing-feature-title">For one-person businesses</h3>
-  <p class="md-body-medium muted">Freelancers, contractors, and solo shops. No team seats, no payroll, no admin console to learn.</p>
-  </article>
-  <article class="landing-feature">
-  <span class="landing-feature-icon">${icon("database")}</span>
-  <h3 class="landing-feature-title">Your data stays yours</h3>
-  <p class="md-body-medium muted">Self-hosted time tracking on your own server, in one SQLite file you can copy. On hosted, your data is never sold, never shared with advertisers, and never used to track you around the web.</p>
-  </article>
-  <article class="landing-feature">
-  <span class="landing-feature-icon">${icon("card")}</span>
-  <h3 class="landing-feature-title">The bill stays the same</h3>
-  <p class="md-body-medium muted">Flat $12 a month. No per-seat pricing, no per-client meters. One tier, everything included.</p>
-  </article>
-  <article class="landing-feature">
-  <span class="landing-feature-icon">${icon("bolt")}</span>
-  <h3 class="landing-feature-title">Switching takes minutes</h3>
-  <p class="md-body-medium muted">Coming from Toggl or a spreadsheet? Start fresh in minutes: add your clients, set your rates, start the Zimer.</p>
-  </article>
-  </div>
+  <section class="ui-landing-section" id="pricing" data-enter="6">
+  <h2 class="ui-landing-title">Simple, honest pricing</h2>
+  <p class="ui-landing-sub">Hosted for $12 a month, or self-host it for nothing. Both get the whole app.</p>
+  <div class="ui-landing-plans">${plans}</div>
   </section>
-  <section class="landing-section" id="pricing" data-enter="6">
-  <h2 class="landing-section-title">Simple, honest pricing</h2>
-  <p class="muted landing-section-sub">Hosted for $12 a month, or self-host it for nothing. Both get the whole app.</p>
-  <div class="landing-plan-grid">
-  <article class="landing-plan landing-plan-featured">
-  <p class="landing-plan-label">Hosted</p>
-  <p class="landing-plan-price"><span class="landing-plan-amount">$12</span><span class="muted">/month</span></p>
-  <p class="md-body-medium landing-plan-copy">Your own workspace on our servers. Nothing to run, nothing to maintain.</p>
-  <ul class="landing-plan-list">
-  <li>${icon("check")}<span>14-day free trial, no card up front</span></li>
-  <li>${icon("check")}<span>Zimer, calendar, zinvoices, clients</span></li>
-  <li>${icon("check")}<span>Cancel anytime</span></li>
-  </ul>
-  <a class="md-filled-button landing-cta-btn" href="/signup">Start free trial</a>
-  </article>
-  <article class="landing-plan">
-  <p class="landing-plan-label">Self-host</p>
-  <p class="landing-plan-price"><span class="landing-plan-amount">$0</span><span class="muted"> forever</span></p>
-  <p class="md-body-medium landing-plan-copy">One Bun process and one SQLite file on your own server. Your data never leaves it.</p>
-  <ul class="landing-plan-list">
-  <li>${icon("check")}<span>Every feature, no account</span></li>
-  <li>${icon("check")}<span>Browser extension included</span></li>
-  <li>${icon("check")}<span>Back up by copying one file</span></li>
-  </ul>
-  <a class="md-text-button landing-cta-btn" href="https://github.com/Klectr/zimer" target="_blank" rel="noopener">View on GitHub</a>
-  </article>
-  </div>
-  </section>
-  <footer class="landing-foot">
-  <p class="muted tiny landing-foot-links"><a href="/terms">License terms</a> · <a href="/privacy">Privacy</a> · <a href="/changelog">Changelog</a></p>
-  <p class="muted tiny landing-support">Questions: <a href="mailto:support@klectr.dev">support@klectr.dev</a></p>
+  <footer class="ui-landing-foot">
+  <p class="muted tiny ui-landing-foot-links"><a href="/terms">License terms</a> · <a href="/privacy">Privacy</a> · <a href="/changelog">Changelog</a></p>
+  <p class="muted tiny ui-landing-support">Questions: <a href="mailto:support@klectr.dev">support@klectr.dev</a></p>
   </footer>
   </main>
   </body>
