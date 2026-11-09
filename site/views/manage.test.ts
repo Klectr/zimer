@@ -142,6 +142,17 @@ describe("client settings modal (#630)", () => {
     expect(html.indexOf("dlgGen++;", close)).toBeGreaterThan(close);
   });
 
+  test("close captures the generation so a reopen during the fade cancels the hide (#1192)", () => {
+    const html = pageHtml();
+    const close = html.indexOf("function closeClientSettings(refocus){");
+    expect(close).toBeGreaterThan(-1);
+    const bump = html.indexOf("dlgGen++;", close);
+    const capture = html.indexOf("var gen=dlgGen, done=false,", close);
+    const guard = html.indexOf("if(done||gen!==dlgGen) return;", close);
+    expect(capture).toBeGreaterThan(bump);
+    expect(guard).toBeGreaterThan(capture);
+  });
+
   test("settings form carries all eight client fields posting to /clients/:id/settings", () => {
     const { db, client } = testDb();
     db.query("UPDATE clients SET rate = ?, payment_terms = ?, email = ?, phone = ?, website = ?, address = ? WHERE id = ?")

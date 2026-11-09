@@ -308,7 +308,7 @@ export function createManageViews(deps: ManageViewDeps) {
           dlgGen++;
           dlgScrim.classList.remove("open");
           document.removeEventListener("keydown", onClientSettingsKey, true);
-          var done=false, finish=function(){ if(done) return; done=true; dlgScrim.hidden=true; };
+          var gen=dlgGen, done=false, finish=function(){ if(done||gen!==dlgGen) return; done=true; dlgScrim.hidden=true; };
           var onEnd=function(e){ if(e.target===dlgScrim&&e.propertyName==="opacity"){ dlgScrim.removeEventListener("transitionend",onEnd); finish(); } };
           dlgScrim.addEventListener("transitionend",onEnd); setTimeout(finish,300);
           if(refocus){ var btn=wrap.querySelector(".client-settings-open"); if(btn) btn.focus(); }
