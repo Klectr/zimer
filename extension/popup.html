@@ -60,6 +60,7 @@
   .ui-tag { display: inline-flex; align-items: center; gap: var(--spacing-xs); padding: var(--spacing-xxs) var(--spacing-xs); border-radius: var(--radius-xs); font-size: var(--font-size-sm); font-weight: 500; line-height: var(--line-height-sm); }
   .ui-tag-neutral { background: var(--color-fill-secondary); color: var(--color-text-secondary); }
   .ui-tag-success { background: var(--color-success-bg); color: var(--color-success); }
+  .ui-tag-primary { background: var(--color-primary-bg); color: var(--color-primary); }
   .ui-tag-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex: none; }
   .ui-timer { font-family: var(--font-family-code); font-size: var(--font-size-heading-1); font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; line-height: 1.2; }
   .ui-timer-sm { font-size: var(--font-size-heading-2); }
@@ -107,6 +108,7 @@
   .ext-context-title { font-weight: var(--font-weight-strong); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .ext-context-sub { color: var(--color-text-secondary); font-size: var(--font-size-sm); line-height: var(--line-height-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #timer-running { display: flex; flex-direction: column; gap: var(--spacing-sm); }
+  .ext-tags { display: flex; flex-wrap: wrap; gap: var(--spacing-xs); }
   .ext-actions { display: flex; gap: var(--spacing-xs); }
   .ext-actions .ui-btn { flex: 1; }
   #run-status { display: none; }
@@ -141,6 +143,7 @@
         <div class="ext-context-sub" id="run-desc"></div>
       </div>
       <div class="ui-timer ui-timer-sm" id="run-elapsed">…</div>
+      <div class="ext-tags hidden" id="run-tags"></div>
       <button type="button" class="ui-btn ui-btn-primary ui-btn-block" id="btn-stop">Stop</button>
     </div>
     <div id="timer-idle" class="hidden ext-stack">

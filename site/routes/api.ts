@@ -3,7 +3,7 @@
  *  path is not an API path so the caller falls through to web routes. */
 
 import type { Database, Statement } from "bun:sqlite";
-import { clientColor, entryIsLocked, round2, todayStr } from "../lib/format.ts";
+import { clientColor, dayBounds, durationSeconds, entryIsLocked, round2, todayStr } from "../lib/format.ts";
 import type { Entry, Invoice, InvoiceItem } from "../lib/types.ts";
 import { findTenantByPaymentLinkId } from "../lib/tenants.ts"; /* #741 */
 import { authedApi as bearerAuthedApi } from "../lib/auth.ts"; /* #984 */
@@ -170,7 +170,17 @@ export function createApiRouter(deps: ApiDeps) {
 
             if (path === "/api/status" && method === "GET") {
               const running = qRunning.get() as Entry | null;
-              return json({ running: running ? entryToJson(running) : null });
+              if (!running) return json({ running: null });
+              const from = url.searchParams.get("from") || "", to = url.searchParams.get("to") || "";
+              const iso = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:?\d{2})$/;
+              const ok = iso.test(from) && iso.test(to) && !isNaN(Date.parse(from)) && !isNaN(Date.parse(to));
+              const [f, t] = ok ? [from, to] : dayBounds(todayStr());
+              const todaySeconds = (qRange.all(f, t) as Entry[])
+                .reduce((a, e) => a + durationSeconds(e.start_time, e.end_time), 0);
+              return json({
+                running: { ...entryToJson(running), client_rate: running.client_rate ?? null },
+                today_seconds: todaySeconds,
+              });
             }
             if (path === "/api/timer/start" && method === "POST") {
               if (qRunning.get()) return json({ error: "a timer is already running" }, 409);

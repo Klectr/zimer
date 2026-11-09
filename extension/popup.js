@@ -48,16 +48,43 @@ function startTicking(startIso) {
   tickTimer = setInterval(tick, 1000);
 }
 
+function statusPath() {
+  const d = new Date();
+  const s = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const from = new Date(s).toISOString(), to = new Date(s + 864e5).toISOString();
+  return "/api/status?from=" + encodeURIComponent(from) + "&to=" + encodeURIComponent(to);
+}
+
+function fmtDur(totalSecs) {
+  const h = Math.floor(totalSecs / 3600);
+  const m = Math.floor((totalSecs % 3600) / 60);
+  const s = totalSecs % 60;
+  if (h > 0) return m > 0 ? `${h}h ${String(m).padStart(2, "0")}m` : `${h}h`;
+  if (m > 0) return s > 0 ? `${m}m ${String(s).padStart(2, "0")}s` : `${m}m`;
+  return `${s}s`;
+}
+
+function renderRunTags(running, todaySeconds) {
+  const tags = [];
+  const rate = running.client_rate;
+  if (rate) tags.push(`<span class="ui-tag ui-tag-primary">${rate % 1 === 0 ? `$${rate}` : `$${rate.toFixed(2)}`}/hr</span>`);
+  if (typeof todaySeconds === "number") tags.push(`<span class="ui-tag ui-tag-neutral">Today ${fmtDur(todaySeconds)}</span>`);
+  $("run-tags").innerHTML = tags.join("");
+  $("run-tags").classList.toggle("hidden", tags.length === 0);
+}
+
 async function refresh() {
   $("main-error").textContent = "";
   try {
-    const { running } = await api("/api/status");
+    const data = await api(statusPath());
+    const running = data.running;
     const isRunning = !!running;
     $("timer-running").classList.toggle("hidden", !isRunning);
     $("timer-idle").classList.toggle("hidden", isRunning);
     if (isRunning) {
       $("run-desc").textContent = running.description || "No description";
       $("run-proj").textContent = [running.project_name, running.client_name].filter(Boolean).join(" · ");
+      renderRunTags(running, data.today_seconds);
       startTicking(running.start_time);
     } else {
       stopTicking();
