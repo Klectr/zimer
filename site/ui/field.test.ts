@@ -36,6 +36,13 @@ describe("textField", () => {
   });
 });
 
+describe("textField datetime-local", () => {
+  test("renders a datetime-local input (the edit-entry fields carry data-iso in attrs)", () => {
+    const html = textField({ id: "ee-start", label: "Start", name: "start_time", type: "datetime-local", required: true, attrs: 'data-iso="2026-11-02T14:00:00.000Z"' });
+    expect(html).toContain('<input class="ui-input" type="datetime-local" id="ee-start" name="start_time" required data-iso="2026-11-02T14:00:00.000Z">');
+  });
+});
+
 describe("selectField", () => {
   test("renders the label above a custom-chevron select with the selected option", () => {
     const html = selectField({

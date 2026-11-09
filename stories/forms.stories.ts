@@ -13,6 +13,18 @@ const wrap = (inner: string) =>
 
 export const formsStories: Story[] = [
   {
+    id: "forms-entry-times",
+    group: "Forms",
+    title: "Entry times — datetime-local fields",
+    render: () =>
+      wrap(
+        `<div style="display:flex;flex-direction:column;gap:12px">` +
+          textField({ id: "story-start", label: "Start", name: "start_time", type: "datetime-local", required: true, attrs: 'data-iso="2026-11-02T14:00:00.000Z"' }) +
+          textField({ id: "story-end", label: "End (blank = still running)", name: "end_time", type: "datetime-local", attrs: 'data-iso="2026-11-02T16:30:00.000Z"' }) +
+          `</div>`,
+      ),
+  },
+  {
     id: "forms-choices",
     group: "Forms",
     title: "Checkbox & switch rows",

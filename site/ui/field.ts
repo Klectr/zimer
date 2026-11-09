@@ -1,6 +1,6 @@
 import { esc } from "../lib/format";
 
-export type TextFieldType = "text" | "email" | "number" | "date" | "time" | "tel" | "url" | "password" | "search";
+export type TextFieldType = "text" | "email" | "number" | "date" | "time" | "datetime-local" | "tel" | "url" | "password" | "search";
 
 export interface TextFieldOptions {
   id: string;
