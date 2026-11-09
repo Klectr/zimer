@@ -21,6 +21,25 @@ const VARIANT_CLASS: Record<ButtonVariant, string> = {
   ghost: "ui-btn ui-btn-ghost",
 };
 
+export interface LinkButtonOptions {
+  label: string;
+  href: string;
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  block?: boolean;
+  external?: boolean;
+}
+
+export function linkButton(opts: LinkButtonOptions): string {
+  const variant = opts.variant ?? "default";
+  let cls = VARIANT_CLASS[variant];
+  if (opts.size === "sm") cls += " ui-btn-sm";
+  if (opts.size === "lg") cls += " ui-btn-lg";
+  if (opts.block) cls += " ui-btn-block";
+  const ext = opts.external ? ` target="_blank" rel="noopener"` : "";
+  return `<a class="${cls}" href="${esc(opts.href)}"${ext}>${esc(opts.label)}</a>`;
+}
+
 export function button(opts: ButtonOptions): string {
   const variant = opts.variant ?? "default";
   let cls = VARIANT_CLASS[variant];

@@ -46,6 +46,13 @@ export interface SummaryLine {
   amount: string;
 }
 
+export function summaryLines(lines: SummaryLine[], totalLabel: string, total: string): string {
+  const rows = lines
+    .map((l) => `<div class="ui-summary-line"><span>${esc(l.label)}</span><span class="num">${esc(l.amount)}</span></div>`)
+    .join("");
+  return rows + `<div class="ui-summary-total"><span>${esc(totalLabel)}</span><span class="num">${esc(total)}</span></div>`;
+}
+
 export interface InvoiceSummaryOptions {
   title: string;
   chipHtml?: string;
@@ -57,14 +64,10 @@ export interface InvoiceSummaryOptions {
 
 export function invoiceSummary(opts: InvoiceSummaryOptions): string {
   const chip = opts.chipHtml ?? "";
-  const lines = opts.lines
-    .map((l) => `<div class="ui-summary-line"><span>${esc(l.label)}</span><span class="num">${esc(l.amount)}</span></div>`)
-    .join("");
   const body = opts.bodyHtml ?? "";
   const inner =
     `<div class="ui-card-head"><span class="ui-section-title">${esc(opts.title)}</span><span class="ui-card-head-end">${chip}</span></div>` +
-    `${lines}` +
-    `<div class="ui-summary-total"><span>${esc(opts.totalLabel)}</span><span class="num">${esc(opts.total)}</span></div>` +
+    summaryLines(opts.lines, opts.totalLabel, opts.total) +
     `${body}`;
   return card({ content: inner });
 }
