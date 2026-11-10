@@ -197,7 +197,7 @@ describe("paid-on date", () => {
 
 /** #486: finish the data-tip sweep — the invoice share-section buttons
  *  (copy link, regenerate/revoke) used the OS-native title= tooltip while the
- *  detail header actions already show M3 plain tooltips. */
+ *  detail header actions already show plain tooltips. */
 describe("#947: destructive invoice actions carry data-confirm", () => {
   test("Mark sent has a confirm (sent zinvoices can't be edited)", () => {
     const html = views([]).invoiceDetailBody(detailInv("draft", null) as any, "http://x");
@@ -223,7 +223,7 @@ describe("share-section tooltips (#486)", () => {
     expect(html).not.toContain('title="Copy link"');
   });
   test("regenerate keeps the full accessible name; tip stays short", () => {
-    // the M3 tooltip caps at 200px nowrap — the long label would overflow it
+    // the tooltip caps at 200px nowrap — the long label would overflow it
     expect(html).toContain('data-tip="Regenerate link"');
     expect(html).toContain('aria-label="Regenerate link (invalidates the old one)"');
     expect(html).not.toContain('title="Regenerate link');

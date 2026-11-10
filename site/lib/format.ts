@@ -216,7 +216,7 @@ export function entryToJson(e: Entry) {
 /** #841: rows stored under the legacy gold default (#f2c14e) render with the
  *  current theme primary, so a scheme change needs no data migration.
  *  Explicitly chosen colors pass through untouched. The returned
- *  var(--md-sys-color-primary) is safe in inline style attributes and in
+ *  var(--color-primary) is safe in inline style attributes and in
  *  --c custom properties (both resolve at use time). */
 export function schemeColor(color: string | null | undefined): string | null | undefined {
   if (typeof color === "string" && color.toLowerCase() === "#f2c14e")

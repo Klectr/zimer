@@ -12,12 +12,12 @@ describe("legacy snapshot compat", () => {
     expect(css).toContain(".template-modern .md-table");
   });
 
-  /* #1133: desktop visuals are forked — .md-table (frozen) keeps the M3
+  /* #1133: desktop visuals are forked — .md-table (frozen) keeps the legacy
      card-row declarations; .inv-table (live) carries hairline rows. */
   test("the frozen .md-table keeps its legacy row fill; the live .inv-table is hairline-only", () => {
     const legacy = css.match(/\.md-table tbody tr \{[^}]*\}/);
     expect(legacy).not.toBeNull();
-    expect(legacy![0]).toContain("background: var(--md-sys-color-surface-container-low)");
+    expect(legacy![0]).toContain("background: var(--color-bg-container)");
     const live = css.match(/\.inv-table tbody tr \{[^}]*\}/);
     expect(live).not.toBeNull();
     expect(live![0]).toContain("border-bottom: 1px solid var(--color-border-secondary)");

@@ -518,7 +518,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
 
     var scrim=document.getElementById('cal-scrim');
     var dialog=scrim.querySelector('.cal-dialog');
-    /* M3 dialog motion: .open drives scrim fade + dialog scale/fade.
+    /* Dialog motion: .open drives scrim fade + dialog scale/fade.
        Generation counter keeps rapid open/close/open sequences sane. */
     var scrimGen=0;
     function showScrim(){
@@ -789,7 +789,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       }).catch(function(ex){ saving=false; saveBtn.disabled=false; fail(ex.message); });
     });
     delBtn.addEventListener('click',function(){
-      /* #464: native confirm() replaced by the shared M3 confirm dialog. */
+      /* #464: native confirm() replaced by the shared confirm dialog. */
       window.tkConfirm('Delete this entry? This cannot be undone.').then(function(ok){
         if(!ok) return;
         fetch('/entries/'+editId,{method:'DELETE'}).then(function(r){

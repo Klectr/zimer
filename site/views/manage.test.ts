@@ -1,6 +1,6 @@
 /** #486: finish the data-tip sweep — the manage page's icon buttons (delete /
  *  add project, save rate, save terms) used the OS-native title= tooltip
- *  while the rest of the app shows M3 plain tooltips. */
+ *  while the rest of the app shows plain tooltips. */
 import { describe, expect, test } from "bun:test";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";

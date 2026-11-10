@@ -11,6 +11,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { themeCss } from "./theme.ts";
 
 const css = readFileSync(
   join(import.meta.dir, "..", "static", "style.css"),
@@ -125,8 +126,9 @@ describe("update-check progress state (#406)", () => {
 });
 
 /** #841: the theme scheme has one source of truth — :root defines the short
- *  aliases once, the M3 primary tokens reference them, and no rule hardcodes
- *  the primary hexes. A scheme change is one edit in :root. */
+ *  aliases once, the semantic --color-primary token references the primary
+ *  alias, themeCss overrides the alias family per theme, and no rule
+ *  hardcodes the primary hexes. A scheme change is one edit in :root. */
 describe("theme scheme single source of truth (#841)", () => {
   const rootBlock = (() => {
     const m = css.match(/:root\s*\{[^}]*\}/);
@@ -146,17 +148,25 @@ describe("theme scheme single source of truth (#841)", () => {
     }
   });
 
-  test("the M3 primary tokens reference the short aliases", () => {
-    for (const [token, alias] of [
-      ["--md-sys-color-primary", "--primary"],
-      ["--md-sys-color-on-primary", "--on-primary"],
-      ["--md-sys-color-primary-container", "--primary-container"],
-      ["--md-sys-color-on-primary-container", "--on-primary-container"],
+  test("style.css defines no legacy system tokens", () => {
+    expect(css).not.toMatch(/--md[-]sys[-]/);
+  });
+
+  test("--color-primary references the short --primary alias", () => {
+    expect(css).toMatch(/--color-primary:\s*var\(--primary\);/);
+  });
+
+  test("themeCss overrides the --primary family per theme", () => {
+    const out = themeCss("crimson");
+    for (const name of [
+      "--primary",
+      "--on-primary",
+      "--primary-container",
+      "--on-primary-container",
     ]) {
-      expect(rootBlock).toMatch(
-        new RegExp(`${token}:\\s*var\\(${alias}\\);`),
-      );
+      expect(out).toContain(`${name}:`);
     }
+    expect(out).not.toContain("#fb923c");
   });
 
   test("no primary hex is hardcoded outside :root", () => {
