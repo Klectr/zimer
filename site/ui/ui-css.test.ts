@@ -170,6 +170,7 @@ const RULES = [
   ".ui-viz {",
   ".ui-viz-heads {",
   ".ui-viz-day-head {",
+  ".ui-viz-day-inner {",
   ".ui-viz-day-name {",
   ".ui-viz-day-total {",
   ".ui-viz-hours {",

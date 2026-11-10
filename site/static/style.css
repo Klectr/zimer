@@ -617,7 +617,9 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .ui-tooltip.is-bottom .ui-tooltip-bubble { bottom: auto; top: calc(100% + var(--spacing-xs)); transform: translateX(-50%) translateY(-2px); }
 .ui-tooltip:hover .ui-tooltip-bubble, .ui-tooltip:has(:focus-visible) .ui-tooltip-bubble { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0); max-width: 200px; transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s, max-width 0s; }
 .ui-tooltip.is-align-end .ui-tooltip-bubble { left: auto; right: 0; transform: translateY(2px); }
+.ui-tooltip.is-align-start .ui-tooltip-bubble { left: 0; transform: translateY(2px); }
 .ui-tooltip.is-align-end:hover .ui-tooltip-bubble, .ui-tooltip.is-align-end:has(:focus-visible) .ui-tooltip-bubble { transform: translateY(0); transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s, max-width 0s; }
+.ui-tooltip.is-align-start:hover .ui-tooltip-bubble, .ui-tooltip.is-align-start:has(:focus-visible) .ui-tooltip-bubble { transform: translateY(0); transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s, max-width 0s; }
 .ui-week { container-type: inline-size; }
 .ui-week-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: var(--spacing-xs); }
 .ui-week-agenda { display: none; }
@@ -642,7 +644,9 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 
 .ui-viz { display: grid; grid-template-columns: 44px repeat(7, 1fr); gap: 0 var(--spacing-xs); }
 .ui-viz-heads { display: grid; grid-template-columns: subgrid; grid-column: 1 / -1; margin-bottom: var(--spacing-xs); }
-.ui-viz-day-head { display: flex; align-items: baseline; gap: var(--spacing-xs); min-width: 0; overflow: hidden; }
+.ui-viz-day-head { display: flex; align-items: baseline; gap: var(--spacing-xs); min-width: 0; overflow: visible; }
+.ui-viz-day-head > .ui-tooltip { flex: 1; min-width: 0; width: 100%; }
+.ui-viz-day-inner { display: flex; align-items: baseline; gap: var(--spacing-xs); width: 100%; min-width: 0; }
 .ui-viz-day-name { min-width: 0; font-size: var(--font-size-sm); color: var(--color-text-tertiary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ui-viz-day-head.is-today .ui-viz-day-name { color: var(--color-text); font-weight: var(--font-weight-strong); }
 .ui-viz-day-total { flex: none; margin-left: auto; font-family: var(--font-family-code); font-size: var(--font-size-sm); color: var(--color-text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap; }

@@ -986,8 +986,11 @@ describe("calendar legend (#1202 parity)", () => {
       calHourPx: 64,
     } as any);
     const html = views.weekInner("2026-11-01", "America/Chicago");
-    const head = html.match(/<div class="ui-viz-day-head[^"]*"><span class="ui-viz-day-name">([^<]+)<\/span>/)?.[1];
-    expect(head).toMatch(/^Sun \d+$/);
+    const head = html.match(/<span class="ui-viz-day-name">([^<]+)<\/span>/)?.[1];
+    expect(head).toMatch(/^[SMTWF] \d+$/);
+    expect(html).toContain('class="ui-tooltip');
+    expect(html).toContain('role="tooltip"');
+    expect(html).toMatch(/Sunday (Oct|Nov) \d+ \u00b7 \d+h? ?\d*m? tracked/);
     expect(html).not.toContain('<span class="ui-viz-day-name">Sun Nov');
   });
 });

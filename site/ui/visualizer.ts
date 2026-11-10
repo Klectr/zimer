@@ -1,4 +1,5 @@
 import { esc } from "../lib/format";
+import { tooltip } from "./tooltip";
 
 export interface VizEntry {
   id: string;
@@ -18,6 +19,7 @@ export interface VizDay {
   date: string;
   label: string;
   total: string;
+  detail?: string;
   isToday?: boolean;
   entries: VizEntry[];
 }
@@ -60,13 +62,23 @@ export function visualizer(opts: VisualizerOptions): string {
   const heads =
     `<div></div>` +
     opts.days
-      .map(
-        (day) =>
-          `<div class="ui-viz-day-head${day.isToday ? " is-today" : ""}">` +
+      .map((day, i) => {
+        const align = i === 0 ? "start" : i === opts.days.length - 1 ? "end" : "center";
+        const content =
+          `<span class="ui-viz-day-inner">` +
           `<span class="ui-viz-day-name">${esc(day.label)}</span>` +
           (day.isToday ? `<span class="ui-day-dot"></span>` : "") +
-          `<span class="ui-viz-day-total" data-day-total>${esc(day.total)}</span></div>`,
-      )
+          `<span class="ui-viz-day-total" data-day-total>${esc(day.total)}</span></span>`;
+        return `<div class="ui-viz-day-head${day.isToday ? " is-today" : ""}">` +
+          tooltip({
+            id: `viz-day-${day.date}`,
+            label: day.detail || `${day.label} · ${day.total} tracked`,
+            placement: "bottom",
+            align,
+            contentHtml: content,
+          }) +
+          `</div>`;
+      })
       .join("");
 
   const hours: string[] = [];

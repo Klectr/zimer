@@ -118,6 +118,16 @@ describe("visualizer", () => {
     expect(html).toContain("Mon Nov 2");
   });
 
+  test("day headers carry the day detail in the tooltip component", () => {
+    const html = visualizer({
+      days: [{ ...VDAY, detail: "Monday Nov 2 · 2h tracked · 0 entries" }],
+    });
+    expect(html).toContain('class="ui-tooltip is-bottom is-align-start"');
+    expect(html).toContain('role="tooltip"');
+    expect(html).toContain("Monday Nov 2 · 2h tracked · 0 entries");
+    expect(html).toContain("ui-viz-day-inner");
+  });
+
   test("now line renders only on today's column, inside the window", () => {
     const html = visualizer({
       nowMin: 600,

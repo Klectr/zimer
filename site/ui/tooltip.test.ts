@@ -15,6 +15,10 @@ describe("tooltip", () => {
     expect(tooltip({ id: "t4", label: "L", align: "end", contentHtml: "" })).toContain("is-align-end");
   });
 
+  test("start alignment adds its modifier class", () => {
+    expect(tooltip({ id: "t5", label: "L", align: "start", contentHtml: "" })).toContain("is-align-start");
+  });
+
   test("bottom placement adds the modifier class", () => {
     expect(tooltip({ id: "t2", label: "L", placement: "bottom", contentHtml: "" })).toContain("ui-tooltip is-bottom");
     expect(tooltip({ id: "t3", label: "L", contentHtml: "" })).not.toContain("is-bottom");
