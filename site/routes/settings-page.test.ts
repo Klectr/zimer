@@ -27,7 +27,7 @@ function setup(billingSectionHtml?: (req: Request) => string) {
     timerPartial: noop, todayPartial: noop, weekInner: noop, weekStrip: noop,
     calendarPage: noop, editPage: () => null,
     managePage: views.managePage, clientSelection: views.clientSelection,
-    clientDetailBody: views.clientDetailBody, clientListOob: views.clientListOob,
+    clientDialogBody: views.clientDialogBody, clientDialogProjects: views.clientDialogProjects, manageListsOob: views.manageListsOob,
     bizProfileSection: views.bizProfileSection, dailyTargetSection: views.dailyTargetSection, clientSettingsForm: views.clientSettingsForm,
     themeSectionHtml: views.themeSectionHtml,
     settingsPage: views.settingsPage, invoicesPage: noop, invoiceNewPage: noop,

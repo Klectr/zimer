@@ -1,32 +1,31 @@
-/** Manage views: clients in a list-detail layout (#367, mirrors the
- *  invoices list-detail from #364). The leading pane lists clients; the
- *  detail pane manages the selected client's rate, payment terms, projects,
- *  and deletion. */
+/** Manage views: one stacked page in the suite mock's composition — the
+ *  add-client form at the top, the client table, and the projects card.
+ *  Editing a client opens a dialog holding its settings form, its
+ *  projects, and its delete action. */
 
 import type { Database } from "bun:sqlite";
-import { clientColor, esc, fmtDur, PAYMENT_TERMS, schemeColor, termsDescription, termsKey } from "../lib/format.ts";
+import { clientColor, durationSeconds, esc, PAYMENT_TERMS, round2, schemeColor, termsDescription, termsKey } from "../lib/format.ts";
 import type { PaymentTermsKey } from "../lib/format.ts";
 import { icon } from "../lib/icons.ts";
 import { THEMES, themeKey } from "../lib/theme.ts"; /* #884 */
 import { getMeta } from "../db.ts";
-import { emptyState } from "../ui/empty-state.ts";
 import { settingsSection } from "../ui/settings-section.ts";
 import { selectField, textAreaField, textField } from "../ui/field.ts";
-import { button, linkButton } from "../ui/button.ts";
+import { button } from "../ui/button.ts";
+import { card } from "../ui/card.ts";
+import { tag } from "../ui/tag.ts";
 import { clientRow } from "../ui/rows.ts";
 import { dayTargetSecs } from "../lib/domain.ts"; /* #908: daily target setting */
 import { appHeader } from "../ui/app-header.ts";
 import { iconButton } from "../ui/icon-button.ts";
 
-/* #367: the detail-pane selection. "none" is the pseudo-client holding
-   projects with no client assigned. */
+/* The selection a client dialog opens for. "none" is the pseudo-client
+   holding projects with no client assigned. */
 export type ClientSel = { kind: "client"; client: any } | { kind: "none" };
 
 export interface ManageViewDeps {
   db: Database;
   layout: (title: string, body: string, active?: "timer" | "calendar" | "manage" | "invoices", fixed?: boolean) => string;
-  /* #1121: per-client rounded unbilled time for the row meta (the same
-     figures the Zinvoices page's Unbilled section reports). */
   unbilledByClient: () => { id: number; name: string; secs: number }[];
 }
 
@@ -61,8 +60,8 @@ export function createManageViews(deps: ManageViewDeps) {
     return { clients, projects, byClient, unassigned };
   }
 
-  /* #367: resolve ?client= — a numeric id, "none", or null (nothing
-     selected). Unknown ids degrade to null (placeholder), never an error. */
+  /* Resolve a dialog key — a numeric client id, "none", or null (unknown
+     ids degrade to null, never an error). */
   function clientSelection(raw: string | null): ClientSel | null {
     if (raw === "none") return { kind: "none" };
     if (raw && /^\d+$/.test(raw)) {
@@ -72,105 +71,134 @@ export function createManageViews(deps: ManageViewDeps) {
     return null;
   }
 
-  const selKey = (sel: ClientSel | null): number | "none" | null =>
-    !sel ? null : sel.kind === "client" ? sel.client.id : "none";
-
-  function clientListHtml(sel: ClientSel | null): string {
-    const { clients, byClient, unassigned } = manageData();
-    const sk = selKey(sel);
-    const unbilled = new Map(deps.unbilledByClient().map(u => [u.id, u.secs]));
-    const rows = clients.map(c => {
-      const n = (byClient.get(c.id) || []).length;
-      const unbilledSecs = unbilled.get(c.id) || 0;
-      return clientRow({
-        name: c.name,
-        meta: `${n} project${n === 1 ? "" : "s"}${c.rate ? ` · $${c.rate}/hr` : ""}${unbilledSecs ? ` · ${fmtDur(unbilledSecs)} unbilled` : ""}`, 
-        href: `/manage?client=${c.id}`,
-        ariaLabel: `Manage client ${c.name}`,
-        dot: schemeColor(c.color) || "var(--color-primary)",
-        selected: sk === c.id,
-        chevron: true,
-      });
-    }).join("");
-    const noneRow = clientRow({
-      name: "No client",
-      meta: `${unassigned.length} unassigned project${unassigned.length === 1 ? "" : "s"}`,
-      href: "/manage?client=none",
-      ariaLabel: "Manage projects with no client",
-      iconDot: "group",
-      selected: sk === "none",
-      chevron: true,
-    });
-    return `<div class="ui-list" id="client-list">${rows}${noneRow}</div>`;
-  }
-
-  /* #367: out-of-band list refresh after a detail-pane action — the row
-     supporting text (project count) must not go stale, and the pushed-URL
-     history snapshot restores the right selection on back. */
-  /* #1121: the header counts ride along — a project add/delete changes
-     the project total, and the row OOB alone would leave the sub stale. */
   function countsSub(): string {
     const { clients, projects } = manageData();
     return `${clients.length} client${clients.length === 1 ? "" : "s"} · ${projects.length} project${projects.length === 1 ? "" : "s"}`;
   }
 
-  function clientListOob(sel: ClientSel | null): string {
-    return clientListHtml(sel).replace(`id="client-list"`, `id="client-list" hx-swap-oob="true"`)
+  function unbilledMoneyByClient(): Map<number, number> {
+    const rows = db.query(
+      `SELECT c.id AS client_id, c.rate AS rate, p.id AS project_id, e.start_time, e.end_time
+       FROM time_entries e
+       JOIN projects p ON p.id = e.project_id
+       JOIN clients c ON c.id = p.client_id
+       WHERE e.invoice_id IS NULL AND e.end_time IS NOT NULL`).all() as any[];
+    const groups = new Map<string, { clientId: number; rate: number; secs: number }>();
+    for (const r of rows) {
+      const key = `${r.client_id}:${r.project_id}`;
+      const g = groups.get(key) ?? { clientId: r.client_id, rate: r.rate || 0, secs: 0 };
+      const raw = durationSeconds(r.start_time, r.end_time);
+      g.secs += raw > 0 ? Math.ceil(raw / 300) * 300 : raw;
+      groups.set(key, g);
+    }
+    const totals = new Map<number, number>();
+    for (const g of groups.values()) {
+      const amount = round2(round2(g.secs / 3600) * g.rate);
+      totals.set(g.clientId, round2((totals.get(g.clientId) ?? 0) + amount));
+    }
+    return totals;
+  }
+
+  const moneyCell = (n: number): string =>
+    "$" + n.toLocaleString("en-US", { minimumFractionDigits: Number.isInteger(n) ? 0 : 2, maximumFractionDigits: 2 });
+
+  function addClientCard(): string {
+    return card({
+      tracking: true,
+      content:
+        `<h3 class="ui-block-title">Add a client</h3>` +
+        `<form method="post" action="/clients" id="client-add-form" class="manage-add-form">` +
+        `<div class="manage-add-grow">${textField({ id: "mc-name", label: "Client name", name: "name", required: true, placeholder: "e.g. Harbor Dental" })}</div>` +
+        `<div class="manage-add-email">${textField({ id: "mc-email", label: "Email", name: "email", type: "email", placeholder: "billing@client.example" })}</div>` +
+        `<div class="manage-add-rate">${textField({ id: "mc-rate", label: "Default rate", name: "rate", type: "number", min: "0", step: "0.01", prefix: "$", suffix: "/hr" })}</div>` +
+        `<label class="ui-color-control">${icon("palette")}<span>Color</span><input type="color" name="color" value="#fb923c" aria-label="Client color"></label>` +
+        button({ label: "Add client", icon: "add", type: "submit", variant: "primary" }) +
+        `</form>`,
+    });
+  }
+
+  function clientTableCard(): string {
+    const { clients, byClient, unassigned } = manageData();
+    const unbilled = unbilledMoneyByClient();
+    const editBtn = (key: number | "none", label: string) =>
+      button({ label: "Edit", size: "sm", attrs: `data-client-edit="${key}" aria-haspopup="dialog" aria-label="${esc(label)}"` });
+    const projectNames = (list: any[]) => list.map(p => esc(p.name)).join(" · ") || "—";
+    const rows = clients.map(c => `<tr>
+        <td><span class="manage-client-name"><span class="ui-row-lead-dot" style="background:${esc(schemeColor(c.color) || "var(--color-primary)")}" aria-hidden="true"></span>${esc(c.name)}</span></td>
+        <td>${c.rate ? `$${c.rate}/hr` : "—"}</td>
+        <td>${projectNames(byClient.get(c.id) || [])}</td>
+        <td class="num">${moneyCell(unbilled.get(c.id) || 0)}</td>
+        <td class="manage-edit-cell">${editBtn(c.id, `Edit client ${c.name}`)}</td>
+      </tr>`).join("");
+    const noneRow = `<tr>
+        <td><span class="manage-client-name"><span class="ui-row-lead-icon" aria-hidden="true">${icon("group")}</span>No client</span></td>
+        <td>—</td>
+        <td>${projectNames(unassigned)}</td>
+        <td class="num">—</td>
+        <td class="manage-edit-cell">${editBtn("none", "Edit projects with no client")}</td>
+      </tr>`;
+    return card({
+      id: "client-table-card",
+      className: "manage-table-card",
+      content: `<table class="ui-table"><thead><tr><th>Client</th><th>Default rate</th><th>Projects</th><th class="num">Unbilled</th><th><span class="ui-sr-only">Actions</span></th></tr></thead><tbody>${rows}${noneRow}</tbody></table>`,
+    });
+  }
+
+  function projectsCard(): string {
+    const { clients, byClient, unassigned } = manageData();
+    const chips: string[] = [];
+    for (const c of clients)
+      for (const p of byClient.get(c.id) || []) chips.push(tag({ label: `${c.name} — ${p.name}` }));
+    for (const p of unassigned) chips.push(tag({ label: p.name }));
+    return card({
+      id: "projects-card",
+      content:
+        `<h3 class="ui-block-title">Projects</h3>` +
+        `<div class="manage-chips">${chips.join("")}<button type="button" class="ui-tag ui-tag-neutral manage-new-project" id="new-project-open">${icon("add")}New project</button></div>` +
+        `<p class="manage-note">Projects live under their client. Deleting a project never deletes time: its entries keep their history, and past Zinvoices keep their lines.</p>`,
+    });
+  }
+
+  function manageListsOob(): string {
+    return clientTableCard().replace(`id="client-table-card"`, `id="client-table-card" hx-swap-oob="true"`)
+      + projectsCard().replace(`id="projects-card"`, `id="projects-card" hx-swap-oob="true"`)
       + `<p class="ui-app-sub" id="mg-sub" hx-swap-oob="true">${esc(countsSub())}</p>`;
   }
 
   const projectRow = (p: any) => clientRow({
     name: p.name,
-    actions: `<form method="post" action="/projects/${p.id}/delete" class="inline" hx-post="/projects/${p.id}/delete" hx-target="#client-detail" hx-swap="outerHTML">${iconButton({ icon: "delete", label: `Delete project ${p.name}`, tip: "Delete", danger: true, type: "submit", attrs: `data-confirm="Delete project? Entries keep their history."` })}</form>`,
+    actions: `<form method="post" action="/projects/${p.id}/delete" class="inline" hx-post="/projects/${p.id}/delete" hx-target="#client-dialog-projects" hx-swap="outerHTML">${iconButton({ icon: "delete", label: `Delete project ${p.name}`, tip: "Delete", danger: true, type: "submit", attrs: `data-confirm="Delete project? Entries keep their history."` })}</form>`,
   });
 
   const addProjectForm = (clientId: number | null) => `
-      <form method="post" action="/projects" class="ui-add-project-form" hx-post="/projects" hx-target="#client-detail" hx-swap="outerHTML">
+      <form method="post" action="/projects" class="ui-add-project-form" hx-post="/projects" hx-target="#client-dialog-projects" hx-swap="outerHTML">
         ${clientId == null ? "" : `<input type="hidden" name="client_id" value="${clientId}">`}
         <div class="ui-add-project-grow">${textField({ id: "mp-name", label: "New project", name: "name", required: true })}</div>
         ${iconButton({ icon: "add", label: "Add project", type: "submit" })}
       </form>`;
 
-  /* #367: detail body as a fragment — project actions swap
-     #client-detail in place instead of reloading the page.
-     #630: rate and payment terms moved into the client settings modal;
-     the detail pane keeps the header, projects, and deletion. */
-  function clientDetailBody(sel: ClientSel): string {
+  function clientDialogProjects(sel: ClientSel): string {
     const { byClient, unassigned } = manageData();
     const isClient = sel.kind === "client";
-    const c = isClient ? sel.client : null;
-    const projects = isClient ? (byClient.get(c.id) || []) : unassigned;
-    return `<div id="client-detail">
-      <div class="page-head no-print">
-        ${linkButton({ label: "Clients", href: "/manage", icon: "arrow_left", variant: "ghost", className: "detail-back" })}
-      </div>
-      <div class="client-detail-head${isClient ? " has-settings" : ""}">
-        ${isClient
-          ? `<div>
-          <h2 class="ui-page-title">${esc(c.name)}</h2>
-          <p class="muted" style="margin:4px 0 0">${projects.length} project${projects.length === 1 ? "" : "s"}${c.rate ? ` · $${c.rate}/hr` : ""}</p>
-        </div>
-        ${iconButton({ icon: "settings", label: `Client settings for ${c.name}`, tip: "Client settings", className: "client-settings-open", attrs: `data-client-id="${c.id}" aria-haspopup="dialog"` })}`
-          : `<span class="ui-row-lead-icon" aria-hidden="true">${icon("group")}</span>
-        <div>
-          <h2 class="ui-page-title">No client</h2>
-          <p class="muted" style="margin:4px 0 0">Projects not assigned to a client</p>
-        </div>`}
-      </div>
+    const projects = isClient ? (byClient.get(sel.client.id) || []) : unassigned;
+    return `<div id="client-dialog-projects">
       <h3 class="ui-block-title">Projects</h3>
-      ${addProjectForm(isClient ? c.id : null)}
+      ${addProjectForm(isClient ? sel.client.id : null)}
       <div class="ui-list">
         ${projects.map(projectRow).join("")}
       </div>
-      ${isClient ? `
-      <form method="post" action="/clients/${c.id}/delete" class="detail-form">
-        ${button({ label: "Delete client", variant: "ghost", danger: true, type: "submit", attrs: 'data-confirm="Delete this client? Its projects move to No client."' })}
-      </form>` : ""}
     </div>`;
   }
 
-  function detailPlaceholder(): string {
-    return emptyState({ icon: "group", body: "Select a client to manage its projects and settings." });
+  function clientDialogBody(sel: ClientSel): string {
+    if (sel.kind === "none") {
+      return `<div data-client-name="No client">${clientDialogProjects(sel)}</div>`;
+    }
+    const c = sel.client;
+    return clientSettingsForm(c) + clientDialogProjects(sel) + `
+      <form method="post" action="/clients/${c.id}/delete" class="detail-form manage-delete-client">
+        ${button({ label: "Delete client", variant: "ghost", danger: true, type: "submit", attrs: 'data-confirm="Delete this client? Its projects move to No client."' })}
+      </form>`;
   }
 
   /* #630: client settings form — all eight editable client fields,
@@ -204,124 +232,94 @@ export function createManageViews(deps: ManageViewDeps) {
       `</form>`;
   }
 
-  /* #630: client settings modal. Same scrim/dialog pattern as the #245
-     settings modal (scrim fade + dialog scale/fade, Escape/scrim/close,
-     focus trap, lazy-loaded body). Rendered once per manage page, outside
-     every HTMX-swapped region. */
-  function clientSettingsDialog(): string {
+  function clientDialog(): string {
     return `<div class="cal-scrim ui-scrim" id="client-settings-scrim" hidden>
       <div class="settings-dialog ui-dialog" role="dialog" aria-modal="true" aria-labelledby="client-settings-title">
         <div class="settings-dialog-head">
           <div>
-            <h2 class="ui-dialog-title" id="client-settings-title">Client settings</h2>
-            <p class="ui-settings-note" id="client-settings-sub" hidden>Client settings — rate, terms, color, and contact details invoicing uses.</p>
+            <h2 class="ui-dialog-title" id="client-settings-title">Client</h2>
+            <p class="ui-settings-note" id="client-settings-sub" hidden>Rate, terms, color, contact details, and projects.</p>
           </div>
-          ${iconButton({ icon: "close", label: "Close client settings", id: "client-settings-close", tip: null })}
+          ${iconButton({ icon: "close", label: "Close client dialog", id: "client-settings-close", tip: null })}
         </div>
         <div id="client-settings-body"><p class="muted">Loading…</p></div>
       </div>
     </div>`;
   }
 
-  /* #1121: add-client opens in place at the top of the list pane (the
-     mock's pattern) instead of hiding behind a toggle. A plain POST so
-     the new client opens selected on every width (an in-place HTMX swap
-     could not flip the single-pane shell to the detail on phones). */
-  function addClientForm(): string {
-    return `<div class="client-add">
-      <form method="post" action="/clients" id="client-add-form" class="ui-settings-form">
-        ${textField({ id: "mc-name", label: "Client name", name: "name", required: true })}
-        ${textField({ id: "mc-email", label: "Email", name: "email", type: "email", placeholder: "billing@client.example" })}
-        <div class="ui-form-row">
-          <div style="max-width:172px">${textField({ id: "mc-rate", label: "Hourly rate", name: "rate", type: "number", min: "0", step: "0.01", prefix: "$", suffix: "/hr" })}</div>
-          <label class="ui-color-control">
-            ${icon("palette")}
-            <span>Color</span>
-            <input type="color" name="color" value="#fb923c" aria-label="Client color">
-          </label>
-          <span class="ui-form-spacer"></span>
-          ${button({ label: "Add", icon: "add", type: "submit", variant: "primary" })}
+  function newProjectDialog(): string {
+    const { clients } = manageData();
+    const options = [
+      { value: "", label: "No client" },
+      ...clients.map(c => ({ value: String(c.id), label: c.name })),
+    ];
+    return `<div class="cal-scrim ui-scrim" id="new-project-scrim" hidden>
+      <div class="settings-dialog ui-dialog" role="dialog" aria-modal="true" aria-labelledby="new-project-title">
+        <div class="settings-dialog-head">
+          <div>
+            <h2 class="ui-dialog-title" id="new-project-title">New project</h2>
+          </div>
+          ${iconButton({ icon: "close", label: "Close new project", id: "new-project-close", tip: null })}
         </div>
-      </form>
+        <form method="post" action="/projects" id="new-project-form" class="ui-settings-form" hx-post="/projects" hx-swap="none">
+          <input type="hidden" name="context" value="page">
+          ${selectField({ id: "np-client", label: "Client", name: "client_id", options, value: "" })}
+          ${textField({ id: "np-name", label: "Project name", name: "name", required: true })}
+          <div class="ui-settings-actions">${button({ label: "Cancel", type: "button", variant: "ghost", id: "new-project-cancel" })}${button({ label: "Add project", type: "submit", variant: "primary" })}</div>
+        </form>
+      </div>
     </div>`;
   }
 
-  /* #805: isDefault marks the route's first-client fallback — same deal
-     as the zinvoices pane: content on desktop, no has-selection so the
-     single-pane (mobile) still opens on the list. */
-  function managePage(sel: ClientSel | null, isDefault = false): string {
-    /* #71: data-enter sits on the shell HTMX never replaces, so the entrance
-       plays once per page load and never replays on swaps.
-       #245: the business profile section moved into the settings modal
-       behind the account menu button; the Manage page is clients & projects only. */
-    return layout("Clients", `
-      ${appHeader({ title: "Clients", sub: countsSub(), subId: "mg-sub" })}
-      <div class="client-list-detail${sel && !isDefault ? " has-selection" : ""}" data-enter="2">
-        <section class="client-list-pane" aria-label="Client list">
-          ${addClientForm()}
-          ${clientListHtml(sel)}
-        </section>
-        <section class="client-detail-pane" id="client-detail-pane" aria-label="Client detail">
-          ${sel ? clientDetailBody(sel) : detailPlaceholder()}
-        </section>
+  function managePage(): string {
+    return layout("Manage", `
+      ${appHeader({ title: "Manage", sub: countsSub(), subId: "mg-sub" })}
+      <div class="manage-stack" data-enter="2">
+        ${addClientCard()}
+        ${clientTableCard()}
+        ${projectsCard()}
       </div>
-      ${clientSettingsDialog()}
+      ${clientDialog()}
+      ${newProjectDialog()}
       <script>(function(){
-        /* #367: two-pane selection, mirrors the invoices list-detail (#364).
-           At ≥840px a row click swaps the detail pane in place (the fragment
-           pushes ?client=<id> and OOB-marks the selected row); below that
-           the link navigates to the single-pane detail screen. Delegated so
-           it survives the list's OOB swaps. */
-        var wrap = document.querySelector(".client-list-detail");
-        if (!wrap || !window.htmx) return;
-        var mq = window.matchMedia("(min-width: 840px)");
-        wrap.addEventListener("click", function(ev){
-          var link = ev.target.closest(".client-row-hit");
-          if (!link || !mq.matches) return;
-          ev.preventDefault();
-          window.htmx.ajax("GET", link.getAttribute("href") + "&fragment=detail",
-            { target: "#client-detail-pane", swap: "innerHTML" });
-        });
-        /* #630: client settings modal — cog opens it (delegated: the button
-           lives inside HTMX-swapped detail HTML), the form lazy-loads, and a
-           successful save closes the modal and refreshes the detail pane
-           (the fragment carries the OOB list update for renames). */
+        var stack = document.querySelector(".manage-stack");
+        if (!stack || !window.htmx) return;
         var dlgScrim = document.getElementById("client-settings-scrim");
         var dlgBody = document.getElementById("client-settings-body");
         var dlgClose = document.getElementById("client-settings-close");
         var dlgTitle = document.getElementById("client-settings-title");
         var dlgSub = document.getElementById("client-settings-sub");
         var dlgGen = 0;
-        function openClientSettings(id){
-          if(!dlgScrim || !dlgBody || !window.htmx) return;
+        function openClientDialog(key){
+          if(!dlgScrim || !dlgBody) return;
           dlgGen++;
-          if(dlgTitle) dlgTitle.textContent = "Client settings";
+          if(dlgTitle) dlgTitle.textContent = "Client";
           if(dlgSub) dlgSub.hidden = true;
           dlgBody.innerHTML = '<p class="muted">Loading…</p>';
           dlgScrim.hidden = false; void dlgScrim.offsetWidth; dlgScrim.classList.add("open");
-          window.htmx.ajax("GET", "/clients/" + id + "/settings",
+          window.htmx.ajax("GET", "/clients/" + key + "/dialog",
             { target: "#client-settings-body", swap: "innerHTML" });
-          document.addEventListener("keydown", onClientSettingsKey, true);
+          document.addEventListener("keydown", onClientDialogKey, true);
         }
-        function closeClientSettings(refocus){
+        function closeClientDialog(refocus){
           if(!dlgScrim || dlgScrim.hidden) return;
           dlgGen++;
           dlgScrim.classList.remove("open");
-          document.removeEventListener("keydown", onClientSettingsKey, true);
+          document.removeEventListener("keydown", onClientDialogKey, true);
           var gen=dlgGen, done=false, finish=function(){ if(done||gen!==dlgGen) return; done=true; dlgScrim.hidden=true; };
           var onEnd=function(e){ if(e.target===dlgScrim&&e.propertyName==="opacity"){ dlgScrim.removeEventListener("transitionend",onEnd); finish(); } };
           dlgScrim.addEventListener("transitionend",onEnd); setTimeout(finish,300);
-          if(refocus){ var btn=wrap.querySelector(".client-settings-open"); if(btn) btn.focus(); }
+          if(refocus){ var btn=stack.querySelector("[data-client-edit]"); if(btn) btn.focus(); }
         }
-        function onClientSettingsKey(e){
-          if(e.key==="Escape"){ e.preventDefault(); closeClientSettings(true); }
+        function onClientDialogKey(e){
+          if(e.key==="Escape"){ e.preventDefault(); closeClientDialog(true); }
           else if(e.key==="Tab" && window.tkTrapTab){ window.tkTrapTab(dlgScrim, e); }
         }
         if(dlgScrim){
           document.body.addEventListener("htmx:beforeRequest", function(e){
             var cfg=e.detail.requestConfig||{};
             var pi=e.detail.pathInfo||{};
-            if(e.detail.target===dlgBody && (cfg.verb||"").toLowerCase()==="get" && /\/clients\/\d+\/settings$/.test(pi.requestPath||cfg.path||""))
+            if(e.detail.target===dlgBody && (cfg.verb||"").toLowerCase()==="get" && /\/clients\/[^/]+\/dialog$/.test(pi.requestPath||cfg.path||""))
               e.detail.xhr.tkCsGen=dlgGen;
           });
           dlgBody.addEventListener("htmx:beforeSwap", function(e){
@@ -330,26 +328,19 @@ export function createManageViews(deps: ManageViewDeps) {
             var g=e.detail.xhr ? e.detail.xhr.tkCsGen : null;
             if(g!=null && g!==dlgGen) e.detail.shouldSwap=false;
           });
-          dlgScrim.addEventListener("pointerdown", function(e){ if(e.target===dlgScrim) closeClientSettings(false); });
-          if(dlgClose) dlgClose.addEventListener("click", function(){ closeClientSettings(true); });
+          dlgScrim.addEventListener("pointerdown", function(e){ if(e.target===dlgScrim) closeClientDialog(false); });
+          if(dlgClose) dlgClose.addEventListener("click", function(){ closeClientDialog(true); });
           dlgBody.addEventListener("htmx:afterSwap", function(){
-            var form=dlgBody.querySelector("#client-settings-form");
-            var nm=form ? (form.getAttribute("data-client-name")||"").trim() : "";
+            var holder=dlgBody.querySelector("[data-client-name]");
+            var nm=holder ? (holder.getAttribute("data-client-name")||"").trim() : "";
             if(nm && dlgTitle){ dlgTitle.textContent=nm; if(dlgSub) dlgSub.hidden=false; }
             var f=dlgBody.querySelector("input"); if(f) f.focus();
           });
           dlgBody.addEventListener("click", function(ev){
-            if(ev.target.closest("#client-settings-cancel")) closeClientSettings(true);
+            if(ev.target.closest("#client-settings-cancel")) closeClientDialog(true);
           });
         }
-        wrap.addEventListener("click", function(ev){
-          var cog = ev.target.closest(".client-settings-open");
-          if(cog) openClientSettings(cog.getAttribute("data-client-id"));
-        });
         document.body.addEventListener("htmx:beforeSwap", function(e){
-          /* #1160: a failed settings save answers 422 with the form
-             re-rendered around the error — swap it in so the error shows
-             inline instead of the save silently doing nothing. */
           var cfg=e.detail.requestConfig||{};
           var pi=e.detail.pathInfo||{};
           var p=pi.requestPath||cfg.path||"";
@@ -359,20 +350,54 @@ export function createManageViews(deps: ManageViewDeps) {
           }
         });
         document.body.addEventListener("htmx:afterRequest", function(e){
-          /* #630: match the settings SAVE (POST) only — htmx 2.x reports the
-             swap container (not the form) as detail.elt for this request, and
-             the form's own GET load must not trigger the save flow. */
           var cfg=e.detail.requestConfig||{};
           var pi=e.detail.pathInfo||{};
-          var m=(pi.requestPath||"").match(/\\/clients\\/(\\d+)\\/settings$/);
+          var m=(pi.requestPath||"").match(/\/clients\/(\d+)\/settings$/);
           if(m && e.detail.successful && (cfg.verb||"").toLowerCase()==="post"){
             if(window.tkSnackbar) window.tkSnackbar("Client settings saved");
-            closeClientSettings(false);
-            window.htmx.ajax("GET", "/manage?client=" + m[1] + "&fragment=detail",
-              { target: "#client-detail-pane", swap: "innerHTML" });
+            closeClientDialog(false);
           }
         });
-      })();</script>`, "manage", true);
+        var npScrim = document.getElementById("new-project-scrim");
+        var npForm = document.getElementById("new-project-form");
+        var npClose = document.getElementById("new-project-close");
+        var npCancel = document.getElementById("new-project-cancel");
+        var npGen = 0;
+        function openNewProject(){
+          if(!npScrim) return;
+          npGen++;
+          npScrim.hidden = false; void npScrim.offsetWidth; npScrim.classList.add("open");
+          document.addEventListener("keydown", onNewProjectKey, true);
+          var f=npForm ? npForm.querySelector("select") : null; if(f) f.focus();
+        }
+        function closeNewProject(refocus){
+          if(!npScrim || npScrim.hidden) return;
+          npGen++;
+          npScrim.classList.remove("open");
+          document.removeEventListener("keydown", onNewProjectKey, true);
+          var gen=npGen, done=false, finish=function(){ if(done||gen!==npGen) return; done=true; npScrim.hidden=true; };
+          var onEnd=function(e){ if(e.target===npScrim&&e.propertyName==="opacity"){ npScrim.removeEventListener("transitionend",onEnd); finish(); } };
+          npScrim.addEventListener("transitionend",onEnd); setTimeout(finish,300);
+          if(refocus){ var chip=document.getElementById("new-project-open"); if(chip) chip.focus(); }
+        }
+        function onNewProjectKey(e){
+          if(e.key==="Escape"){ e.preventDefault(); closeNewProject(true); }
+          else if(e.key==="Tab" && window.tkTrapTab){ window.tkTrapTab(npScrim, e); }
+        }
+        if(npScrim){
+          npScrim.addEventListener("pointerdown", function(e){ if(e.target===npScrim) closeNewProject(false); });
+          if(npClose) npClose.addEventListener("click", function(){ closeNewProject(true); });
+          if(npCancel) npCancel.addEventListener("click", function(){ closeNewProject(true); });
+          if(npForm) npForm.addEventListener("htmx:afterRequest", function(e){
+            if(e.detail.successful){ if(window.tkSnackbar) window.tkSnackbar("Project added"); npForm.reset(); closeNewProject(false); }
+          });
+        }
+        stack.addEventListener("click", function(ev){
+          var edit = ev.target.closest("[data-client-edit]");
+          if(edit){ openClientDialog(edit.getAttribute("data-client-edit")); return; }
+          if(ev.target.closest("#new-project-open")) openNewProject();
+        });
+      })();</script>`, "manage");
   }
 
   /* #233: business profile — name/email/address printed in the FROM block
@@ -437,5 +462,5 @@ export function createManageViews(deps: ManageViewDeps) {
       </div>`, "settings");
   }
 
-  return { managePage, clientSelection, clientDetailBody, clientListOob, bizProfileSection, dailyTargetSection, clientSettingsForm, settingsPage, themeSectionHtml };
+  return { managePage, clientSelection, clientDialogBody, clientDialogProjects, manageListsOob, bizProfileSection, dailyTargetSection, clientSettingsForm, settingsPage, themeSectionHtml };
 }

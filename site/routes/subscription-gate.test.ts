@@ -46,7 +46,7 @@ function webSetup(accounts: ReturnType<typeof createAccountsDb>, gate: any, host
     dashboardPage: () => "DASHBOARD",
     timerPartial: noop, todayPartial: noop, weekInner: noop, weekStrip: noop,
     calendarPage: noop, editPage: () => null,
-    managePage: noop, clientSelection: () => null, clientDetailBody: noop, clientListOob: noop,
+    managePage: noop, clientSelection: () => null, clientDialogBody: noop, clientDialogProjects: noop, manageListsOob: noop,
     bizProfileSection: noop, clientSettingsForm: noop, settingsPage: noop,
     invoicesPage: noop, invoiceNewPage: noop,
     defaultNewInvParams: () => ({}), invoiceStep2: noop,

@@ -34,7 +34,7 @@ function setup(authed = true) {
     timerPartial: noop, todayPartial: noop, weekInner: noop, weekStrip: noop,
     calendarPage: noop, editPage: () => null,
     managePage: noop, clientSelection: () => null,
-    clientDetailBody: noop, clientListOob: noop,
+    clientDialogBody: noop, clientDialogProjects: noop, manageListsOob: noop,
     bizProfileSection: () => "<section>profile</section>",
     dailyTargetSection: () => "<section>target</section>", /* #908 */
     themeSectionHtml: () => "<section>theme</section>", /* #884 */
