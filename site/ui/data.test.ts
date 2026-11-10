@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { statBlock } from "./stat";
+import { statBlock, statStrip } from "./stat";
 import { progressBar } from "./progress";
 import { steps } from "./steps";
 import { zinvoiceRow, entryRow, clientRow } from "./rows";
@@ -192,5 +192,35 @@ describe("entryRow link + trailing extensions (#1166)", () => {
       '<div class="ui-row-meta">M</div></div>' +
       '<div class="ui-row-side"><span class="ui-row-amount">1h</span></div></div>',
     );
+  });
+});
+
+describe("statStrip", () => {
+  test("three dense cells carry value, note, meter, and action", () => {
+    const html = statStrip([
+      { label: "Today", value: "3h", note: "of 8h goal", meter: 38 },
+      { label: "This week", value: "11h 15m", note: "of 40h · 1 client", meter: 28 },
+      { label: "Unbilled", value: "$3,167.50", note: "26h 30m · 3 clients", action: { label: "Create Zinvoice", href: "/invoices/new" } },
+    ]);
+    expect(html).toContain('<div class="ui-stat-strip">');
+    expect(html.match(/class="ui-stat-cell"/g)?.length).toBe(3);
+    expect(html).toContain('<span class="ui-stat-label">Today</span>');
+    expect(html).toContain('<div class="ui-stat-cell-value">3h<span class="ui-stat-cell-note">of 8h goal</span></div>');
+    expect(html).toContain('aria-valuenow="38"');
+    expect(html).toContain('style="width:38%"');
+    expect(html).toContain('<a class="ui-stat-link" href="/invoices/new">Create Zinvoice</a>');
+  });
+
+  test("meter clamps and labels/notes escape", () => {
+    const html = statStrip([{ label: "Today", value: "9h", note: "<goal>", meter: 180 }]);
+    expect(html).toContain('aria-valuenow="100"');
+    expect(html).toContain('style="width:100%"');
+    expect(html).toContain("&lt;goal&gt;");
+  });
+
+  test("no meter or action leaves those elements out", () => {
+    const html = statStrip([{ label: "Unbilled", value: "$0" }]);
+    expect(html).not.toContain("ui-stat-meter");
+    expect(html).not.toContain("ui-stat-link");
   });
 });

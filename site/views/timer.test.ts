@@ -539,9 +539,9 @@ describe("timer mock parity (#1121)", () => {
     expect(html).toContain("here's your day so far.");
     expect(html).toContain('id="invoice-week"');
     expect(html).toContain('<div id="today-stats" hx-get="/partial/today-stats" hx-trigger="load, timer-updated from:body">');
-    expect(html).toContain('<div class="ui-stat-row">');
+    expect(html).toContain('<div class="ui-stat-strip">');
     for (const label of ["Today", "This week", "Unbilled"]) {
-      expect(html).toContain(`<div class="ui-stat-label">${label}</div>`);
+      expect(html).toContain(`<span class="ui-stat-label">${label}</span>`);
     }
     expect(html).toContain("Create Zinvoice");
     expect(html).toContain('<div class="ui-block-title">Today\'s entries</div>');
@@ -577,11 +577,12 @@ describe("timer mock parity (#1121)", () => {
     const html = createTimerViews(deps as any).todayStatsPartial(
       "2026-11-09T06:00:00.000Z", "2026-11-10T06:00:00.000Z",
       "2026-11-08T06:00:00.000Z", "2026-11-15T06:00:00.000Z");
-    expect(html).toContain('<div class="ui-stat-value">1h</div>');
-    expect(html).toContain('<div class="ui-stat-value">3h</div>');
-    expect(html).toContain("Across 2 clients");
+    expect(html).toContain('<div class="ui-stat-cell-value">1h');
+    expect(html).toContain('<div class="ui-stat-cell-value">3h');
+    expect(html).toContain("· 2 clients");
+    expect(html).toContain("of 40h");
     /* 30m at rate 100 = $50; the 1-minute entry rounds up to 5m = $8.33 */
-    expect(html).toContain('<div class="ui-stat-value">$58.33</div>');
-    expect(html).toContain("35m across 1 client");
+    expect(html).toContain('<div class="ui-stat-cell-value">$58.33');
+    expect(html).toContain("35m · 1 client");
   });
 });

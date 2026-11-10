@@ -5,7 +5,7 @@ import { button, linkButton } from "../site/ui/button";
 import { card } from "../site/ui/card";
 import { tag } from "../site/ui/tag";
 import { timerPanel } from "../site/ui/timer-display";
-import { statBlock } from "../site/ui/stat";
+import { statBlock, statStrip } from "../site/ui/stat";
 import { progressBar } from "../site/ui/progress";
 import { steps } from "../site/ui/steps";
 import { entryRow } from "../site/ui/rows";
@@ -144,11 +144,11 @@ export const pagesStories: Story[] = [
     render: () =>
       frame("timer", "Good morning", "Sunday, Nov 8 — here's your day so far.", button({ label: "Add manual entry" }),
         runningPanel() +
-        `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">` +
-        card({ content: statBlock({ label: "Today", value: "5h 12m", sub: "Goal 8h · on pace" }) + progressBar({ value: 65, label: "Today's goal progress" }) }) +
-        card({ content: statBlock({ label: "This week", value: "36h 52m", sub: "Across 4 clients" }) + progressBar({ value: 92, label: "Week progress" }) }) +
-        card({ content: statBlock({ label: "Unbilled", value: "$2,340", sub: "27.5h across 3 clients" }) + button({ label: "Create Zinvoice", size: "sm" }) }) +
-        `</div>` +
+        statStrip([
+          { label: "Today", value: "5h 12m", note: "of 8h goal · met", meter: 100 },
+          { label: "This week", value: "36h 52m", note: "of 40h · 4 clients", meter: 92 },
+          { label: "Unbilled", value: "$2,340", note: "27.5h · 3 clients", action: { label: "Create Zinvoice", href: "/invoices/new" } },
+        ]) +
         card({
           content:
             `<div style="font-weight:600;margin-bottom:8px">Today's entries</div>` +

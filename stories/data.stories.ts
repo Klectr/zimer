@@ -1,6 +1,6 @@
 import type { Story } from "../.zandbox/story";
 import { card } from "../site/ui/card";
-import { statBlock } from "../site/ui/stat";
+import { statBlock, statStrip } from "../site/ui/stat";
 import { progressBar } from "../site/ui/progress";
 import { steps } from "../site/ui/steps";
 import { zinvoiceRow, entryRow, clientRow } from "../site/ui/rows";
@@ -27,6 +27,19 @@ export const dataStories: Story[] = [
           `</div><div class="ui-stat-sub">Goal 8h · on pace</div>`,
       }) +
       `</div>`,
+  },
+  {
+    id: "data-stat-strip",
+    group: "Data",
+    title: "Stat strip — timer home",
+    render: () =>
+      wrap(
+        statStrip([
+          { label: "Today", value: "3h", note: "of 8h goal", meter: 38 },
+          { label: "This week", value: "11h 15m", note: "of 40h · 1 client", meter: 28 },
+          { label: "Unbilled", value: "$3,167.50", note: "26h 30m · 3 clients", action: { label: "Create Zinvoice", href: "/invoices/new" } },
+        ]),
+      ),
   },
   {
     id: "data-filter-chips",

@@ -13,7 +13,7 @@ import { entryRow as uiEntryRow } from "../ui/rows.ts";
 import { progressBar } from "../ui/progress.ts";
 import { appHeader } from "../ui/app-header.ts";
 import { iconButton } from "../ui/icon-button.ts";
-import { statBlock } from "../ui/stat.ts";
+import { statStrip } from "../ui/stat.ts";
 import { tag } from "../ui/tag.ts";
 import type { Entry } from "../lib/types.ts";
 
@@ -213,12 +213,27 @@ export function createTimerViews(deps: TimerViewDeps) {
       unbilledValue += (secs / 3600) * (r.rate || 0);
       unbilledClients.add(r.cid);
     }
-    const across = (n: number) => `across ${n} client${n === 1 ? "" : "s"}`;
-    return `<div class="ui-stat-row">` +
-      card({ content: statBlock({ label: "Today", value: fmtDur(todaySecs), sub: `Goal ${fmtDur(target)}${todaySecs >= target ? " · Target met" : ""}` }) + progressBar({ value: (todaySecs / target) * 100, label: "Today's goal progress" }) }) +
-      card({ content: statBlock({ label: "This week", value: fmtDur(weekSecs), sub: `Across ${weekClients} client${weekClients === 1 ? "" : "s"}` }) + progressBar({ value: (weekSecs / (target * 5)) * 100, label: "Week progress" }) }) +
-      card({ content: statBlock({ label: "Unbilled", value: money(unbilledValue), sub: `${fmtDur(unbilledSecs)} ${across(unbilledClients.size)}` }) + linkButton({ label: "Create Zinvoice", href: "/invoices/new", size: "sm" }) }) +
-      `</div>`;
+    const clients = (n: number) => `${n} client${n === 1 ? "" : "s"}`;
+    return statStrip([
+      {
+        label: "Today",
+        value: fmtDur(todaySecs),
+        note: `of ${fmtDur(target)} goal${todaySecs >= target ? " · met" : ""}`,
+        meter: (todaySecs / target) * 100,
+      },
+      {
+        label: "This week",
+        value: fmtDur(weekSecs),
+        note: `of ${fmtDur(target * 5)} · ${clients(weekClients)}`,
+        meter: (weekSecs / (target * 5)) * 100,
+      },
+      {
+        label: "Unbilled",
+        value: money(unbilledValue),
+        note: `${fmtDur(unbilledSecs)} · ${clients(unbilledClients.size)}`,
+        action: { label: "Create Zinvoice", href: "/invoices/new" },
+      },
+    ]);
   }
 
   /* #1121: the stat row as a partial — the client passes its own day and
