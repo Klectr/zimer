@@ -8,7 +8,8 @@ import { timerPanel } from "../site/ui/timer-display";
 import { statBlock } from "../site/ui/stat";
 import { progressBar } from "../site/ui/progress";
 import { steps } from "../site/ui/steps";
-import { entryRow, zinvoiceRow, clientRow } from "../site/ui/rows";
+import { entryRow, clientRow } from "../site/ui/rows";
+import { icon } from "../site/lib/icons";
 import { lineItemsTable } from "../site/ui/line-items";
 import { statusChip } from "../site/ui/status-chip";
 import { weekView, type WeekDay } from "../site/ui/week-view";
@@ -17,6 +18,7 @@ import { textField, selectField } from "../site/ui/field";
 import { settingsSection } from "../site/ui/settings-section";
 import { planCard } from "../site/ui/plan-card";
 import { formSection, unbilledTable, invoiceSummary } from "../site/ui/zinvoice-form";
+import { filterChips } from "../site/ui/filter-chips";
 import { publicInvoice } from "../site/ui/public-invoice";
 import { extensionPopup } from "../site/ui/extension-popup";
 import { timerDisplay } from "../site/ui/timer-display";
@@ -151,19 +153,31 @@ export const pagesStories: Story[] = [
     render: () =>
       frame("invoices", "Zinvoices", "Outstanding $2,730.00 · Paid this month $425.00", linkButton({ label: "New Zinvoice", href: "/invoices/new", variant: "primary" }),
         `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">` +
-        card({ content: statBlock({ label: "Outstanding", value: "$2,730.00", sub: "2 Zinvoices waiting" }) }) +
-        card({ content: statBlock({ label: "Drafts", value: "$1,827.50", sub: "1 draft" }) }) +
-        card({ content: statBlock({ label: "Paid · November", value: "$425.00", sub: "1 Zinvoice" }) }) +
+        card({ content: statBlock({ label: "Outstanding", value: "$2,730.00", sub: "2 sent, 1 overdue" }) }) +
+        card({ content: statBlock({ label: "Drafts", value: "1", sub: "$1,827.50 ready to send" }) }) +
+        card({ content: statBlock({ label: "Paid · November", value: "$425.00", sub: "Avg. 3 days to pay" }) }) +
         `</div>` +
         `<div style="display:flex;gap:8px;align-items:flex-end">` +
-        tag({ label: "All", tone: "primary" }) + tag({ label: "Draft" }) + tag({ label: "Sent" }) + tag({ label: "Paid" }) + tag({ label: "Overdue", tone: "error" }) +
+        filterChips({
+          items: [
+            { key: "all", label: "All", href: "/invoices" },
+            { key: "draft", label: "Draft", href: "/invoices?status=draft" },
+            { key: "sent", label: "Sent", href: "/invoices?status=sent" },
+            { key: "paid", label: "Paid", href: "/invoices?status=paid" },
+            { key: "overdue", label: "Overdue", href: "/invoices?status=overdue" },
+          ],
+          active: "all",
+          label: "Filter zinvoices by status",
+        }) +
         `<span style="margin-left:auto;min-width:220px">` + textField({ id: "pg-zi-search", label: "Search Zinvoices", placeholder: "Client or number" }) + `</span></div>` +
         card({
           content:
-            zinvoiceRow({ number: "Zinvoice #1042", client: "Acme Studio", status: "draft", amount: "$1,827.50", meta: "Draft · edited Nov 8", href: "/invoices?invoice=1042" }) +
-            zinvoiceRow({ number: "Zinvoice #1041", client: "Northwind Legal", status: "sent", amount: "$2,090.00", meta: "Sent Nov 5 · due Nov 19", href: "/invoices?invoice=1041" }) +
-            zinvoiceRow({ number: "Zinvoice #1040", client: "Bluefin Bakery", status: "sent", overdueDays: 4, amount: "$640.00", meta: "Sent Oct 28 · due Nov 4", href: "/invoices?invoice=1040" }) +
-            zinvoiceRow({ number: "Zinvoice #1039", client: "Harbor Dental", status: "paid", amount: "$425.00", meta: "Paid Oct 30", href: "/invoices?invoice=1039" }),
+            `<table class="ui-table"><thead><tr><th scope="col">Number</th><th scope="col">Client</th><th scope="col">Issued</th><th scope="col">Due</th><th scope="col">Status</th><th scope="col" class="num">Total</th></tr></thead><tbody>` +
+            `<tr><td><a class="inv-num-link" href="/invoices?invoice=1042">Zinvoice #1042</a></td><td>Acme Studio</td><td>—</td><td>—</td><td>${statusChip("draft")}</td><td class="num">$1,827.50</td></tr>` +
+            `<tr><td><a class="inv-num-link" href="/invoices?invoice=1041">Zinvoice #1041</a></td><td>Northwind Legal</td><td>Nov 5</td><td>Nov 19</td><td>${statusChip("sent")}</td><td class="num">$2,090.00</td></tr>` +
+            `<tr><td><a class="inv-num-link" href="/invoices?invoice=1040">Zinvoice #1040</a></td><td>Bluefin Bakery</td><td>Oct 28</td><td>Nov 4</td><td><span class="ui-chip ui-chip-overdue">Overdue 4d</span></td><td class="num">$640.00</td></tr>` +
+            `<tr><td><a class="inv-num-link" href="/invoices?invoice=1039">Zinvoice #1039</a></td><td>Harbor Dental</td><td>Oct 24</td><td>Nov 7</td><td><span class="ui-chip ui-chip-paid">${icon("check")}Paid Oct 30</span></td><td class="num">$425.00</td></tr>` +
+            `</tbody></table>`,
         }),
       ),
   },
@@ -205,7 +219,8 @@ export const pagesStories: Story[] = [
           total: "$1,827.50",
           bodyHtml: textField({ id: "pg-zi-due", label: "Due date", value: "Nov 22, 2026" }) +
             `<div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">` +
-            button({ label: "Save draft", variant: "primary", block: true }) + button({ label: "Send Zinvoice", block: true }) + `</div>`,
+            button({ label: "Save draft", variant: "primary", block: true }) + button({ label: "Send Zinvoice", block: true }) + `</div>` +
+            `<p class="inv-send-note">Sending creates the public pay link.</p>`,
         }) +
         `</div>`,
       ),
@@ -235,13 +250,15 @@ export const pagesStories: Story[] = [
         card({
           content:
             `<div class="ui-card-head"><span class="ui-section-title">Status</span><span class="ui-card-head-end">${statusChip("sent")}</span></div>` +
-            progressBar({ value: 50, label: "Sent, viewed, due — progress" }) +
-            `<p style="color:var(--color-text-secondary);margin-top:8px">Sent Nov 5 · Viewed Nov 6 · Due in 11 days</p>`,
+            progressBar({ value: 50, label: "Zinvoice progress" }) +
+            `<p style="color:var(--color-text-secondary);margin-top:8px">Due in 11 days · Due Nov 19</p>` +
+            `<div class="inv-activity"><div class="inv-activity-row">Nov 5 — Created from 22h of tracked time</div></div>`,
         }) +
         card({
           content:
-            `<div class="ui-section-title" style="margin-bottom:8px">Activity</div>` +
-            `<p style="color:var(--color-text-secondary);line-height:1.7">Nov 6 — Client opened the pay link<br>Nov 5 — Sent to Northwind Legal<br>Nov 5 — Created from 22.0h of tracked time</p>`,
+            `<div class="ui-section-title" style="margin-bottom:8px">Public link</div>` +
+            `<p style="color:var(--color-text-secondary)">invoice.klectr.dev/i/…x7f2 — anyone with it can view and pay. No login for your client.</p>` +
+            `<div style="display:flex;gap:8px;margin-top:12px">` + button({ label: "Copy link", size: "sm" }) + button({ label: "Regenerate", size: "sm" }) + `</div>`,
         }) +
         `</div></div>`,
       ),

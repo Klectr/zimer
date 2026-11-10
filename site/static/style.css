@@ -952,28 +952,40 @@ body.app-fixed .ui-shell-main { min-height: 0; }
   .ui-toast-live { bottom: calc(24px + var(--nav-bar-height)); }
 }
 
-/* ---------------- invoices list-detail (#364) ----------------
- * The invoice list → invoice document is a parent-child pairing, so it takes
- * the list-detail layout: two panes at expanded+, a single pane
- * below. The detail pane reuses invoiceDetailBody; its back link shows only
- * in single-pane mode and the selected-row state only in two-pane mode
- * (both layout-driven). Panes scroll independently on the fixed-viewport page. */
-.invoice-list-detail { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-.invoice-list-pane, .invoice-detail-pane { min-width: 0; }
-@media (min-width: 840px) {
-  .invoice-list-detail { flex-direction: row; gap: var(--layout-pane-gap); align-items: stretch; }
-  .invoice-list-pane { flex: 0 0 400px; overflow-y: auto; }
-  .invoice-detail-pane { flex: 1; min-width: 0; overflow-y: auto; }
-  .invoice-detail-pane .detail-back { display: none; }
+/* ---------------- invoices: mock list + detail ----------------
+ * The list is one column: stat cards, filter chips + search, and a table
+ * card. A selected zinvoice is a standalone detail view: lines-table card
+ * on the left, status + public-link cards in a right rail. Both grids
+ * collapse to one column below desktop widths. */
+.inv-new-grid, .inv-detail-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); gap: var(--spacing-md); align-items: start; }
+@media (max-width: 1023px) {
+  .inv-new-grid, .inv-detail-grid { grid-template-columns: minmax(0, 1fr); }
 }
-@media (max-width: 839px) {
-  .invoice-list-pane, .invoice-detail-pane { flex: 1; min-height: 0; overflow-y: auto; }
-  .invoice-list-detail.has-selection .invoice-list-pane { display: none; }
-  .invoice-list-detail:not(.has-selection) .invoice-detail-pane { display: none; }
-  /* #1121: single-pane detail opens on the document, not the stat cards —
-     they belong to the list state the pane just left. */
-  main:has(.invoice-list-detail.has-selection) #inv-stats { display: none; }
+.inv-detail-rail { display: flex; flex-direction: column; gap: var(--spacing-md); min-width: 0; }
+.inv-detail-main { min-width: 0; }
+.inv-filter-row { display: flex; gap: var(--spacing-sm); align-items: flex-end; flex-wrap: wrap; margin-bottom: var(--spacing); }
+.inv-search { margin-left: auto; }
+.inv-search .ui-field { min-width: 220px; }
+.ui-filter-chips { display: flex; gap: var(--spacing-xs); flex-wrap: wrap; align-items: center; }
+.ui-filter-chip { display: inline-flex; align-items: center; min-height: 28px; padding: var(--spacing-xxs) var(--spacing-sm); border-radius: 999px; border: 1px solid var(--color-border-secondary); color: var(--color-text-secondary); font-size: var(--font-size-sm); font-weight: 500; line-height: var(--line-height-sm); text-decoration: none; }
+.ui-filter-chip:hover { color: var(--color-text); background: var(--color-fill-tertiary); }
+.ui-filter-chip.is-active { background: var(--color-primary-bg); color: var(--color-primary); border-color: var(--color-primary-border); }
+.inv-num-link { color: var(--color-primary); font-weight: 600; text-decoration: none; }
+.inv-num-link:hover { text-decoration: underline; }
+@media (max-width: 719px) {
+  .inv-table-card .col-opt { display: none; }
 }
+.inv-status-line { color: var(--color-text-secondary); margin: var(--spacing-xs) 0 0; }
+.inv-activity { border-top: 1px solid var(--color-border-secondary); margin-top: var(--spacing-sm); padding-top: var(--spacing-xs); }
+.inv-activity-row { color: var(--color-text-secondary); font-size: var(--font-size-sm); line-height: 1.7; }
+.inv-cell-dates { margin-left: var(--spacing-xs); color: var(--color-text-secondary); font-size: var(--font-size-sm); white-space: nowrap; }
+.inv-summary-actions { display: flex; flex-direction: column; gap: var(--spacing-xs); margin-top: var(--spacing-sm); }
+.inv-send-note { text-align: center; color: var(--color-text-tertiary); font-size: var(--font-size-sm); margin: var(--spacing-xs) 0 0; }
+.inv-more { margin-top: var(--spacing-sm); }
+.inv-more summary { cursor: pointer; color: var(--color-text-secondary); font-size: var(--font-size-sm); font-weight: 500; padding: var(--spacing-xs) 0; }
+.inv-more .ui-field { margin-top: var(--spacing-xs); }
+#inv-preview .ui-field { margin-top: var(--spacing-sm); }
+#inv-preview .inv-more .ui-field { margin-top: var(--spacing-xs); }
 /* #442: date phrases in list rows never split mid-date; the supporting line
    wraps at the middot separators instead. */
 .inv-date { white-space: nowrap; }
@@ -1696,7 +1708,6 @@ body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
 /* ---------------- print ---------------- */
 @media print {
   .ui-side, .ui-mobile-head, .ui-mobile-nav, .nav-drawer-scrim, .trial-banner, .no-print, .page-head, .ui-app-head, .ui-stat-row { display: none !important; }
-  .invoice-list-pane { display: none !important; } /* #364: print only the invoice document */
   .ui-public-sheet .ui-btn, .ui-public-footer, .ui-public-note { display: none !important; } /* #1136: the public summary prints without its pay action or web footer */
   /* #1136: the public summary on paper — dark text, visible tag outline,
      hairlines that survive without backgrounds. */
@@ -1706,8 +1717,7 @@ body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
   .ui-public-lines .ui-summary-line { border-bottom-color: #ddd; }
   .ui-summary-total .num { color: #111; }
   .ui-public .ui-tag { border: 1px solid #999; background: #fff !important; color: #111 !important; }
-  .invoice-list-detail { display: block; }
-  .invoice-detail-pane { overflow: visible; }
+  .inv-detail-grid { display: block; }
   body { background: #fff; color: #111; }
   body.app { background: #fff; }
   /* #1137: the public doc mains declare their own dark colors — reset

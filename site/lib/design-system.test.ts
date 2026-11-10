@@ -63,9 +63,13 @@ describe("shell actions locked spec (#654)", () => {
   });
 });
 
-describe("zinvoices mobile detail (#1121)", () => {
-  test("single-pane detail hides the stat cards", () => {
-    expect(css).toContain("main:has(.invoice-list-detail.has-selection) #inv-stats { display: none; }");
+describe("zinvoices detail layout (#1202)", () => {
+  test("the detail grid collapses to one column on narrow screens", () => {
+    expect(css).toContain("@media (max-width: 1023px) {\n  .inv-new-grid, .inv-detail-grid { grid-template-columns: minmax(0, 1fr); }\n}");
+  });
+
+  test("the retired two-pane stat-hiding rule is gone with the pane", () => {
+    expect(css).not.toContain("invoice-list-detail");
   });
 });
 

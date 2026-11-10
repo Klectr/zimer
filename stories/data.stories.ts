@@ -6,6 +6,7 @@ import { steps } from "../site/ui/steps";
 import { zinvoiceRow, entryRow, clientRow } from "../site/ui/rows";
 import { lineItemsTable } from "../site/ui/line-items";
 import { iconButton } from "../site/ui/icon-button";
+import { filterChips } from "../site/ui/filter-chips";
 
 const wrap = (inner: string) => `<div style="max-width:560px">${inner}</div>`;
 
@@ -26,6 +27,25 @@ export const dataStories: Story[] = [
           `</div><div class="ui-stat-sub">Goal 8h · on pace</div>`,
       }) +
       `</div>`,
+  },
+  {
+    id: "data-filter-chips",
+    group: "Data",
+    title: "Filter chips — Zinvoices",
+    render: () =>
+      wrap(
+        filterChips({
+          items: [
+            { key: "all", label: "All", href: "/invoices" },
+            { key: "draft", label: "Draft", href: "/invoices?status=draft" },
+            { key: "sent", label: "Sent", href: "/invoices?status=sent" },
+            { key: "paid", label: "Paid", href: "/invoices?status=paid" },
+            { key: "overdue", label: "Overdue", href: "/invoices?status=overdue" },
+          ],
+          active: "sent",
+          label: "Filter zinvoices by status",
+        }),
+      ),
   },
   {
     id: "data-progress",
