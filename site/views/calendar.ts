@@ -225,7 +225,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       });
       days.push({
         date: day,
-        label: `${weekdayOf(y, m, d).slice(0, 3)} ${MONTHS[m - 1]} ${d}`,
+        label: `${weekdayOf(y, m, d).slice(0, 3)} ${d}`,
         total: dayTotalSecs(day, wd) > 0 ? fmtDur(dayTotalSecs(day, wd)) : "0h",
         isToday: day === wd.today,
         entries,

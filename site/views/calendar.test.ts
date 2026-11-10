@@ -972,4 +972,22 @@ describe("calendar legend (#1202 parity)", () => {
     expect(html).toContain("Invoiced");
     expect(html).toContain("/export/entries.csv?from=2026-10-25&amp;to=2026-11-01");
   });
+
+  test("grid day headers shorten to weekday + day number so they never collide", () => {
+    const db = { query: (_sql: string) => ({ get: () => ({ n: 1 }), all: () => [] }) } as unknown as Database;
+    const views = createCalendarViews({
+      db,
+      qOne: { get: () => ({ n: 1 }), all: () => [] } as unknown as Statement,
+      qRange: { get: () => ({ n: 1 }), all: () => [] } as unknown as Statement,
+      entrySelect: "SELECT",
+      layout: (_t: string, b: string) => b,
+      projectOptionRows: () => [],
+      weekTargetBar: () => "",
+      calHourPx: 64,
+    } as any);
+    const html = views.weekInner("2026-11-01", "America/Chicago");
+    const head = html.match(/<div class="ui-viz-day-head[^"]*"><span class="ui-viz-day-name">([^<]+)<\/span>/)?.[1];
+    expect(head).toMatch(/^Sun \d+$/);
+    expect(html).not.toContain('<span class="ui-viz-day-name">Sun Nov');
+  });
 });

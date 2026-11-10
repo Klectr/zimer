@@ -642,10 +642,10 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 
 .ui-viz { display: grid; grid-template-columns: 44px repeat(7, 1fr); gap: 0 var(--spacing-xs); }
 .ui-viz-heads { display: grid; grid-template-columns: subgrid; grid-column: 1 / -1; margin-bottom: var(--spacing-xs); }
-.ui-viz-day-head { display: flex; align-items: baseline; gap: var(--spacing-xs); min-width: 0; }
-.ui-viz-day-name { font-size: var(--font-size-sm); color: var(--color-text-tertiary); white-space: nowrap; }
+.ui-viz-day-head { display: flex; align-items: baseline; gap: var(--spacing-xs); min-width: 0; overflow: hidden; }
+.ui-viz-day-name { min-width: 0; font-size: var(--font-size-sm); color: var(--color-text-tertiary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ui-viz-day-head.is-today .ui-viz-day-name { color: var(--color-text); font-weight: var(--font-weight-strong); }
-.ui-viz-day-total { margin-left: auto; font-family: var(--font-family-code); font-size: var(--font-size-sm); color: var(--color-text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ui-viz-day-total { flex: none; margin-left: auto; font-family: var(--font-family-code); font-size: var(--font-size-sm); color: var(--color-text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .ui-viz-hours { position: relative; }
 .ui-viz-hour { position: absolute; right: var(--spacing-xs); transform: translateY(-50%); font-family: var(--font-family-code); font-size: var(--font-size-sm); color: var(--color-text-tertiary); white-space: nowrap; }
 .ui-viz-col { position: relative; overflow: hidden; touch-action: none; border: 1px solid var(--color-border-secondary); border-radius: var(--radius-lg); background-color: var(--color-fill-quaternary); background-image: linear-gradient(to bottom, var(--color-border-secondary) 1px, transparent 1px); background-size: 100% var(--viz-hour, 48px); }
