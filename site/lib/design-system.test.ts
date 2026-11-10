@@ -81,10 +81,10 @@ describe("ui button anchors (#1121)", () => {
 });
 
 describe("sidebar width (#1119)", () => {
-  test("the mocked sidebar is 208px on the container surface", () => {
+  test("the mocked sidebar is 208px on the translucent panel surface", () => {
     const side = declarations(ruleBlock(".ui-side"));
     expect(side.get("width")).toBe("208px");
-    expect(side.get("background")).toBe("var(--color-bg-container)");
+    expect(side.get("background")).toBe("var(--color-fill-quaternary)");
   });
 
   test("sidebar footer tooltips open upward, inside the viewport", () => {
@@ -263,7 +263,8 @@ describe("DESIGN.md token layer (#1092)", () => {
       "--radius-xs": "4px",
       "--radius-sm": "6px",
       "--radius": "8px",
-      "--radius-lg": "12px",
+      "--radius-lg": "14px",
+      "--radius-xl": "20px",
       "--control-height-sm": "28px",
       "--control-height": "36px",
       "--control-height-lg": "40px",

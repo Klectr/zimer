@@ -69,26 +69,23 @@ describe("#731: landing page router", () => {
     expect(body).toContain('<meta name="twitter:image:alt"');
   });
 
-  test("#1098: demo-led cards and the closing band carry the wedge", async () => {
+  test("the mock's bento and two-plan price grid carry the wedge", async () => {
     const { res, body } = await get(true, false, "/");
     expect(res!.status).toBe(200);
-    for (const title of ["One-tap Zimer", "Week at a glance", "Zinvoice in one step", "Your server, your data"]) {
+    for (const title of ["Timer to Zinvoice in two clicks", "Your data, your file", "No surveillance"]) {
       expect(body).toContain(title);
     }
-    expect(body).toContain("Self-host free forever: one Bun process, one SQLite file you can copy.");
-    /* The closing band states the whole offer: flat price, no seats or meters. */
     expect(body).toContain("Start with your next job");
     expect(body).toContain("No seats, no meters, no per-client pricing.");
-    expect(body).toContain("Cancel anytime, and your data goes with you.");
-    expect(body).toContain("your data is never sold, never shared with advertisers, and never used to track you around the web.");
-    /* The demo figures carry the story fixtures: the zinvoice sheet and the ticking timers. */
-    expect(body).toContain("ZINVOICE #1041");
-    expect(body).toContain("$2,090.00");
-    expect(body).toContain('data-base="8077"');
-    expect(body).toContain('data-base="2530"');
-    /* The cards sit between the capabilities heading and the closing band. */
-    expect(body.indexOf("Your server, your data")).toBeGreaterThan(body.indexOf("Everything from first tap to paid"));
-    expect(body.indexOf("Your server, your data")).toBeLessThan(body.indexOf("Start with your next job"));
+    expect(body).toContain("Cancel keeps your data.");
+    expect(body).toContain("Self-hosted");
+    expect(body).toContain("Hosted");
+    /* The hero product carries the mock's timer + zinvoice preview. */
+    expect(body).toContain("Zinvoice #1042");
+    expect(body).toContain("$1,827.50");
+    expect(body).toContain("01:24:08");
+    /* The bento sits above the price grid. */
+    expect(body.indexOf("Everything from first tap to paid")).toBeLessThan(body.indexOf("Start with your next job"));
   });
 
   test("hosted authed visitor falls through (null) — / keeps serving the app", async () => {
@@ -132,16 +129,15 @@ describe("#731: landing page view", () => {
 });
 
 describe("#1044: hero leads with the promise and the product", () => {
-  test("the hero pairs the promise with the mascot, and the product window follows", async () => {
+  test("the hero centers the promise and shows the timer + zinvoice product", async () => {
     const { body } = await get(true, false, "/");
-    const hero = body!.slice(body!.indexOf('<section class="ui-landing-hero">'), body!.indexOf("</section>"));
-    expect(hero).toContain("ui-hero-mascot");
-    expect(hero).toContain("The time tracker that turns your hours into an invoice.");
-    /* #1098: the product vignette (a working week window) renders right after the hero. */
-    const after = body!.slice(body!.indexOf("</section>"));
-    expect(after).toContain("ui-landing-window");
-    expect(after).toContain("Week of Nov 2 - 8");
-    expect(after).toContain("ui-landing-tick");
+    const hero = body!.slice(body!.indexOf('<section class="ui-hero">'), body!.indexOf("</section>"));
+    expect(hero).toContain("Your Zimer is your Zinvoice.");
+    expect(hero).toContain("ui-landing-mini");
+    expect(hero).toContain("01:24:08");
+    expect(hero).toContain("Zinvoice #1042");
+    expect(hero).toContain("Start tracking free");
+    expect(hero).toContain("See how it works");
   });
 });
 

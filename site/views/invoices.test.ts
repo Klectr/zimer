@@ -107,26 +107,23 @@ describe("paid-on date", () => {
     expect(html).not.toContain("Paid ");
   });
 
-  test("table rows carry issued under the number and due with its state sub", () => {
-    /* The reference table stacks each cell: the invoice cell carries the
-       issued date under the number; the due cell carries the due date
-       over a state sub (Paid <date> once paid, a relative count while
-       open) — no middot segment chains (#442/#481/#772 stay retired). */
+  test("table rows use the mock's one-line columns: number, client, issued, due, status, total", () => {
     const html = views([{ ...baseRow, status: "paid", paid_at: "2026-09-21" }]).invoiceListOob(7);
-    expect(html).toContain("Issued Sep 1");
-    expect(html).toContain("Sep 30");
+    expect(html).toContain('<a class="inv-num-link" href="/invoices?invoice=7">INV-0007</a>');
+    expect(html).toContain("<td>Acme</td>");
+    expect(html).toContain("<td>Sep 1</td>");
+    expect(html).toContain('<span class="inv-cell-main">Sep 30</span>');
     expect(html).toContain("Paid Sep 21");
     const html2 = views([{ ...baseRow, status: "sent", paid_at: null }]).invoiceListOob(0);
-    expect(html2).toContain("Issued Sep 1");
-    expect(html2).toContain("Sep 30");
-    expect(html2).toMatch(/\d+d ago|Due today|in \d+d/);
+    expect(html2).toContain("<td>Sep 1</td>");
+    expect(html2).toContain('<span class="inv-cell-main">Sep 30</span>');
+    expect(html2).toContain("inv-badge-sent");
   });
 
-  test("draft rows dash the due cell; the View button links to the detail", () => {
-    const html = views([{ ...baseRow, status: "draft", paid_at: null, due_date: null }]).invoiceListOob(0);
+  test("draft rows dash both dates; the number links to the detail", () => {
+    const html = views([{ ...baseRow, status: "draft", paid_at: null }]).invoiceListOob(0);
     expect(html).toContain('href="/invoices?invoice=7"');
-    expect(html).toContain(">View</a>");
-    expect(html).not.toContain("inv-num-link");
+    expect(html).not.toContain(">View</a>");
     expect(html).toContain('<td class="col-opt">—</td>');
   });
 
@@ -433,11 +430,11 @@ describe("#639: PDF input omits payUrl once paid", () => {
  *  detail view, which opens at the top of its own page — the two-pane
  *  fragment swap (#364/#643) retired with the pane. */
 describe("list rows navigate to the detail view", () => {
-  test("the View button links to /invoices?invoice=<id> and no pane renders", () => {
+  test("the number links to /invoices?invoice=<id> and no pane renders", () => {
     const html = views([{ ...baseRow, status: "sent", paid_at: null }]).invoicesPage(null, "http://x");
     expect(html).toContain('href="/invoices?invoice=7"');
-    expect(html).toContain(">View</a>");
-    expect(html).not.toContain("inv-num-link");
+    expect(html).toContain("inv-num-link");
+    expect(html).not.toContain(">View</a>");
     expect(html).not.toContain("invoice-detail-pane");
     expect(html).not.toContain("invoice-list-detail");
   });
@@ -568,8 +565,9 @@ describe("list vs detail selection", () => {
   test("no selection renders the list table", () => {
     const html = views(rows).invoicesPage(null, "http://x");
     expect(html).toContain("ui-filter-chips");
+    expect(html).toContain('<th scope="col">Number</th>');
     expect(html).toContain('<th scope="col">Client</th>');
-    expect(html).toContain('<th scope="col">Invoice</th>');
+    expect(html).toContain('<th scope="col">Issued</th>');
     expect(html).not.toContain('id="invoice-detail"');
   });
   test("the status filter narrows the table", () => {

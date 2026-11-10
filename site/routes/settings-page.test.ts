@@ -87,13 +87,27 @@ describe("settings page (#693)", () => {
   /* #1121: the hosted Billing section joins the body when the dep is
      wired (server.ts passes it in hosted mode) — pinned here so the
      composition can't silently unwire. */
-  test("billing section lands between the theme and updates sections", async () => {
+  test("billing section follows the profile card, before the data and theme cards", async () => {
     const { handleWeb } = setup(() => `<section id="billing-marker">BILLING</section>`);
     const res = await getSettings(handleWeb, true);
     const body = await res!.text();
     const at = (needle: string) => body.indexOf(needle);
-    expect(at('id="billing-marker"')).toBeGreaterThan(at('id="theme-section"'));
+    expect(at('id="billing-marker"')).toBeGreaterThan(at('id="biz-profile"'));
+    expect(at('id="billing-marker"')).toBeLessThan(at('id="your-data"'));
+    expect(at('id="billing-marker"')).toBeLessThan(at('id="theme-section"'));
     expect(at('id="billing-marker"')).toBeLessThan(at('id="update-section"'));
+  });
+
+  test("the mock's Your data and Self-hosted cards render with real export links", async () => {
+    const { handleWeb } = setup();
+    const res = await getSettings(handleWeb, true);
+    const body = await res!.text();
+    expect(body).toContain('id="your-data"');
+    expect(body).toContain('href="/backup"');
+    expect(body).toContain('href="/export/entries.csv"');
+    expect(body).toContain('href="/export/invoices.csv"');
+    expect(body).toContain('id="about"');
+    expect(body).toContain('href="/changelog"');
   });
 
   test("direct visit gets the full app layout", async () => {

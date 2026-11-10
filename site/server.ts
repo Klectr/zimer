@@ -118,7 +118,6 @@ function buildTenantTree(bundle: DbBundle, dbPath: string): WebTenant & ApiTenan
 
   const { timerPartial, todayPartial, todayStatsPartial, dashboardPage } = createTimerViews({
     db, qRunning, qRange, layout, demoBanner, projectOptions, projectOptionRows,
-    revenueTotals, revenueMonthly, revenueByClient, revenueOverdue,
     dayTargetSecs: () => dayTargetSecs(db), /* #908: per-request read of the user's setting */
   });
   const { weekInner, weekStrip, weekGrid, calendarPage, editPage, editEntryDialog } = createCalendarViews({

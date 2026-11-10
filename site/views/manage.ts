@@ -126,21 +126,21 @@ export function createManageViews(deps: ManageViewDeps) {
     const rows = clients.map(c => `<tr>
         <td><span class="manage-client-name"><span class="ui-row-lead-dot" style="background:${esc(schemeColor(c.color) || "var(--color-primary)")}" aria-hidden="true"></span>${esc(c.name)}</span></td>
         <td>${c.rate ? `$${c.rate}/hr` : "—"}</td>
-        <td>${projectNames(byClient.get(c.id) || [])}</td>
-        <td class="num">${moneyCell(unbilled.get(c.id) || 0)}</td>
+        <td class="col-projects">${projectNames(byClient.get(c.id) || [])}</td>
+        <td class="num col-unbilled">${moneyCell(unbilled.get(c.id) || 0)}</td>
         <td class="manage-edit-cell">${editBtn(c.id, `Edit client ${c.name}`)}</td>
       </tr>`).join("");
     const noneRow = `<tr>
         <td><span class="manage-client-name"><span class="ui-row-lead-icon" aria-hidden="true">${icon("group")}</span>No client</span></td>
         <td>—</td>
-        <td>${projectNames(unassigned)}</td>
-        <td class="num">—</td>
+        <td class="col-projects">${projectNames(unassigned)}</td>
+        <td class="num col-unbilled">—</td>
         <td class="manage-edit-cell">${editBtn("none", "Edit projects with no client")}</td>
       </tr>`;
     return card({
       id: "client-table-card",
       className: "manage-table-card",
-      content: `<table class="ui-table"><thead><tr><th>Client</th><th>Default rate</th><th>Projects</th><th class="num">Unbilled</th><th><span class="ui-sr-only">Actions</span></th></tr></thead><tbody>${rows}${noneRow}</tbody></table>`,
+      content: `<table class="ui-table"><thead><tr><th>Client</th><th>Default rate</th><th class="col-projects">Projects</th><th class="num col-unbilled">Unbilled</th><th><span class="ui-sr-only">Actions</span></th></tr></thead><tbody>${rows}${noneRow}</tbody></table>`,
     });
   }
 

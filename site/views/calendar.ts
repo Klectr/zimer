@@ -11,6 +11,7 @@ import { button, linkButton } from "../ui/button.ts";
 import { selectField, textField } from "../ui/field.ts";
 import { weekView, type WeekDay, type WeekEntry } from "../ui/week-view.ts";
 import { iconButton } from "../ui/icon-button.ts";
+import { tag } from "../ui/tag.ts";
 import { visualizer, type VizDay, type VizEntry } from "../ui/visualizer.ts";
 import type { Entry } from "../lib/types.ts";
 
@@ -353,6 +354,11 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     const nowMin = nowP.hh * 60 + nowP.mm;
     return `
       <div class="cal-scroll" data-enter="3">${visualizer({ days: vizDays(wd), startHour: 0, endHour: 24, hourPx: calHourPx, nowMin })}</div>
+      <div class="cal-legend">
+        ${tag({ label: "Billable", tone: "primary" })}
+        ${tag({ label: "Invoiced", tone: "success" })}
+        ${linkButton({ label: "Export week CSV", href: `/export/entries.csv?from=${sun}&to=${addDays(sun, 7)}`, size: "sm", download: true, className: "cal-legend-export" })}
+      </div>
       ${weekView({ agendaOnly: true, days: agendaDays(wd) })}
       <template class="cal-pane-tpl">${paneInner(wd)}</template>`;
   }

@@ -297,8 +297,8 @@ describe("manage suite-mock composition (#1203)", () => {
     const html = pageHtml();
     expect(html).toContain("<th>Client</th>");
     expect(html).toContain("<th>Default rate</th>");
-    expect(html).toContain("<th>Projects</th>");
-    expect(html).toContain('<th class="num">Unbilled</th>');
+    expect(html).toContain('<th class="col-projects">Projects</th>');
+    expect(html).toContain('<th class="num col-unbilled">Unbilled</th>');
     expect(html).toContain("Website");
     expect(html).toContain("No client");
   });
@@ -311,7 +311,7 @@ describe("manage suite-mock composition (#1203)", () => {
     db.query("INSERT INTO time_entries (project_id, start_time, end_time) VALUES (?, '2026-11-03T09:00:00', NULL)").run(project.id);
     const views = createManageViews({ db, layout: (_t: string, b: string) => b, unbilledByClient: () => [] });
     const html = views.managePage();
-    expect(html).toContain('<td class="num">$150</td>');
+    expect(html).toContain('<td class="num col-unbilled">$150</td>');
   });
 
   test("projects card chips every project across clients, with the new-project chip and history note", () => {

@@ -548,6 +548,14 @@ describe("timer mock parity (#1121)", () => {
     expect(html).not.toContain("page-head");
   });
 
+  test("dashboard is the mock's single column: no supporting revenue rail", () => {
+    const deps = { ...baseDeps, qRunning: { get: () => null } as unknown as Statement };
+    const html = createTimerViews(deps as any).dashboardPage();
+    expect(html).toContain('class="scroll-region timer-home"');
+    expect(html).not.toContain("pane-supporting");
+    expect(html).not.toContain(">Revenue</h2>");
+  });
+
   test("stat partial values: today, week window, and rounded unbilled", () => {
     const mk = (start: string, end: string, client: string) => ({
       start_time: start, end_time: end, client_name: client,

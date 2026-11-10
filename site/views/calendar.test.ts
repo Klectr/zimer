@@ -950,3 +950,26 @@ describe("calendar legacy decoration removal (#1132)", () => {
     expect(src).not.toContain("nightStars");
   });
 });
+
+/** The suite mock's legend row under the week grid: billable and invoiced
+ *  swatches plus a CSV download scoped to the visible week. */
+describe("calendar legend (#1202 parity)", () => {
+  test("each week strip carries the legend and a week-scoped CSV export", () => {
+    const db = { query: (_sql: string) => ({ get: () => ({ n: 1 }), all: () => [] }) } as unknown as Database;
+    const views = createCalendarViews({
+      db,
+      qOne: { get: () => ({ n: 1 }), all: () => [] } as unknown as Statement,
+      qRange: { get: () => ({ n: 1 }), all: () => [] } as unknown as Statement,
+      entrySelect: "SELECT",
+      layout: (_t: string, b: string) => b,
+      projectOptionRows: () => [],
+      weekTargetBar: () => "",
+      calHourPx: 64,
+    } as any);
+    const html = views.weekInner("2026-11-01", "America/Chicago");
+    expect(html).toContain('class="cal-legend"');
+    expect(html).toContain("Billable");
+    expect(html).toContain("Invoiced");
+    expect(html).toContain("/export/entries.csv?from=2026-10-25&amp;to=2026-11-01");
+  });
+});

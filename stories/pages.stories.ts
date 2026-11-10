@@ -8,7 +8,7 @@ import { timerPanel } from "../site/ui/timer-display";
 import { statBlock } from "../site/ui/stat";
 import { progressBar } from "../site/ui/progress";
 import { steps } from "../site/ui/steps";
-import { entryRow, clientRow } from "../site/ui/rows";
+import { entryRow } from "../site/ui/rows";
 import { icon } from "../site/lib/icons";
 import { lineItemsTable } from "../site/ui/line-items";
 import { statusChip } from "../site/ui/status-chip";
@@ -82,20 +82,40 @@ export const pagesStories: Story[] = [
       heroSection({
         tagLine: "Free forever self-hosted · $12/mo hosted",
         title: "Your Zimer is your Zinvoice.",
-        sub: "Start a Zimer. Stop it. Send the Zinvoice. Two clicks, no seats, no meters, no surveillance — your data stays in your SQLite file.",
-        actionsHtml: button({ label: "Start tracking — free", variant: "primary", size: "lg" }) + linkButton({ label: "See how it works", href: "#features", size: "lg" }),
+        sub: "Start a Zimer. Stop it. Send the Zinvoice. Two clicks, no seats, no meters, no surveillance, and your data stays in your SQLite file.",
+        actionsHtml: button({ label: "Start tracking free", variant: "primary", size: "lg" }) + linkButton({ label: "See how it works", href: "#features", size: "lg" }),
         note: "14-day trial, no card. Cancel keeps your data.",
-        productHtml: runningPanel(),
+        productHtml:
+          `<div style="display:grid;grid-template-columns:1.1fr .9fr;border:1px solid var(--color-border-secondary);border-radius:var(--radius-xl);overflow:hidden;text-align:left">` +
+          `<div style="padding:20px;border-right:1px solid var(--color-border-secondary)">` +
+          `<div class="ui-stat-label">Running now</div>` +
+          `<div style="font-weight:600;margin-top:4px">Acme Studio · Website rebuild</div>` +
+          `<div style="color:var(--color-text-secondary);font-size:var(--font-size-sm)">Homepage design pass</div>` +
+          `<div class="ui-timer" style="font-size:32px;margin:12px 0">01:24:08</div>` +
+          `<div style="display:flex;gap:8px;flex-wrap:wrap">${tag({ label: "$85 / hr", tone: "primary" })}${tag({ label: "Billable" })}${tag({ label: "Today 5h 12m" })}</div>` +
+          `<div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">${button({ label: "Stop & add to Zinvoice", variant: "primary" })}${button({ label: "Pause" })}</div>` +
+          `</div><div style="padding:20px;background:var(--color-fill-quaternary)">` +
+          `<div class="ui-card-head"><span class="ui-section-title">Zinvoice #1042</span><span class="ui-card-head-end">${tag({ label: "Ready", tone: "success" })}</span></div>` +
+          `<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--color-border-secondary);color:var(--color-text-secondary)"><span>Design · 12.5h</span><span>$1,062.50</span></div>` +
+          `<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--color-border-secondary);color:var(--color-text-secondary)"><span>Development · 8h</span><span>$680.00</span></div>` +
+          `<div style="display:flex;justify-content:space-between;padding:12px 0;font-weight:600"><span>Total due</span><span style="color:var(--color-primary)">$1,827.50</span></div>` +
+          button({ label: "Send Zinvoice", block: true }) +
+          `</div></div>`,
       }) +
-      `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-width:880px;margin:24px auto 0">` +
-      featureCard({ icon: "timer", title: "One job, done well", body: "Timer to Zinvoice in two clicks. No projects-within-projects, no passive tracking watching your screen." }) +
-      featureCard({ icon: "card", title: "Pricing you can trust", body: "Free forever self-hosted, or flat $12/mo hosted. No seats, no meters, no surprise tier." }) +
-      featureCard({ icon: "database", title: "Your data stays yours", body: "One SQLite file holds everything. Export or back up any time — leaving is allowed, so the exports actually work." }) +
-      `</div>` +
-      `<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:720px;margin:24px auto 32px">` +
-      planCard({ name: "Self-host", amount: "$0", period: "forever", features: ["Unlimited clients, projects, and Zinvoices", "Full data ownership — export any time"], ctaHtml: button({ label: "Read the install guide", block: true }) }) +
-      planCard({ name: "Hosted", amount: "$12", period: "/ month · flat, no seats", features: ["Everything in self-host", "Automatic backups", "14-day trial, no card"], ctaHtml: button({ label: "Start free trial", variant: "primary", block: true }) }) +
-      `</div>`,
+      `<section style="max-width:880px;margin:24px auto 0">` +
+      `<h2 style="font-size:var(--font-size-heading-2);margin:0 0 8px">Everything from first tap to paid</h2>` +
+      `<p style="color:var(--color-text-secondary);margin:0 0 16px">One job, done well: track the time, send the Zinvoice, keep the file.</p>` +
+      `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">` +
+      featureCard({ icon: "timer", title: "Timer to Zinvoice in two clicks", body: "Stopped time lands on the draft already priced. No export, no re-typing." }) +
+      featureCard({ icon: "database", title: "Your data, your file", body: "One SQLite database. Back it up, walk away with it. No lock-in." }) +
+      featureCard({ icon: "card", title: "No surveillance", body: "No screenshots, no keystrokes, no passive tracking. A Zimer you start, nothing else." }) +
+      `</div></section>` +
+      `<section style="max-width:720px;margin:32px auto 32px">` +
+      `<h2 style="font-size:var(--font-size-heading-2);margin:0 0 16px">Start with your next job</h2>` +
+      `<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">` +
+      planCard({ name: "Self-hosted", amount: "$0", period: "free forever", blurb: "Unlimited clients, projects, and Zinvoices.", features: ["One Bun process and one SQLite file", "Every feature, no account", "Back up or export any time"], ctaHtml: linkButton({ label: "Download", href: "#", block: true }) }) +
+      planCard({ name: "Hosted", amount: "$12", period: "/ month flat", blurb: "We run it. No per-seat math, early rate locked.", features: ["Everything in self-hosted", "Automatic backups", "14-day free trial, no card"], ctaHtml: linkButton({ label: "Start trial", href: "/signup", variant: "primary", block: true }) }) +
+      `</div></section>`,
   },
   {
     id: "page-login",
@@ -134,6 +154,15 @@ export const pagesStories: Story[] = [
             `<div style="font-weight:600;margin-bottom:8px">Today's entries</div>` +
             entryRow({ title: "Acme Studio — Website rebuild", meta: "9:04 AM — now · Homepage design pass", duration: "1:24:08", amount: "$119.19", running: true }) +
             entryRow({ title: "Acme Studio — Website rebuild", meta: "5:16 AM — 9:04 AM · Homepage design pass", duration: "3h 48m", amount: "$323.00", actions: button({ label: "Edit", size: "sm" }) }),
+        }) +
+        card({
+          content:
+            `<div style="font-weight:600;margin-bottom:8px">Start a new Zimer</div>` +
+            `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">` +
+            `<input class="ui-input" style="flex:1;min-width:180px" placeholder="What are you working on?">` +
+            tag({ label: "Acme Studio" }) +
+            button({ label: "Start", variant: "primary" }) +
+            `</div>`,
         }),
       ),
   },
@@ -295,7 +324,7 @@ export const pagesStories: Story[] = [
         card({
           content:
             `<div style="font-weight:600;margin-bottom:12px">Add a client</div>` +
-            `<div style="display:flex;gap:8px;align-items:flex-end">` +
+            `<div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">` +
             textField({ id: "pg-mg-name", label: "Client name", placeholder: "e.g. Harbor Dental" }) +
             textField({ id: "pg-mg-email", label: "Email", type: "email", placeholder: "billing@client.example" }) +
             textField({ id: "pg-mg-rate", label: "Default rate", placeholder: "$ / hr" }) +
@@ -306,19 +335,22 @@ export const pagesStories: Story[] = [
         }) +
         card({
           content:
-            clientRow({ name: "Acme Studio", meta: "$85/hr · Website rebuild, Brand refresh · $2,340 unbilled", actions: button({ label: "Edit", size: "sm" }) }) +
-            clientRow({ name: "Northwind Legal", meta: "$95/hr · Intake, Case dashboard · $0 unbilled", actions: button({ label: "Edit", size: "sm" }) }) +
-            clientRow({ name: "Bluefin Bakery", meta: "$60/hr · Menu site · $640 overdue", actions: button({ label: "Edit", size: "sm" }) }) +
-            clientRow({ name: "Harbor Dental", meta: "$75/hr · Booking page · last Zinvoice paid Oct 30", actions: button({ label: "Edit", size: "sm" }) }),
+            `<div class="table-wrap"><table class="ui-table"><thead><tr><th scope="col">Client</th><th scope="col">Default rate</th><th scope="col">Projects</th><th scope="col">Unbilled</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead><tbody>` +
+            `<tr><td>Acme Studio</td><td>$85/hr</td><td>Website rebuild · Brand refresh</td><td>$2,340</td><td style="text-align:right">${button({ label: "Edit", size: "sm" })}</td></tr>` +
+            `<tr><td>Northwind Legal</td><td>$95/hr</td><td>Intake · Case dashboard</td><td>$0</td><td style="text-align:right">${button({ label: "Edit", size: "sm" })}</td></tr>` +
+            `<tr><td>Bluefin Bakery</td><td>$60/hr</td><td>Menu site</td><td>$640 overdue</td><td style="text-align:right">${button({ label: "Edit", size: "sm" })}</td></tr>` +
+            `<tr><td>Harbor Dental</td><td>$75/hr</td><td>Booking page</td><td>$425 draft</td><td style="text-align:right">${button({ label: "Edit", size: "sm" })}</td></tr>` +
+            `</tbody></table></div>`,
         }) +
         card({
           content:
             `<div style="font-weight:600;margin-bottom:10px">Projects</div>` +
-            `<div style="display:flex;gap:8px;flex-wrap:wrap">` +
+            `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">` +
             tag({ label: "Acme — Website rebuild", tone: "primary" }) + tag({ label: "Acme — Brand refresh" }) +
             tag({ label: "Northwind — Intake" }) + tag({ label: "Northwind — Dashboard" }) + tag({ label: "Bluefin — Menu site" }) + tag({ label: "Harbor — Booking page" }) +
+            tag({ label: "+ New project" }) +
             `</div>` +
-            `<p style="color:var(--color-text-secondary);margin-top:10px">Projects live under their client. Archive one and its time stays on past Zinvoices.</p>`,
+            `<p style="color:var(--color-text-secondary);margin-top:10px">Projects live under their client. Deleting one never deletes time: its entries keep their history, and past Zinvoices keep their lines.</p>`,
         }),
       ),
   },
@@ -342,26 +374,37 @@ export const pagesStories: Story[] = [
           title: "Billing — Hosted plan",
           bodyHtml:
             `<div style="display:flex;align-items:baseline;gap:8px"><span class="ui-plan-amount">$12</span><span style="color:var(--color-text-secondary)">/ month · flat, no seats</span><span style="margin-left:auto">${tag({ label: "Active", tone: "success" })}</span></div>` +
-            `<p style="color:var(--color-text-secondary);margin-top:10px;line-height:var(--line-height)">Next charge Dec 1, 2026. Early rate locked — your price doesn't rise when new signups move to $20.</p>` +
-            `<div style="border-top:1px solid var(--color-border-secondary);margin-top:14px;padding-top:12px"><div style="font-weight:600;margin-bottom:4px">Accent color</div>` +
-            `<p style="color:var(--color-text-secondary);font-size:var(--font-size-sm)">Pumpkin is home. Picking another changes your app only — Zinvoices keep your brand.</p>` +
+            `<p style="color:var(--color-text-secondary);margin-top:10px;line-height:var(--line-height)">Next charge Dec 1, 2026. Early rate locked — your price doesn't rise when new signups move to $20.</p>`,
+          actionsHtml: button({ label: "Manage subscription" }) + button({ label: "Zinvoices from Zimer" }),
+        }) +
+        settingsSection({
+          title: "Your data",
+          hint: "One SQLite file holds everything. Export or back it up any time.",
+          bodyHtml: `<p style="color:var(--color-text-secondary);line-height:var(--line-height)">Leaving is allowed, so the exports actually work — clients, entries, and zinvoices come with you.</p>`,
+          actionsHtml: button({ label: "Download backup" }) + button({ label: "Entries CSV" }) + button({ label: "Zinvoices CSV" }),
+        }) +
+        settingsSection({
+          title: "Self-hosted",
+          hint: "Version 1.0.0 · free forever on your own server.",
+          bodyHtml: `<p style="color:var(--color-text-secondary);line-height:var(--line-height)">One Bun process and one SQLite file. Updates are manual — pull the release and restart.</p>`,
+          actionsHtml: button({ label: "Changelog" }) + button({ label: "Read the install guide" }),
+        }) +
+        settingsSection({
+          title: "Daily hours target",
+          hint: "Drives the pacing bars on the timer and calendar pages.",
+          bodyHtml: textField({ id: "pg-set-target", label: "Daily hours target", value: "8", suffix: "hr" }),
+          actionsHtml: button({ label: "Save", variant: "primary" }),
+        }) +
+        settingsSection({
+          title: "Theme",
+          hint: "Pumpkin is the default. Pick any accent.",
+          bodyHtml:
             `<div style="display:flex;gap:8px;margin-top:10px">` +
             `<span style="width:26px;height:26px;border-radius:50%;background:#fb923c;border:2px solid #fff"></span>` +
             `<span style="width:26px;height:26px;border-radius:50%;background:#ffb4a8"></span>` +
             `<span style="width:26px;height:26px;border-radius:50%;background:#a8c7fa"></span>` +
             `<span style="width:26px;height:26px;border-radius:50%;background:#9be1a0"></span>` +
-            `<span style="width:26px;height:26px;border-radius:50%;background:#ffe07d"></span></div></div>`,
-          actionsHtml: button({ label: "Manage subscription" }) + button({ label: "Zinvoices from Zimer" }),
-        }) +
-        settingsSection({
-          title: "Your data",
-          bodyHtml: `<p style="color:var(--color-text-secondary);line-height:var(--line-height)">One SQLite file holds everything. Export or back up any time — leaving is allowed, so the exports actually work.</p>`,
-          actionsHtml: button({ label: "Download backup" }) + button({ label: "Entries CSV" }) + button({ label: "Zinvoices CSV" }),
-        }) +
-        settingsSection({
-          title: "License — self-host",
-          bodyHtml: `<p style="color:var(--color-text-secondary);line-height:var(--line-height)">Running the hosted plan. Self-hosting is free forever — same code, your server, your SQLite file.</p>`,
-          actionsHtml: button({ label: "Read the install guide" }),
+            `<span style="width:26px;height:26px;border-radius:50%;background:#ffe07d"></span></div>`,
         }) +
         `</div>`,
       ),

@@ -1,8 +1,7 @@
-/** Timer page views: dashboard, timer card, today's entries, today-vs-target
- *  pacing bar, and the revenue pane (cards, 12-month chart, per-client
- *  breakdown, overdue attention). Domain data arrives through injected
- *  helpers; layout and demo banner come from their owning
- *  slices, so every call site keeps working unchanged. */
+/** Timer page views: dashboard, timer card, today's entries, and the
+ *  today-vs-target pacing bar. Domain data arrives through injected
+ *  helpers; layout and demo banner come from their owning slices, so every
+ *  call site keeps working unchanged. */
 
 import type { Database, Statement } from "bun:sqlite";
 import { addDays, dayBounds, durationSeconds, entryInvoiceMark, entryIsLocked, esc, fmtDur, greeting, money, schemeColor, sundayOf, todayStr } from "../lib/format.ts";
@@ -26,18 +25,13 @@ export interface TimerViewDeps {
   demoBanner: (db: Database) => string;
   projectOptions: (selected?: number | null) => string;
   projectOptionRows: () => { id: number; name: string; client: string | null }[];
-  revenueTotals: () => { invoiced: number; paid: number; outstanding: number };
-  revenueMonthly: () => { label: string; invoiced: number; paid: number }[];
-  revenueByClient: () => { name: string; color: string | null; invoiced: number; paid: number; outstanding: number }[];
-  revenueOverdue: () => { id: number; number: string; client_name: string | null; due_date: string | null; total: number; days_past_due: number; bucket: string }[];
   /* #908: per-request getter — the daily target is a user setting now, and
      the view deps are built once at server startup. */
   dayTargetSecs: () => number;
 }
 
 export function createTimerViews(deps: TimerViewDeps) {
-  const { db, qRunning, qRange, layout, demoBanner, projectOptions, projectOptionRows,
-    revenueTotals, revenueMonthly, revenueByClient, revenueOverdue, dayTargetSecs } = deps;
+  const { db, qRunning, qRange, layout, demoBanner, projectOptions, projectOptionRows, dayTargetSecs } = deps;
 
   /* #546: description suggestions for the start form — the 15 most recently
      used non-blank descriptions, deduped. Rendered as a browser-native
@@ -241,21 +235,19 @@ export function createTimerViews(deps: TimerViewDeps) {
       ${demoBanner(db)}
       ${appHeader({ title, sub: `${dateSub} — here's your day so far.`, actions: linkButton({ label: "Zinvoice this week", href: "/invoices/new", icon: "receipt", id: "invoice-week" }) })}
       <div id="today-stats" hx-get="/partial/today-stats" hx-trigger="load, timer-updated from:body">${statRow()}</div>
-      <div class="pane-layout">
-        <section class="pane-focus" data-enter="2" aria-label="Zimer and today's entries">
-          ${timerPartial()}
-          <div class="scroll-region">
-            <section class="ui-card">
-              <div class="ui-block-title">Today's entries</div>
-              <div id="today-list" hx-get="/partial/today" hx-trigger="load, timer-updated from:body">
-                <div class="skel-stack" aria-hidden="true">
-                  <div class="skel skel-row"></div>
-                  <div class="skel skel-row"></div>
-                  <div class="skel skel-row"></div>
-                </div>
-              </div>
-            </section>
-            <script>(function(){/* #255: client day bounds + client-side time formatting.
+      <div class="scroll-region timer-home" data-enter="2" aria-label="Zimer and today's entries">
+        ${timerPartial()}
+        <section class="ui-card">
+          <div class="ui-block-title">Today's entries</div>
+          <div id="today-list" hx-get="/partial/today" hx-trigger="load, timer-updated from:body">
+            <div class="skel-stack" aria-hidden="true">
+              <div class="skel skel-row"></div>
+              <div class="skel skel-row"></div>
+              <div class="skel skel-row"></div>
+            </div>
+          </div>
+        </section>
+        <script>(function(){/* #255: client day bounds + client-side time formatting.
               Runs at parse time, before htmx's load trigger fires. */
               var el=document.getElementById('today-list');if(!el)return;
               var d=new Date();
@@ -285,97 +277,10 @@ export function createTimerViews(deps: TimerViewDeps) {
                   t.textContent=new Date(t.getAttribute('data-ts')).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});}};
               document.body.addEventListener('htmx:afterSwap',function(e){
                 if(e.detail&&e.detail.target&&e.detail.target.id==='today-list')window.__tkFmtTimes(e.detail.target);});
-              window.__tkFmtTimes(el);})();</script>
-          </div>
-        </section>
-        <aside class="pane-supporting" data-enter="3" aria-label="Revenue">
-          <div class="scroll-region">
-            <h2 class="ui-page-title">Revenue</h2>
-            ${revenueSection()}
-          </div>
-        </aside>
+          window.__tkFmtTimes(el);})();</script>
       </div>`, "timer", true);
   }
 
-
-  /** A1: revenue stat cards (invoiced / paid / outstanding). */
-  function revenueCards(): string {
-    const t = revenueTotals();
-    const stat = (label: string, val: number, cls = "") => card({ content:
-      statBlock({ label, value: money(val), ...(cls ? { valueClass: cls } : {}) }) });
-    return `<div class="ui-rev-cards">
-      ${stat("Zinvoiced", t.invoiced)}
-      ${stat("Paid", t.paid, "ui-rev-paid")}
-      ${stat("Outstanding", t.outstanding)}
-    </div>`;
-  }
-
-  /** A2: trailing-12-month bar chart, hand-rolled SVG. Pumpkin = paid, tonal = outstanding remainder. */
-  function revenueChart(): string {
-    const months = revenueMonthly();
-    const max = Math.max(1, ...months.map(m => m.invoiced));
-    const W = 600, baseline = 190, areaH = 160, n = months.length;
-    const slot = W / n, bw = 30;
-    const bars = months.map((m, i) => {
-      const h = Math.round(m.invoiced / max * areaH);
-      const hp = m.invoiced > 0 ? Math.round(m.paid / m.invoiced * h) : 0;
-      const ho = h - hp;
-      const x = Math.round(i * slot + (slot - bw) / 2);
-      const cx = Math.round(i * slot + slot / 2);
-      return `<g><title>${esc(`${m.label}: ${money(m.paid)} paid of ${money(m.invoiced)} zinvoiced`)}</title>` +
-        (ho > 0 ? `<rect x="${x}" y="${baseline - h}" width="${bw}" height="${ho}" rx="4" class="ui-rev-bar-out" style="animation-delay:${i * 40}ms"/>` : "") +
-        (hp > 0 ? `<rect x="${x}" y="${baseline - hp}" width="${bw}" height="${hp}" rx="4" class="ui-rev-bar-paid" style="animation-delay:${i * 40}ms"/>` : "") +
-        `<text x="${cx}" y="${baseline + 18}" text-anchor="middle">${m.label}</text></g>`;
-    }).join("");
-    return card({ content:
-      `<div class="ui-block-title">Last 12 months</div>` +
-      `<svg class="ui-rev-chart" viewBox="0 0 ${W} 215" role="img" aria-label="Monthly revenue, last 12 months">${bars}</svg>` +
-      `<div class="ui-rev-legend"><span class="ui-rev-swatch paid"></span>Paid<span class="ui-rev-swatch out"></span>Zinvoiced</div>` });
-  }
-
-  function revenueSection(): string {
-    if (revenueTotals().invoiced === 0)
-      return `<p class="ui-note">No zinvoices yet — revenue will show up here.</p>`;
-    return revenueAttention() + revenueCards() + revenueChart() + revenueClients();
-  }
-
-
-  /** Milestone 7: overdue invoices needing attention, most overdue first. */
-  function revenueAttention(): string {
-    const overdue = revenueOverdue();
-    const title = `<div class="ui-block-title">Needs attention</div>`;
-    if (!overdue.length)
-      return card({ content: `${title}<p class="ui-note">All caught up — nothing overdue.</p>` });
-    const rows = overdue.map(o => uiEntryRow({
-      title: o.client_name || "Unknown",
-      meta: `${o.number} · Due ${o.due_date || ""}`,
-      duration: money(o.total),
-      href: `/invoices?invoice=${o.id}`,
-      trailing: `<span class="ui-attn-chip" data-bucket="${esc(o.bucket)}">${o.days_past_due}d overdue</span>`,
-    })).join("");
-    return card({ content: `${title}${rows}` });
-  }
-
-  /** A3: per-client revenue breakdown, with an expressive collection-progress
-      bar per row (#89): paid vs invoiced. Ripples while money is outstanding,
-      settles with a sheen when fully paid. */
-  function revenueClients(): string {
-    const clients = revenueByClient();
-    if (!clients.length) return "";
-    const rows = clients.map(c => {
-      const pct = c.invoiced > 0 ? Math.min(100, (c.paid / c.invoiced) * 100) : 0;
-      const bar = c.invoiced > 0
-        ? progressBar({ value: pct, label: `${c.name}: ${money(c.paid)} paid of ${money(c.invoiced)} zinvoiced` })
-        : "";
-      return uiEntryRow({
-        title: c.name,
-        dot: schemeColor(c.color) || "var(--color-primary)",
-        metaHtml: `${money(c.paid)} paid · ${money(c.outstanding)} outstanding${bar}`,
-        duration: money(c.invoiced),
-      });
-    }).join("");
-    return card({ content: `<div class="ui-block-title">By client</div>${rows}` });
-  }
 
   /** Today-vs-target pacing bar at the top of the timer page's today list.
       Rendered inside todayPartial so it refreshes on every timer start/stop
@@ -392,5 +297,5 @@ export function createTimerViews(deps: TimerViewDeps) {
       </div>`;
   }
 
-  return { entryRow, timerPartial, todayPartial, todayStatsPartial, dashboardPage, revenueSection };
+  return { entryRow, timerPartial, todayPartial, todayStatsPartial, dashboardPage };
 }

@@ -1,7 +1,7 @@
 ---
 version: alpha
 name: Zimer (Dark)
-description: Zimer's design system — dark theme. This IS LobeHub's design system (token model, typography, spacing, radius, controls, motion, component and voice rules, from LobeHub's DESIGN.md) with Zimer's selected colors swapped in — pumpkin primary and Zimer's semantic palette. Components must read semantic tokens, never hard-code hex. Canonical spec for all Zimer UI work; supersedes the Material 3 system previously documented in docs/design-system.md.
+description: Zimer's design system — dark theme. The suite mock's Chinese-style surface layer (glass cards, pill chips, 8/14/20 radius) sits on the LobeHub token model (typography, spacing, controls, motion, component and voice rules) with Zimer's colors: pumpkin primary and Zimer's semantic palette. Components must read semantic tokens, never hard-code hex. Canonical spec for all Zimer UI work; supersedes the Material 3 system previously documented in docs/design-system.md.
 colors:
   colorPrimary: "#fb923c"
   colorSuccess: "#34d399"
@@ -39,7 +39,7 @@ typography:
   fontSizeHeading5: 16
   fontWeightStrong: 600
 spacing: { XXS: 4, XS: 8, SM: 12, base: 16, MD: 20, LG: 24, XL: 32 }
-radius: { borderRadiusXS: 4, borderRadiusSM: 6, borderRadius: 8, borderRadiusLG: 12 }
+radius: { borderRadiusXS: 4, borderRadiusSM: 6, borderRadius: 8, borderRadiusLG: 14, borderRadiusXL: 20 }
 controls: { controlHeightSM: 28, controlHeight: 36, controlHeightLG: 40 }
 elevation:
   boxShadowTertiary: "0 3px 1px -1px rgba(26,26,26,0.06)"
@@ -88,7 +88,7 @@ Spacing follows the 4px scale (4 / 8 / 12 / 16 / 20 / 24 / 32) for gaps, padding
 
 ## Elevation & Depth
 
-Borders first, shadows last, exactly as LobeHub: translucent 1px borders are the primary separator between content (this repeals the former no-borders rule). Hierarchy comes from tonal surfaces and borders, so most cards need no shadow — a `colorBorderSecondary` edge is enough. Lift only what genuinely floats, using the three tiers: panels `boxShadowTertiary`, popovers/menus `boxShadowSecondary`, modals `boxShadow`. Surfaces are solid and tonal, not glass washes; translucency lives in borders and fills, where LobeHub puts it.
+Borders first, shadows last, exactly as LobeHub: translucent 1px borders are the primary separator between content (this repeals the former no-borders rule). Hierarchy comes from tonal surfaces and borders, so most cards need no shadow — a `colorBorderSecondary` edge is enough. Lift only what genuinely floats, using the three tiers: panels `boxShadowTertiary`, popovers/menus `boxShadowSecondary`, modals `boxShadow`. Surfaces are a translucent white wash over the canvas (the suite's glass cards); hierarchy still comes from borders and tonal steps, and translucency stays in surfaces, borders, and fills.
 
 ## Motion
 
@@ -96,7 +96,7 @@ Motion clarifies change; it is never decoration. 100–200ms for state changes a
 
 ## Shapes
 
-One radius family per view, LobeHub's scale with no exceptions: 4 (chips, tags), 6 (inputs, small controls), 8 (buttons, cards — the default), 12 (menus, modals, large surfaces). Fully round only for pills, avatars, and circular icon buttons.
+One radius family per view, the suite's scale with no exceptions: 4 (small inner details), 6 (small controls), 8 (buttons, inputs — the default), 14 (cards), 20 (auth cards, public sheets, modals). Fully round only for pills, avatars, and circular icon buttons.
 
 ## Components
 

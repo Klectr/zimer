@@ -2,6 +2,15 @@
 
 What's new in Zimer, newest first.
 
+## 2026-11-09
+
+- **The suite mock's surface style is live across the app.** Cards are translucent glass on a 14px radius, auth and public sheets sit on 20px surfaces, inputs are 8px, and chips, tags, and tabs are pills. The token scale in `DESIGN.md` matches.
+- **Settings carries your data and the self-hosted offer.** Two new cards give one-click backup and CSV exports, plus the version, changelog, and install guide. The retired license-key form is not back.
+- **The Zinvoices list reads like the mock.** One line per column: Number, Client, Issued, Due, Status, Total. Drafts dash their dates, overdue shows its age, and the number opens the detail.
+- **The hosted landing is the mock's page.** A centered promise, a working timer and Zinvoice preview, the three-card bento, and the two-plan price grid.
+- **The timer home is one column again.** Today's entries follow the timer card directly; the revenue rail is gone.
+- **Calendar day columns are cards.** The week grid keeps drag and resize, and each week gains the Billable/Invoiced legend and a week-scoped CSV export.
+
 ## 2026-10-27
 
 - **Zimer can be found now.** The homepage, this changelog, and the legal pages are open to search engines, with a sitemap and crawler rules to match. Searching for a time tracker that turns hours into an invoice can actually land here.

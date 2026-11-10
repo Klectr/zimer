@@ -3,7 +3,7 @@
  *  invoiceSheet is also returned so the public-views factory can reuse it. */
 
 import type { Database, Statement } from "bun:sqlite";
-import { addDays, daysBetween, durationSeconds, esc, fmtDur, money, round2, schemeColor, shortDateRange, shortDateRangeYear, shortYmd, termsDays, termsDescription, termsKey, todayStr } from "../lib/format.ts";
+import { addDays, daysBetween, durationSeconds, esc, fmtDur, money, round2, shortDateRange, shortDateRangeYear, shortYmd, termsDays, termsDescription, termsKey, todayStr } from "../lib/format.ts";
 import { icon } from "../lib/icons.ts";
 import { getMeta } from "../db.ts";
 import { workspaceEmpty } from "../lib/demo.ts"; /* #300: empty-state CTA */
@@ -14,7 +14,6 @@ import { button, linkButton } from "../ui/button.ts";
 import { card } from "../ui/card.ts";
 import { selectField, textField } from "../ui/field.ts";
 import { checkboxField } from "../ui/choice.ts";
-import { clientRow } from "../ui/rows.ts";
 import { appHeader } from "../ui/app-header.ts";
 import { iconButton } from "../ui/icon-button.ts";
 import { emptyState } from "../ui/empty-state.ts";
@@ -126,30 +125,38 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     return `<span class="inv-badge inv-badge-draft">Draft</span>`;
   }
 
-  function statusCell(r: any): string {
+  /* The mock's list rows are one line per column: Number, Client, Issued,
+     Due, Status, Total. Drafts are not issued yet, so both dates read as
+     a dash; overdue keeps the age that makes the state actionable. */
+  function dueCell(r: any): string {
+    if (r.status === "draft" || !r.due_date) return "—";
+    const main = `<span class="inv-cell-main">${esc(shortYmd(r.due_date))}</span>`;
+    if (r.status === "paid" && r.paid_at)
+      return main + `<span class="inv-cell-sub">Paid ${esc(shortYmd(r.paid_at))}</span>`;
+    return main;
+  }
+
+  function rowStatus(r: any): string {
+    if (isOverdue(r)) {
+      const days = r.due_date ? Math.max(0, daysBetween(r.due_date as string, todayStr())) : 0;
+      return `<span class="inv-badge inv-badge-overdue">Overdue${days ? ` ${days}d` : ""}</span>`;
+    }
     return invBadge(r);
   }
 
-  function dueCell(r: any): string {
-    if (r.status === "paid")
-      return `<span class="inv-cell-main">${r.due_date ? esc(shortYmd(r.due_date)) : "—"}</span>` +
-        (r.paid_at ? `<span class="inv-cell-sub">Paid ${esc(shortYmd(r.paid_at))}</span>` : "");
-    if (r.status === "draft" || !r.due_date) return "—";
-    const d = daysBetween(todayStr(), r.due_date as string);
-    const sub = d < 0 ? `${-d}d ago` : d === 0 ? "Due today" : `in ${d}d`;
-    return `<span class="inv-cell-main">${esc(shortYmd(r.due_date))}</span><span class="inv-cell-sub">${sub}</span>`;
-  }
-
   function invoiceTableRowsHtml(rows: any[]): string {
-    return rows.map(r => `
+    return rows.map(r => {
+      const draft = r.status === "draft";
+      return `
       <tr>
-        <td><span class="inv-cell-main"><span class="inv-dot"${r.client_color ? ` style="background:${esc(schemeColor(r.client_color))}"` : ""}></span><span>${r.client_name ? esc(r.client_name) : "<em>No client</em>"}</span></span><span class="inv-cell-sub">${esc(r.number)}${r.project_name ? ` · ${esc(r.project_name)}` : ""}</span></td>
-        <td><span class="inv-cell-main">${esc(r.number)}</span><span class="inv-cell-sub">${r.issue_date ? `Issued ${esc(shortYmd(r.issue_date))}` : "Not issued"}</span></td>
-        <td>${statusCell(r)}</td>
+        <td><a class="inv-num-link" href="/invoices?invoice=${r.id}">${esc(r.number)}</a></td>
+        <td>${r.client_name ? esc(r.client_name) : "<em>No client</em>"}</td>
+        <td>${!draft && r.issue_date ? esc(shortYmd(r.issue_date)) : "—"}</td>
         <td class="col-opt">${dueCell(r)}</td>
+        <td>${rowStatus(r)}</td>
         <td class="num inv-amt">${money(rowTotal(r))}</td>
-        <td class="inv-view-cell">${linkButton({ label: "View", href: `/invoices?invoice=${r.id}`, variant: "ghost", size: "sm" })}</td>
-      </tr>`).join("");
+      </tr>`;
+    }).join("");
   }
 
   function invoiceTableHtml(rows: any[], filtered: boolean): string {
@@ -165,7 +172,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     return card({
       className: "inv-table-card",
       content: `<div class="table-wrap"><table class="ui-table">
-        <thead><tr><th scope="col">Client</th><th scope="col">Invoice</th><th scope="col">Status</th><th scope="col" class="col-opt">Due</th><th scope="col" class="num">Amount</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+        <thead><tr><th scope="col">Number</th><th scope="col">Client</th><th scope="col">Issued</th><th scope="col" class="col-opt">Due</th><th scope="col">Status</th><th scope="col" class="num">Total</th></tr></thead>
         <tbody id="inv-list">${invoiceTableRowsHtml(rows)}</tbody>
       </table></div>`,
     });
@@ -238,72 +245,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
         ${statsRowHtml(rows)}
         ${filterRowHtml(active, q)}
         ${invoiceTableHtml(shown, active !== "all" || !!q)}
-        ${widgetsHtml(rows)}
-        ${unbilledSection(rows)}
       </div>`, "invoices", true);
-  }
-
-  function invWRow(main: string, side: string): string {
-    return `<div class="inv-wrow"><span class="inv-wmain">${main}</span><span class="inv-wamt">${side}</span></div>`;
-  }
-
-  function widgetsHtml(rows: any[]): string {
-    const sum = (xs: any[]) => round2(xs.reduce((a, r) => a + rowTotal(r), 0));
-    const open = rows.filter(r => r.status === "sent");
-    const paid = rows.filter(r => r.status === "paid");
-    const name = (r: any) => r.client_name ? esc(r.client_name) : "<em>No client</em>";
-    const unpaid = [...open].sort((a, b) =>
-      (isOverdue(a) ? 0 : 1) - (isOverdue(b) ? 0 : 1) ||
-      String(a.due_date || "").localeCompare(String(b.due_date || ""))).slice(0, 4);
-    const unpaidCard = card({ content:
-      `<div class="ui-card-head"><span class="ui-section-title">Unpaid invoices</span></div>` +
-      `<p class="inv-wsub">Total outstanding ${money(sum(open))}</p>` +
-      (unpaid.length ? unpaid.map(r => invWRow(
-        `${invBadge(r)}<span class="inv-wtext"><span class="inv-wname">${name(r)}</span><span class="inv-cell-sub">${esc(r.number)}</span></span>`,
-        `<span class="inv-wval">${money(rowTotal(r))}</span><span class="inv-cell-sub">${r.due_date ? esc(shortYmd(r.due_date)) : ""}</span>`)).join("")
-        : `<p class="inv-wsub">Nothing outstanding.</p>`) });
-    const byMap = new Map<string, number>();
-    for (const r of open) byMap.set(r.client_name || "No client", (byMap.get(r.client_name || "No client") || 0) + rowTotal(r));
-    const byClient = [...byMap.entries()].map(([n, v]) => ({ n, v: round2(v) })).sort((a, b) => b.v - a.v).slice(0, 4);
-    const maxV = byClient.length ? byClient[0].v : 0;
-    const byClientCard = card({ content:
-      `<div class="ui-card-head"><span class="ui-section-title">Unpaid by client</span></div>` +
-      (byClient.length ? byClient.map(c =>
-        `<div class="inv-wrow"><span class="inv-wname">${esc(c.n)}</span><span class="inv-wval">${money(c.v)}</span></div><div class="inv-bar"><i style="width:${maxV ? Math.round((c.v / maxV) * 100) : 0}%"></i></div>`).join("")
-        : `<p class="inv-wsub">Nothing outstanding.</p>`) });
-    const recent = [...paid].filter(r => r.paid_at)
-      .sort((a, b) => String(b.paid_at).localeCompare(String(a.paid_at))).slice(0, 4);
-    const recentCard = card({ content:
-      `<div class="ui-card-head"><span class="ui-section-title">Recent payments</span></div>` +
-      (recent.length ? recent.map(r => invWRow(
-        `${invBadge(r)}<span class="inv-wtext"><span class="inv-wname">${name(r)}</span><span class="inv-cell-sub">${esc(r.number)}</span></span>`,
-        `<span class="inv-wval">${money(rowTotal(r))}</span><span class="inv-cell-sub">${esc(shortYmd(r.paid_at))}</span>`)).join("")
-        : `<p class="inv-wsub">No payments yet.</p>`) });
-    const overdueN = open.filter(r => isOverdue(r)).length;
-    const sumRow = (label: string, val: string, cls = "") =>
-      `<div class="inv-wrow"><span class="inv-wname ${cls}">${label}</span><span class="inv-wval ${cls}">${val}</span></div>`;
-    const summaryCard = card({ content:
-      `<div class="ui-card-head"><span class="ui-section-title">All invoices</span><span class="ui-card-head-end"><span class="ui-stat-value">${rows.length}</span></span></div>` +
-      sumRow("Open", money(sum(open))) +
-      sumRow("Drafts", money(sum(rows.filter(r => r.status === "draft")))) +
-      sumRow("Paid (all time)", money(sum(paid))) +
-      sumRow("Overdue", String(overdueN), overdueN ? "inv-overdue-text" : "") });
-    return `<div class="inv-widgets"><div class="inv-widgets-col">${unpaidCard}${byClientCard}</div>${recentCard}${summaryCard}</div>`;
-  }
-
-  /** #328: per-client finished, unbilled time with an "Invoice" shortcut into
-      the "invoice the rest" prefill. Hidden when nothing is unbilled, and when
-      the workspace has no invoices yet (the empty state owns that case). */
-  function unbilledSection(rows: any[]): string {
-    if (!rows.length) return "";
-    const unbilled = unbilledByClient();
-    if (!unbilled.length) return "";
-    return `<h3 class="ui-block-title unbilled-head">Unbilled time</h3>
-      <div class="ui-list">${unbilled.map(u => clientRow({
-        name: u.name,
-        meta: `${fmtDur(u.secs)} unbilled`,
-        actions: linkButton({ label: "Zinvoice", href: `/invoices/new?client_id=${u.id}`, variant: "ghost", size: "sm" }),
-      })).join("")}</div>`;
   }
 
   /* Milestone 20: NewInvParams type lives in lib/types.ts. */
