@@ -390,7 +390,7 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .ui-target { margin-bottom: var(--spacing-sm); }
 .ui-target-label { font-size: var(--font-size-sm); line-height: var(--line-height-sm); color: var(--color-text-tertiary); margin-top: var(--spacing-xxs); }
 .ui-card .ui-row:last-child { border-bottom: none; }
-.ui-inv-mark { display: inline-flex; align-items: center; height: 18px; padding: 0 var(--spacing-xs); border-radius: 9999px; font-size: 10px; font-weight: 600; letter-spacing: 0.4px; white-space: nowrap; flex: none; background: var(--color-fill-secondary); color: var(--color-text-secondary); margin-right: var(--spacing-xs); }
+.ui-inv-mark { display: inline-flex; align-items: center; height: 18px; padding: 0 var(--spacing-xs); border-radius: var(--radius-xs); font-size: 10px; font-weight: 600; letter-spacing: 0.4px; white-space: nowrap; flex: none; background: var(--color-fill-secondary); color: var(--color-text-secondary); margin-right: var(--spacing-xs); }
 .ui-inv-mark.draft { opacity: 0.7; }
 .ui-inv-mark[data-tip] { position: relative; overflow: visible; }
 .ui-inv-mark[data-tip]::after { content: attr(data-tip); position: absolute; left: 50%; top: calc(100% + var(--spacing-xs)); transform: translateX(-50%) translateY(-2px); background: var(--color-bg-spotlight); color: var(--color-text); border-radius: var(--radius-sm); padding: var(--spacing-xs) var(--spacing-sm); white-space: nowrap; max-width: 0; overflow: hidden; font-size: var(--font-size-sm); line-height: var(--line-height-sm); font-weight: 400; letter-spacing: 0; opacity: 0; pointer-events: none; z-index: 30; transition: opacity 0.15s ease, transform 0.15s ease; }
@@ -423,7 +423,7 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .ui-rev-swatch { width: 12px; height: 12px; border-radius: var(--radius-xs); display: inline-block; }
 .ui-rev-swatch.paid { background: var(--color-primary); }
 .ui-rev-swatch.out { background: var(--color-fill); margin-left: var(--spacing-sm); }
-.ui-attn-chip { display: inline-block; flex: none; white-space: nowrap; background: var(--color-error-bg); color: var(--color-error); padding: var(--spacing-xs) var(--spacing-sm); border-radius: 9999px; font-size: var(--font-size-sm); font-weight: 500; }
+.ui-attn-chip { display: inline-block; flex: none; white-space: nowrap; background: var(--color-error-bg); color: var(--color-error); padding: var(--spacing-xs) var(--spacing-sm); border-radius: var(--radius-xs); font-size: var(--font-size-sm); font-weight: 500; }
 .ui-timer-bottom { display: flex; align-items: center; gap: var(--spacing-sm); }
 .ui-timer-meta { display: flex; gap: var(--spacing-xs); flex-wrap: wrap; }
 .ui-timer-actions { margin-left: auto; display: flex; gap: var(--spacing-xs); }
@@ -762,7 +762,7 @@ main.login { max-width: 420px; margin: 0 auto; margin-top: 8vh; }
   top: -72px;
   z-index: 200;
   padding: 10px 20px;
-  border-radius: 9999px;
+  border-radius: var(--radius);
   background: var(--color-primary-bg);
   color: var(--color-text);
   font-size: 0.875rem;
@@ -1187,7 +1187,7 @@ body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
 .nav-drawer-row {
   display: flex; align-items: center; gap: 12px;
   min-height: 56px; padding: 0 16px;
-  border: 0; border-radius: 9999px;
+  border: 0; border-radius: var(--radius);
   background: transparent; color: var(--color-text-secondary);
   font: inherit; font-size: 0.875rem; font-weight: 500; text-align: left;
   text-decoration: none; cursor: pointer; width: 100%;
@@ -1531,7 +1531,7 @@ button.ui-tag { border: 0; font: inherit; cursor: pointer; }
   align-self: flex-start; /* #week is a flex column; don't stretch full width */
   background: var(--color-bg-elevated);
   color: var(--color-text);
-  border-radius: 999px; padding: 8px 16px; margin: 0 0 14px;
+  border-radius: var(--radius); padding: 8px 16px; margin: 0 0 14px;
   text-decoration: none;
   /* #715: on narrow screens the chip may wrap — let the wrap land between the
      two segments, never inside "Invoice this week". */
@@ -1569,7 +1569,7 @@ button.ui-tag { border: 0; font: inherit; cursor: pointer; }
 .proof-nudge { margin: 4px 0 10px; }
 .proof-upload { display: flex; align-items: center; gap: 12px; margin-top: 10px; flex-wrap: wrap; }
 .proof-file-label { font-size: 0.9rem; color: var(--color-text-secondary);
-  padding: 8px 16px; border-radius: 20px; background: var(--color-bg-elevated);
+  padding: 8px 16px; border-radius: var(--radius); background: var(--color-bg-elevated);
   cursor: pointer; white-space: nowrap; }
 .proof-upload input[type="file"] { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
 .proof-hint { margin: 8px 0 0; font-size: 0.8rem; }
@@ -1679,7 +1679,7 @@ button.ui-tag { border: 0; font: inherit; cursor: pointer; }
 .share-icons { display: flex; align-items: center; gap: 2px; margin-left: auto; flex-shrink: 0; }
 .share-icons form { display: inline; margin: 0; }
 .stripe-paid-chip { display: inline-block; margin-left: 8px; background: rgba(99,91,255,.18); color: #b3aeff;
-  padding: 4px 12px; border-radius: 999px; font-size: 0.75rem; font-weight: 500; vertical-align: middle; }
+  padding: 4px 12px; border-radius: var(--radius-xs); font-size: 0.75rem; font-weight: 500; vertical-align: middle; }
 /* #448: the bolt is an inline SVG from the icon system — size it to the chip's text. */
 .stripe-paid-chip svg { width: 14px; height: 14px; vertical-align: -2px; margin-right: 4px; }
 
