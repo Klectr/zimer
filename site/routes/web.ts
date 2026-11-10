@@ -882,9 +882,9 @@ export function createWebRouter(deps: WebDeps) {
         }
 
         /* ---- invoicing pages ---- */
-        /* #364: list-detail — ?invoice=<id> selects into the detail pane
-           (two-pane ≥840px) or the single-pane detail screen; fragment=detail
-           is the HTMX swap the list pane's row clicks request. */
+        /* ?invoice=<id> selects the standalone detail view; fragment=detail
+           is the HTMX swap the detail view's own actions request. The list
+           honors ?status= and ?q= filters (the mock's chips + search). */
         if (path === "/invoices" && method === "GET") {
           const sp = new URL(req.url).searchParams;
           const selRaw = sp.get("invoice");
@@ -898,16 +898,8 @@ export function createWebRouter(deps: WebDeps) {
               { "HX-Push-Url": `/invoices?invoice=${inv.id}` });
           }
           const selected = selId ? getInvoice(selId) : null;
-          /* #805: default the two-pane detail to the first zinvoice so the
-             pane has content on desktop load. isDefault keeps has-selection
-             unset, so the single-pane (mobile) layout still opens on the
-             list — the URL stays /invoices until the user picks one. */
-          let shown = selected, isDefault = false;
-          if (!shown) {
-            const first = (qInvoices.all() as any[])[0];
-            if (first) { shown = getInvoice(first.id); isDefault = !!shown; }
-          }
-          return html(invoicesPage(shown, shareOrigin(req), isDefault));
+          const filters = { status: sp.get("status") || "all", q: sp.get("q") || "" };
+          return html(invoicesPage(selected, shareOrigin(req), filters));
         }
         if (path === "/invoices/new" && method === "GET") {
           const sp = new URL(req.url).searchParams;
@@ -981,6 +973,14 @@ export function createWebRouter(deps: WebDeps) {
             }
           })();
           mintPublicToken(inv.id); /* #227: client link exists from birth */
+          /* The wizard's Send Zinvoice submits intent=send: create + send in
+             one step, with the same side effects as the status route's
+             draft → sent transition (freeze, then the Stripe link). */
+          if (String(form.get("intent") || "") === "send") {
+            db.query("UPDATE invoices SET status = 'sent' WHERE id = ?").run(inv.id);
+            freezeInvoiceSnapshots(inv.id, shareOrigin(req));
+            if (stripeConfigured()) { await stripeLinkFor(inv.id); }
+          }
           return new Response(null, { status: 302, headers: { Location: `/invoices?invoice=${inv.id}` } }); /* #364 */
         }
         m = path.match(/^\/invoices\/(\d+)$/);

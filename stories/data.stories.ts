@@ -6,6 +6,7 @@ import { steps } from "../site/ui/steps";
 import { zinvoiceRow, entryRow, clientRow } from "../site/ui/rows";
 import { lineItemsTable } from "../site/ui/line-items";
 import { iconButton } from "../site/ui/icon-button";
+import { filterChips } from "../site/ui/filter-chips";
 
 const wrap = (inner: string) => `<div style="max-width:560px">${inner}</div>`;
 
@@ -17,7 +18,7 @@ export const dataStories: Story[] = [
     render: () =>
       `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;max-width:640px">` +
       card({ content: statBlock({ label: "Outstanding", value: "$3,915", sub: "3 sent, 1 overdue" }) }) +
-      card({ content: statBlock({ label: "Drafts", value: "2", sub: "$1,827 ready to send" }) }) +
+      card({ content: statBlock({ label: "Drafts", value: "2", sub: "$1,827 not yet sent" }) }) +
       card({
         content:
           statBlock({ label: "Today", value: "5h 12m" }) +
@@ -26,6 +27,25 @@ export const dataStories: Story[] = [
           `</div><div class="ui-stat-sub">Goal 8h · on pace</div>`,
       }) +
       `</div>`,
+  },
+  {
+    id: "data-filter-chips",
+    group: "Data",
+    title: "Filter chips — Zinvoices",
+    render: () =>
+      wrap(
+        filterChips({
+          items: [
+            { key: "all", label: "All", href: "/invoices" },
+            { key: "draft", label: "Draft", href: "/invoices?status=draft" },
+            { key: "sent", label: "Sent", href: "/invoices?status=sent" },
+            { key: "paid", label: "Paid", href: "/invoices?status=paid" },
+            { key: "overdue", label: "Overdue", href: "/invoices?status=overdue" },
+          ],
+          active: "sent",
+          label: "Filter zinvoices by status",
+        }),
+      ),
   },
   {
     id: "data-progress",

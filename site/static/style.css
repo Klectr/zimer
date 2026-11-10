@@ -149,6 +149,32 @@
 .ui-chip-paid { background: var(--color-success-bg); color: var(--color-success); }
 .ui-chip-overdue { background: var(--color-error-bg); color: var(--color-error); }
 
+.inv-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 650; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+.inv-badge svg { width: 11px; height: 11px; flex: none; }
+.inv-badge-paid { background: var(--color-success); color: #052e1b; }
+.inv-badge-sent { background: var(--color-info-bg); color: #93c5fd; }
+.inv-badge-overdue { background: var(--color-error-bg); color: #fca5a5; }
+.inv-badge-draft { background: var(--color-fill-secondary); color: var(--color-text-secondary); }
+.inv-cell-main { display: flex; align-items: center; gap: 8px; color: var(--color-text); font-weight: 550; }
+.inv-cell-sub { display: block; font-size: var(--font-size-sm); color: var(--color-text-tertiary); margin-top: 2px; }
+.inv-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--color-fill); flex: none; }
+.inv-amt { font-weight: 600; color: var(--color-text); }
+.inv-view-cell { text-align: right; }
+.inv-widgets { display: grid; grid-template-columns: 1.15fr 1fr 1fr; gap: var(--spacing-sm); margin-top: var(--spacing-sm); align-items: start; }
+.inv-widgets-col { display: grid; gap: var(--spacing-sm); }
+.inv-wsub { font-size: var(--font-size-sm); color: var(--color-text-secondary); margin: 2px 0 6px; }
+.inv-wrow { display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-sm); padding: 7px 0; border-bottom: 1px solid var(--color-border-secondary); }
+.inv-wrow:last-child { border-bottom: 0; }
+.inv-wmain { display: inline-flex; align-items: center; gap: 10px; min-width: 0; }
+.inv-wtext { display: grid; }
+.inv-wname { font-weight: 550; color: var(--color-text); }
+.inv-wamt { text-align: right; flex: none; }
+.inv-wval { font-weight: 600; color: var(--color-text); font-variant-numeric: tabular-nums; }
+.inv-bar { height: 4px; border-radius: 99px; background: var(--color-fill-tertiary); margin: -2px 0 6px; }
+.inv-bar i { display: block; height: 100%; border-radius: 99px; background: var(--color-text-tertiary); }
+.inv-overdue-text { color: var(--color-error); }
+@media (max-width: 960px) { .inv-widgets { grid-template-columns: 1fr; } }
+
 .ui-field { display: flex; flex-direction: column; gap: var(--spacing-xxs); }
 .ui-field-label { font-size: var(--font-size); font-weight: 500; color: var(--color-text); }
 .ui-input {
@@ -952,28 +978,40 @@ body.app-fixed .ui-shell-main { min-height: 0; }
   .ui-toast-live { bottom: calc(24px + var(--nav-bar-height)); }
 }
 
-/* ---------------- invoices list-detail (#364) ----------------
- * The invoice list → invoice document is a parent-child pairing, so it takes
- * the list-detail layout: two panes at expanded+, a single pane
- * below. The detail pane reuses invoiceDetailBody; its back link shows only
- * in single-pane mode and the selected-row state only in two-pane mode
- * (both layout-driven). Panes scroll independently on the fixed-viewport page. */
-.invoice-list-detail { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-.invoice-list-pane, .invoice-detail-pane { min-width: 0; }
-@media (min-width: 840px) {
-  .invoice-list-detail { flex-direction: row; gap: var(--layout-pane-gap); align-items: stretch; }
-  .invoice-list-pane { flex: 0 0 400px; overflow-y: auto; }
-  .invoice-detail-pane { flex: 1; min-width: 0; overflow-y: auto; }
-  .invoice-detail-pane .detail-back { display: none; }
+/* ---------------- invoices: mock list + detail ----------------
+ * The list is one column: stat cards, filter chips + search, and a table
+ * card. A selected zinvoice is a standalone detail view: lines-table card
+ * on the left, status + public-link cards in a right rail. Both grids
+ * collapse to one column below desktop widths. */
+.inv-new-grid, .inv-detail-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); gap: var(--spacing-md); align-items: start; }
+@media (max-width: 1023px) {
+  .inv-new-grid, .inv-detail-grid { grid-template-columns: minmax(0, 1fr); }
 }
-@media (max-width: 839px) {
-  .invoice-list-pane, .invoice-detail-pane { flex: 1; min-height: 0; overflow-y: auto; }
-  .invoice-list-detail.has-selection .invoice-list-pane { display: none; }
-  .invoice-list-detail:not(.has-selection) .invoice-detail-pane { display: none; }
-  /* #1121: single-pane detail opens on the document, not the stat cards —
-     they belong to the list state the pane just left. */
-  main:has(.invoice-list-detail.has-selection) #inv-stats { display: none; }
+.inv-detail-rail { display: flex; flex-direction: column; gap: var(--spacing-md); min-width: 0; }
+.inv-detail-main { min-width: 0; }
+.inv-filter-row { display: flex; gap: var(--spacing-sm); align-items: flex-end; flex-wrap: wrap; margin-bottom: var(--spacing); }
+.inv-search { margin-left: auto; }
+.inv-search .ui-field { min-width: 220px; }
+.ui-filter-chips { display: flex; gap: var(--spacing-xs); flex-wrap: wrap; align-items: center; }
+.ui-filter-chip { display: inline-flex; align-items: center; min-height: 28px; padding: var(--spacing-xxs) var(--spacing-sm); border-radius: 999px; border: 1px solid var(--color-border-secondary); color: var(--color-text-secondary); font-size: var(--font-size-sm); font-weight: 500; line-height: var(--line-height-sm); text-decoration: none; }
+.ui-filter-chip:hover { color: var(--color-text); background: var(--color-fill-tertiary); }
+.ui-filter-chip.is-active { background: var(--color-primary-bg); color: var(--color-primary); border-color: var(--color-primary-border); }
+.inv-num-link { color: var(--color-primary); font-weight: 600; text-decoration: none; }
+.inv-num-link:hover { text-decoration: underline; }
+@media (max-width: 719px) {
+  .inv-table-card .col-opt { display: none; }
 }
+.inv-status-line { color: var(--color-text-secondary); margin: var(--spacing-xs) 0 0; }
+.inv-activity { border-top: 1px solid var(--color-border-secondary); margin-top: var(--spacing-sm); padding-top: var(--spacing-xs); }
+.inv-activity-row { color: var(--color-text-secondary); font-size: var(--font-size-sm); line-height: 1.7; }
+.inv-cell-dates { margin-left: var(--spacing-xs); color: var(--color-text-secondary); font-size: var(--font-size-sm); white-space: nowrap; }
+.inv-summary-actions { display: flex; flex-direction: column; gap: var(--spacing-xs); margin-top: var(--spacing-sm); }
+.inv-send-note { text-align: center; color: var(--color-text-tertiary); font-size: var(--font-size-sm); margin: var(--spacing-xs) 0 0; }
+.inv-more { margin-top: var(--spacing-sm); }
+.inv-more summary { cursor: pointer; color: var(--color-text-secondary); font-size: var(--font-size-sm); font-weight: 500; padding: var(--spacing-xs) 0; }
+.inv-more .ui-field { margin-top: var(--spacing-xs); }
+#inv-preview .ui-field { margin-top: var(--spacing-sm); }
+#inv-preview .inv-more .ui-field { margin-top: var(--spacing-xs); }
 /* #442: date phrases in list rows never split mid-date; the supporting line
    wraps at the middot separators instead. */
 .inv-date { white-space: nowrap; }
@@ -1686,7 +1724,6 @@ button.ui-tag { border: 0; font: inherit; cursor: pointer; }
 /* ---------------- print ---------------- */
 @media print {
   .ui-side, .ui-mobile-head, .ui-mobile-nav, .nav-drawer-scrim, .trial-banner, .no-print, .page-head, .ui-app-head, .ui-stat-row { display: none !important; }
-  .invoice-list-pane { display: none !important; } /* #364: print only the invoice document */
   .ui-public-sheet .ui-btn, .ui-public-footer, .ui-public-note { display: none !important; } /* #1136: the public summary prints without its pay action or web footer */
   /* #1136: the public summary on paper — dark text, visible tag outline,
      hairlines that survive without backgrounds. */
@@ -1696,8 +1733,7 @@ button.ui-tag { border: 0; font: inherit; cursor: pointer; }
   .ui-public-lines .ui-summary-line { border-bottom-color: #ddd; }
   .ui-summary-total .num { color: #111; }
   .ui-public .ui-tag { border: 1px solid #999; background: #fff !important; color: #111 !important; }
-  .invoice-list-detail { display: block; }
-  .invoice-detail-pane { overflow: visible; }
+  .inv-detail-grid { display: block; }
   body { background: #fff; color: #111; }
   body.app { background: #fff; }
   /* #1137: the public doc mains declare their own dark colors — reset
@@ -1719,7 +1755,7 @@ button.ui-tag { border: 0; font: inherit; cursor: pointer; }
   .md-table tfoot td { color: #333; }
   .inv-table tfoot tr.grand td,
   .md-table tfoot tr.grand td { color: #000; }
-  .ui-chip { border: 1px solid #999; background: #fff !important; color: #111 !important; }
+  .ui-chip, .inv-badge { border: 1px solid #999; background: #fff !important; color: #111 !important; }
   .inv-notes { color: #333; }
 }
 

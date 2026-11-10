@@ -185,6 +185,8 @@ db.exec(`DROP TABLE IF EXISTS recurring_schedules;`);
   const qInvoices = db.query(
     `SELECT i.*, c.name AS client_name, c.color AS client_color,
           c.payment_terms AS client_payment_terms,
+          (SELECT p.name FROM time_entries e JOIN projects p ON p.id = e.project_id
+            WHERE e.invoice_id = i.id AND e.project_id IS NOT NULL LIMIT 1) AS project_name,
           COALESCE((SELECT SUM(amount) FROM invoice_items WHERE invoice_id = i.id), 0) AS subtotal
    FROM invoices i LEFT JOIN clients c ON c.id = i.client_id ORDER BY i.issue_date DESC, i.id DESC`);
 
