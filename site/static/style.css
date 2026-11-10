@@ -1036,6 +1036,16 @@ body.app-fixed .ui-shell-main { min-height: 0; }
  * on the left, status + public-link cards in a right rail. Both grids
  * collapse to one column below desktop widths. */
 .inv-new-grid, .inv-detail-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); gap: var(--spacing-md); align-items: start; }
+.inv-step1-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.5fr) minmax(0, .8fr); gap: var(--spacing-sm); align-items: start; }
+.inv-step1-range { display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-sm); }
+@media (max-width: 1279px) {
+  .inv-step1-grid { grid-template-columns: 1fr 1fr; }
+  .inv-step1-range { grid-column: 1 / -1; }
+}
+@media (max-width: 639px) {
+  .inv-step1-grid { grid-template-columns: 1fr; }
+  .inv-step1-range { grid-column: auto; }
+}
 @media (max-width: 1023px) {
   .inv-new-grid, .inv-detail-grid { grid-template-columns: minmax(0, 1fr); }
 }
@@ -1313,6 +1323,7 @@ body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
 
 /* ---------------- forms / manage ---------------- */
 .form { display: grid; gap: 16px; max-width: 480px; }
+.form.inv-new-form { max-width: none; }
 .form .row { display: flex; gap: 8px; align-items: center; }
 .form .row.end { justify-content: flex-end; }
 /* stacked add-forms: name row, then a control row with the primary action end-aligned */

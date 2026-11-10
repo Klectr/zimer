@@ -479,9 +479,18 @@ describe("#668: manual line items on step 2", () => {
     expect(html).toContain("Add manual line");
   });
 
+  test("the page opens on both steps with a client prompt and no 480px form cap", () => {
+    const html = views([]).invoiceNewPage(p as any);
+    expect(html).toContain('<form method="post" action="/invoices" class="form inv-new-form" id="inv-create-form">');
+    expect(html).toContain('id="invoice-step2"');
+    expect(html).toContain("Pick a client to load unbilled time");
+    expect(html).toContain("Add manual line");
+    expect(html).toContain("Pick a client and period");
+  });
+
   test("the page carries the one create form and the summary actions", () => {
     const html = views([]).invoiceNewPage(p as any, { items: [] });
-    expect(html).toContain('<form method="post" action="/invoices" class="form" id="inv-create-form">');
+    expect(html).toContain('<form method="post" action="/invoices" class="form inv-new-form" id="inv-create-form">');
     expect(html).toContain("Live preview — INV-0001");
     expect(html).toContain("Save draft");
     expect(html).toContain("Send Zinvoice");

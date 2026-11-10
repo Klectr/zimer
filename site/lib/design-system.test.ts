@@ -287,3 +287,13 @@ describe("DESIGN.md token layer (#1092)", () => {
     expect(colorNames.length).toBe(41);
   });
 });
+
+describe("new-zinvoice layout (#1202 parity)", () => {
+  test("the create form is not capped at the 480px edit-form width", () => {
+    expect(css).toContain(".form.inv-new-form { max-width: none; }");
+  });
+  test("client, period, and rate share one row on wide cards and 2-up below 1280", () => {
+    expect(css).toContain(".inv-step1-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.5fr) minmax(0, .8fr);");
+    expect(css).toContain("@media (max-width: 1279px) {\n  .inv-step1-grid { grid-template-columns: 1fr 1fr; }");
+  });
+});

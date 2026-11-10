@@ -333,27 +333,28 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     const selClient = clients.find(c => String(c.id) === p.client_id);
     const sub = selClient ? `${selClient.name} · unbilled through ${shortYmd(p.to)}` : undefined;
     const step1 = formSection({ step: 1, title: "Client & period", bodyHtml: `
-        <div class="form-info">
-          ${icon("info")}
-          <p>Only finished, unbilled entries on this client's projects are included. Client hourly rates can be set on the <a href="/manage">Clients page</a>.</p>
+        <div class="inv-step1-grid">
+          <div class="inv-step1-client">
+            ${selectField({ id: "inv-client", label: "Client", name: "client_id", required: true, value: p.client_id, options: clientPickerOptions(clients) })}
+          </div>
+          <div class="inv-step1-range" id="inv-range">
+            ${textField({ id: "inv-from", label: "From", name: "from", type: "date", value: p.from, required: true })}
+            ${textField({ id: "inv-to", label: "To", name: "to", type: "date", value: p.to, required: true })}
+          </div>
+          <div class="inv-step1-rate">
+            ${textField({ id: "inv-rate", label: "Hourly rate", name: "rate", type: "number", value: p.rate || (selClient ? String(selClient.rate || "") : ""), min: "0", step: "0.01", prefix: "$", suffix: "/hr" })}
+          </div>
         </div>
-        ${selectField({ id: "inv-client", label: "Client", name: "client_id", required: true, value: p.client_id, options: clientPickerOptions(clients) })}
-        <div class="two-field" id="inv-range">
-          ${textField({ id: "inv-from", label: "From", name: "from", type: "date", value: p.from, required: true })}
-          ${textField({ id: "inv-to", label: "To", name: "to", type: "date", value: p.to, required: true })}
-        </div>
-        ${textField({ id: "inv-rate", label: "Hourly rate", name: "rate", type: "number", value: p.rate || (selClient ? String(selClient.rate || "") : ""), min: "0", step: "0.01", prefix: "$", suffix: "/hr" })}
-        ${selClient ? `<p class="muted tiny">Rate from ${esc(selClient.name)}'s default — edit it to override for this zinvoice.</p>` : ""}
-        <div class="row">${button({ label: "Preview line items", type: "submit", variant: "ghost", attrs: 'formaction="/invoices/preview" hx-post="/invoices/preview" hx-target="#invoice-step2" hx-swap="innerHTML" hx-include="#inv-create-form"' })}</div>` });
+        <p class="muted tiny">Only finished, unbilled entries on this client's projects are included. Rates come from the client default; edit the rate to override this zinvoice.</p>` });
 
 
 
     return layout("New zinvoice", `
-      ${appHeader({ title: "New Zinvoice", sub, subId: "inv-new-sub", actions: linkButton({ label: "Cancel", href: "/invoices", variant: "ghost" }) })}
+      ${appHeader({ title: "New Zinvoice", sub: sub || "Pick a client and period", subId: "inv-new-sub", actions: linkButton({ label: "Cancel", href: "/invoices", variant: "ghost" }) })}
       <div id="inv-steps">${steps({ items: STEP_ITEMS, current: preview ? 1 : 0 })}</div>
-      <form method="post" action="/invoices" class="form" id="inv-create-form">
+      <form method="post" action="/invoices" class="form inv-new-form" id="inv-create-form">
         <div class="inv-new-grid">
-          <div>${card({ className: "form-card", content: `${step1}<div id="invoice-step2">${invoiceStep2(p, preview, true)}</div>` })}</div>
+          <div>${card({ className: "form-card", content: `${step1}<div id="invoice-step2">${preview ? invoiceStep2(p, preview, true) : emptyStep2()}</div>` })}</div>
           <div id="inv-preview">${previewCardHtml(p, preview)}</div>
         </div>
       </form>
@@ -504,6 +505,20 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
      out-of-band. The rows are the mock's unbilled-time table: grouped,
      editable line items with an include checkbox per row (in the date
      cell, so the shared header row stays identical to the sheet's). */
+  /** Before a client is picked there is no preview to swap in, but the
+   *  left card should still read as the two-step mock: an empty unbilled
+   *  table with the manual-line action, not a dead page with a button. */
+  function emptyStep2(): string {
+    return formSection({ step: 2, title: "Unbilled time — uncheck to exclude", bodyHtml: `
+        <p class="ui-note">Pick a client to load unbilled time, or add a manual line.</p>
+        <input type="hidden" name="groups" value="0">
+        <div class="table-wrap"><table class="ui-table">
+          <thead>${itemHead()}</thead>
+          <tbody></tbody>
+        </table></div>
+        <div class="row">${button({ label: "Add manual line", icon: "add", variant: "ghost", attrs: "data-add-item" })}</div>` });
+  }
+
   function invoiceStep2(p: NewInvParams, preview?: { items: any[]; emptyMsg?: string; rounding?: number | null }, embedded = false): string {
     if (!preview) return "";
     const roundingNote = preview.rounding
