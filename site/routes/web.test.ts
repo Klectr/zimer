@@ -31,7 +31,7 @@ function setup() {
     timerPartial: noop, todayPartial: noop, weekInner: noop, weekStrip: noop,
     calendarPage: noop, editPage: () => null,
     managePage: views.managePage, clientSelection: views.clientSelection,
-    clientDetailBody: views.clientDetailBody, clientListOob: views.clientListOob,
+    clientDialogBody: views.clientDialogBody, clientDialogProjects: views.clientDialogProjects, manageListsOob: views.manageListsOob,
     bizProfileSection: noop, dailyTargetSection: views.dailyTargetSection, clientSettingsForm: views.clientSettingsForm, themeSectionHtml: views.themeSectionHtml, settingsPage: noop,
     invoicesPage: noop, invoiceNewPage: noop,
     defaultNewInvParams: () => ({}), invoiceStep2: noop,
@@ -213,7 +213,7 @@ describe("client settings (#630)", () => {
     const { client, handleWeb } = setup();
     const res = await postSettings(handleWeb, client.id, full, false);
     expect(res!.status).toBe(302);
-    expect(res!.headers.get("Location")).toBe(`/manage?client=${client.id}`);
+    expect(res!.headers.get("Location")).toBe("/manage");
   });
 });
 
@@ -234,7 +234,7 @@ describe("client create (#1160)", () => {
     const row = db.query("SELECT id, name, email, color FROM clients WHERE name = 'Harbor Dental'").get() as any;
     expect(row.email).toBe("billing@harbor.example");
     expect(row.color).toBe("#4ade80");
-    expect(res!.headers.get("Location")).toBe(`/manage?client=${row.id}`);
+    expect(res!.headers.get("Location")).toBe("/manage");
   });
 
   test("POST /clients with a blank email stores NULL", async () => {
@@ -431,11 +431,9 @@ describe("POST /invoices intent=send (#1202)", () => {
   });
 });
 
-/** #835: /manage defaults the two-pane detail when no ?client= is given.
- *  With clients, the first client fills the detail pane (#805); with no
- *  clients at all, the No-client row does. In both cases there is no
- *  has-selection, so mobile still opens on the list. */
-describe("/manage default selection (#835)", () => {
+/** #1203: /manage is the suite mock's stacked page — add-client card,
+ *  client table, projects card. No selection state, no detail pane. */
+describe("/manage stacked page (#1203)", () => {
   function setupWith(rows: string[]) {
     const db = createDb(mkdtempSync(join(tmpdir(), "tk-web-835-"))).db;
     for (const name of rows) db.query("INSERT INTO clients (name) VALUES (?)").run(name);
@@ -453,7 +451,7 @@ describe("/manage default selection (#835)", () => {
       timerPartial: noop, todayPartial: noop, weekInner: noop, weekStrip: noop,
       calendarPage: noop, editPage: () => null,
       managePage: views.managePage, clientSelection: views.clientSelection,
-      clientDetailBody: views.clientDetailBody, clientListOob: views.clientListOob,
+      clientDialogBody: views.clientDialogBody, clientDialogProjects: views.clientDialogProjects, manageListsOob: views.manageListsOob,
       bizProfileSection: noop, dailyTargetSection: views.dailyTargetSection, clientSettingsForm: views.clientSettingsForm, themeSectionHtml: views.themeSectionHtml, settingsPage: noop,
       invoicesPage: noop, invoiceNewPage: noop,
       defaultNewInvParams: () => ({}), invoiceStep2: noop,
@@ -496,24 +494,42 @@ describe("/manage default selection (#835)", () => {
     return { status: res.status, body: await res.text() };
   }
 
-  test("zero clients: the No-client row fills the detail pane, no has-selection", async () => {
+  test("zero clients: the stacked page renders with the No client row", async () => {
     const { handleWeb } = setupWith([]);
     const { status, body } = await getManage(handleWeb);
     expect(status).toBe(200);
-    expect(body).toContain("Projects not assigned to a client");
-    expect(body).not.toContain("Select a client to manage");
+    expect(body).toContain('<h1 class="ui-app-title">Manage</h1>');
+    expect(body).toContain("No client");
+    expect(body).toContain('id="projects-card"');
     expect(body).not.toContain("has-selection");
-    expect(body).toContain("ui-row selected");
+    expect(body).not.toContain("client-list-detail");
   });
 
-  test("with clients: the first client fills the detail pane, no has-selection", async () => {
+  test("with clients: the table lists them, no selection state", async () => {
     const { handleWeb } = setupWith(["Bytebot", "Acme"]);
     const { status, body } = await getManage(handleWeb);
     expect(status).toBe(200);
-    expect(body).toContain("Manage client Acme");
+    expect(body).toContain("Acme");
+    expect(body).toContain('aria-label="Edit client Acme"');
     expect(body).not.toContain("Select a client to manage");
     expect(body).not.toContain("has-selection");
-    expect(body).toContain("ui-row selected");
+  });
+
+  test("the client dialog fragment serves settings + projects; unknown ids 404", async () => {
+    const { handleWeb } = setupWith(["Acme"]);
+    const req = new Request("http://x/clients/1/dialog", { method: "GET", headers: { "HX-Request": "true" } });
+    const res = await handleWeb(req, new URL(req.url), "/clients/1/dialog", "GET");
+    expect(res!.status).toBe(200);
+    const body = await res!.text();
+    expect(body).toContain('id="client-settings-form"');
+    expect(body).toContain('id="client-dialog-projects"');
+    const missing = new Request("http://x/clients/999/dialog", { method: "GET", headers: { "HX-Request": "true" } });
+    const res404 = await handleWeb(missing, new URL(missing.url), "/clients/999/dialog", "GET");
+    expect(res404!.status).toBe(404);
+    const noneReq = new Request("http://x/clients/none/dialog", { method: "GET", headers: { "HX-Request": "true" } });
+    const noneRes = await handleWeb(noneReq, new URL(noneReq.url), "/clients/none/dialog", "GET");
+    expect(noneRes!.status).toBe(200);
+    expect(await noneRes!.text()).toContain('data-client-name="No client"');
   });
 });
 

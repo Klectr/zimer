@@ -45,10 +45,11 @@ export interface WebTenant {
   calendarPage: (week?: string) => string;
   editPage: (id: number) => string | null;
   editEntryDialog: (id: number) => string | null; /* #903 */
-  managePage: (selected: ClientSel | null) => string; /* #367 */
-  clientSelection: (raw: string | null) => ClientSel | null; /* #367 */
-  clientDetailBody: (sel: ClientSel) => string; /* #367 */
-  clientListOob: (sel: ClientSel | null) => string; /* #367 */
+  managePage: () => string;
+  clientSelection: (raw: string | null) => ClientSel | null;
+  clientDialogBody: (sel: ClientSel) => string;
+  clientDialogProjects: (sel: ClientSel) => string;
+  manageListsOob: () => string;
   bizProfileSection: () => string;
   dailyTargetSection: () => string; /* #908 */
   clientSettingsForm: (c: any, error?: string) => string; /* #630 */
@@ -431,7 +432,7 @@ export function createWebRouter(deps: WebDeps) {
             db, dbPath, qRunning, qOne, qRange, qInvoice, qInvoices,
             notFoundPage, errorPage,
             dashboardPage, timerPartial, todayPartial, todayStatsPartial, weekInner, weekStrip,
-            calendarPage, editPage, editEntryDialog, managePage, clientSelection, clientDetailBody, clientListOob, bizProfileSection, dailyTargetSection, clientSettingsForm, settingsPage, themeSectionHtml, invoicesPage, invoiceNewPage,
+            calendarPage, editPage, editEntryDialog, managePage, clientSelection, clientDialogBody, clientDialogProjects, manageListsOob, bizProfileSection, dailyTargetSection, clientSettingsForm, settingsPage, themeSectionHtml, invoicesPage, invoiceNewPage,
             defaultNewInvParams, invoiceStep2, invoiceDetailBody, invoiceListOob, invoiceDoc, publicInvoicePage,
             getInvoice, invoiceTotals,
             nextInvoiceNumber, stripeLinkFor, unbilledEntries,
@@ -660,30 +661,8 @@ export function createWebRouter(deps: WebDeps) {
           return csvResponse(out.join("\n"), "zimer-invoices.csv");
         }
 
-        /* #367: list-detail — ?client=<id> (or "none") selects into the
-           detail pane (two-pane ≥840px) or the single-pane detail screen;
-           fragment=detail is the HTMX swap the list pane's row clicks request. */
         if (path === "/manage" && method === "GET") {
-          const sp = new URL(req.url).searchParams;
-          let sel = clientSelection(sp.get("client"));
-          /* #805: same default as zinvoices — first client fills the detail
-             pane on desktop; no has-selection, so mobile still opens the list. */
-          let isDefault = false;
-          if (!sel) {
-            const first = db.query("SELECT * FROM clients ORDER BY name").get() as any;
-            if (first) { sel = { kind: "client", client: first }; isDefault = true; }
-            /* #835: with no clients at all, the No-client row is the first
-               row — default to it so the detail pane has content. */
-            else { sel = { kind: "none" }; isDefault = true; }
-          }
-          if (sp.get("fragment") === "detail" && isHtmx(req)) {
-            if (!sel) return new Response("Client not found.", { status: 404 });
-            /* #367: the OOB list carries the selected row — the pushed-URL
-               history snapshot then restores the right selection on back. */
-            const push = sel.kind === "client" ? `/manage?client=${sel.client.id}` : "/manage?client=none";
-            return html(clientDetailBody(sel) + clientListOob(sel), 200, { "HX-Push-Url": push });
-          }
-          return html(managePage(sel, isDefault));
+          return html(managePage());
         }
         /* #233: business profile for the Modern PDF template's FROM block.
            #245: rendered inside the settings modal (GET) and saved from it
@@ -753,9 +732,13 @@ export function createWebRouter(deps: WebDeps) {
           const r = db.query("INSERT INTO clients (name, color, rate, email) VALUES (?, ?, ?, ?) RETURNING id")
             .get(String(form.get("name")), clientColor(form.get("color")),
                  Number(form.get("rate") || 0), email || null) as any;
-          /* #367: plain POST (see the add-client form) — land on the new
-             client selected, on every width. */
-          return new Response(null, { status: 302, headers: { Location: `/manage?client=${r.id}` } });
+          return new Response(null, { status: 302, headers: { Location: "/manage" } });
+        }
+        m = path.match(/^\/clients\/(\d+|none)\/dialog$/);
+        if (m && method === "GET") {
+          const sel = clientSelection(m[1]);
+          if (!sel) return new Response("Client not found.", { status: 404 });
+          return html(clientDialogBody(sel));
         }
         /* #630: client settings modal — all eight editable client fields
            (#1160 added color). Replaces the old inline /name, /contact,
@@ -806,9 +789,9 @@ export function createWebRouter(deps: WebDeps) {
                  clean(form.get("website")), addr && addr.replace(/\r\n/g, "\n"), form.has("color") ? clientColor(form.get("color")) : (existingColor ?? clientColor(null)), Number(m[1]));
           if (isHtmx(req)) {
             const sel = clientSelection(m[1]);
-            return html(sel && sel.kind === "client" ? clientSettingsForm(sel.client) : "");
+            return html(sel && sel.kind === "client" ? clientSettingsForm(sel.client) + manageListsOob() : "");
           }
-          return new Response(null, { status: 302, headers: { Location: `/manage?client=${m[1]}` } });
+          return new Response(null, { status: 302, headers: { Location: "/manage" } });
         }
         m = path.match(/^\/clients\/(\d+)\/delete$/);
         if (m && method === "POST") {
@@ -827,10 +810,12 @@ export function createWebRouter(deps: WebDeps) {
           const cid = form.get("client_id");
           db.query("INSERT INTO projects (name, client_id) VALUES (?, ?)")
             .run(String(form.get("name")), cid ? Number(cid) : null);
-          const sel = clientSelection(cid ? String(cid) : "none"); /* #367 */
-          if (isHtmx(req)) return html(clientDetailBody(sel!) + clientListOob(sel));
-          const push = cid ? `/manage?client=${cid}` : "/manage?client=none";
-          return new Response(null, { status: 302, headers: { Location: push } });
+          const sel = clientSelection(cid ? String(cid) : "none");
+          if (isHtmx(req)) {
+            if (String(form.get("context") || "") === "page") return html(manageListsOob());
+            return html(clientDialogProjects(sel!) + manageListsOob());
+          }
+          return new Response(null, { status: 302, headers: { Location: "/manage" } });
         }
         m = path.match(/^\/projects\/(\d+)\/delete$/);
         if (m && method === "POST") {
@@ -841,10 +826,9 @@ export function createWebRouter(deps: WebDeps) {
             db.query("UPDATE time_entries SET project_id = NULL WHERE project_id = ?").run(Number(m[1]));
             db.query("DELETE FROM projects WHERE id = ?").run(Number(m[1]));
           })();
-          const sel = clientSelection(p && p.client_id ? String(p.client_id) : "none"); /* #367 */
-          if (isHtmx(req)) return html(clientDetailBody(sel!) + clientListOob(sel));
-          const push = p && p.client_id ? `/manage?client=${p.client_id}` : "/manage?client=none";
-          return new Response(null, { status: 302, headers: { Location: push } });
+          const sel = clientSelection(p && p.client_id ? String(p.client_id) : "none");
+          if (isHtmx(req)) return html(clientDialogProjects(sel!) + manageListsOob());
+          return new Response(null, { status: 302, headers: { Location: "/manage" } });
         }
 
         /* #299: one-click "invoice this period". /invoices/new?from=YYYY-MM-DD&to=YYYY-MM-DD

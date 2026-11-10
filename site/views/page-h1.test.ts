@@ -80,7 +80,7 @@ function invoicePages() {
 function managePages() {
   const views = createManageViews({ db: stubDb, layout, unbilledByClient: () => [] });
   return {
-    manage: views.managePage({ kind: "none" }),
+    manage: views.managePage(),
     settings: views.settingsPage(""),
   };
 }
@@ -102,8 +102,8 @@ describe("page-level h1 (#701)", () => {
   test("new invoice page has exactly one h1: New Zinvoice", () => {
     expect(h1Texts(invoicePages().form)).toEqual(["New Zinvoice"]);
   });
-  test("manage page has exactly one h1: Clients", () => {
-    expect(h1Texts(managePages().manage)).toEqual(["Clients"]);
+  test("manage page has exactly one h1: Manage", () => {
+    expect(h1Texts(managePages().manage)).toEqual(["Manage"]);
   });
   test("settings page h1 carries the ui title class (migrated in #1100)", () => {
     expect(managePages().settings).toContain('<h1 class="ui-app-title">Settings</h1>');
@@ -115,7 +115,7 @@ describe("page-level h1 (#701)", () => {
     expect(timerPage()).toMatch(/<h1 class="ui-app-title">Good (morning|afternoon|evening)<\/h1>/);
   });
   test("manage page h1 carries the ui title class (migrated in #1105)", () => {
-    expect(managePages().manage).toContain('<h1 class="ui-app-title">Clients</h1>');
+    expect(managePages().manage).toContain('<h1 class="ui-app-title">Manage</h1>');
   });
   test("zinvoices page h1s carry the ui title class (list: appHeader, #1121)", () => {
     expect(invoicePages().list).toContain('<h1 class="ui-app-title">Zinvoices</h1>');
