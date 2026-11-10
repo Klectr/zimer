@@ -1139,6 +1139,20 @@ body.app-fixed .ui-shell-main { min-height: 0; }
 .cal-summary .nudge-chip--solo { grid-row: 1; grid-column: 2; justify-self: end; align-self: center; margin: 0; }
 .cal-summary .cal-delta svg { width: 14px; height: 14px; vertical-align: -2px; margin-right: 2px; }
 .cal-pane-layout .cal-carousel { grid-area: grid; }
+
+/* Intermediate calendar widths (840–1279px): the summary stacks above the
+ * grid, so keep it to one compact band — total and billable on one line,
+ * the zinvoice action beside the week arrows, and no hint row. */
+.week-nav-actions .nudge-nav { display: none; }
+@media (min-width: 840px) and (max-width: 1279px) {
+  .cal-supporting { gap: 6px; margin: 4px 0 8px; }
+  .cal-supporting .cal-summary { display: flex; align-items: baseline; gap: var(--spacing-sm); flex-wrap: wrap; }
+  .cal-supporting .cal-summary-total { font-size: var(--font-size-heading-2); }
+  .cal-supporting .cal-summary-sub { margin: 0; }
+  .cal-supporting .cal-summary .nudge-chip { display: none; }
+  .week-nav-actions .nudge-nav { display: inline-flex; min-height: var(--control-height); padding: 0 var(--spacing-sm); margin: 0; align-self: center; }
+  .cal-supporting .cal-hint { margin: 0; font-size: 0.6875rem; line-height: 16px; }
+}
 @media (min-width: 1280px) {
   .cal-pane-layout { grid-template-columns: minmax(0, 1fr) var(--layout-supporting-pane);
     grid-template-areas: "grid summary"; grid-template-rows: minmax(0, 1fr); column-gap: var(--layout-pane-gap); }

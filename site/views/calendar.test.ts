@@ -994,3 +994,18 @@ describe("calendar legend (#1202 parity)", () => {
     expect(html).not.toContain('<span class="ui-viz-day-name">Sun Nov');
   });
 });
+
+/** The stacked breakpoint (840–1279) has the full content width but no
+ *  side rail. Keep the summary to one compact band: total and billable
+ *  inline, the zinvoice action beside the arrows, no tall empty block. */
+describe("intermediate week summary (#1202 parity)", () => {
+  test("840–1279 compacts the summary and moves the zinvoice action to the nav", async () => {
+    const css = await Bun.file("site/static/style.css").text();
+    expect(css).toContain("@media (min-width: 840px) and (max-width: 1279px)");
+    expect(css).toContain(".week-nav-actions .nudge-nav { display: none; }");
+    expect(css).toContain(".week-nav-actions .nudge-nav { display: inline-flex;");
+    expect(css).toContain(".cal-supporting .cal-summary { display: flex;");
+    expect(css).toContain(".cal-supporting .cal-summary .nudge-chip { display: none; }");
+    expect(css).toContain(".cal-supporting { gap: 6px;");
+  });
+});

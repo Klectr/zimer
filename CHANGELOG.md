@@ -11,6 +11,7 @@ What's new in Zimer, newest first.
 - **The timer home is one column again.** Today's entries follow the timer card directly; the revenue rail is gone.
 - **The timer home's stats are one compact strip.** Today, this week, and unbilled share a single card with their goals inline, so three numbers stop eating a third of the screen.
 - **Calendar day columns are cards.** The week grid keeps drag and resize, and each week gains the Billable/Invoiced legend and a week-scoped CSV export.
+- **The stacked calendar summary is one compact band.** Between 840 and 1279px the week total and billable share a line, the Zinvoice action moves beside the week arrows, and the grid gets the reclaimed height.
 - **Calendar day headers stay on one line.** Each day is its weekday initial plus the day number; hovering it opens the day tooltip with the full date, tracked total, entry count, and invoiced count.
 
 ## 2026-10-27

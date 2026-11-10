@@ -324,11 +324,17 @@ export function createCalendarViews(deps: CalendarViewDeps) {
          glance (100% of what, which direction?). */
       return ` · <span class="muted cal-delta" aria-label="${abs}% ${dirWord} vs prev week">${icon(trend)} ${abs}% ${dirWord} vs prev week</span>`;
     })();
+    /* The intermediate stacked layout (840–1279px) moves the zinvoice
+       action up beside the week arrows so the summary stays one compact
+       row instead of a full-width block. The duplicated node is hidden by
+       CSS at the breakpoints where the other one shows. */
+    const nudgeNav = nudgeChip.replace('class="nudge-chip', 'class="nudge-chip nudge-nav');
     return `
       <div class="week-nav">
         <h1 class="ui-page-title">${esc(navTitle)}</h1>
         <div class="week-nav-actions">
           ${navActions}
+          ${nudgeNav}
         </div>
       </div>
       <div class="cal-summary">
