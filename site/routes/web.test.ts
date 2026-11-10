@@ -7,8 +7,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Database } from "bun:sqlite";
 import { createDb, getMeta } from "../db.ts";
+import { createDomain } from "../lib/domain.ts";
 import { createWebRouter } from "./web.ts";
 import { createManageViews } from "../views/manage.ts";
+import { createInvoiceViews } from "../views/invoices.ts";
 
 function setup() {
   const db = createDb(mkdtempSync(join(tmpdir(), "tk-web-"))).db;
@@ -321,6 +323,111 @@ describe("manual line items (#668)", () => {
     });
     expect(res!.status).toBe(400);
     expect(db.query("SELECT COUNT(*) AS n FROM invoices").get()).toEqual({ n: 0 });
+  });
+});
+
+/** #1202: the wizard's Send Zinvoice posts intent=send to POST /invoices —
+ *  create + send in one step. Unlike setup() above, the invoice deps here
+ *  are the real domain and views, and freezeInvoiceSnapshots replicates
+ *  the wiring in server.ts (#301: render the sheet into html_snapshot once
+ *  the invoice has left draft) so the freeze itself is asserted, not just
+ *  the call. */
+function setupSend() {
+  const bundle = createDb(mkdtempSync(join(tmpdir(), "tk-web-send-")));
+  const { db, qInvoice, qInvoiceItems, qInvoices } = bundle;
+  db.query("INSERT INTO clients (name, color, rate) VALUES ('Bytebot', '#fb923c', 40)").run();
+  const domain = createDomain({ db, qInvoice, qInvoiceItems, TOKEN: "t" });
+  const invViews = createInvoiceViews({
+    db, qInvoices, layout: (_t: string, b: string) => b,
+    getPublicToken: domain.getPublicToken, stripeConfigured: () => false,
+    nextInvoiceNumber: domain.nextInvoiceNumber, invoiceTotals: domain.invoiceTotals,
+    isOverdue: () => false, unbilledByClient: domain.unbilledByClient,
+  });
+  const freezeCalls: number[] = [];
+  const freezeInvoiceSnapshots = (id: number, _origin: string) => {
+    freezeCalls.push(id);
+    const inv = domain.getInvoice(id);
+    if (!inv || inv.status === "draft") return;
+    db.query("UPDATE invoices SET html_snapshot = ? WHERE id = ?").run(invViews.invoiceSheet(inv), id);
+  };
+  const noop = () => "";
+  const tenant = {
+    db, dbPath: "",
+    qRunning: { get: () => null } as any,
+    qOne: { get: () => null } as any,
+    qRange: { all: () => [] } as any,
+    qInvoice, qInvoices,
+    notFoundPage: noop, errorPage: noop,
+    dashboardPage: noop,
+    timerPartial: noop, todayPartial: noop, weekInner: noop, weekStrip: noop,
+    calendarPage: noop, editPage: () => null,
+    managePage: noop, clientSelection: noop,
+    clientDetailBody: noop, clientListOob: noop,
+    bizProfileSection: noop, dailyTargetSection: noop, clientSettingsForm: noop, themeSectionHtml: noop, settingsPage: noop,
+    invoicesPage: noop, invoiceNewPage: invViews.invoiceNewPage,
+    defaultNewInvParams: () => ({}), invoiceStep2: invViews.invoiceStep2,
+    invoiceDetailBody: invViews.invoiceDetailBody, invoiceListOob: invViews.invoiceListOob, invoiceDoc: invViews.invoiceDoc, publicInvoicePage: noop,
+    getInvoice: domain.getInvoice, invoiceTotals: domain.invoiceTotals,
+    nextInvoiceNumber: domain.nextInvoiceNumber,
+    stripeLinkFor: async () => ({}),
+    unbilledEntries: domain.unbilledEntries, groupToLineItems: domain.groupToLineItems,
+    clientRestFrom: domain.clientRestFrom, ensurePublicToken: domain.ensurePublicToken,
+    getPublicToken: domain.getPublicToken, mintPublicToken: domain.mintPublicToken,
+    invoicePdfInput: () => ({} as any),
+    freezeInvoiceSnapshots,
+  };
+  const { handleWeb } = createWebRouter({
+    getTenant: () => tenant as any,
+    STATIC_DIR: "", TOKEN: "t",
+    authedPage: () => true,
+    tokensEqual: (a: string, b: string) => a === b,
+    html: (body: string, status = 200) => new Response(body, { status }),
+    json: (data: unknown, status = 200) => Response.json(data, { status }),
+    isHtmx: (req: Request) => req.headers.get("HX-Request") === "true",
+    csvResponse: (f: string) => new Response(f),
+    shareOrigin: () => "",
+    PORT: 3000,
+    loginPage: noop, signupPage: noop, hostedLoginPage: noop,
+    HOSTED: false, accounts: null,
+    changelogPage: () => [], termsPage: () => [],
+    notFoundPage: noop, noSuchInvoicePage: noop,
+    rateLimitPage: noop, errorPage: noop,
+    invoicePdf: () => new Uint8Array(), stripeConfigured: () => false,
+    workspaceEmpty: () => false, demoIds: () => [], seedDemoData: () => {},
+    removeDemoData: () => {}, entryToJson: (e: any) => e,
+  });
+  return { db, handleWeb, freezeCalls };
+}
+
+describe("POST /invoices intent=send (#1202)", () => {
+  const fields = {
+    ...baseInvoiceFields, groups: "1",
+    g0_desc: "Logo design", g0_hours: "1", g0_rate: "250",
+    g0_ids: "", g0_date_from: "", g0_date_to: "",
+  };
+
+  test("intent=send lands sent, with the frozen snapshot and a public token", async () => {
+    const { db, handleWeb, freezeCalls } = setupSend();
+    const res = await postInvoice(handleWeb, { ...fields, intent: "send" });
+    expect(res!.status).toBe(302);
+    const inv = db.query("SELECT * FROM invoices").get() as any;
+    expect(res!.headers.get("Location")).toBe(`/invoices?invoice=${inv.id}`);
+    expect(inv.status).toBe("sent");
+    expect(freezeCalls).toEqual([inv.id]);
+    expect(inv.html_snapshot).toBeString();
+    expect(inv.html_snapshot).toContain("INV-0001");
+    expect(inv.public_token).toBeString();
+    expect(inv.public_token.length).toBeGreaterThan(0);
+  });
+
+  test("plain Save draft (no intent) stays draft with no snapshot", async () => {
+    const { db, handleWeb, freezeCalls } = setupSend();
+    const res = await postInvoice(handleWeb, { ...fields });
+    expect(res!.status).toBe(302);
+    const inv = db.query("SELECT * FROM invoices").get() as any;
+    expect(inv.status).toBe("draft");
+    expect(inv.html_snapshot).toBeNull();
+    expect(freezeCalls).toEqual([]);
   });
 });
 

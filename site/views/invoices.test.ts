@@ -495,6 +495,30 @@ describe("#668: manual line items on step 2", () => {
     expect(html).toContain("data-add-item");
   });
 
+  test("a zero-item preview disables both create actions in the fragment", () => {
+    const html = views([]).invoiceStep2(p as any, {
+      items: [], emptyMsg: "No unbilled, finished entries on this client's projects in that range.",
+    });
+    expect(html).toContain('id="inv-preview" hx-swap-oob="true"');
+    expect(html).toContain("disabled>Save draft");
+    expect(html).toContain('disabled name="intent" value="send"');
+  });
+
+  test("a preview with items leaves both create actions enabled", () => {
+    const html = views([]).invoiceStep2(p as any, {
+      items: [{ description: "Website", hours: 2.5, rate: 40, amount: 100, entry_ids: [1], date_from: "2026-09-20", date_to: "2026-09-20" }],
+      rounding: 5,
+    });
+    expect(html).not.toContain("disabled>Save draft");
+    expect(html).not.toContain('disabled name="intent"');
+  });
+
+  test("the full page with a zero-item preview also disables the actions", () => {
+    const html = views([]).invoiceNewPage(p as any, { items: [] });
+    expect(html).toContain("disabled>Save draft");
+    expect(html).toContain('disabled name="intent" value="send"');
+  });
+
   test("no preview renders nothing", () => {
     expect(views([]).invoiceStep2(p as any)).toBe("");
   });

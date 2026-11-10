@@ -295,6 +295,10 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
      preview POST with the rest of the form. */
   function previewCardHtml(p: NewInvParams, preview?: { items: any[]; emptyMsg?: string }): string {
     const t = preview ? invoiceTotals(preview.items, Number(p.tax_rate) || 0) : { subtotal: 0, tax: 0, total: 0 };
+    /* Nothing to create yet — no preview, or a preview with zero line
+       items — leaves both create actions disabled instead of submitting
+       to the create route's plain-text 400. */
+    const noItems = !preview || preview.items.length === 0;
     const lines = preview
       ? preview.items.map(it => ({ label: `${it.description} — ${fmtHours(it.hours)}`, amount: money(it.amount) }))
       : [];
@@ -315,8 +319,8 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
           ${textField({ id: "inv-internal", label: "Internal notes (only you see this)", name: "internal_notes", value: p.internal_notes })}
         </details>
         <div class="inv-summary-actions">
-          ${button({ label: "Save draft", type: "submit", variant: "primary", block: true, disabled: !preview })}
-          ${button({ label: "Send Zinvoice", type: "submit", block: true, disabled: !preview, attrs: 'name="intent" value="send"' })}
+          ${button({ label: "Save draft", type: "submit", variant: "primary", block: true, disabled: noItems })}
+          ${button({ label: "Send Zinvoice", type: "submit", block: true, disabled: noItems, attrs: 'name="intent" value="send"' })}
         </div>
         <p class="inv-send-note">Sending creates the public pay link.</p>`,
     });
@@ -365,6 +369,16 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
         function fmtH(h){var v=Math.round(h*100)/100;return (Number.isInteger(v)?String(v):String(v))+'h';}
         function dueEl(){return document.getElementById('inv-due');}
         function issueEl(){return document.getElementById('inv-issue');}
+        /* The create actions mirror the step-2 rows: disabled while the
+           table is empty (the server renders them that way for a zero-item
+           preview), live once a row exists — a manual line added to an
+           empty preview re-enables them without a round-trip. */
+        function syncActions(){
+          var wrap=document.getElementById('inv-preview');
+          if(!wrap||!form) return;
+          var has=form.querySelector('#invoice-step2 tbody tr')!==null;
+          wrap.querySelectorAll('.inv-summary-actions button').forEach(function(b){ b.disabled=!has; });
+        }
         /* #293: due date follows the selected client's terms (no HTMX
            round-trip — the days ride on data-terms-days). */
         function deriveDue(){
@@ -419,6 +433,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
             });
           }
           if(totalEl) totalEl.textContent=moneyFmt(total);
+          syncActions();
         }
         /* #328: "invoice the rest" — a hand-edited range is never clobbered.
            Delegated on the wrapper so it survives the HTMX range swap. */
@@ -476,6 +491,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
             '<input type="hidden" name="g'+i+'_ids" value=""></td>';
           body.appendChild(tr);
           groups.value=String(i+1);
+          syncActions();
           var desc=tr.querySelector('input[name="g'+i+'_desc"]');
           if(desc) desc.focus();
         });
