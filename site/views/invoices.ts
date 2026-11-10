@@ -163,7 +163,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     return emptyState({ icon: "receipt", body: "Select a zinvoice to preview it here." });
   }
 
-  /* #364: M3 list-detail — the list pane owns unbilled time and invoice
+  /* #364: list-detail — the list pane owns unbilled time and invoice
      rows; the detail pane shows the selected invoice (or a placeholder).
      #1121: the summary figures live above the panes as stat cards.
      Below 840px the panes take turns via .has-selection. #805: isDefault

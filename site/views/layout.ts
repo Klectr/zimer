@@ -267,7 +267,7 @@ function shellActions(): string {
   </div>`;
 }
 
-/** #949: M3 navigation drawer for compact screens — the four app-bar actions
+/** #949: navigation drawer for compact screens — the four app-bar actions
     as labeled icon+text rows, since icon-only buttons are undiscoverable on
     touch. Rendered as a direct body child (same stacking-context reason as
     the settings scrim, #355). The Settings row carries its own id; the

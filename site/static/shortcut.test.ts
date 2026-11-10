@@ -1,4 +1,4 @@
-/** #496: site-wide 450ms long-press reveals M3 plain tooltips on touch.
+/** #496: site-wide 450ms long-press reveals plain tooltips on touch.
  *
  *  shortcut.js runs in the browser with real DOM; here it loads against tiny
  *  fakes so bun can exercise the long-press logic: tip-show is added after
@@ -159,7 +159,7 @@ async function flush() {
 
 /* #1165: the shared toast (window.tkSnackbar) builds the ui toast
    component's markup — tinted icon chip + title — instead of the old
-   M3 snackbar bar. Element creation is captured per test and restored
+   hand-rolled snackbar bar. Element creation is captured per test and restored
    after, same pattern as the fetch/FormData fakes below. */
 describe("shared toast", () => {
   const realCreateElement = g.document.createElement;

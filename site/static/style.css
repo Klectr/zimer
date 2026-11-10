@@ -1,11 +1,12 @@
-/* Timekeep — Material Design 3 (dark scheme).
+/* Zimer — dark scheme.
  *
- * Tokens follow md.sys / md.comp naming from the M3 spec:
- * ref -> sys (these roles) -> comp (the classes below).
- * Seed: pumpkin (var(--primary) family). Dark scheme, tonal spot (no shadows).
+ * Tokens follow the ui token model in DESIGN.md (Lobe-derived): the
+ * --primary family in :root is the scheme's single source of truth, and
+ * components read the semantic --color-* / --radius / --spacing tokens.
+ * Seed: pumpkin (var(--primary) family). Dark scheme, tonal surfaces.
  */
 
-/* ---------------- sys tokens: color (dark) ---------------- */
+/* ---------------- theme tokens: color (dark) ---------------- */
 :root {
   color-scheme: dark;
   /* #841: theme scheme — the single source of truth. Change the scheme here;
@@ -14,27 +15,8 @@
   --on-primary: #442100;
   --primary-container: #713d00;
   --on-primary-container: #ffdcc2;
-  --md-sys-color-primary: var(--primary);
-  --md-sys-color-on-primary: var(--on-primary);
-  --md-sys-color-primary-container: var(--primary-container);
-  --md-sys-color-on-primary-container: var(--on-primary-container);
-  --md-sys-color-secondary-container: #454654;
-  --md-sys-color-on-secondary-container: #e4e1f2;
-  --md-sys-color-error: #ffb4ab;
-  --md-sys-color-on-surface: #e5e1e9;
-  --md-sys-color-on-surface-variant: #cac4cf;
-  --md-sys-color-inverse-surface: #e6e1e9;
-  --md-sys-color-inverse-on-surface: #322f35;
-  --md-sys-color-surface-container-low: #1a1a20;
-  --md-sys-color-surface-container: #1e1e24;
-  --md-sys-color-surface-container-high: #28282f;
-  --md-sys-color-surface-container-highest: #33333b;
 
-  /* shape */
-  --md-sys-shape-corner-extra-small: 4px;
-  --md-sys-shape-corner-large: 16px;
-
-  /* motion (M3 sys tokens) */
+  /* motion tokens */
   --motion-easing-standard: cubic-bezier(0.2, 0, 0, 1);
   --motion-easing-standard-accelerate: cubic-bezier(0.3, 0, 1, 1);
   --motion-easing-standard-decelerate: cubic-bezier(0, 0, 0, 1);
@@ -653,26 +635,25 @@ a.ui-menu-item:active, button.ui-menu-item:active { background: var(--color-fill
 .ui-empty-action { margin-top: var(--spacing); }
 .ui-empty > .empty-mascot { margin-bottom: var(--spacing); }
 
-/* ---------------- sys tokens: layout (M3 window size classes) ----------------
+/* ---------------- layout tokens: window size classes ----------------
  * Breakpoints (dp map 1:1 to px on web): compact <600 · medium 600–839 ·
  * expanded 840–1199 · large 1200–1599 · extra-large 1600+. Body margins: 16px
  * on compact, 24px on medium+. Inter-pane spacer: 24px everywhere. Fixed
  * supporting-pane width: 360px at expanded, 412px at large/XL. CSS variables
  * cannot drive media queries, so the breakpoints appear as literals in the
  * queries below; these tokens are the single source of truth for the values
- * components consume. (M3 layout foundations briefing:
- * research_notes/m3-layout-foundations-20260918-2027/report.md) */
+ * components consume. */
 :root {
   --layout-body-margin: 16px;
   --layout-pane-gap: 24px;
   --layout-supporting-pane: 360px;
   /* #354: primary navigation dimensions. #397: the collapsed rail is 72px —
-     a deliberate deviation from the M3 80dp default (same standing as the
+     a deliberate deviation from the 80dp default (same standing as the
      56px app bar, #389); the 56px active pill still has 8px clearance and
-     the one-word labels still fit. The 80px bottom bar height is the M3
-     default. The /specs measurement values weren't extractable in the
+     the one-word labels still fit. The bottom bar height is 80px. The
+     /specs measurement values weren't extractable in the
      research pass, so these are judgment calls (noted on #354). */
-  --md-nav-bar-height: 80px;
+  --nav-bar-height: 80px;
 }
 @media (min-width: 600px) {
   :root { --layout-body-margin: 24px; }
@@ -694,7 +675,7 @@ a.ui-menu-item:active, button.ui-menu-item:active { background: var(--color-fill
 [data-enter="6"] { animation-delay: 300ms; }
 @keyframes content-enter { from { opacity: 0; transform: translateY(16px); } }
 
-/* ---------------- global scrollbars (M3 tonal, #191) ---------------- */
+/* ---------------- global scrollbars (tonal, #191) ---------------- */
 /* Thin rounded tonal thumbs, transparent track — every scroll region
    (calendar grid, lists, dialogs, page) inherits this. Pumpkin stays
    reserved for CTAs, so thumbs use neutral fill/border tokens only. */
@@ -720,9 +701,9 @@ a.ui-menu-item:active, button.ui-menu-item:active { background: var(--color-fill
   border-width: 2px;
 }
 
-/* ---------------- sys tokens: type ----------------
+/* ---------------- type tokens ----------------
  * Type sizes are rem so text follows the user's root font size (accessibility).
- * Layout chrome stays px on purpose — it maps 1:1 to M3 dp and browser zoom
+ * Layout chrome stays px on purpose — it maps 1:1 to dp and browser zoom
  * covers enlargement. */
 *, *::before, *::after { box-sizing: border-box; }
 body {
@@ -741,7 +722,7 @@ body {
 /* the UA [hidden] rule loses to component display styles; enforce it */
 [hidden] { display: none !important; }
 
-/* visible focus everywhere (M3: focus +10% state layer + ring) */
+/* visible focus everywhere (state layer + ring) */
 :focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
@@ -765,14 +746,14 @@ body {
 .trial-banner-text { margin: 0; flex: 1 1 240px; }
 .trial-banner-cta { margin: 0; display: flex; }
 
-/* Body margins follow the M3 window size classes: 16px on compact (<600px),
+/* Body margins follow the window size classes: 16px on compact (<600px),
    24px on medium and wider (via --layout-body-margin). */
 /* #966: content spans the full width of the main region — no max-width caps. */
 main { padding: 16px var(--layout-body-margin) 96px; }
 main.login { max-width: 420px; margin: 0 auto; margin-top: 8vh; }
 
 /* ---------------- skip link: keyboard users jump past nav chrome (#511) ----------------
- * Visually hidden until keyboard focus; styled as an M3 tonal pill so the one
+ * Visually hidden until keyboard focus; styled as a tonal pill so the one
  * visible element matches the house vocabulary. main:focus has no outline:
  * the skip action already announces the new location. */
 .skip-link {
@@ -906,7 +887,7 @@ input[type="number"] {
 /* ---------------- calendar (time grid) ---------------- */
 .week-nav { display: flex; align-items: center; justify-content: space-between; margin: 8px 0 4px; }
 .week-nav h2 { margin: 0; }
-/* M3 date-picker header pattern: headline leading, nav icon buttons grouped trailing. */
+/* Date-picker header pattern: headline leading, nav icon buttons grouped trailing. */
 .week-nav-actions { display: flex; align-items: center; gap: 4px; }
 .cal-hint { margin: 0 0 12px; }
 /* ---------------- fixed viewport: regions own the scroll (Google app pattern) ----
@@ -952,7 +933,7 @@ body.app-fixed .ui-shell-main { min-height: 0; }
   }
   .ui-mobile-nav {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
-    height: calc(var(--md-nav-bar-height) + env(safe-area-inset-bottom, 0px));
+    height: calc(var(--nav-bar-height) + env(safe-area-inset-bottom, 0px));
     padding-bottom: env(safe-area-inset-bottom, 0px);
     display: flex; align-items: stretch;
     background: var(--color-bg-container);
@@ -966,17 +947,17 @@ body.app-fixed .ui-shell-main { min-height: 0; }
     max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
   /* compact clearance: the fixed bar overlays the bottom 80px */
-  body main { padding-bottom: calc(96px + var(--md-nav-bar-height)); }
-  body.app-fixed main { padding-bottom: calc(16px + var(--md-nav-bar-height)); }
-  .ui-toast-live { bottom: calc(24px + var(--md-nav-bar-height)); }
+  body main { padding-bottom: calc(96px + var(--nav-bar-height)); }
+  body.app-fixed main { padding-bottom: calc(16px + var(--nav-bar-height)); }
+  .ui-toast-live { bottom: calc(24px + var(--nav-bar-height)); }
 }
 
-/* ---------------- invoices list-detail (M3 canonical, #364) ----------------
- * The invoice list → invoice document is a parent-child pairing, so M3
- * expects the list-detail layout: two panes at expanded+, a single pane
+/* ---------------- invoices list-detail (#364) ----------------
+ * The invoice list → invoice document is a parent-child pairing, so it takes
+ * the list-detail layout: two panes at expanded+, a single pane
  * below. The detail pane reuses invoiceDetailBody; its back link shows only
  * in single-pane mode and the selected-row state only in two-pane mode
- * (both per M3). Panes scroll independently on the fixed-viewport page. */
+ * (both layout-driven). Panes scroll independently on the fixed-viewport page. */
 .invoice-list-detail { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .invoice-list-pane, .invoice-detail-pane { min-width: 0; }
 @media (min-width: 840px) {
@@ -999,9 +980,9 @@ body.app-fixed .ui-shell-main { min-height: 0; }
 /* #588: the list-row date phrases share one nowrap group, so a narrow pane
    wraps between the client name and the dates — never between segments. */
 .inv-dates { white-space: nowrap; }
-/* ---------------- supporting-pane layout (M3 canonical, timer page) ----------------
+/* ---------------- supporting-pane layout (timer page) ----------------
  * <840px: single stacked column — timer card stays pinned above, entries + revenue
- * share one scroll region. ≥840px (M3 expanded): focus pane (entries) + trailing
+ * share one scroll region. ≥840px (expanded): focus pane (entries) + trailing
  * fixed supporting pane (revenue) with a 24px gap — 360px at expanded, 412px at
  * large/XL (via --layout-supporting-pane) — each scrolling independently.
  * Spec: supporting-pane example. */
@@ -1019,7 +1000,7 @@ body.app-fixed .ui-shell-main { min-height: 0; }
   .pane-focus { flex: 1; }
   .pane-supporting { flex: 0 0 var(--layout-supporting-pane); }
 }
-/* ---------------- calendar supporting pane (M3 canonical, #67) ----------------
+/* ---------------- calendar supporting pane (#67) ----------------
  * The week grid is the primary content, the week summary is supplementary.
  * The summary keeps its position above the grid (its long-standing spot; the
  * grid is an internally-scrolling 24h surface, so below-the-fold placement
@@ -1174,11 +1155,10 @@ body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
 .ui-shell-actions { display: flex; align-items: center; gap: 4px; }
 .ui-shell-logout { display: inline-flex; margin: 0; }
 
-/* #949: M3 modal navigation drawer, per the official spec measurements:
-   360dp container on surface-container-low, 0/16/16/0 corners, 32% scrim,
-   56dp full-round rows (label-large, on-surface-variant; the indicator sits
-   12dp from the container edge and content 28dp). Dismissal is scrim tap or
-   Escape — the spec has no close button. */
+/* #949: modal navigation drawer, per the house spec measurements:
+   360px container on the container surface, 0/16/16/0 corners, 32% scrim,
+   56px full-round rows; the indicator sits 12px from the container edge
+   and content 28px. Dismissal is scrim tap or Escape — no close button. */
 .nav-drawer-scrim {
   position: fixed; inset: 0; z-index: 60;
   background: rgba(0, 0, 0, 0.32);
@@ -1227,8 +1207,8 @@ body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
 .form .row { display: flex; gap: 8px; align-items: center; }
 .form .row.end { justify-content: flex-end; }
 /* stacked add-forms: name row, then a control row with the primary action end-aligned */
-/* ---------------- clients list-detail (M3 canonical, #367) ----------------
- * Client → projects/rate/terms is a parent-child pairing, so M3 expects the
+/* ---------------- clients list-detail (#367) ----------------
+ * Client → projects/rate/terms is a parent-child pairing, so it takes the
  * list-detail layout: two panes at expanded+, a single pane below. Mirrors
  * the invoices list-detail (#364). The #271 folder-like expand/collapse is
  * superseded by selection and is gone. */
@@ -1254,7 +1234,7 @@ body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
    it left breathing room so its fields align with the row content below. */
 #client-add-form { padding-left: 16px; }
 .detail-form { margin-bottom: 12px; }
-/* #293: canned payment-terms description under the dropdown (M3 supporting text). */
+/* #293: canned payment-terms description under the dropdown (supporting text). */
 .terms-desc { flex: 1 1 100%; margin: 0; font-size: 0.75rem; line-height: 1.4; }
 #client-detail .terms-desc { padding: 0 8px 4px 0; }
 #biz-profile .terms-desc { margin-top: 8px; }
@@ -1273,7 +1253,7 @@ body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
   .demo-banner { animation: banner-in .45s cubic-bezier(0.05, 0.7, 0.1, 1); }
 }
 @keyframes banner-in { from { opacity: 0; transform: translateY(-8px); } }
-/* #402: status rows (settings Updates section) — proper M3
+/* #402: status rows (settings Updates section) — standard
    two-line list-item anatomy: leading icon + headline + supporting text.
    The icon top-aligns with the first line, and wrapped supporting text keeps
    its hanging indent because the text lives in its own flex child. */
@@ -1309,7 +1289,7 @@ body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
   .ui-empty form[action="/demo/load"] { display: none; }
 }
 
-/* #353: content-driven thresholds, not M3 window size classes. Main's extra
+/* #353: content-driven thresholds, not window size classes. Main's extra
    bottom padding keeps the fixed toast from covering trailing content on
    narrower viewports. */
 @media (max-width: 900px) {
@@ -1333,7 +1313,7 @@ body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
 
 /* #330: "Invoiced"/"Draft" mark on timer entry rows — tonal pill, no border. */
 .two-field { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-/* #353: content-driven — form field stacking, not an M3 window size class. */
+/* #353: content-driven — form field stacking, not a window size class. */
 @media (max-width: 560px) { .two-field { grid-template-columns: 1fr; } }
 
 .table-wrap { overflow-x: auto; margin: 0 -4px; padding: 0 4px; }
@@ -1341,8 +1321,9 @@ body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
    carried only by frozen pre-migration snapshots (#301), which are served
    verbatim forever. The structural rules stay dual-selected, but since
    #1133 the DESKTOP VISUALS are forked: .inv-table carries the Lobe table
-   treatment, .md-table keeps the legacy M3 card-row declarations verbatim
-   so frozen documents render exactly as they always have. Do not merge
+   treatment, .md-table keeps the legacy card-row layout (its colors read
+   the ui tokens like everything else) so frozen documents keep their
+   shape. Do not merge
    the fork back, and do not drop the .md-table rules. */
 .inv-table,
   .md-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
@@ -1357,19 +1338,19 @@ body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
   .md-table td.num { text-align: right; white-space: nowrap; }
 .inv-table thead th { color: var(--color-text-secondary); font-weight: 500; font-size: 0.75rem;
   border-bottom: 1px solid var(--color-border); }
-.md-table thead th { color: var(--md-sys-color-on-surface-variant); font-weight: 500; font-size: 0.75rem;
+.md-table thead th { color: var(--color-text-secondary); font-weight: 500; font-size: 0.75rem;
   letter-spacing: 0.4px; text-transform: uppercase; }
 .inv-table tbody tr { border-bottom: 1px solid var(--color-border-secondary); }
-.md-table tbody tr { background: var(--md-sys-color-surface-container-low); }
+.md-table tbody tr { background: var(--color-bg-container); }
 .md-table tbody tr + tr { border-top: 8px solid transparent; background-clip: padding-box; }
 .md-table tbody td:first-child { border-radius: 12px 0 0 12px; }
 .md-table tbody td:last-child { border-radius: 0 12px 12px 0; }
 .inv-table tfoot td { padding: 6px 8px; color: var(--color-text-secondary); }
 .inv-table tfoot tr:first-child td { border-top: 1px solid var(--color-border); }
-.md-table tfoot td { padding: 6px 8px; color: var(--md-sys-color-on-surface-variant); }
+.md-table tfoot td { padding: 6px 8px; color: var(--color-text-secondary); }
 .inv-table tfoot tr.grand td { color: var(--color-text); font-weight: 700; font-size: 1rem;
   padding-top: 10px; }
-.md-table tfoot tr.grand td { color: var(--md-sys-color-on-surface); font-weight: 700; font-size: 1rem;
+.md-table tfoot tr.grand td { color: var(--color-text); font-weight: 700; font-size: 1rem;
   padding-top: 10px; }
 /* #366: the 5-column invoice table must fit a 390px phone with the Amount
    column visible — no hiding it behind a scroll. Compact the table chrome
@@ -1424,7 +1405,7 @@ body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
   .invoice-sheet .md-table tbody tr,
   .invoice-sheet.template-modern .md-table tbody tr {
     display: flex; flex-wrap: wrap; align-items: baseline;
-    background: var(--md-sys-color-surface-container-low);
+    background: var(--color-bg-container);
     border-radius: 12px; padding: 16px; margin: 0 0 12px;
     border-bottom: 0;
   }
@@ -1447,7 +1428,7 @@ body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
      hours × rate meta line. */
   .invoice-sheet .md-table td.inv-date {
     flex: 1 1 100%; display: block; font-size: 0.8125rem;
-    color: var(--md-sys-color-on-surface-variant); margin-bottom: 6px;
+    color: var(--color-text-secondary); margin-bottom: 6px;
   }
   .invoice-sheet .inv-table td.inv-date::after,
   .invoice-sheet .md-table td.inv-date::after { content: none; }
@@ -1455,7 +1436,7 @@ body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
   .invoice-sheet .inv-table td.inv-rate,
   .invoice-sheet .md-table td.inv-hours,
   .invoice-sheet .md-table td.inv-rate {
-    display: inline; font-size: 0.8125rem; color: var(--md-sys-color-on-surface-variant);
+    display: inline; font-size: 0.8125rem; color: var(--color-text-secondary);
   }
   .invoice-sheet .inv-table td.inv-hours::after,
   .invoice-sheet .md-table td.inv-hours::after { content: " hrs\00a0×\00a0"; }
@@ -1486,10 +1467,10 @@ body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
   .invoice-sheet.template-modern .inv-table tfoot tr.grand td,
   .invoice-sheet.template-modern .md-table tfoot tr.grand td { background: none; border-radius: 0; }
 }
-.cell-input { width: 100%; background: var(--md-sys-color-surface-container-highest); color: inherit;
+.cell-input { width: 100%; background: var(--color-bg-elevated); color: inherit;
   border: none; border-radius: 8px; padding: 8px 10px; font: inherit; }
 .cell-input.num { text-align: right; max-width: 110px; }
-.cell-input:focus { outline: 2px solid var(--md-sys-color-primary); }
+.cell-input:focus { outline: 2px solid var(--color-primary); }
 
 /* ---------------- form cards: capped like the invoice sheet ---------------- */
 .ui-card.form-card { max-width: 720px; }
@@ -1509,9 +1490,9 @@ body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
 .form-info a { color: var(--color-primary); }
 
 /* #969: the preview sheet centers in its pane. The sheet is a document
-   surface: it carries its own card base (previously the shared md-card). */
-.invoice-sheet { max-width: 720px; margin: 0 auto 16px; background: var(--md-sys-color-surface-container-high); border-radius: var(--radius-lg); padding: 20px; }
-.invoice-sheet .muted { color: var(--md-sys-color-on-surface-variant); }
+   surface: it carries its own card base (previously a shared card class). */
+.invoice-sheet { max-width: 720px; margin: 0 auto 16px; background: var(--color-bg-elevated); border-radius: var(--radius-lg); padding: 20px; }
+.invoice-sheet .muted { color: var(--color-text-secondary); }
 
 /* Public client invoice page: centered summary card, no app chrome. */
 .page-public-invoice { max-width: 800px; margin: 0 auto; padding: 32px 24px 48px; }
@@ -1527,7 +1508,7 @@ body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
 .changelog-release { margin-top: 24px; }
 .changelog-release h2 { margin: 0 0 8px; color: var(--color-primary); }
 .changelog-release ul { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
-/* #867: inline code spans in release notes — tonal, monospace, M3 4px radius. */
+/* #867: inline code spans in release notes — tonal, monospace, 4px radius. */
 /* #873: nowrap — a hyphen-minus is a legal break point, so a --var name
    could wrap mid-identifier (e.g. "--" then "primary,"). */
 .page-changelog code { font-family: ui-monospace, monospace; font-size: 0.875em;
@@ -1553,23 +1534,23 @@ body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
 .week-clients { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 0 0 14px; }
 .week-client { display: inline-flex; align-items: center; gap: 8px; font-size: var(--font-size-sm); font-weight: 500; }
 .week-client-dot { width: 10px; height: 10px; border-radius: 999px; flex: none;
-  background: var(--md-sys-color-surface-container-highest); }
+  background: var(--color-fill); }
 
 /* Uninvoiced hours nudge chip on the calendar. */
 .nudge-chip { display: inline-flex; align-items: center; gap: 8px; min-height: 48px; font-size: var(--font-size); font-weight: 500;
   align-self: flex-start; /* #week is a flex column; don't stretch full width */
-  background: var(--md-sys-color-surface-container-high);
-  color: var(--md-sys-color-on-surface);
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
   border-radius: 999px; padding: 8px 16px; margin: 0 0 14px;
   text-decoration: none;
   /* #715: on narrow screens the chip may wrap — let the wrap land between the
      two segments, never inside "Invoice this week". */
   flex-wrap: wrap; }
-.nudge-chip:hover { background: var(--md-sys-color-surface-container-highest); }
+.nudge-chip:hover { background: var(--color-fill); }
 /* #715: keep the receipt icon glued to its label — the icon and "Invoice this
    week" never split across lines. */
 .nudge-chip .nudge-go { display: inline-flex; align-items: center; gap: 4px;
-  white-space: nowrap; color: var(--md-sys-color-primary); }
+  white-space: nowrap; color: var(--color-primary); }
 /* Nudge-chip entrance (#52): scale/fade from the chip's top-left anchor
    corner, landing just after the week-nav entrance above it. */
 .nudge-chip {
@@ -1577,18 +1558,18 @@ body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
   animation: nudge-in var(--motion-duration-medium2) var(--motion-easing-emphasized-decelerate) var(--motion-duration-short2) backwards;
 }
 @keyframes nudge-in { from { opacity: 0; transform: scale(0.8); } }
-.inv-notes { margin-top: 16px; color: var(--md-sys-color-on-surface-variant); white-space: pre-wrap; }
+.inv-notes { margin-top: 16px; color: var(--color-text-secondary); white-space: pre-wrap; }
 /* #243: plain-language payment terms, part of the invoice document. */
 .inv-terms { margin-top: 16px; }
 /* #302: internal-only notes — app surface only, never printed or shared. */
 .internal-notes { margin: 20px 0 0; padding: 14px 16px; border-radius: 12px;
-  background: var(--md-sys-color-surface-container); }
+  background: var(--color-bg-elevated); }
 .internal-notes-label { font-size: 0.75rem; letter-spacing: .4px; text-transform: uppercase;
-  color: var(--md-sys-color-on-surface-variant); margin-bottom: 6px; }
+  color: var(--color-text-secondary); margin-bottom: 6px; }
 .internal-notes p { margin: 0; white-space: pre-wrap; }
 /* #956: proof-of-payment section — app surface only, tonal like internal notes. */
 .payment-proof { margin: 20px 0 0; padding: 14px 16px; border-radius: 12px;
-  background: var(--md-sys-color-surface-container); }
+  background: var(--color-bg-elevated); }
 .payment-proof .internal-notes-label svg { vertical-align: -4px; margin-right: 4px; }
 .proof-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; }
 .proof-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1597,8 +1578,8 @@ body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
 .proof-icons .inline { display: inline; }
 .proof-nudge { margin: 4px 0 10px; }
 .proof-upload { display: flex; align-items: center; gap: 12px; margin-top: 10px; flex-wrap: wrap; }
-.proof-file-label { font-size: 0.9rem; color: var(--md-sys-color-on-surface-variant);
-  padding: 8px 16px; border-radius: 20px; background: var(--md-sys-color-surface-container-high);
+.proof-file-label { font-size: 0.9rem; color: var(--color-text-secondary);
+  padding: 8px 16px; border-radius: 20px; background: var(--color-bg-elevated);
   cursor: pointer; white-space: nowrap; }
 .proof-upload input[type="file"] { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
 .proof-hint { margin: 8px 0 0; font-size: 0.8rem; }
@@ -1628,10 +1609,10 @@ body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
 .inv-modern-badge.paid { background: #2e9e4f; color: #fff; }
 /* #831: draft badge mirrors .pill-draft — a draft was never sent, so it gets
    the neutral secondary-container treatment, not the amber unpaid attention color. */
-.inv-modern-badge.draft { background: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container); }
+.inv-modern-badge.draft { background: var(--color-fill); color: var(--color-text); }
 .inv-modern-parties { display: flex; gap: 40px; margin: 0 0 20px; }
 .inv-modern-label { font-size: 0.6875rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
-  color: var(--md-sys-color-on-surface-variant); margin-bottom: 6px; }
+  color: var(--color-text-secondary); margin-bottom: 6px; }
 .template-modern .inv-table thead th,
   .template-modern .md-table thead th { background: #1c1c1f; color: #fff; font-weight: 700; font-size: 0.6875rem;
   letter-spacing: 1.5px; text-transform: uppercase; }
@@ -1671,11 +1652,11 @@ body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
 .share-lines { margin: 28px 0 8px; }
 .share-line { display: flex; align-items: center; gap: 12px; padding: 7px 0; min-width: 0; }
 .share-label { font-weight: 500; white-space: nowrap; }
-.share-label.warn { color: var(--md-sys-color-error); }
+.share-label.warn { color: var(--color-error); }
 .share-url { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  color: var(--md-sys-color-on-surface-variant); font-size: 0.8125rem; }
+  color: var(--color-text-secondary); font-size: 0.8125rem; }
 /* #502: the client link truncates with ellipsis — its full URL lives in the
-   house M3 plain tooltip (hover / focus / 450ms touch long-press via the
+   house plain tooltip (hover / focus / 450ms touch long-press via the
    site-wide [data-tip] handler) instead of a native title. The wrapper anchors
    the tooltip because the ellipsis span's overflow:hidden would clip it; the
    tooltip wraps the long URL across lines instead of clipping it. */
@@ -1683,11 +1664,11 @@ body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
 .share-url-wrap > .share-url { display: block; flex: none; }
 .share-url-wrap[data-tip]::after {
   content: attr(data-tip);
-  position: absolute; left: 0; top: calc(100% + 4px); /* M3: 4dp anchor gap */
-  background: var(--md-sys-color-inverse-surface);
-  color: var(--md-sys-color-inverse-on-surface);
-  border-radius: var(--md-sys-shape-corner-extra-small); /* M3 plain tooltip shape */
-  padding: 4px 8px; /* M3 plain tooltip padding */
+  position: absolute; left: 0; top: calc(100% + 4px); /* 4px anchor gap */
+  background: var(--color-bg-spotlight);
+  color: var(--color-text);
+  border-radius: var(--radius-xs);
+  padding: 4px 8px;
   font-size: 0.75rem; line-height: 16px;
   max-width: 0; overflow: hidden; /* #556: collapse while hidden */
   max-height: 0; /* #650: the URL wraps at zero width into dozens of lines —
@@ -1759,8 +1740,8 @@ body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
 .inv-breakdown { margin-top: 20px; }
 .inv-breakdown-sub { margin: 2px 0 8px; }
 .tb-chart { width: 100%; height: auto; display: block; }
-.tb-chart .tb-bar { fill: var(--md-sys-color-primary); }
-.tb-chart text { fill: var(--md-sys-color-on-surface-variant); font-size: 0.625rem; }
+.tb-chart .tb-bar { fill: var(--color-primary); }
+.tb-chart text { fill: var(--color-text-secondary); font-size: 0.625rem; }
 /* Error pages (404/500): centered, tonal, no hard borders. */
 .error-page { max-width: 560px; margin: 0 auto; padding: 96px 24px; text-align: center; }
 .error-page h1 { margin: 0 0 12px; }
@@ -1796,7 +1777,7 @@ body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
  * Shimmer placeholders shown while HTMX partials load. Tonal shapes, no
  * hard borders; the shimmer sweep is killed by the global
  * prefers-reduced-motion guard (animation-duration override). */
-.skel { position: relative; overflow: hidden; background: var(--md-sys-color-surface-container-highest); }
+.skel { position: relative; overflow: hidden; background: var(--color-fill); }
 .skel::after {
   content: ""; position: absolute; inset: 0;
   background: linear-gradient(100deg, transparent 25%, rgba(255, 255, 255, 0.07) 50%, transparent 75%);
@@ -1813,7 +1794,7 @@ body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
    transform. Each strip is a container: wide strips show the 24h grid, narrow
    ones the week agenda. */
 .cal-carousel { grid-area: grid; overflow: hidden; min-width: 0; min-height: 0;
-  border-radius: var(--md-sys-shape-corner-large); }
+  border-radius: 16px; }
 .cal-track { display: flex; height: 100%; width: 100%; transform: translateX(-100%);
   transition: transform 260ms cubic-bezier(.2,0,0,1); }
 .cal-track.no-anim { transition: none; }

@@ -316,7 +316,7 @@ describe("entry row tooltips (#484)", () => {
   }
   test("edit uses the house data-tip tooltip, not the native title", () => {
     const html = row(finished);
-    // the native OS tooltip renders differently from the M3 plain tooltips
+    // the native OS tooltip renders differently from the app's plain tooltips
     // the invoice action buttons use — one house system for all of them.
     expect(html).toContain('data-tip="Edit"');
     expect(html).not.toContain('title="Edit"');
@@ -335,7 +335,7 @@ describe("entry row tooltips (#484)", () => {
   test("inv-mark chip uses the house data-tip tooltip, not the native title (#498)", () => {
     const html = row({ ...finished, invoice_number: "INV-0042", invoice_status: "sent" } as any);
     // native title shows an OS-styled tooltip and never fires on touch —
-    // the chip joins the M3 plain tooltip system (450ms long-press, #496).
+    // the chip joins the plain tooltip system (450ms long-press, #496).
     expect(html).toContain('class="ui-inv-mark"');
     expect(html).toContain('data-tip="Zinvoiced on INV-0042"');
     expect(html).not.toContain('title="Zinvoiced on INV-0042"');

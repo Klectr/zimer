@@ -94,7 +94,7 @@
     /* #534: holding t must not machine-gun the timer via key auto-repeat. */
     if (e.repeat) return;
     if (isEditable(e.target)) return;
-    /* #540: a modal dialog is open — M3 modal dialogs capture all
+    /* #540: a modal dialog is open — modal dialogs capture all
        interaction until dismissed, so the shortcut must not toggle the
        timer behind the scrim. Both dialogs (calendar, settings) use
        .cal-scrim, hidden when closed. */
@@ -158,7 +158,7 @@
     ticker.stop();
   }
 
-  /* #496: M3 plain tooltips need a 450ms long-press on touch, where hover
+  /* #496: plain tooltips need a 450ms long-press on touch, where hover
      doesn't exist. Used to live inline per page (#69 calendar day heads,
      #432 invoice icon buttons); now site-wide so timer/manage icon buttons
      get it too. Document-level delegation survives htmx swaps. */

@@ -1,4 +1,4 @@
-/** Manage views: clients in an M3 list-detail layout (#367, mirrors the
+/** Manage views: clients in a list-detail layout (#367, mirrors the
  *  invoices list-detail from #364). The leading pane lists clients; the
  *  detail pane manages the selected client's rate, payment terms, projects,
  *  and deletion. */

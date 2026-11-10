@@ -127,7 +127,7 @@ describe("calendar entry aria-label (#479)", () => {
 });
 
 /** #486: finish the data-tip sweep — week-nav chevrons used the OS-native
- *  title= tooltip while the rest of the app shows M3 plain tooltips. */
+ *  title= tooltip while the rest of the app shows plain tooltips. */
 describe("week-nav tooltips (#486)", () => {
   const stubQuery = () => ({
     get: (..._a: unknown[]) => ({ n: 1 }),
@@ -924,8 +924,8 @@ describe("calendar project pickers (#1121)", () => {
 });
 
 /** #1132: entries use the ui tint treatment (the viz-block pattern), and
- *  the M3 night-sky decoration is gone from markup and CSS. */
-describe("calendar de-Material restyle (#1132)", () => {
+ *  the legacy night-sky decoration is gone from markup and CSS. */
+describe("calendar legacy decoration removal (#1132)", () => {
   test("entry blocks are the ui-viz tint treatment; no cal-entry rules remain", async () => {
     const css = await Bun.file("site/static/style.css").text();
     const block = css.match(/\.ui-viz-block \{[^}]*\}/);

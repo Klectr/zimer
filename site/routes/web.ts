@@ -660,7 +660,7 @@ export function createWebRouter(deps: WebDeps) {
           return csvResponse(out.join("\n"), "zimer-invoices.csv");
         }
 
-        /* #367: M3 list-detail — ?client=<id> (or "none") selects into the
+        /* #367: list-detail — ?client=<id> (or "none") selects into the
            detail pane (two-pane ≥840px) or the single-pane detail screen;
            fragment=detail is the HTMX swap the list pane's row clicks request. */
         if (path === "/manage" && method === "GET") {
@@ -898,7 +898,7 @@ export function createWebRouter(deps: WebDeps) {
         }
 
         /* ---- invoicing pages ---- */
-        /* #364: M3 list-detail — ?invoice=<id> selects into the detail pane
+        /* #364: list-detail — ?invoice=<id> selects into the detail pane
            (two-pane ≥840px) or the single-pane detail screen; fragment=detail
            is the HTMX swap the list pane's row clicks request. */
         if (path === "/invoices" && method === "GET") {
