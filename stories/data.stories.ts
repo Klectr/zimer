@@ -18,7 +18,7 @@ export const dataStories: Story[] = [
     render: () =>
       `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;max-width:640px">` +
       card({ content: statBlock({ label: "Outstanding", value: "$3,915", sub: "3 sent, 1 overdue" }) }) +
-      card({ content: statBlock({ label: "Drafts", value: "2", sub: "$1,827 ready to send" }) }) +
+      card({ content: statBlock({ label: "Drafts", value: "2", sub: "$1,827 not yet sent" }) }) +
       card({
         content:
           statBlock({ label: "Today", value: "5h 12m" }) +

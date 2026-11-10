@@ -154,8 +154,8 @@ export const pagesStories: Story[] = [
       frame("invoices", "Zinvoices", "Outstanding $2,730.00 · Paid this month $425.00", linkButton({ label: "New Zinvoice", href: "/invoices/new", variant: "primary" }),
         `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">` +
         card({ content: statBlock({ label: "Outstanding", value: "$2,730.00", sub: "2 sent, 1 overdue" }) }) +
-        card({ content: statBlock({ label: "Drafts", value: "1", sub: "$1,827.50 ready to send" }) }) +
-        card({ content: statBlock({ label: "Paid · November", value: "$425.00", sub: "Avg. 3 days to pay" }) }) +
+        card({ content: statBlock({ label: "Drafts", value: "1", sub: "$1,827.50 not yet sent" }) }) +
+        card({ content: statBlock({ label: "Paid · November", value: "$425.00", sub: "1 invoice paid" }) }) +
         `</div>` +
         `<div style="display:flex;gap:8px;align-items:flex-end">` +
         filterChips({

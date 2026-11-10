@@ -88,13 +88,13 @@ describe("paid-on date", () => {
     expect(row).not.toContain("inv-overflow-menu-");
   });
 
-  test("#424: paid label is a ui chip first in the detail actions row", () => {
+  test("#424: paid label is a badge first in the detail actions row", () => {
     const html = views([]).invoiceDetailBody(detailInv("paid", "2026-09-21") as any, "http://x");
     const actionsRow = html.match(/<div class="page-head no-print">[\s\S]*?<div class="row">([\s\S]*?)<\/div>\s*<\/div>/)?.[1] || "";
-    expect(actionsRow).toContain("ui-chip ui-chip-paid");
+    expect(actionsRow).toContain("inv-badge inv-badge-paid");
     expect(actionsRow).toContain("Paid Sep 21");
     // chip leads the actions row, ahead of Download PDF
-    expect(actionsRow.indexOf("ui-chip")).toBeLessThan(actionsRow.indexOf("Download PDF"));
+    expect(actionsRow.indexOf("inv-badge")).toBeLessThan(actionsRow.indexOf("Download PDF"));
     // title block untouched: back link only, no paid date
     const headBlock = html.match(/<div class="invoice-detail-head">[\s\S]*?<\/div>/)?.[0] || "";
     expect(headBlock).not.toContain("Paid Sep 21");
@@ -107,21 +107,26 @@ describe("paid-on date", () => {
     expect(html).not.toContain("Paid ");
   });
 
-  test("table rows carry issued and due in their own columns", () => {
-    /* The mock's table gives each date its own column, so the middot
-       segments the narrow list pane needed (#442/#481/#772) are gone —
-       a date can never dangle or split because it never shares a line. */
+  test("table rows carry issued under the number and due with its state sub", () => {
+    /* The reference table stacks each cell: the invoice cell carries the
+       issued date under the number; the due cell carries the due date
+       over a state sub (Paid <date> once paid, a relative count while
+       open) — no middot segment chains (#442/#481/#772 stay retired). */
     const html = views([{ ...baseRow, status: "paid", paid_at: "2026-09-21" }]).invoiceListOob(7);
-    expect(html).toContain('<td class="col-opt">Sep 1</td>');
-    expect(html).toContain('<td class="col-opt">Sep 30</td>');
+    expect(html).toContain("Issued Sep 1");
+    expect(html).toContain("Sep 30");
+    expect(html).toContain("Paid Sep 21");
     const html2 = views([{ ...baseRow, status: "sent", paid_at: null }]).invoiceListOob(0);
-    expect(html2).toContain('<td class="col-opt">Sep 1</td>');
-    expect(html2).toContain('<td class="col-opt">Sep 30</td>');
+    expect(html2).toContain("Issued Sep 1");
+    expect(html2).toContain("Sep 30");
+    expect(html2).toMatch(/\d+d ago|Due today|in \d+d/);
   });
 
-  test("draft rows dash the issued column; the number links to the detail", () => {
+  test("draft rows dash the due cell; the View button links to the detail", () => {
     const html = views([{ ...baseRow, status: "draft", paid_at: null, due_date: null }]).invoiceListOob(0);
-    expect(html).toContain('<a class="inv-num-link" href="/invoices?invoice=7">INV-0007</a>');
+    expect(html).toContain('href="/invoices?invoice=7"');
+    expect(html).toContain(">View</a>");
+    expect(html).not.toContain("inv-num-link");
     expect(html).toContain('<td class="col-opt">—</td>');
   });
 
@@ -428,9 +433,11 @@ describe("#639: PDF input omits payUrl once paid", () => {
  *  detail view, which opens at the top of its own page — the two-pane
  *  fragment swap (#364/#643) retired with the pane. */
 describe("list rows navigate to the detail view", () => {
-  test("the number cell links to /invoices?invoice=<id> and no pane renders", () => {
+  test("the View button links to /invoices?invoice=<id> and no pane renders", () => {
     const html = views([{ ...baseRow, status: "sent", paid_at: null }]).invoicesPage(null, "http://x");
-    expect(html).toContain('<a class="inv-num-link" href="/invoices?invoice=7">INV-0007</a>');
+    expect(html).toContain('href="/invoices?invoice=7"');
+    expect(html).toContain(">View</a>");
+    expect(html).not.toContain("inv-num-link");
     expect(html).not.toContain("invoice-detail-pane");
     expect(html).not.toContain("invoice-list-detail");
   });
@@ -561,7 +568,8 @@ describe("list vs detail selection", () => {
   test("no selection renders the list table", () => {
     const html = views(rows).invoicesPage(null, "http://x");
     expect(html).toContain("ui-filter-chips");
-    expect(html).toContain('<th scope="col">Number</th>');
+    expect(html).toContain('<th scope="col">Client</th>');
+    expect(html).toContain('<th scope="col">Invoice</th>');
     expect(html).not.toContain('id="invoice-detail"');
   });
   test("the status filter narrows the table", () => {
@@ -624,18 +632,18 @@ describe("#829: new-zinvoice due-date prefill follows global payment terms", () 
 describe("#831: detail status chip labels drafts Draft, not Unpaid", () => {
   test("draft chip reads Draft with the draft (neutral) treatment", () => {
     const html = views([]).invoiceDetailBody(detailInv("draft", null) as any, "http://x");
-    expect(html).toContain('<span class="ui-chip ui-chip-draft">Draft</span>');
+    expect(html).toContain('<span class="inv-badge inv-badge-draft">Draft</span>');
     expect(html).not.toContain("Unpaid");
   });
 
   test("sent chip reads Sent with the info treatment", () => {
     const html = views([]).invoiceDetailBody(detailInv("sent", null) as any, "http://x");
-    expect(html).toContain('<span class="ui-chip ui-chip-sent">Sent</span>');
+    expect(html).toContain('<span class="inv-badge inv-badge-sent">Sent</span>');
   });
 
   test("paid chip reads Paid with the paid treatment", () => {
     const html = views([]).invoiceDetailBody(detailInv("paid", "2026-09-21") as any, "http://x");
-    expect(html).toContain('<span class="ui-chip ui-chip-paid">Paid</span>');
+    expect(html).toContain('<span class="inv-badge inv-badge-paid">');
   });
 });
 
@@ -747,13 +755,13 @@ describe("zinvoices stat cards (#1121)", () => {
     const html = views(statRows()).invoicesPage(null, "http://x");
     expect(html).toContain('<div class="ui-stat-row" id="inv-stats">');
     expect(html).toContain('<div class="ui-stat-value">$2,730.00</div>');
-    expect(html).toContain("2 sent");
+    expect(html).toContain("2 open invoices");
     expect(html).toContain('<div class="ui-stat-value">1</div>');
-    expect(html).toContain("$1,827.50 ready to send");
+    expect(html).toContain("$1,827.50 not yet sent");
     expect(html).toContain('<div class="ui-stat-value">$425.00</div>');
     const n = new Date();
     const paidAt = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-15`;
-    expect(html).toContain(`Avg. ${daysBetween("2026-09-01", paidAt)} days to pay`);
+    expect(html).toContain("1 invoice paid");
     expect(html).toContain("Outstanding $2,730.00 · Paid this month $425.00");
     expect(html).not.toContain("inv-outstanding");
   });

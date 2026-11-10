@@ -149,6 +149,32 @@
 .ui-chip-paid { background: var(--color-success-bg); color: var(--color-success); }
 .ui-chip-overdue { background: var(--color-error-bg); color: var(--color-error); }
 
+.inv-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 650; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+.inv-badge svg { width: 11px; height: 11px; flex: none; }
+.inv-badge-paid { background: var(--color-success); color: #052e1b; }
+.inv-badge-sent { background: var(--color-info-bg); color: #93c5fd; }
+.inv-badge-overdue { background: var(--color-error-bg); color: #fca5a5; }
+.inv-badge-draft { background: var(--color-fill-secondary); color: var(--color-text-secondary); }
+.inv-cell-main { display: flex; align-items: center; gap: 8px; color: var(--color-text); font-weight: 550; }
+.inv-cell-sub { display: block; font-size: var(--font-size-sm); color: var(--color-text-tertiary); margin-top: 2px; }
+.inv-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--color-fill); flex: none; }
+.inv-amt { font-weight: 600; color: var(--color-text); }
+.inv-view-cell { text-align: right; }
+.inv-widgets { display: grid; grid-template-columns: 1.15fr 1fr 1fr; gap: var(--spacing-sm); margin-top: var(--spacing-sm); align-items: start; }
+.inv-widgets-col { display: grid; gap: var(--spacing-sm); }
+.inv-wsub { font-size: var(--font-size-sm); color: var(--color-text-secondary); margin: 2px 0 6px; }
+.inv-wrow { display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-sm); padding: 7px 0; border-bottom: 1px solid var(--color-border-secondary); }
+.inv-wrow:last-child { border-bottom: 0; }
+.inv-wmain { display: inline-flex; align-items: center; gap: 10px; min-width: 0; }
+.inv-wtext { display: grid; }
+.inv-wname { font-weight: 550; color: var(--color-text); }
+.inv-wamt { text-align: right; flex: none; }
+.inv-wval { font-weight: 600; color: var(--color-text); font-variant-numeric: tabular-nums; }
+.inv-bar { height: 4px; border-radius: 99px; background: var(--color-fill-tertiary); margin: -2px 0 6px; }
+.inv-bar i { display: block; height: 100%; border-radius: 99px; background: var(--color-text-tertiary); }
+.inv-overdue-text { color: var(--color-error); }
+@media (max-width: 960px) { .inv-widgets { grid-template-columns: 1fr; } }
+
 .ui-field { display: flex; flex-direction: column; gap: var(--spacing-xxs); }
 .ui-field-label { font-size: var(--font-size); font-weight: 500; color: var(--color-text); }
 .ui-input {
@@ -1739,7 +1765,7 @@ body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
   .md-table tfoot td { color: #333; }
   .inv-table tfoot tr.grand td,
   .md-table tfoot tr.grand td { color: #000; }
-  .ui-chip { border: 1px solid #999; background: #fff !important; color: #111 !important; }
+  .ui-chip, .inv-badge { border: 1px solid #999; background: #fff !important; color: #111 !important; }
   .inv-notes { color: #333; }
 }
 
