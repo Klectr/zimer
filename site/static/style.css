@@ -1546,7 +1546,7 @@ body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
   /* #715: on narrow screens the chip may wrap — let the wrap land between the
      two segments, never inside "Invoice this week". */
   flex-wrap: wrap; }
-.nudge-chip:hover { background: var(--color-fill-secondary); }
+.nudge-chip:hover { background: var(--color-fill); }
 /* #715: keep the receipt icon glued to its label — the icon and "Invoice this
    week" never split across lines. */
 .nudge-chip .nudge-go { display: inline-flex; align-items: center; gap: 4px;
@@ -1777,7 +1777,7 @@ body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
  * Shimmer placeholders shown while HTMX partials load. Tonal shapes, no
  * hard borders; the shimmer sweep is killed by the global
  * prefers-reduced-motion guard (animation-duration override). */
-.skel { position: relative; overflow: hidden; background: var(--color-fill-secondary); }
+.skel { position: relative; overflow: hidden; background: var(--color-fill); }
 .skel::after {
   content: ""; position: absolute; inset: 0;
   background: linear-gradient(100deg, transparent 25%, rgba(255, 255, 255, 0.07) 50%, transparent 75%);
