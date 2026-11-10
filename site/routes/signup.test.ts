@@ -49,7 +49,7 @@ function setup() {
     timerPartial: noop, todayPartial: noop, weekInner: noop, weekStrip: noop,
     calendarPage: noop, editPage: () => null,
     managePage: views.managePage, clientSelection: views.clientSelection,
-    clientDetailBody: views.clientDetailBody, clientListOob: views.clientListOob,
+    clientDialogBody: views.clientDialogBody, clientDialogProjects: views.clientDialogProjects, manageListsOob: views.manageListsOob,
     bizProfileSection: noop, dailyTargetSection: views.dailyTargetSection, clientSettingsForm: views.clientSettingsForm, settingsPage: noop,
     invoicesPage: noop, invoiceNewPage: noop,
     defaultNewInvParams: () => ({}), invoiceStep2: noop,

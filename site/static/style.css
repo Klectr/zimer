@@ -1207,36 +1207,26 @@ body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
 .form .row { display: flex; gap: 8px; align-items: center; }
 .form .row.end { justify-content: flex-end; }
 /* stacked add-forms: name row, then a control row with the primary action end-aligned */
-/* ---------------- clients list-detail (#367) ----------------
- * Client → projects/rate/terms is a parent-child pairing, so it takes the
- * list-detail layout: two panes at expanded+, a single pane below. Mirrors
- * the invoices list-detail (#364). The #271 folder-like expand/collapse is
- * superseded by selection and is gone. */
-.client-list-detail { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-.client-list-pane, .client-detail-pane { min-width: 0; }
-@media (min-width: 840px) {
-  .client-list-detail { flex-direction: row; gap: var(--layout-pane-gap); align-items: stretch; }
-  .client-list-pane { flex: 0 0 400px; overflow-y: auto; }
-  .client-detail-pane { flex: 1; min-width: 0; overflow-y: auto; }
-  .client-detail-pane .detail-back { display: none; }
-}
-@media (max-width: 839px) {
-  .client-list-pane, .client-detail-pane { flex: 1; min-height: 0; overflow-y: auto; }
-  .client-list-detail.has-selection .client-list-pane { display: none; }
-  .client-list-detail:not(.has-selection) .client-detail-pane { display: none; }
-}
-.client-detail-head { display: flex; align-items: center; gap: 12px; margin: 4px 0 16px; }
-/* #633: name left, cog pushed to the right edge via space-between. */
-.client-detail-head.has-settings { justify-content: space-between; }
-.client-detail-head .client-settings-open { flex: none; }
-.client-add { margin-bottom: 8px; }
-/* #383: the add-client field sat tight against the column's left edge — give
-   it left breathing room so its fields align with the row content below. */
-#client-add-form { padding-left: 16px; }
+/* ---------------- manage page ----------------
+ * One stacked page: add-client card, client table, projects card.
+ * Editing a client happens in the client dialog, not a detail pane. */
+.manage-stack { display: flex; flex-direction: column; gap: var(--spacing-sm); }
+.manage-add-form { display: flex; gap: var(--spacing-sm); align-items: flex-end; flex-wrap: wrap; }
+.manage-add-grow { flex: 1 1 220px; min-width: 0; }
+.manage-add-email { flex: 0 1 220px; min-width: 0; }
+.manage-add-rate { flex: 0 0 150px; }
+.manage-table-card { padding: var(--spacing-xs) 0; }
+.manage-client-name { display: inline-flex; align-items: center; gap: var(--spacing-sm); font-weight: 500; }
+.manage-edit-cell { text-align: right; white-space: nowrap; }
+.manage-chips { display: flex; flex-wrap: wrap; gap: var(--spacing-xs); align-items: center; }
+button.ui-tag { border: 0; font: inherit; cursor: pointer; }
+.manage-new-project svg { width: 14px; height: 14px; }
+.manage-note { color: var(--color-text-secondary); font-size: var(--font-size-sm); margin-top: var(--spacing-sm); }
+#client-dialog-projects { margin-top: var(--spacing-md); }
+.manage-delete-client { margin-top: var(--spacing-md); }
 .detail-form { margin-bottom: 12px; }
 /* #293: canned payment-terms description under the dropdown (supporting text). */
 .terms-desc { flex: 1 1 100%; margin: 0; font-size: 0.75rem; line-height: 1.4; }
-#client-detail .terms-desc { padding: 0 8px 4px 0; }
 #biz-profile .terms-desc { margin-top: 8px; }
 
 /* Milestone 11: demo onboarding banner. */
