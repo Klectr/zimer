@@ -6,6 +6,7 @@ What's new in Zimer, newest first.
 
 - **The suite mock's surface style is live across the app.** Cards are translucent glass on a 14px radius, auth and public sheets sit on 20px surfaces, inputs are 8px, and chips, tags, and tabs are pills. The token scale in `DESIGN.md` matches.
 - **Settings carries your data and the self-hosted offer.** Two new cards give one-click backup and CSV exports, plus the version, changelog, and install guide. The retired license-key form is not back.
+- **Settings is two balanced columns.** Profile and a new Preferences card (daily target, accent) sit on the left; plan, data, and updates on the right. Profile fields go 2-up, and the modal stays single-column.
 - **The Zinvoices list reads like the mock.** One line per column: Number, Client, Issued, Due, Status, Total. Drafts dash their dates, overdue shows its age, and the number opens the detail.
 - **New Zinvoice is the mock's two-column page.** The 480px form cap is gone, client/period/rate sit on one row, the unbilled table renders before a client is picked, and the preview card stays beside the form instead of the page collapsing to a narrow strip.
 - **The hosted landing is the mock's page.** A centered promise, a working timer and Zinvoice preview, the three-card bento, and the two-plan price grid.

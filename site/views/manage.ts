@@ -412,10 +412,12 @@ export function createManageViews(deps: ManageViewDeps) {
       .map(([k, v]) => ({ value: k, label: v.label, desc: v.description }));
     const body =
       `<form method="post" action="/business-profile" id="biz-profile-form" class="ui-settings-form" hx-post="/business-profile" hx-target="#biz-profile" hx-swap="outerHTML">` +
+      `<div class="ui-settings-form-2col">` +
       textField({ id: "bp-business_name", label: "Business name", name: "business_name", value: name }) +
       textField({ id: "bp-business_email", label: "Email", name: "business_email", type: "email", value: email }) +
       textField({ id: "bp-business_address", label: "Address", name: "business_address", value: address }) +
       selectField({ id: "bp-terms", label: "Payment terms", name: "business_payment_terms", options, value: terms, className: "terms-select" }) +
+      `</div>` +
       `<p class="terms-desc ui-settings-note">${esc(termsDescription(termsKey(null, terms)))}</p>` +
       `<div class="ui-settings-actions">${button({ label: "Save", type: "submit", variant: "primary", icon: "save" })}</div>` +
       `</form>`;
@@ -426,21 +428,24 @@ export function createManageViews(deps: ManageViewDeps) {
      and calendar (week = five days at this rate), plus the calendar's
      short-day tint, all follow this instead of the old 8h constant. Stored
      in meta; no migration. */
-  function dailyTargetSection(): string {
+  function dailyTargetControl(): string {
     const hours = dayTargetSecs(db) / 3600;
-    const body =
-      `<form method="post" action="/daily-target" id="daily-target-form" class="ui-settings-form" hx-post="/daily-target" hx-target="#daily-target" hx-swap="outerHTML">` +
-      textField({ id: "dt-hours", label: "Daily hours target", name: "day_target_hours", type: "number", value: String(hours), min: "1", max: "24", step: "0.5", inputmode: "decimal", suffix: "hr" }) +
-      `<div class="ui-settings-actions">${button({ label: "Save", type: "submit", variant: "primary", icon: "save" })}</div>` +
-      `</form>`;
-    return settingsSection({ level: 2, id: "daily-target", title: "Daily hours target", hint: "Drives the pacing bars on the timer and calendar pages — the week target is five days at this rate.", bodyHtml: body });
+    return `<div class="settings-pref-control" id="daily-target">` +
+      `<form method="post" action="/daily-target" id="daily-target-form" class="settings-inline-form" hx-post="/daily-target" hx-target="#daily-target" hx-swap="outerHTML">` +
+      `<div class="ui-input-wrap settings-hours"><input class="ui-input" type="number" id="dt-hours" name="day_target_hours" value="${esc(String(hours))}" min="1" max="24" step="0.5" inputmode="decimal" aria-label="Daily hours target"><span class="ui-affix ui-affix-suffix">hr</span></div>` +
+      button({ label: "Save", type: "submit", variant: "primary", size: "sm" }) +
+      `</form></div>`;
+  }
+
+  function dailyTargetSection(): string {
+    return settingsSection({ level: 2, id: "daily-target", title: "Daily hours target", hint: "Drives the pacing bars on the timer and calendar pages — the week target is five days at this rate.", bodyHtml: dailyTargetControl() });
   }
 
   /* #884: theme section — a row of color dots that re-theme the app's
      accent. Each dot posts its key; the response re-renders this section
      and live-swaps the <style id="theme-style"> override via OOB, so the
      page behind the modal changes instantly. Pumpkin is the default. */
-  function themeSectionHtml(): string {
+  function themeDotsHtml(): string {
     const current = themeKey(getMeta(db, "theme"));
     const dots = THEMES.map((t) => {
       const selected = t.key === current;
@@ -449,7 +454,30 @@ export function createManageViews(deps: ManageViewDeps) {
           hx-target="#theme-section" hx-swap="outerHTML"
           aria-label="${t.name} theme" aria-pressed="${selected}">${selected ? icon("check") : ""}</button>`;
     }).join("");
-    return settingsSection({ level: 2, id: "theme-section", title: "Theme", hint: "Pumpkin is the default. Pick any accent.", bodyHtml: `<div class="ui-theme-dots" role="group" aria-label="Accent theme">${dots}</div>` });
+    return `<div class="ui-theme-dots" id="theme-section" role="group" aria-label="Accent theme">${dots}</div>`;
+  }
+
+  function themeSectionHtml(): string {
+    return settingsSection({ level: 2, id: "theme-section", title: "Theme", hint: "Pumpkin is the default. Pick any accent.", bodyHtml: themeDotsHtml() });
+  }
+
+  /* Daily target and accent color are app preferences, not separate
+     destinations. One card with two rows keeps the settings page to five
+     cards instead of seven scattered ones. */
+  function preferencesSection(): string {
+    return settingsSection({
+      level: 2, id: "preferences", title: "Preferences",
+      hint: "Defaults for the timer and calendar.",
+      bodyHtml:
+        `<div class="settings-pref-row">` +
+        `<div class="settings-pref-text"><div class="settings-pref-title">Daily hours target</div><div class="settings-pref-hint">Drives the pacing bars on the timer and calendar; the week target is five days at this rate.</div></div>` +
+        dailyTargetControl() +
+        `</div>` +
+        `<div class="settings-pref-row">` +
+        `<div class="settings-pref-text"><div class="settings-pref-title">Accent color</div><div class="settings-pref-hint">Pumpkin is the default. Changes your app only; Zinvoices keep your brand.</div></div>` +
+        `<div class="settings-pref-control">${themeDotsHtml()}</div>` +
+        `</div>`,
+    });
   }
 
   /* #693: full-page fallback for direct (non-htmx) visits to /settings.
@@ -458,9 +486,9 @@ export function createManageViews(deps: ManageViewDeps) {
     return layout("Settings", `
       <div data-enter="2">
       ${appHeader({ title: "Settings", sub: "Changes save per section — the button tells you it saved." })}
-      <div class="ui-settings-grid">${settingsBody}</div>
+      ${settingsBody}
       </div>`, "settings");
   }
 
-  return { managePage, clientSelection, clientDialogBody, clientDialogProjects, manageListsOob, bizProfileSection, dailyTargetSection, clientSettingsForm, settingsPage, themeSectionHtml };
+  return { managePage, clientSelection, clientDialogBody, clientDialogProjects, manageListsOob, bizProfileSection, dailyTargetSection, dailyTargetControl, preferencesSection, clientSettingsForm, settingsPage, themeSectionHtml, themeDotsHtml };
 }

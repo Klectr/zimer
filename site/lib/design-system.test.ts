@@ -297,3 +297,12 @@ describe("new-zinvoice layout (#1202 parity)", () => {
     expect(css).toContain("@media (max-width: 1279px) {\n  .inv-step1-grid { grid-template-columns: 1fr 1fr; }");
   });
 });
+
+describe("settings layout (#1202 parity)", () => {
+  test("the page is two balanced columns, one column inside the modal", () => {
+    expect(css).toContain(".ui-settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));");
+    expect(css).toContain(".settings-dialog .ui-settings-grid { grid-template-columns: 1fr; }");
+    expect(css).toContain(".ui-settings-col { display: flex; flex-direction: column;");
+    expect(css).toContain(".ui-settings-form-2col { display: grid; grid-template-columns: 1fr 1fr;");
+  });
+});

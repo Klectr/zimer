@@ -124,7 +124,7 @@ function buildTenantTree(bundle: DbBundle, dbPath: string): WebTenant & ApiTenan
     db, qOne, qRange, entrySelect: ENTRY_SELECT, layout, projectOptionRows, weekTargetBar,
     calHourPx: CAL_HOUR_PX,
   });
-  const { managePage, clientSelection, clientDialogBody, clientDialogProjects, manageListsOob, bizProfileSection, dailyTargetSection, clientSettingsForm, settingsPage, themeSectionHtml } =
+  const { managePage, clientSelection, clientDialogBody, clientDialogProjects, manageListsOob, bizProfileSection, dailyTargetSection, dailyTargetControl, preferencesSection, clientSettingsForm, settingsPage, themeSectionHtml, themeDotsHtml } =
     createManageViews({ db, layout, unbilledByClient });
   const {
     invoicesPage, defaultNewInvParams, invoiceNewPage, invoiceStep2, invoiceSheet,
@@ -156,7 +156,7 @@ function buildTenantTree(bundle: DbBundle, dbPath: string): WebTenant & ApiTenan
     notFoundPage, errorPage,
     dashboardPage, timerPartial, todayPartial, todayStatsPartial, weekInner, weekStrip,
     calendarPage, editPage, editEntryDialog,
-    managePage, clientSelection, clientDialogBody, clientDialogProjects, manageListsOob, bizProfileSection, dailyTargetSection, clientSettingsForm, settingsPage, themeSectionHtml,
+    managePage, clientSelection, clientDialogBody, clientDialogProjects, manageListsOob, bizProfileSection, dailyTargetSection, dailyTargetControl, preferencesSection, clientSettingsForm, settingsPage, themeSectionHtml, themeDotsHtml,
     invoicesPage, invoiceNewPage, defaultNewInvParams, invoiceStep2, invoiceDetailBody, invoiceListOob, invoiceDoc, publicInvoicePage,
     getInvoice, invoiceTotals,
     nextInvoiceNumber, stripeLinkFor, unbilledEntries,

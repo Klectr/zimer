@@ -55,9 +55,12 @@ export interface WebTenant {
   manageListsOob: () => string;
   bizProfileSection: () => string;
   dailyTargetSection: () => string; /* #908 */
+  dailyTargetControl: () => string;
+  preferencesSection: () => string;
   clientSettingsForm: (c: any, error?: string) => string; /* #630 */
   settingsPage: (body: string) => string; /* #693 */
   themeSectionHtml: () => string; /* #884 */
+  themeDotsHtml: () => string;
   invoicesPage: (selected: (Invoice & { items: InvoiceItem[] }) | null, origin: string) => string;
   invoiceNewPage: (p: any, preview?: any) => string;
   defaultNewInvParams: () => any;
@@ -435,7 +438,7 @@ export function createWebRouter(deps: WebDeps) {
             db, dbPath, qRunning, qOne, qRange, qInvoice, qInvoices,
             notFoundPage, errorPage,
             dashboardPage, timerPartial, todayPartial, todayStatsPartial, weekInner, weekStrip,
-            calendarPage, editPage, editEntryDialog, managePage, clientSelection, clientDialogBody, clientDialogProjects, manageListsOob, bizProfileSection, dailyTargetSection, clientSettingsForm, settingsPage, themeSectionHtml, invoicesPage, invoiceNewPage,
+            calendarPage, editPage, editEntryDialog, managePage, clientSelection, clientDialogBody, clientDialogProjects, manageListsOob, bizProfileSection, dailyTargetSection, dailyTargetControl, preferencesSection, clientSettingsForm, settingsPage, themeSectionHtml, themeDotsHtml, invoicesPage, invoiceNewPage,
             defaultNewInvParams, invoiceStep2, invoiceDetailBody, invoiceListOob, invoiceDoc, publicInvoicePage,
             getInvoice, invoiceTotals,
             nextInvoiceNumber, stripeLinkFor, unbilledEntries,
@@ -700,7 +703,7 @@ export function createWebRouter(deps: WebDeps) {
           if (!Number.isFinite(hours) || hours < 1 || hours > 24)
             return new Response("Enter a daily target between 1 and 24 hours.", { status: 400 });
           setMeta(db, "day_target_hours", String(hours));
-          if (isHtmx(req)) return html(dailyTargetSection());
+          if (isHtmx(req)) return html(dailyTargetControl());
           return new Response(null, { status: 302, headers: { Location: "/settings" } });
         }
         /* #883: settings modal body — business profile, theme, Updates
@@ -731,7 +734,13 @@ export function createWebRouter(deps: WebDeps) {
               linkButton({ label: "Changelog", href: "/changelog", icon: "receipt" }) +
               linkButton({ label: "Read the install guide", href: "https://github.com/Klectr/zimer#self-hosting", external: true, icon: "download" }),
           });
-          const body = bizProfileSection() + (billingSectionHtml ? billingSectionHtml(req) : "") + dataSection + aboutSection + dailyTargetSection() + themeSectionHtml() + updates + support;
+          const billingHtml = billingSectionHtml ? billingSectionHtml(req) : "";
+          const plan = billingHtml || aboutSection;
+          const body =
+            `<div class="ui-settings-grid">` +
+            `<div class="ui-settings-col">${bizProfileSection()}${preferencesSection()}</div>` +
+            `<div class="ui-settings-col">${plan}${dataSection}${updates}</div>` +
+            `</div>${support}`;
           if (isHtmx(req)) return html(body);
           /* #693: direct visits get the full app layout — the bare fragment
              renders unstyled. */
@@ -745,7 +754,7 @@ export function createWebRouter(deps: WebDeps) {
           const key = String(form.get("theme") || "").trim().toLowerCase();
           if (!THEMES.some((t) => t.key === key)) return new Response("Unknown theme.", { status: 400 });
           setMeta(db, "theme", key);
-          if (isHtmx(req)) return html(themeSectionHtml() +
+          if (isHtmx(req)) return html(themeDotsHtml() +
             `<style id="theme-style" hx-swap-oob="true">${themeCss(key)}</style>`);
           return new Response(null, { status: 302, headers: { Location: "/settings" } });
         }

@@ -28,8 +28,8 @@ function setup(billingSectionHtml?: (req: Request) => string) {
     calendarPage: noop, editPage: () => null,
     managePage: views.managePage, clientSelection: views.clientSelection,
     clientDialogBody: views.clientDialogBody, clientDialogProjects: views.clientDialogProjects, manageListsOob: views.manageListsOob,
-    bizProfileSection: views.bizProfileSection, dailyTargetSection: views.dailyTargetSection, clientSettingsForm: views.clientSettingsForm,
-    themeSectionHtml: views.themeSectionHtml,
+    bizProfileSection: views.bizProfileSection, dailyTargetSection: views.dailyTargetSection, dailyTargetControl: views.dailyTargetControl, preferencesSection: views.preferencesSection, clientSettingsForm: views.clientSettingsForm,
+    themeSectionHtml: views.themeSectionHtml, themeDotsHtml: views.themeDotsHtml,
     settingsPage: views.settingsPage, invoicesPage: noop, invoiceNewPage: noop,
     defaultNewInvParams: () => ({}), invoiceStep2: noop,
     invoiceDetailBody: noop, invoiceListOob: noop, invoiceDoc: noop, publicInvoicePage: noop,
@@ -81,7 +81,7 @@ describe("settings page (#693)", () => {
     const body = await res!.text();
     expect(body).toContain('id="biz-profile"');
     expect(body).not.toContain("<!DOCTYPE html>");
-    expect(body).not.toContain('class="ui-settings-grid"');
+    expect(body).toContain('class="ui-settings-grid"');
   });
 
   /* #1121: the hosted Billing section joins the body when the dep is
@@ -94,7 +94,6 @@ describe("settings page (#693)", () => {
     const at = (needle: string) => body.indexOf(needle);
     expect(at('id="billing-marker"')).toBeGreaterThan(at('id="biz-profile"'));
     expect(at('id="billing-marker"')).toBeLessThan(at('id="your-data"'));
-    expect(at('id="billing-marker"')).toBeLessThan(at('id="theme-section"'));
     expect(at('id="billing-marker"')).toBeLessThan(at('id="update-section"'));
   });
 

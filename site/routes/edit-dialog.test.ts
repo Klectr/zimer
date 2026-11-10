@@ -46,7 +46,7 @@ function setup() {
     timerPartial: noop, todayPartial: noop, weekInner: noop, weekStrip: noop,
     calendarPage: noop, editPage: views.editPage, editEntryDialog: views.editEntryDialog,
     managePage: noop, clientSelection: () => null, clientDialogBody: noop, clientDialogProjects: noop, manageListsOob: noop,
-    bizProfileSection: noop, clientSettingsForm: noop, themeSectionHtml: noop, settingsPage: noop,
+    bizProfileSection: noop, dailyTargetControl: noop, preferencesSection: noop, clientSettingsForm: noop, themeSectionHtml: noop, themeDotsHtml: noop, settingsPage: noop,
     invoicesPage: noop, invoiceNewPage: noop,
     defaultNewInvParams: () => ({}), invoiceStep2: noop,
     invoiceDetailBody: noop, invoiceListOob: noop, invoiceDoc: noop, publicInvoicePage: noop,
