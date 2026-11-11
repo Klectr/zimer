@@ -67,6 +67,7 @@ export interface WebTenant {
   invoiceStep2: (p: any, preview?: any) => string;
   invoiceDetailBody: (inv: Invoice & { items: InvoiceItem[] }, origin: string) => string;
   invoiceListOob: (selectedId: number) => string; /* #364 */
+  invoiceListRegion: (filters?: { status?: string; q?: string }) => string;
   invoiceDoc: (inv: Invoice & { items: InvoiceItem[] }) => string;
   publicInvoicePage: (inv: Invoice & { items: InvoiceItem[] }, origin: string, tokenPath: string) => string;
   getInvoice: (id: number) => (Invoice & { items: InvoiceItem[] }) | null;
@@ -438,7 +439,7 @@ export function createWebRouter(deps: WebDeps) {
             db, dbPath, qRunning, qOne, qRange, qInvoice, qInvoices,
             notFoundPage, errorPage,
             dashboardPage, timerPartial, todayPartial, todayStatsPartial, weekInner, weekStrip,
-            calendarPage, editPage, editEntryDialog, managePage, clientSelection, clientDialogBody, clientDialogProjects, manageListsOob, bizProfileSection, dailyTargetSection, dailyTargetControl, preferencesSection, clientSettingsForm, settingsPage, themeSectionHtml, themeDotsHtml, invoicesPage, invoiceNewPage,
+            calendarPage, editPage, editEntryDialog, managePage, clientSelection, clientDialogBody, clientDialogProjects, manageListsOob, bizProfileSection, dailyTargetSection, dailyTargetControl, preferencesSection, clientSettingsForm, settingsPage, themeSectionHtml, themeDotsHtml, invoicesPage, invoiceNewPage, invoiceListRegion,
             defaultNewInvParams, invoiceStep2, invoiceDetailBody, invoiceListOob, invoiceDoc, publicInvoicePage,
             getInvoice, invoiceTotals,
             nextInvoiceNumber, stripeLinkFor, unbilledEntries,
@@ -940,6 +941,9 @@ export function createWebRouter(deps: WebDeps) {
           }
           const selected = selId ? getInvoice(selId) : null;
           const filters = { status: sp.get("status") || "all", q: sp.get("q") || "" };
+          /* Filter chips and the search field swap the list region in place;
+             a full page load still gets the shell. */
+          if (isHtmx(req) && !selected) return html(invoiceListRegion(filters));
           return html(invoicesPage(selected, shareOrigin(req), filters));
         }
         if (path === "/invoices/new" && method === "GET") {

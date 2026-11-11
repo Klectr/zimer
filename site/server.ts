@@ -128,7 +128,7 @@ function buildTenantTree(bundle: DbBundle, dbPath: string): WebTenant & ApiTenan
     createManageViews({ db, layout, unbilledByClient });
   const {
     invoicesPage, defaultNewInvParams, invoiceNewPage, invoiceStep2, invoiceSheet,
-    invoiceDoc, invoiceDetailBody, invoiceListOob,
+    invoiceDoc, invoiceDetailBody, invoiceListOob, invoiceListRegion,
     invoiceDocumentHtml, invoicePdfInput, /* #301 */
   } = createInvoiceViews({
     db, qInvoices, layout,
@@ -157,7 +157,7 @@ function buildTenantTree(bundle: DbBundle, dbPath: string): WebTenant & ApiTenan
     dashboardPage, timerPartial, todayPartial, todayStatsPartial, weekInner, weekStrip,
     calendarPage, editPage, editEntryDialog,
     managePage, clientSelection, clientDialogBody, clientDialogProjects, manageListsOob, bizProfileSection, dailyTargetSection, dailyTargetControl, preferencesSection, clientSettingsForm, settingsPage, themeSectionHtml, themeDotsHtml,
-    invoicesPage, invoiceNewPage, defaultNewInvParams, invoiceStep2, invoiceDetailBody, invoiceListOob, invoiceDoc, publicInvoicePage,
+    invoicesPage, invoiceNewPage, defaultNewInvParams, invoiceStep2, invoiceDetailBody, invoiceListOob, invoiceListRegion, invoiceDoc, publicInvoicePage,
     getInvoice, invoiceTotals,
     nextInvoiceNumber, stripeLinkFor, unbilledEntries,
     groupToLineItems, clientRestFrom, ensurePublicToken, getPublicToken, mintPublicToken,

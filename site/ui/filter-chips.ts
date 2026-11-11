@@ -4,6 +4,8 @@ export interface FilterChipItem {
   key: string;
   label: string;
   href: string;
+  /** Extra attributes (htmx, analytics, …) on the link. */
+  attrs?: string;
 }
 
 export interface FilterChipsOptions {
@@ -16,9 +18,10 @@ export function filterChips(opts: FilterChipsOptions): string {
   const links = opts.items
     .map((item) => {
       const active = item.key === opts.active;
+      const attrs = item.attrs ? ` ${item.attrs}` : "";
       return (
         `<a href="${esc(item.href)}" class="ui-filter-chip${active ? " is-active" : ""}"` +
-        `${active ? ` aria-current="true"` : ""}>${esc(item.label)}</a>`
+        `${attrs}${active ? ` aria-current="true"` : ""}>${esc(item.label)}</a>`
       );
     })
     .join("");

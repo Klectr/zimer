@@ -574,11 +574,22 @@ describe("list vs detail selection", () => {
   test("no selection renders the list table", () => {
     const html = views(rows).invoicesPage(null, "http://x");
     expect(html).toContain("ui-filter-chips");
+    expect(html).toContain('id="inv-list-region"');
+    expect(html).toContain('hx-get="/invoices?status=paid" hx-target="#inv-list-region" hx-swap="innerHTML" hx-push-url="true"');
     expect(html).toContain('<th scope="col">Number</th>');
     expect(html).toContain('<th scope="col">Client</th>');
     expect(html).toContain('<th scope="col">Issued</th>');
     expect(html).not.toContain('id="invoice-detail"');
   });
+  test("the htmx list region returns stats, chips, and rows without the shell", () => {
+    const html = views(rows).invoiceListRegion({ status: "sent" });
+    expect(html).toContain('id="inv-list-region"');
+    expect(html).not.toContain("ui-app-head");
+    expect(html).not.toContain("<!DOCTYPE");
+    expect(html).toContain('class="ui-filter-chip is-active" hx-get="/invoices?status=sent"');
+    expect(html).toContain('aria-current="true"');
+  });
+
   test("the status filter narrows the table", () => {
     expect(views(rows).invoicesPage(null, "http://x", { status: "paid" })).toContain("No zinvoices match this filter.");
     expect(views(rows).invoicesPage(null, "http://x", { status: "sent" })).toContain("INV-0007");

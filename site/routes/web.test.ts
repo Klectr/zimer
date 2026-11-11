@@ -366,7 +366,7 @@ function setupSend() {
     bizProfileSection: noop, dailyTargetSection: noop, dailyTargetControl: noop, preferencesSection: noop, clientSettingsForm: noop, themeSectionHtml: noop, themeDotsHtml: noop, settingsPage: noop,
     invoicesPage: noop, invoiceNewPage: invViews.invoiceNewPage,
     defaultNewInvParams: () => ({}), invoiceStep2: invViews.invoiceStep2,
-    invoiceDetailBody: invViews.invoiceDetailBody, invoiceListOob: invViews.invoiceListOob, invoiceDoc: invViews.invoiceDoc, publicInvoicePage: noop,
+    invoiceDetailBody: invViews.invoiceDetailBody, invoiceListOob: invViews.invoiceListOob, invoiceListRegion: invViews.invoiceListRegion, invoiceDoc: invViews.invoiceDoc, publicInvoicePage: noop,
     getInvoice: domain.getInvoice, invoiceTotals: domain.invoiceTotals,
     nextInvoiceNumber: domain.nextInvoiceNumber,
     stripeLinkFor: async () => ({}),
@@ -398,6 +398,19 @@ function setupSend() {
   });
   return { db, handleWeb, freezeCalls };
 }
+
+describe("GET /invoices filter swap", () => {
+  test("an htmx filter request returns the list region, not the page shell", async () => {
+    const { handleWeb } = setupSend();
+    const req = new Request("http://x/invoices?status=sent", { headers: { "HX-Request": "true" } });
+    const res = await handleWeb(req, new URL(req.url), "/invoices", "GET");
+    expect(res!.status).toBe(200);
+    const body = await res!.text();
+    expect(body).toContain('id="inv-list-region"');
+    expect(body).not.toContain("<!DOCTYPE");
+    expect(body).toContain('aria-current="true"');
+  });
+});
 
 describe("POST /invoices intent=send (#1202)", () => {
   const fields = {

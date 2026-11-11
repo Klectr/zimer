@@ -195,8 +195,17 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       return qs ? `/invoices?${qs}` : "/invoices";
     };
     return `<div class="inv-filter-row">
-      ${filterChips({ items: FILTERS.map(f => ({ key: f.key, label: f.label, href: hrefFor(f.key) })), active, label: "Filter zinvoices by status" })}
-      <form method="get" action="/invoices" class="inv-search">
+      ${filterChips({
+        items: FILTERS.map(f => ({
+          key: f.key, label: f.label, href: hrefFor(f.key),
+          /* The chips swap the list region in place, so switching a status
+             never reloads the page or re-runs the layout. */
+          attrs: `hx-get="${esc(hrefFor(f.key))}" hx-target="#inv-list-region" hx-swap="innerHTML" hx-push-url="true"`,
+        })),
+        active, label: "Filter zinvoices by status",
+      })}
+      <form method="get" action="/invoices" class="inv-search"
+        hx-get="/invoices" hx-target="#inv-list-region" hx-swap="innerHTML" hx-push-url="true">
         ${active !== "all" ? `<input type="hidden" name="status" value="${esc(active)}">` : ""}
         ${textField({ id: "inv-q", label: "Search Zinvoices", name: "q", type: "search", value: q, placeholder: "Client or number" })}
       </form>
@@ -236,16 +245,24 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     }
     const active = FILTERS.some(f => f.key === filters.status) ? String(filters.status) : "all";
     const q = String(filters.q || "").trim();
+    return layout("Zinvoices", `${head}
+      <div class="scroll-region" data-enter="3">${invoiceListRegionHtml(rows, active, q)}</div>`, "invoices", true);
+  }
+
+  function invoiceListRegionHtml(rows: any[], active: string, q: string): string {
     const ql = q.toLowerCase();
     const shown = rows.filter(r =>
       (active === "all" || (active === "overdue" ? isOverdue(r) : r.status === active)) &&
       (!ql || String(r.client_name || "").toLowerCase().includes(ql) || String(r.number || "").toLowerCase().includes(ql)));
-    return layout("Zinvoices", `${head}
-      <div class="scroll-region" data-enter="3">
-        ${statsRowHtml(rows)}
-        ${filterRowHtml(active, q)}
-        ${invoiceTableHtml(shown, active !== "all" || !!q)}
-      </div>`, "invoices", true);
+    return `<div id="inv-list-region">${statsRowHtml(rows)}${filterRowHtml(active, q)}${invoiceTableHtml(shown, active !== "all" || !!q)}</div>`;
+  }
+
+  /** The htmx response for a filter/search change: stats, active chips,
+   *  search field, and the narrowed table, without the page shell. */
+  function invoiceListRegion(filters: { status?: string; q?: string } = {}): string {
+    const rows = qInvoices.all() as any[];
+    const active = FILTERS.some(f => f.key === filters.status) ? String(filters.status) : "all";
+    return invoiceListRegionHtml(rows, active, String(filters.q || "").trim());
   }
 
   /* Milestone 20: NewInvParams type lives in lib/types.ts. */
@@ -1017,7 +1034,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
      with a selection) or as the fragment its own actions swap in place. */
   return {
     invoicesPage, defaultNewInvParams, invoiceNewPage, invoiceStep2,
-    invoiceSheet, invoiceDoc, invoiceDetailBody, invoiceListOob,
+    invoiceSheet, invoiceDoc, invoiceDetailBody, invoiceListOob, invoiceListRegion,
     invoiceDocumentHtml, invoicePdfInput, /* #301 */
   };
 }
