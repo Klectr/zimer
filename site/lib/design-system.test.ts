@@ -335,6 +335,7 @@ describe("tertiary text contrast (#1213)", () => {
     for (const bg of [
       "--color-bg-layout",
       "--color-bg-container",
+      "--color-bg-container-secondary",
       "--color-bg-elevated",
     ]) {
       expect(contrast(tertiary, rootToken(bg))).toBeGreaterThanOrEqual(4.5);
