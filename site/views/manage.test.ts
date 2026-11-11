@@ -369,3 +369,16 @@ describe("theme section (#884)", () => {
     for (const b of buttons) expect(b).toMatch(/aria-pressed="(true|false)"/);
   });
 });
+
+/** The manage script is emitted through a template literal; a single
+ *  backslash in a regex becomes nothing, so `/\/clients\/` turned into
+ *  a `//` comment and killed the Edit handler. Parse the emitted script
+ *  so that class of breakage fails here. */
+describe("manage inline script syntax", () => {
+  test("the emitted script parses", () => {
+    const html = pageHtml();
+    const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]!);
+    expect(scripts.length).toBeGreaterThan(0);
+    for (const script of scripts) expect(() => new Function(script)).not.toThrow();
+  });
+});

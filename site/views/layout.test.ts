@@ -388,3 +388,14 @@ describe("layout navigation drawer (#949)", () => {
     expect(drawer).toContain('<form method="POST" action="/logout" class="nav-drawer-logout">');
   });
 });
+
+/** Same template-literal trap in the entry-dialog script: escaped path
+ *  regexes must survive into the page. */
+describe("layout inline scripts parse", () => {
+  test("every inline script parses", () => {
+    const { layout } = createLayoutViews(noRunning);
+    const html = layout("T", "body");
+    const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]!);
+    for (const script of scripts) expect(() => new Function(script)).not.toThrow();
+  });
+});

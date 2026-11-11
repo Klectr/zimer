@@ -283,7 +283,7 @@ export function createManageViews(deps: ManageViewDeps) {
       ${newProjectDialog()}
       <script>(function(){
         var stack = document.querySelector(".manage-stack");
-        if (!stack || !window.htmx) return;
+        if (!stack) return;
         var dlgScrim = document.getElementById("client-settings-scrim");
         var dlgBody = document.getElementById("client-settings-body");
         var dlgClose = document.getElementById("client-settings-close");
@@ -319,7 +319,7 @@ export function createManageViews(deps: ManageViewDeps) {
           document.body.addEventListener("htmx:beforeRequest", function(e){
             var cfg=e.detail.requestConfig||{};
             var pi=e.detail.pathInfo||{};
-            if(e.detail.target===dlgBody && (cfg.verb||"").toLowerCase()==="get" && /\/clients\/[^/]+\/dialog$/.test(pi.requestPath||cfg.path||""))
+            if(e.detail.target===dlgBody && (cfg.verb||"").toLowerCase()==="get" && /\\/clients\\/[^/]+\\/dialog$/.test(pi.requestPath||cfg.path||""))
               e.detail.xhr.tkCsGen=dlgGen;
           });
           dlgBody.addEventListener("htmx:beforeSwap", function(e){
@@ -344,7 +344,7 @@ export function createManageViews(deps: ManageViewDeps) {
           var cfg=e.detail.requestConfig||{};
           var pi=e.detail.pathInfo||{};
           var p=pi.requestPath||cfg.path||"";
-          if(e.detail.xhr && e.detail.xhr.status===422 && (cfg.verb||"").toLowerCase()==="post" && /\/clients\/\d+\/settings$/.test(p)){
+          if(e.detail.xhr && e.detail.xhr.status===422 && (cfg.verb||"").toLowerCase()==="post" && /\\/clients\\/\\d+\\/settings$/.test(p)){
             e.detail.shouldSwap = true;
             e.detail.isError = false;
           }
@@ -352,7 +352,7 @@ export function createManageViews(deps: ManageViewDeps) {
         document.body.addEventListener("htmx:afterRequest", function(e){
           var cfg=e.detail.requestConfig||{};
           var pi=e.detail.pathInfo||{};
-          var m=(pi.requestPath||"").match(/\/clients\/(\d+)\/settings$/);
+          var m=(pi.requestPath||"").match(/\\/clients\\/(\\d+)\\/settings$/);
           if(m && e.detail.successful && (cfg.verb||"").toLowerCase()==="post"){
             if(window.tkSnackbar) window.tkSnackbar("Client settings saved");
             closeClientDialog(false);
@@ -392,7 +392,10 @@ export function createManageViews(deps: ManageViewDeps) {
             if(e.detail.successful){ if(window.tkSnackbar) window.tkSnackbar("Project added"); npForm.reset(); closeNewProject(false); }
           });
         }
-        stack.addEventListener("click", function(ev){
+        /* Delegate on the document: the table can be swapped by htmx
+           without losing the handler, and the dialog works even if htmx
+           finished loading after this inline script ran. */
+        document.addEventListener("click", function(ev){
           var edit = ev.target.closest("[data-client-edit]");
           if(edit){ openClientDialog(edit.getAttribute("data-client-edit")); return; }
           if(ev.target.closest("#new-project-open")) openNewProject();

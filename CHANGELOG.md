@@ -10,6 +10,7 @@ What's new in Zimer, newest first.
 - **The Zinvoices list reads like the mock.** One line per column: Number, Client, Issued, Due, Status, Total. Drafts dash their dates, overdue shows its age, and the number opens the detail.
 - **New Zinvoice is the mock's two-column page.** The 480px form cap is gone, client/period/rate sit on one row, the unbilled table renders before a client is picked, and the preview card stays beside the form instead of the page collapsing to a narrow strip.
 - **Zinvoices filters swap in place.** Status chips and the search field update the stats, chips, and table through HTMX instead of reloading the page; the URL still carries the filter for back/forward.
+- **Clients table Edit works again.** Escaped path regexes inside the page script survived the template literal, so the Edit dialog opens instead of the script dying before wiring its click handler.
 - **The hosted landing is the mock's page.** A centered promise, a working timer and Zinvoice preview, the three-card bento, and the two-plan price grid.
 - **The timer home is one column again.** Today's entries follow the timer card directly; the revenue rail is gone.
 - **The timer home's stats are one compact strip.** Today, this week, and unbilled share a single card with their goals inline, so three numbers stop eating a third of the screen.

@@ -472,7 +472,7 @@ function entryDialog(): string {
     document.body.addEventListener('htmx:beforeRequest',function(e){
       var cfg=e.detail.requestConfig||{};
       var pi=e.detail.pathInfo||{};
-      if(e.detail.target===body&&(cfg.verb||'').toLowerCase()==='get'&&/^\/entries\/[^/]+\/edit$/.test(pi.requestPath||cfg.path||''))
+      if(e.detail.target===body&&(cfg.verb||'').toLowerCase()==='get'&&/^\\/entries\\/[^/]+\\/edit$/.test(pi.requestPath||cfg.path||''))
         e.detail.xhr.tkEntryGen=loadGen;
     });
     body.addEventListener('htmx:beforeSwap',function(e){
