@@ -366,7 +366,7 @@ function setupSend() {
     clientDetailBody: noop, clientListOob: noop,
     bizProfileSection: noop, dailyTargetSection: noop, dailyTargetControl: noop, preferencesSection: noop, clientSettingsForm: noop, themeSectionHtml: noop, themeDotsHtml: noop, settingsPage: noop,
     invoicesPage: noop, invoiceNewPage: invViews.invoiceNewPage,
-    defaultNewInvParams: () => ({}), invoiceStep2: invViews.invoiceStep2,
+    defaultNewInvParams: invViews.defaultNewInvParams, invoiceStep2: invViews.invoiceStep2,
     invoiceDetailBody: invViews.invoiceDetailBody, invoiceListOob: invViews.invoiceListOob, invoiceListRegion: invViews.invoiceListRegion, invoiceDoc: invViews.invoiceDoc, publicInvoicePage: noop,
     getInvoice: domain.getInvoice, invoiceTotals: domain.invoiceTotals,
     nextInvoiceNumber: domain.nextInvoiceNumber,
@@ -449,6 +449,40 @@ describe("GET /partial/invoice-rest (#1048)", () => {
     const { from, to } = rangeOf(await res!.text());
     expect(from).toBe(addDays(through, 1));
     expect(to).toBe(from);
+  });
+
+  test("invoiced, running, and other clients' future entries do not extend To", async () => {
+    const { db, handleWeb } = setupSend();
+    const past = addDays(todayStr(), -2);
+    const future = addDays(todayStr(), 9);
+    db.query("INSERT INTO clients (name, color, rate) VALUES ('Other', '#38bdf8', 50)").run();
+    db.query("INSERT INTO projects (name, client_id) VALUES ('Site', 1)").run();
+    db.query("INSERT INTO projects (name, client_id) VALUES ('OtherSite', 2)").run();
+    const [p1, p2] = db.query("SELECT id FROM projects ORDER BY id").all() as any[];
+    db.query("INSERT INTO time_entries (project_id, description, start_time, end_time) VALUES (?, 'Build', ?, ?)").run(p1.id, `${past}T14:00:00.000Z`, `${past}T15:00:00.000Z`);
+    db.query("INSERT INTO invoices (client_id, number, issue_date) VALUES (1, 'INV-9002', ?)").run(todayStr());
+    const inv = db.query("SELECT id FROM invoices").get() as any;
+    db.query("INSERT INTO time_entries (project_id, description, start_time, end_time, invoice_id) VALUES (?, 'Billed', ?, ?, ?)").run(p1.id, `${future}T14:00:00.000Z`, `${future}T15:00:00.000Z`, inv.id);
+    db.query("INSERT INTO time_entries (project_id, description, start_time, end_time) VALUES (?, 'Running', ?, NULL)").run(p1.id, `${future}T14:00:00.000Z`);
+    db.query("INSERT INTO time_entries (project_id, description, start_time, end_time) VALUES (?, 'Theirs', ?, ?)").run(p2.id, `${future}T14:00:00.000Z`, `${future}T15:00:00.000Z`);
+    const res = await getRest(handleWeb, 1);
+    const { from, to } = rangeOf(await res!.text());
+    expect(from).toBe(past);
+    expect(to).toBe(todayStr());
+  });
+
+  test("the /invoices/new?client_id= prefill uses the same non-inverted range", async () => {
+    const { db, handleWeb } = setupSend();
+    const future = addDays(todayStr(), 7);
+    db.query("INSERT INTO projects (name, client_id) VALUES ('Site', 1)").run();
+    const project = db.query("SELECT id FROM projects").get() as any;
+    db.query("INSERT INTO time_entries (project_id, description, start_time, end_time) VALUES (?, 'Build', ?, ?)").run(project.id, `${future}T14:00:00.000Z`, `${future}T16:00:00.000Z`);
+    const req = new Request("http://x/invoices/new?client_id=1");
+    const res = await handleWeb(req, new URL(req.url), "/invoices/new", "GET");
+    expect(res!.status).toBe(200);
+    const body = await res!.text();
+    expect(body).toContain(`name="to" value="${future}"`);
+    expect(body).toContain(`name="from" value="${future}"`);
   });
 
   test("past unbilled time keeps To at today", async () => {
