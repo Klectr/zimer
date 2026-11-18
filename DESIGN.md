@@ -10,7 +10,7 @@ colors:
   colorInfo: "#60a5fa"
   colorText: "#f5f5f4"
   colorTextSecondary: "#a1a1aa"
-  colorTextTertiary: "#71717a"
+  colorTextTertiary: "#81818a"
   colorTextQuaternary: "#52525b"
   colorBgLayout: "#08090a"
   colorBgContainer: "#0d0d0f"
