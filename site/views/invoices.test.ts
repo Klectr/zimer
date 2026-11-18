@@ -723,10 +723,44 @@ describe("#899: time breakdown chart on the zinvoices sheet", () => {
       { ...detailInv("sent", null), client_payment_terms: null, public_token: null } as any,
       "http://x",
     );
-    expect(input.timeBreakdown).toEqual([
-      { date: "2026-09-08", hours: 7 },
-      { date: "2026-09-09", hours: 0.92 },
-    ]);
+    expect(input.timeBreakdown?.[0]).toEqual({ date: "2026-09-08", hours: 7 });
+    expect(input.timeBreakdown?.[1].date).toBe("2026-09-09");
+    expect(input.timeBreakdown?.[1].hours).toBeCloseTo(3300 / 3600, 10);
+  });
+
+  test("#1049: breakdown total rounds once, agreeing with the billed hours", () => {
+    const rows1049 = [
+      { day: "2026-09-08", start_time: "2026-09-08T09:00:00", end_time: "2026-09-08T10:20:00" },
+      { day: "2026-09-09", start_time: "2026-09-09T09:00:00", end_time: "2026-09-09T10:20:00" },
+    ];
+    const db1049 = {
+      query: (sql: string) =>
+        sql.includes("time_entries")
+          ? { get: () => null, all: () => rows1049, run: () => ({}) }
+          : stubQuery(),
+    } as unknown as Database;
+    const item = (hours: number) => ({
+      description: "Work", hours, rate: 95, amount: Math.round(hours * 95 * 100) / 100,
+      date_from: "2026-09-08", date_to: "2026-09-09",
+    });
+    const oneProject = { ...detailInv("sent", null), items: [item(2.67)] };
+    const html = views([], { db: db1049 }).invoiceSheet(oneProject as any);
+    expect(html).toContain("2.67 hrs total");
+    expect(html).not.toContain("2.66 hrs total");
+    const input = views([], { db: db1049 }).invoicePdfInput(
+      { ...oneProject, client_payment_terms: null, public_token: null } as any,
+      "http://x",
+    );
+    expect(input.timeBreakdownTotal).toBe(2.67);
+    const twoProjects = { ...detailInv("sent", null), items: [item(1.33), item(1.33)] };
+    const html2 = views([], { db: db1049 }).invoiceSheet(twoProjects as any);
+    expect(html2).toContain("2.66 hrs total");
+    expect(html2).not.toContain("2.67 hrs total");
+    const input2 = views([], { db: db1049 }).invoicePdfInput(
+      { ...twoProjects, client_payment_terms: null, public_token: null } as any,
+      "http://x",
+    );
+    expect(input2.timeBreakdownTotal).toBe(2.66);
   });
 });
 

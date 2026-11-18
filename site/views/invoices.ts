@@ -572,9 +572,11 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
   }
 
   /** #899: per-day tracked hours behind the invoice — the time-breakdown
-      chart's data. Each entry rounds UP to 5 minutes like invoicing (#199),
-      so the chart totals agree with the tracked lines. Empty when no
-      time entries are linked to the invoice. */
+      chart's data. Each entry rounds UP to 5 minutes like invoicing (#199).
+      #1049: days accumulate the rounded seconds unrounded — rounding each
+      day to 2dp first made the chart total disagree with the billed hours
+      (1.33 + 1.33 = 2.66 shown for 2.67 billed); consumers round once, at
+      display. Empty when no time entries are linked to the invoice. */
   function timeBreakdown(inv: { id: number }): { date: string; hours: number }[] {
     const rows = db.query(
       `SELECT substr(start_time, 1, 10) AS day, start_time, end_time
@@ -582,18 +584,27 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     ).all(inv.id) as any[];
     const byDay = new Map<string, number>();
     for (const r of rows) {
-      const h = Math.ceil(durationSeconds(String(r.start_time), String(r.end_time)) / 300) * 300 / 3600;
-      if (h > 0) byDay.set(r.day, round2((byDay.get(r.day) ?? 0) + h));
+      const secs = Math.ceil(durationSeconds(String(r.start_time), String(r.end_time)) / 300) * 300;
+      if (secs > 0) byDay.set(r.day, (byDay.get(r.day) ?? 0) + secs);
     }
     return [...byDay.entries()]
-      .map(([date, hours]) => ({ date, hours }))
+      .map(([date, secs]) => ({ date, hours: secs / 3600 }))
       .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  }
+
+  /** #1049: the one total every breakdown surface must agree on — the
+      billed line items' hours (billing rounds per project group, so a
+      per-day sum can still differ by 0.01h on multi-project invoices).
+      Falls back to the tracked days when the invoice carries no items. */
+  function breakdownTotal(inv: { items?: InvoiceItem[] }, days: { hours: number }[]): number {
+    if (inv.items?.length) return round2(inv.items.reduce((a, it) => a + (Number(it.hours) || 0), 0));
+    return round2(days.reduce((a, d) => a + d.hours, 0));
   }
 
   /** #899: hand-rolled SVG bar chart of tracked time per day (weekly
       buckets when the range is long, so bars stay readable). Mirrors the
       revenue chart's markup. */
-  function breakdownChart(days: { date: string; hours: number }[]): string {
+  function breakdownChart(days: { date: string; hours: number }[], totalOverride?: number): string {
     type Bucket = { label: string; hours: number };
     let buckets: Bucket[], per: string;
     if (days.length > 40) {
@@ -605,7 +616,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       };
       for (const d of days) {
         const wk0 = mondayOf(d.date);
-        wk.set(wk0, round2((wk.get(wk0) ?? 0) + d.hours));
+        wk.set(wk0, (wk.get(wk0) ?? 0) + d.hours);
       }
       buckets = [...wk.entries()].sort().map(([date, hours]) => ({ label: "Wk of " + shortYmd(date), hours }));
       per = "week";
@@ -620,11 +631,11 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       const h = Math.max(3, Math.round(b.hours / max * areaH));
       const x = (i * slot + (slot - bw) / 2).toFixed(1);
       const cx = (i * slot + slot / 2).toFixed(1);
-      return `<g><title>${esc(`${b.label}: ${b.hours} hrs tracked`)}</title>` +
+      return `<g><title>${esc(`${b.label}: ${round2(b.hours)} hrs tracked`)}</title>` +
         `<rect x="${x}" y="${baseline - h}" width="${bw.toFixed(1)}" height="${h}" rx="4" class="tb-bar"/>` +
         `<text x="${cx}" y="${baseline + 18}" text-anchor="middle">${esc(b.label)}</text></g>`;
     }).join("");
-    const total = round2(buckets.reduce((a, b) => a + b.hours, 0));
+    const total = totalOverride ?? round2(buckets.reduce((a, b) => a + b.hours, 0));
     return `<section class="inv-breakdown" aria-label="Time breakdown">` +
       `<div class="ui-block-title">Time breakdown</div>` +
       `<p class="muted inv-breakdown-sub">Tracked time per ${per} — ${total} hrs total</p>` +
@@ -719,7 +730,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
              the Total-not-Total-due row and the dropped pay-online link. */
           inv.status === "paid" ? "" : `<p class="inv-terms">${esc(terms)}</p>`}
         ${inv.notes ? `<p class="inv-notes">${esc(inv.notes)}</p>` : ""}
-        ${(() => { const bd = timeBreakdown(inv); return bd.length ? breakdownChart(bd) : ""; })()}
+        ${(() => { const bd = timeBreakdown(inv); return bd.length ? breakdownChart(bd, breakdownTotal(inv, bd)) : ""; })()}
       </div>`;
   }
 
@@ -748,6 +759,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     /* #289/#293/#295: effective terms key drives the canned description
        and whether the PDF due line is shown. */
     const termsKey_ = termsKey(inv.client_payment_terms, getMeta(db, "business_payment_terms"));
+    const bd = timeBreakdown(inv);
     return {
       number: inv.number,
       status: inv.status,
@@ -762,7 +774,8 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       })),
       subtotal: t.subtotal, tax: t.tax, taxRate: inv.tax_rate, total: t.total,
       notes: inv.notes,
-      timeBreakdown: timeBreakdown(inv), /* #899: per-day tracked hours → PDF page-2 chart */
+      timeBreakdown: bd, /* #899: per-day tracked hours → PDF page-2 chart */
+      timeBreakdownTotal: breakdownTotal(inv, bd), /* #1049: PDF total = billed hours */
       fromName: getMeta(db, "business_name") || undefined,
       fromEmail: getMeta(db, "business_email") || undefined,
       fromAddress: getMeta(db, "business_address") || undefined,
@@ -854,7 +867,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     const clientLink = token ? `${origin}/i/${token}` : null;
     const od = isOverdue(inv) ? daysBetween(inv.due_date as string, todayStr()) : 0;
     const bd = timeBreakdown(inv);
-    const trackedHours = round2(bd.reduce((a, d) => a + d.hours, 0));
+    const trackedHours = breakdownTotal(inv, bd);
     /* #229: the copy handler is delegated and id-free so htmx swaps stay
        safe; it wires the whole detail root, which covers both the head's
        Copy pay link button and the public link card's copy button. */
@@ -1017,7 +1030,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       <div class="inv-detail-grid">
         <div class="inv-detail-main">
           ${linesCard}
-          ${bd.length ? breakdownChart(bd) : ""}
+          ${bd.length ? breakdownChart(bd, trackedHours) : ""}
           ${internalBlock}
           ${paymentProofSection(inv)}
         </div>
