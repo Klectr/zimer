@@ -447,6 +447,21 @@ export function createWebRouter(deps: WebDeps) {
             invoicePdfInput, freezeInvoiceSnapshots,
           } = tenant;
 
+          /* #1048: the "invoice the rest" To date — the latest of today, the
+             client's latest unbilled day, and From itself, so the range never
+             inverts and always covers future-dated unbilled entries. */
+          function restRangeTo(clientId: number, from: string): string {
+            let to = todayStr();
+            if (from > to) to = from;
+            const latest = db.query(
+              `SELECT MAX(substr(e.start_time, 1, 10)) AS last_day FROM time_entries e
+               JOIN projects p ON p.id = e.project_id
+               WHERE p.client_id = ? AND e.invoice_id IS NULL AND e.end_time IS NOT NULL`
+            ).get(clientId) as any;
+            if (latest?.last_day && String(latest.last_day) > to) to = String(latest.last_day);
+            return to;
+          }
+
           if (path === "/" && method === "GET") return html(dashboardPage());
           if (path === "/partial/timer" && method === "GET") return html(timerPartial());
           /* #572: ?strip=1 fills one recycled carousel strip with a single
@@ -486,11 +501,14 @@ export function createWebRouter(deps: WebDeps) {
           if (path === "/partial/invoice-rest" && method === "GET") {
             const cid = url.searchParams.get("client_id") || "";
             let from = defaultNewInvParams().from;
+            let to = todayStr();
             if (/^\d+$/.test(cid)) {
               const restFrom = clientRestFrom(Number(cid));
               if (restFrom) from = restFrom;
+              to = restRangeTo(Number(cid), from);
+            } else if (from > to) {
+              to = from;
             }
-            const to = todayStr();
             return html(textField({ id: "inv-from", label: "From", name: "from", type: "date", value: from, required: true })
             + textField({ id: "inv-to", label: "To", name: "to", type: "date", value: to, required: true }));
           }
@@ -879,7 +897,8 @@ export function createWebRouter(deps: WebDeps) {
            and step 2 renders immediately with the grouped line items.
            #328: ?client_id=N (without from/to) is "invoice the rest" — preselects the
            client and fills the range from the day after its last invoice through-date
-           (or its earliest unbilled entry) to tomorrow. */
+           (or its earliest unbilled entry) through its latest unbilled
+           day — never before today and never before From (#1048). */
         function prefillNewInvoice(sp: URLSearchParams): { p: any; preview?: any } {
           const p: any = defaultNewInvParams();
           const from = sp.get("from"), to = sp.get("to");
@@ -914,7 +933,7 @@ export function createWebRouter(deps: WebDeps) {
               p.client_id = String(c.id);
               const restFrom = clientRestFrom(Number(c.id));
               if (restFrom) p.from = restFrom;
-              p.to = todayStr();
+              p.to = restRangeTo(Number(c.id), p.from);
               if (c.rate !== null && c.rate !== "") p.rate = String(c.rate);
               const days = termsDays(termsKey(c.payment_terms, getMeta(db, "business_payment_terms")));
               if (days !== null) p.due_date = addDays(p.issue_date, days);
