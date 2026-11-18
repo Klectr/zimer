@@ -723,10 +723,31 @@ describe("#899: time breakdown chart on the zinvoices sheet", () => {
       { ...detailInv("sent", null), client_payment_terms: null, public_token: null } as any,
       "http://x",
     );
-    expect(input.timeBreakdown).toEqual([
-      { date: "2026-09-08", hours: 7 },
-      { date: "2026-09-09", hours: 0.92 },
-    ]);
+    expect(input.timeBreakdown?.[0]).toEqual({ date: "2026-09-08", hours: 7 });
+    expect(input.timeBreakdown?.[1].date).toBe("2026-09-09");
+    expect(input.timeBreakdown?.[1].hours).toBeCloseTo(3300 / 3600, 10);
+  });
+
+  test("#1049: breakdown total rounds once, agreeing with the billed hours", () => {
+    const rows1049 = [
+      { day: "2026-09-08", start_time: "2026-09-08T09:00:00", end_time: "2026-09-08T10:20:00" },
+      { day: "2026-09-09", start_time: "2026-09-09T09:00:00", end_time: "2026-09-09T10:20:00" },
+    ];
+    const db1049 = {
+      query: (sql: string) =>
+        sql.includes("time_entries")
+          ? { get: () => null, all: () => rows1049, run: () => ({}) }
+          : stubQuery(),
+    } as unknown as Database;
+    const html = views([], { db: db1049 }).invoiceSheet(detailInv("sent", null) as any);
+    expect(html).toContain("2.67 hrs total");
+    expect(html).not.toContain("2.66 hrs total");
+    const input = views([], { db: db1049 }).invoicePdfInput(
+      { ...detailInv("sent", null), client_payment_terms: null, public_token: null } as any,
+      "http://x",
+    );
+    const pdfTotal = (input.timeBreakdown ?? []).reduce((a, d) => a + d.hours, 0);
+    expect(Math.round(pdfTotal * 100) / 100).toBe(2.67);
   });
 });
 
