@@ -32,6 +32,17 @@ describe("legacy snapshot compat", () => {
   });
 });
 
+describe("native picker indicators (#1220)", () => {
+  test("datalist, time and datetime-local indicators are hidden", () => {
+    expect(css).toContain('input[list]::-webkit-calendar-picker-indicator');
+    expect(css).toContain('input[type="time"]::-webkit-calendar-picker-indicator');
+    expect(css).toContain('input[type="datetime-local"]::-webkit-calendar-picker-indicator');
+    const rule = css.match(/input\[list\]::-webkit-calendar-picker-indicator,[^}]*\}/);
+    expect(rule).not.toBeNull();
+    expect(rule![0]).toContain("display: none");
+  });
+});
+
 describe("demo banner (#1218)", () => {
   test("the banner sits on a neutral surface — no primary wash or border", () => {
     const rule = css.match(/\.demo-banner \{[^}]*\}/);
