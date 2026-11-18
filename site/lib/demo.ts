@@ -133,7 +133,7 @@ export function demoBanner(db: Database): string {
     /* #300: guide the fresh install to a prefilled invoice — the sample week
        lands on the client picker with the range already filled in. */
     const r = demoRange(db);
-    const tryIt = r ? linkButton({ label: "Zinvoice the sample week", href: `/invoices/new?from=${r.from}&to=${r.to}`, icon: "receipt", variant: "primary", size: "sm" }) : "";
+    const tryIt = r ? linkButton({ label: "Zinvoice the sample week", href: `/invoices/new?from=${r.from}&to=${r.to}`, icon: "receipt", size: "sm" }) : "";
     return `<div class="demo-banner" data-enter="1">
     ${icon("info")}
     <span><strong>Demo data.</strong> This workspace is filled with fictional examples — poke around, then remove them when you're ready.</span>
@@ -144,7 +144,7 @@ export function demoBanner(db: Database): string {
   if (workspaceEmpty(db)) return `<div class="demo-banner" data-enter="1">
     <img class="demo-mascot" src="/static/mascot.png" alt="" width="44" height="44">
     <span><strong>New here?</strong> Load a fictional workspace — clients, a week of entries, zinvoices — and try every page in 30 seconds.</span>
-    <form method="post" action="/demo/load" class="inline">${button({ label: "Load demo data", type: "submit", variant: "primary", size: "sm" })}</form>
+    <form method="post" action="/demo/load" class="inline">${button({ label: "Load demo data", type: "submit", size: "sm" })}</form>
   </div>`;
   return "";
 }

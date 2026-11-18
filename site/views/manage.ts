@@ -104,7 +104,6 @@ export function createManageViews(deps: ManageViewDeps) {
 
   function addClientCard(): string {
     return card({
-      tracking: true,
       content:
         `<h3 class="ui-block-title">Add a client</h3>` +
         `<form method="post" action="/clients" id="client-add-form" class="manage-add-form">` +

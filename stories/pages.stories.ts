@@ -331,7 +331,6 @@ export const pagesStories: Story[] = [
             button({ label: "Add client", variant: "primary" }) +
             `</div>`,
           className: "",
-          tracking: true,
         }) +
         card({
           content:
