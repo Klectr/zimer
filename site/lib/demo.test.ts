@@ -9,8 +9,8 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createDb } from "../db.ts";
-import { seedDemoData, demoIds, demoDrawerRow, demoBanner } from "./demo.ts";
-import { addDays, DEFAULT_PAYMENT_TERMS, shortDateRange, termsDays } from "./format.ts";
+import { seedDemoData, demoIds, demoDrawerRow, demoBanner, demoRange, removeDemoData } from "./demo.ts";
+import { addDays, DEFAULT_PAYMENT_TERMS, shortDateRange, sundayOf, termsDays, todayStr } from "./format.ts";
 
 describe("demo paid invoice paid_at (#763)", () => {
   test("DEMO-001 (paid) has a paid_at date like the mark-paid flow sets", () => {
@@ -115,5 +115,53 @@ describe("demo invoice dates (#492)", () => {
     const db = seededDb();
     const ids = demoIds(db);
     expect(ids.invoices.length).toBe(3);
+  });
+});
+
+/** #1225: demo entries fill the current Sun-Sat week through today, so
+ *  Today and This week agree with the unbilled client count. */
+describe("demo entries land in the current week (#1225)", () => {
+  test("every entry is in the current week, on a project, with today covered", () => {
+    const db = seededDb();
+    const today = todayStr();
+    const sun = sundayOf(today);
+    const rows = db.query("SELECT project_id, substr(start_time, 1, 10) AS day FROM time_entries").all() as any[];
+    expect(rows.length).toBeGreaterThanOrEqual(2);
+    for (const r of rows) {
+      expect(r.project_id).not.toBeNull();
+      expect(r.day >= sun).toBe(true);
+      expect(r.day <= today).toBe(true);
+    }
+    expect(rows.some((r) => r.day === today)).toBe(true);
+  });
+
+  test("today and this week each cover at least two clients", () => {
+    const db = seededDb();
+    const today = todayStr();
+    const sun = sundayOf(today);
+    const clientsOn = (from: string, to: string) => (db.query(
+      `SELECT COUNT(DISTINCT p.client_id) AS n FROM time_entries e
+       JOIN projects p ON p.id = e.project_id
+       WHERE substr(e.start_time, 1, 10) BETWEEN ? AND ?`
+    ).get(from, to) as any).n;
+    expect(clientsOn(today, today)).toBeGreaterThanOrEqual(2);
+    expect(clientsOn(sun, today)).toBeGreaterThanOrEqual(2);
+  });
+
+  test("demo range is the current week to date and reset still removes everything", () => {
+    const db = seededDb();
+    const today = todayStr();
+    expect(demoRange(db)).toEqual({ from: sundayOf(today), to: today });
+    expect(removeDemoData(db)).toBeGreaterThan(0);
+    expect(db.query("SELECT COUNT(*) AS n FROM time_entries").get() as any).toMatchObject({ n: 0 });
+    expect(demoIds(db)).toBeNull();
+  });
+
+  test("the sent sample invoice was issued in the previous week", () => {
+    const db = seededDb();
+    const today = todayStr();
+    const row = db.query("SELECT issue_date FROM invoices WHERE number = 'DEMO-002'").get() as any;
+    expect(row.issue_date < sundayOf(today)).toBe(true);
+    expect(row.issue_date >= addDays(sundayOf(today), -7)).toBe(true);
   });
 });

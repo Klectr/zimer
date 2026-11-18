@@ -4,7 +4,7 @@
 
 import type { Database } from "bun:sqlite";
 import { icon } from "./icons.ts";
-import { addDays, termsDays, termsKey } from "./format.ts";
+import { addDays, sundayOf, termsDays, termsKey, todayStr } from "./format.ts";
 import { button, linkButton } from "../ui/button.ts";
 
 export function workspaceEmpty(db: Database): boolean {
@@ -41,34 +41,34 @@ export function seedDemoData(db: Database): void {
     projectIds.push(Number(insProject.run(name, cid).lastInsertRowid));
   }
   ids.projects = projectIds;
-  /* A week of entries ending yesterday, ~7h/day, mostly billable. */
+  /* #1225: entries fill the current Sun-Sat week, Sunday through today,
+     two a day and each day spanning two clients, so Today and This week
+     agree with the client counts next to them on any weekday. Every
+     entry carries a project — there is no no-client sample entry. */
+  const todayDateStr = todayStr();
+  const weekStart = sundayOf(todayDateStr);
   const tasks = [
-    [0, "Logo concepts", "09:00", "12:30"], [0, "Style guide", "13:30", "16:00"],
-    [1, "Homepage build", "09:15", "12:45"], [1, "CMS integration", "13:30", "17:00"],
-    [2, "Onboarding flow", "09:00", "12:00"], [2, "Push notifications", "13:00", "16:30"],
-    [3, "Architecture review", "10:00", "12:00"],
-    [0, "Client feedback round", "09:30", "11:30"],
-    [null, "Inbox zero", "08:30", "09:00"],
+    [0, "Logo concepts", "09:00", "12:30"], [2, "Onboarding flow", "13:00", "16:30"],
+    [1, "Homepage build", "09:15", "12:45"], [3, "Architecture review", "13:30", "15:30"],
+    [0, "Style guide", "09:00", "12:00"], [2, "Push notifications", "13:00", "16:30"],
+    [1, "CMS integration", "09:15", "12:45"], [3, "Quarterly planning", "13:30", "15:30"],
+    [0, "Client feedback round", "09:30", "11:30"], [2, "App store assets", "13:00", "16:00"],
+    [1, "Accessibility pass", "09:15", "12:45"], [3, "Risk review", "13:30", "15:30"],
+    [0, "Brand guidelines", "09:00", "12:00"], [2, "Beta feedback fixes", "13:00", "16:30"],
   ];
-  const days = [6, 5, 4, 3, 2];
-  let ti = 0;
-  for (const d of days) {
-    const dt = new Date();
-    dt.setDate(dt.getDate() - d);
-    const day = dt.toISOString().slice(0, 10);
-    for (let k = 0; k < 2 && ti < tasks.length; k++, ti++) {
-      const [pj, desc, st, en] = tasks[ti] as any[];
+  const dayCount = Math.round((new Date(todayDateStr + "T12:00:00").getTime() - new Date(weekStart + "T12:00:00").getTime()) / 86400000) + 1;
+  for (let d = 0; d < dayCount; d++) {
+    const day = addDays(weekStart, d);
+    for (let k = 0; k < 2; k++) {
+      const [pj, desc, st, en] = tasks[d * 2 + k] as any[];
       ids.entries.push(Number(insEntry.run(
-        pj === null ? null : projectIds[pj], desc, `${day}T${st}:00`, `${day}T${en}:00`
+        projectIds[pj], desc, `${day}T${st}:00`, `${day}T${en}:00`
       ).lastInsertRowid));
     }
   }
   /* #300: remember the seeded week so the demo banner can link straight into
      the invoice prefill flow (/invoices/new?from=&to=). `to` is inclusive. */
-  const dayStr = (d: Date) => d.toISOString().slice(0, 10);
-  const fromD = new Date(); fromD.setDate(fromD.getDate() - 6);
-  const toD = new Date(); toD.setDate(toD.getDate() - 1);
-  const demoFrom = dayStr(fromD), demoTo = dayStr(toD);
+  const demoFrom = weekStart, demoTo = todayDateStr;
   db.query("INSERT OR REPLACE INTO meta (key, value) VALUES ('demo_from', ?), ('demo_to', ?)")
     .run(demoFrom, demoTo);
   /* Three invoices: paid, sent, draft. #492: items carry date ranges so the
@@ -92,12 +92,14 @@ export function seedDemoData(db: Database): void {
   };
   const lastMonth = new Date(); lastMonth.setMonth(lastMonth.getMonth() - 1);
   const lm = lastMonth.toISOString().slice(0, 10);
-  const today = dayStr(new Date());
+  const today = todayDateStr;
   const monthStart = today.slice(0, 8) + "01";
   mk(clientIds[0], "DEMO-001", lm, demoDue(lm), "paid",
     [["Brand refresh — design", 24, 120, lm, lm]], "Paid in full. Thank you!", lm);
-  mk(clientIds[1], "DEMO-002", today, demoDue(today), "sent",
-    [["Mobile app — onboarding flow", 18.5, 95, demoFrom, demoTo]]);
+  /* #1225: the sent sample belongs to the previous week, not today. */
+  const sentIssue = addDays(today, -7);
+  mk(clientIds[1], "DEMO-002", sentIssue, demoDue(sentIssue), "sent",
+    [["Mobile app — onboarding flow", 18.5, 95, addDays(sentIssue, -5), addDays(sentIssue, -1)]]);
   mk(clientIds[2], "DEMO-003", today, demoDue(today), "draft",
     [["Advisory retainer — September", 1, 150, monthStart, today]], "Demo draft — not a real invoice.");
   db.query("INSERT OR REPLACE INTO meta (key, value) VALUES ('demo_ids', ?)")
