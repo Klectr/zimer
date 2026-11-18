@@ -4,7 +4,7 @@
 
 import type { Database } from "bun:sqlite";
 import { icon } from "./icons.ts";
-import { addDays, sundayOf, termsDays, termsKey, todayStr } from "./format.ts";
+import { addDays, daysBetween, sundayOf, termsDays, termsKey, todayStr } from "./format.ts";
 import { button, linkButton } from "../ui/button.ts";
 
 export function workspaceEmpty(db: Database): boolean {
@@ -56,19 +56,25 @@ export function seedDemoData(db: Database): void {
     [1, "Accessibility pass", "09:15", "12:45"], [3, "Risk review", "13:30", "15:30"],
     [0, "Brand guidelines", "09:00", "12:00"], [2, "Beta feedback fixes", "13:00", "16:30"],
   ];
-  const dayCount = Math.round((new Date(todayDateStr + "T12:00:00").getTime() - new Date(weekStart + "T12:00:00").getTime()) / 86400000) + 1;
+  const dayCount = daysBetween(weekStart, todayDateStr) + 1;
   for (let d = 0; d < dayCount; d++) {
     const day = addDays(weekStart, d);
     for (let k = 0; k < 2; k++) {
       const [pj, desc, st, en] = tasks[d * 2 + k] as any[];
+      /* Today's pair runs early (06:00-08:15) so a demo loaded during the
+         workday is not showing finished entries from later today. */
+      const start = day === todayDateStr ? (k === 0 ? "06:00" : "07:15") : st;
+      const end = day === todayDateStr ? (k === 0 ? "07:00" : "08:15") : en;
       ids.entries.push(Number(insEntry.run(
-        projectIds[pj], desc, `${day}T${st}:00`, `${day}T${en}:00`
+        projectIds[pj], desc, `${day}T${start}:00`, `${day}T${end}:00`
       ).lastInsertRowid));
     }
   }
   /* #300: remember the seeded week so the demo banner can link straight into
      the invoice prefill flow (/invoices/new?from=&to=). `to` is inclusive. */
-  const demoFrom = weekStart, demoTo = todayDateStr;
+  /* The banner range is a rolling 7 days ending today: it always covers
+     every seeded entry and always satisfies the prefill's from < to. */
+  const demoFrom = addDays(todayDateStr, -6), demoTo = todayDateStr;
   db.query("INSERT OR REPLACE INTO meta (key, value) VALUES ('demo_from', ?), ('demo_to', ?)")
     .run(demoFrom, demoTo);
   /* Three invoices: paid, sent, draft. #492: items carry date ranges so the
@@ -90,18 +96,23 @@ export function seedDemoData(db: Database): void {
       itemQ.run(id, desc, hours, rate, hours * rate, from ?? null, to ?? from ?? null);
     ids.invoices.push(id);
   };
-  const lastMonth = new Date(); lastMonth.setMonth(lastMonth.getMonth() - 1);
-  const lm = lastMonth.toISOString().slice(0, 10);
   const today = todayDateStr;
   const monthStart = today.slice(0, 8) + "01";
+  /* The paid sample sits on the last day of the previous month — string
+     math, so no setMonth overflow (Mar 31 -> Mar 3) and no UTC shift. */
+  const lm = addDays(monthStart, -1);
   mk(clientIds[0], "DEMO-001", lm, demoDue(lm), "paid",
     [["Brand refresh — design", 24, 120, lm, lm]], "Paid in full. Thank you!", lm);
   /* #1225: the sent sample belongs to the previous week, not today. */
   const sentIssue = addDays(today, -7);
   mk(clientIds[1], "DEMO-002", sentIssue, demoDue(sentIssue), "sent",
     [["Mobile app — onboarding flow", 18.5, 95, addDays(sentIssue, -5), addDays(sentIssue, -1)]]);
-  mk(clientIds[2], "DEMO-003", today, demoDue(today), "draft",
-    [["Advisory retainer — September", 1, 150, monthStart, today]], "Demo draft — not a real invoice.");
+  /* The draft sample also belongs to the previous week: an item range
+     ending today would push Northwind's invoice-the-rest start to
+     tomorrow and hide its seeded current-week entries. */
+  const draftIssue = addDays(weekStart, -1);
+  mk(clientIds[2], "DEMO-003", draftIssue, demoDue(draftIssue), "draft",
+    [["Advisory retainer — monthly", 1, 150, addDays(weekStart, -6), addDays(weekStart, -2)]], "Demo draft — not a real invoice.");
   db.query("INSERT OR REPLACE INTO meta (key, value) VALUES ('demo_ids', ?)")
     .run(JSON.stringify(ids));
 }
