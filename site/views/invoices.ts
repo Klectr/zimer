@@ -572,9 +572,11 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
   }
 
   /** #899: per-day tracked hours behind the invoice — the time-breakdown
-      chart's data. Each entry rounds UP to 5 minutes like invoicing (#199),
-      so the chart totals agree with the tracked lines. Empty when no
-      time entries are linked to the invoice. */
+      chart's data. Each entry rounds UP to 5 minutes like invoicing (#199).
+      #1049: days accumulate the rounded seconds unrounded — rounding each
+      day to 2dp first made the chart total disagree with the billed hours
+      (1.33 + 1.33 = 2.66 shown for 2.67 billed); consumers round once, at
+      display. Empty when no time entries are linked to the invoice. */
   function timeBreakdown(inv: { id: number }): { date: string; hours: number }[] {
     const rows = db.query(
       `SELECT substr(start_time, 1, 10) AS day, start_time, end_time
@@ -582,11 +584,11 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     ).all(inv.id) as any[];
     const byDay = new Map<string, number>();
     for (const r of rows) {
-      const h = Math.ceil(durationSeconds(String(r.start_time), String(r.end_time)) / 300) * 300 / 3600;
-      if (h > 0) byDay.set(r.day, round2((byDay.get(r.day) ?? 0) + h));
+      const secs = Math.ceil(durationSeconds(String(r.start_time), String(r.end_time)) / 300) * 300;
+      if (secs > 0) byDay.set(r.day, (byDay.get(r.day) ?? 0) + secs);
     }
     return [...byDay.entries()]
-      .map(([date, hours]) => ({ date, hours }))
+      .map(([date, secs]) => ({ date, hours: secs / 3600 }))
       .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
   }
 
@@ -605,7 +607,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       };
       for (const d of days) {
         const wk0 = mondayOf(d.date);
-        wk.set(wk0, round2((wk.get(wk0) ?? 0) + d.hours));
+        wk.set(wk0, (wk.get(wk0) ?? 0) + d.hours);
       }
       buckets = [...wk.entries()].sort().map(([date, hours]) => ({ label: "Wk of " + shortYmd(date), hours }));
       per = "week";
@@ -620,7 +622,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       const h = Math.max(3, Math.round(b.hours / max * areaH));
       const x = (i * slot + (slot - bw) / 2).toFixed(1);
       const cx = (i * slot + slot / 2).toFixed(1);
-      return `<g><title>${esc(`${b.label}: ${b.hours} hrs tracked`)}</title>` +
+      return `<g><title>${esc(`${b.label}: ${round2(b.hours)} hrs tracked`)}</title>` +
         `<rect x="${x}" y="${baseline - h}" width="${bw.toFixed(1)}" height="${h}" rx="4" class="tb-bar"/>` +
         `<text x="${cx}" y="${baseline + 18}" text-anchor="middle">${esc(b.label)}</text></g>`;
     }).join("");
