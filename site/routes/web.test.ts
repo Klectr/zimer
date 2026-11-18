@@ -7,6 +7,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Database } from "bun:sqlite";
 import { createDb, getMeta } from "../db.ts";
+import { addDays, todayStr } from "../lib/format.ts";
 import { createDomain } from "../lib/domain.ts";
 import { createWebRouter } from "./web.ts";
 import { createManageViews } from "../views/manage.ts";
@@ -409,6 +410,57 @@ describe("GET /invoices filter swap", () => {
     expect(body).toContain('id="inv-list-region"');
     expect(body).not.toContain("<!DOCTYPE");
     expect(body).toContain('aria-current="true"');
+  });
+});
+
+/** #1048: the invoice-rest range must never invert and must cover
+ *  future-dated unbilled entries. */
+describe("GET /partial/invoice-rest (#1048)", () => {
+  function getRest(handleWeb: any, cid: number) {
+    const req = new Request(`http://x/partial/invoice-rest?client_id=${cid}`);
+    return handleWeb(req, new URL(req.url), "/partial/invoice-rest", "GET");
+  }
+  function rangeOf(body: string) {
+    const from = body.match(/name="from"[^>]*value="([^"]+)"/)?.[1];
+    const to = body.match(/name="to"[^>]*value="([^"]+)"/)?.[1];
+    return { from, to };
+  }
+
+  test("a future-dated unbilled entry sets both From and To to its day", async () => {
+    const { db, handleWeb } = setupSend();
+    const future = addDays(todayStr(), 7);
+    db.query("INSERT INTO projects (name, client_id) VALUES ('Site', 1)").run();
+    const project = db.query("SELECT id FROM projects").get() as any;
+    db.query("INSERT INTO time_entries (project_id, description, start_time, end_time) VALUES (?, 'Build', ?, ?)").run(project.id, `${future}T14:00:00.000Z`, `${future}T16:00:00.000Z`);
+    const res = await getRest(handleWeb, 1);
+    expect(res!.status).toBe(200);
+    const { from, to } = rangeOf(await res!.text());
+    expect(from).toBe(future);
+    expect(to).toBe(future);
+  });
+
+  test("a rest-from in the future (last invoice through-date ahead) does not invert", async () => {
+    const { db, handleWeb } = setupSend();
+    const through = addDays(todayStr(), 3);
+    db.query("INSERT INTO invoices (client_id, number, issue_date) VALUES (1, 'INV-9001', ?)").run(todayStr());
+    const inv = db.query("SELECT id FROM invoices").get() as any;
+    db.query("INSERT INTO invoice_items (invoice_id, description, hours, rate, amount, date_from, date_to) VALUES (?, 'Work', 1, 40, 40, ?, ?)").run(inv.id, through, through);
+    const res = await getRest(handleWeb, 1);
+    const { from, to } = rangeOf(await res!.text());
+    expect(from).toBe(addDays(through, 1));
+    expect(to).toBe(from);
+  });
+
+  test("past unbilled time keeps To at today", async () => {
+    const { db, handleWeb } = setupSend();
+    const past = addDays(todayStr(), -2);
+    db.query("INSERT INTO projects (name, client_id) VALUES ('Site', 1)").run();
+    const project = db.query("SELECT id FROM projects").get() as any;
+    db.query("INSERT INTO time_entries (project_id, description, start_time, end_time) VALUES (?, 'Build', ?, ?)").run(project.id, `${past}T14:00:00.000Z`, `${past}T15:00:00.000Z`);
+    const res = await getRest(handleWeb, 1);
+    const { from, to } = rangeOf(await res!.text());
+    expect(from).toBe(past);
+    expect(to).toBe(todayStr());
   });
 });
 
