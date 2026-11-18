@@ -739,15 +739,28 @@ describe("#899: time breakdown chart on the zinvoices sheet", () => {
           ? { get: () => null, all: () => rows1049, run: () => ({}) }
           : stubQuery(),
     } as unknown as Database;
-    const html = views([], { db: db1049 }).invoiceSheet(detailInv("sent", null) as any);
+    const item = (hours: number) => ({
+      description: "Work", hours, rate: 95, amount: Math.round(hours * 95 * 100) / 100,
+      date_from: "2026-09-08", date_to: "2026-09-09",
+    });
+    const oneProject = { ...detailInv("sent", null), items: [item(2.67)] };
+    const html = views([], { db: db1049 }).invoiceSheet(oneProject as any);
     expect(html).toContain("2.67 hrs total");
     expect(html).not.toContain("2.66 hrs total");
     const input = views([], { db: db1049 }).invoicePdfInput(
-      { ...detailInv("sent", null), client_payment_terms: null, public_token: null } as any,
+      { ...oneProject, client_payment_terms: null, public_token: null } as any,
       "http://x",
     );
-    const pdfTotal = (input.timeBreakdown ?? []).reduce((a, d) => a + d.hours, 0);
-    expect(Math.round(pdfTotal * 100) / 100).toBe(2.67);
+    expect(input.timeBreakdownTotal).toBe(2.67);
+    const twoProjects = { ...detailInv("sent", null), items: [item(1.33), item(1.33)] };
+    const html2 = views([], { db: db1049 }).invoiceSheet(twoProjects as any);
+    expect(html2).toContain("2.66 hrs total");
+    expect(html2).not.toContain("2.67 hrs total");
+    const input2 = views([], { db: db1049 }).invoicePdfInput(
+      { ...twoProjects, client_payment_terms: null, public_token: null } as any,
+      "http://x",
+    );
+    expect(input2.timeBreakdownTotal).toBe(2.66);
   });
 });
 

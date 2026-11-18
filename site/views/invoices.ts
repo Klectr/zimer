@@ -592,10 +592,19 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
   }
 
+  /** #1049: the one total every breakdown surface must agree on — the
+      billed line items' hours (billing rounds per project group, so a
+      per-day sum can still differ by 0.01h on multi-project invoices).
+      Falls back to the tracked days when the invoice carries no items. */
+  function breakdownTotal(inv: { items?: InvoiceItem[] }, days: { hours: number }[]): number {
+    if (inv.items?.length) return round2(inv.items.reduce((a, it) => a + (Number(it.hours) || 0), 0));
+    return round2(days.reduce((a, d) => a + d.hours, 0));
+  }
+
   /** #899: hand-rolled SVG bar chart of tracked time per day (weekly
       buckets when the range is long, so bars stay readable). Mirrors the
       revenue chart's markup. */
-  function breakdownChart(days: { date: string; hours: number }[]): string {
+  function breakdownChart(days: { date: string; hours: number }[], totalOverride?: number): string {
     type Bucket = { label: string; hours: number };
     let buckets: Bucket[], per: string;
     if (days.length > 40) {
@@ -626,7 +635,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
         `<rect x="${x}" y="${baseline - h}" width="${bw.toFixed(1)}" height="${h}" rx="4" class="tb-bar"/>` +
         `<text x="${cx}" y="${baseline + 18}" text-anchor="middle">${esc(b.label)}</text></g>`;
     }).join("");
-    const total = round2(buckets.reduce((a, b) => a + b.hours, 0));
+    const total = totalOverride ?? round2(buckets.reduce((a, b) => a + b.hours, 0));
     return `<section class="inv-breakdown" aria-label="Time breakdown">` +
       `<div class="ui-block-title">Time breakdown</div>` +
       `<p class="muted inv-breakdown-sub">Tracked time per ${per} — ${total} hrs total</p>` +
@@ -721,7 +730,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
              the Total-not-Total-due row and the dropped pay-online link. */
           inv.status === "paid" ? "" : `<p class="inv-terms">${esc(terms)}</p>`}
         ${inv.notes ? `<p class="inv-notes">${esc(inv.notes)}</p>` : ""}
-        ${(() => { const bd = timeBreakdown(inv); return bd.length ? breakdownChart(bd) : ""; })()}
+        ${(() => { const bd = timeBreakdown(inv); return bd.length ? breakdownChart(bd, breakdownTotal(inv, bd)) : ""; })()}
       </div>`;
   }
 
@@ -750,6 +759,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     /* #289/#293/#295: effective terms key drives the canned description
        and whether the PDF due line is shown. */
     const termsKey_ = termsKey(inv.client_payment_terms, getMeta(db, "business_payment_terms"));
+    const bd = timeBreakdown(inv);
     return {
       number: inv.number,
       status: inv.status,
@@ -764,7 +774,8 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       })),
       subtotal: t.subtotal, tax: t.tax, taxRate: inv.tax_rate, total: t.total,
       notes: inv.notes,
-      timeBreakdown: timeBreakdown(inv), /* #899: per-day tracked hours → PDF page-2 chart */
+      timeBreakdown: bd, /* #899: per-day tracked hours → PDF page-2 chart */
+      timeBreakdownTotal: breakdownTotal(inv, bd), /* #1049: PDF total = billed hours */
       fromName: getMeta(db, "business_name") || undefined,
       fromEmail: getMeta(db, "business_email") || undefined,
       fromAddress: getMeta(db, "business_address") || undefined,
@@ -856,7 +867,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     const clientLink = token ? `${origin}/i/${token}` : null;
     const od = isOverdue(inv) ? daysBetween(inv.due_date as string, todayStr()) : 0;
     const bd = timeBreakdown(inv);
-    const trackedHours = round2(bd.reduce((a, d) => a + d.hours, 0));
+    const trackedHours = breakdownTotal(inv, bd);
     /* #229: the copy handler is delegated and id-free so htmx swaps stay
        safe; it wires the whole detail root, which covers both the head's
        Copy pay link button and the public link card's copy button. */
@@ -1019,7 +1030,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       <div class="inv-detail-grid">
         <div class="inv-detail-main">
           ${linesCard}
-          ${bd.length ? breakdownChart(bd) : ""}
+          ${bd.length ? breakdownChart(bd, trackedHours) : ""}
           ${internalBlock}
           ${paymentProofSection(inv)}
         </div>

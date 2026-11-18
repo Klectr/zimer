@@ -44,6 +44,9 @@ export type PdfInvoice = {
   /** #899: per-day tracked hours behind the invoice — renders as a
       second-page bar chart when present and non-empty. */
   timeBreakdown?: PdfTimeDay[];
+  /** #1049: the chart's total when it must equal the billed line items
+      (per-day sums can differ by 0.01h); defaults to the day sum. */
+  timeBreakdownTotal?: number;
   fromName?: string; // #233: business profile, shown by the modern template
   fromEmail?: string;
   fromAddress?: string;
@@ -450,7 +453,7 @@ function drawTimeBreakdown(inv: PdfInvoice, doc: PdfDoc) {
   doc.newPage();
   doc.text(M, doc.y, 8.5, "T I M E   B R E A K D O W N", true, true);
   doc.y -= 24;
-  const total = days.reduce((a, d) => a + d.hours, 0);
+  const total = inv.timeBreakdownTotal ?? days.reduce((a, d) => a + d.hours, 0);
   doc.text(M, doc.y, 13, `Tracked time by day  -  ${fmtHrs(total)} hrs total`, true);
   doc.y -= 36;
 

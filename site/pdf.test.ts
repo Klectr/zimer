@@ -131,6 +131,12 @@ describe("#899: PDF second page shows the time-breakdown chart", () => {
     expect(text).toContain("Sep 8");
   });
 
+  test("#1049: timeBreakdownTotal overrides the per-day sum in the header", () => {
+    const text = pdfText({ ...base, timeBreakdown: days, timeBreakdownTotal: 16.49 });
+    expect(text).toContain("16.49 hrs total");
+    expect(text).not.toContain("16.5 hrs total");
+  });
+
   test("no second page without breakdown data", () => {
     const text = pdfText(base);
     expect(text).toContain("/Count 1");
