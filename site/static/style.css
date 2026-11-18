@@ -896,6 +896,12 @@ input[type="number"] {
   -moz-appearance: textfield;
   appearance: textfield;
 }
+input[list]::-webkit-calendar-picker-indicator,
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  display: none;
+}
 
 /* color control: tonal container with palette icon, label, and swatch */
 .ui-color-control {
