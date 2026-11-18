@@ -64,12 +64,14 @@ describe("demo banner CTAs (#1218)", () => {
     const db = createDb(mkdtempSync(join(tmpdir(), "tk-demo-"))).db;
     const html = demoBanner(db);
     expect(html).toContain("Load demo data");
+    expect(html).toContain('<button type="submit" class="ui-btn ui-btn-sm">');
     expect(html).not.toContain("ui-btn-primary");
   });
 
   test("seeded banner's Zinvoice link is not primary", () => {
     const html = demoBanner(seededDb());
     expect(html).toContain("Zinvoice the sample week");
+    expect(html).toContain('<a class="ui-btn ui-btn-sm" href="/invoices/new');
     expect(html).not.toContain("ui-btn-primary");
   });
 });

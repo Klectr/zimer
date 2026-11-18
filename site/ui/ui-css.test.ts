@@ -41,6 +41,7 @@ describe("demo banner (#1218)", () => {
     expect(rule![0]).not.toContain("primary");
     const icon = css.match(/\.demo-banner > svg \{[^}]*\}/);
     expect(icon).not.toBeNull();
+    expect(icon![0]).toContain("color: var(--color-text-secondary)");
     expect(icon![0]).not.toContain("var(--color-primary)");
   });
 });
