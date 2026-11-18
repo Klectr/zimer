@@ -9,7 +9,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createDb } from "../db.ts";
-import { seedDemoData, demoIds, demoDrawerRow } from "./demo.ts";
+import { seedDemoData, demoIds, demoDrawerRow, demoBanner } from "./demo.ts";
 import { addDays, DEFAULT_PAYMENT_TERMS, shortDateRange, termsDays } from "./format.ts";
 
 describe("demo paid invoice paid_at (#763)", () => {
@@ -54,6 +54,23 @@ describe("demo drawer row (#949)", () => {
     const db = createDb(mkdtempSync(join(tmpdir(), "tk-demo-"))).db;
     db.query("INSERT INTO clients (name) VALUES ('Real Client')").run();
     expect(demoDrawerRow(db)).toBe("");
+  });
+});
+
+/* #1218: the demo banner is an informational notice — its CTAs are
+   default buttons, never the view's one primary action. */
+describe("demo banner CTAs (#1218)", () => {
+  test("empty-workspace banner's Load button is not primary", () => {
+    const db = createDb(mkdtempSync(join(tmpdir(), "tk-demo-"))).db;
+    const html = demoBanner(db);
+    expect(html).toContain("Load demo data");
+    expect(html).not.toContain("ui-btn-primary");
+  });
+
+  test("seeded banner's Zinvoice link is not primary", () => {
+    const html = demoBanner(seededDb());
+    expect(html).toContain("Zinvoice the sample week");
+    expect(html).not.toContain("ui-btn-primary");
   });
 });
 

@@ -370,6 +370,16 @@ describe("theme section (#884)", () => {
   });
 });
 
+/* #1218: the tracking card style means "a timer is running" — the
+   add-client card must not borrow it as decoration. */
+describe("add-client card (#1218)", () => {
+  test("page carries no tracking-styled card", () => {
+    const html = pageHtml();
+    expect(html).not.toContain("ui-card tracking");
+    expect(html).toContain("Add a client");
+  });
+});
+
 /** The manage script is emitted through a template literal; a single
  *  backslash in a regex becomes nothing, so `/\/clients\/` turned into
  *  a `//` comment and killed the Edit handler. Parse the emitted script

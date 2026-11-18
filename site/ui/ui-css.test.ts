@@ -32,6 +32,19 @@ describe("legacy snapshot compat", () => {
   });
 });
 
+describe("demo banner (#1218)", () => {
+  test("the banner sits on a neutral surface — no primary wash or border", () => {
+    const rule = css.match(/\.demo-banner \{[^}]*\}/);
+    expect(rule).not.toBeNull();
+    expect(rule![0]).toContain("background: var(--color-fill-tertiary)");
+    expect(rule![0]).toContain("border: 1px solid var(--color-border-secondary)");
+    expect(rule![0]).not.toContain("primary");
+    const icon = css.match(/\.demo-banner > svg \{[^}]*\}/);
+    expect(icon).not.toBeNull();
+    expect(icon![0]).not.toContain("var(--color-primary)");
+  });
+});
+
 describe("style.css token references", () => {
   test("every var() reference resolves to a definition (or an inline-set legacy var)", () => {
     const defs = new Set([...css.matchAll(/(--[\w-]+)\s*:/g)].map((m) => m[1]));
