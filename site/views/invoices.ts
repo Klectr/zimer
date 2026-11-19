@@ -1019,7 +1019,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
           <a class="ui-icon-btn tip-right" href="/invoices/${inv.id}.pdf" download data-tip="Download PDF" aria-label="Download PDF">${icon("download")}</a>
           ${next ? `<form method="post" action="/invoices/${inv.id}/status" class="inline" hx-post="/invoices/${inv.id}/status" ${hxDetail}>
             <input type="hidden" name="status" value="${next}">
-            ${button({ label: nextBtnLabel, variant: "primary", size: "sm", icon: "check", type: "submit", attrs: `data-confirm="${nextConfirm}" data-confirm-label="${nextLabel}"` })}
+            ${button({ label: nextBtnLabel, variant: "primary", icon: "check", type: "submit", attrs: `data-confirm="${nextConfirm}" data-confirm-label="${nextLabel}"` })}
           </form>` : ""}
           ${inv.status === "draft" ? `<form method="post" action="/invoices/${inv.id}/delete" class="inline">
             ${iconButton({ icon: "delete", label: "Delete draft", danger: true, className: "tip-right", type: "submit", attrs: `data-confirm="Delete this draft Zinvoice? Its entries become unbilled again." data-confirm-label="Delete draft"` })}

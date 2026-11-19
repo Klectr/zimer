@@ -86,9 +86,10 @@ describe("paid-on date", () => {
 
   test("#1250: next lifecycle step is a labeled primary button, not an icon", () => {
     const draft = views([]).invoiceDetailBody(detailInv("draft", null) as any, "http://x");
-    expect(draft).toContain('class="ui-btn ui-btn-primary ui-btn-sm"');
+    expect(draft).toContain('<button type="submit" class="ui-btn ui-btn-primary" data-confirm="Mark this Zinvoice as sent? Sent Zinvoices can\'t be edited." data-confirm-label="Mark sent">');
     expect(draft).toContain("Mark Zinvoice sent");
     const sent = views([]).invoiceDetailBody(detailInv("sent", null) as any, "http://x");
+    expect(sent).toContain('<button type="submit" class="ui-btn ui-btn-primary" data-confirm="Mark this Zinvoice as paid?" data-confirm-label="Mark paid">');
     expect(sent).toContain("Mark Zinvoice paid");
     expect(sent).not.toContain('aria-label="Mark paid"');
     const paid = views([]).invoiceDetailBody(detailInv("paid", "2026-09-21") as any, "http://x");
