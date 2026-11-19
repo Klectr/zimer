@@ -272,3 +272,16 @@ describe("invoice list compact rows (#1210)", () => {
     expect(rule![0]).toContain("white-space: nowrap");
   });
 });
+
+describe("invoice stat row on mobile (#1222)", () => {
+  test("below 640px the stats are compact rows, not full-height cards", () => {
+    const block = css.match(/@media \(max-width: 639px\) \{\n  \.ui-stat-row \{[^]*?\n\}/);
+    expect(block).not.toBeNull();
+    const b = block![0];
+    expect(b).toContain(".ui-stat-row .ui-card > div");
+    expect(b).toContain("display: flex");
+    expect(b).toContain(".ui-stat-row .ui-stat-value");
+    expect(b).toContain("font-size: var(--font-size-xl)");
+    expect(b).not.toContain("font-size: var(--font-size-heading-3)");
+  });
+});
