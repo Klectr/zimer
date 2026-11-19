@@ -117,6 +117,7 @@ Canonical terms, never synonym drift: **Zimer** (a timer), **Zinvoice** (an invo
 - Buttons are verb + noun (`Send Zinvoice`, `Add client`), never bare Confirm / OK / Submit.
 - The public Zinvoice page uses the same term everywhere: heading, browser tab, and OG tags all say Zinvoice.
 - An action keeps the same name through its flow: Send produces "Zinvoice #1041 sent to Northwind Legal."
+- Hours carry one format per meaning: decimal at two places (`18.50`) in the billing table, where hours multiply by the rate; a duration (`18h 30m`) everywhere time is read out (calendar, time breakdown, tracked-time totals).
 - In-progress states use a present participle with an ellipsis (`Saving…`, `Sending…`).
 - Plain words, sentence case, no hype, no filler. 80% information, 20% warmth; warmth is at most one sentence and always followed by the next step.
 - Errors explain what happened and how to fix it, in place, without apologizing.

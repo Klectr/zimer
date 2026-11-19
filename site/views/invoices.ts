@@ -304,9 +304,12 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     ];
   }
 
-  function fmtHours(h: number): string {
-    const v = round2(Number(h) || 0);
-    return `${v}h`;
+  function fmtBillHours(h: number): string {
+    return round2(Number(h) || 0).toFixed(2);
+  }
+
+  function fmtTrackedHours(h: number): string {
+    return fmtDur(Math.round((Number(h) || 0) * 3600));
   }
 
   /* The mock's live preview card: the checked lines, the total, the due
@@ -321,7 +324,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
        to the create route's plain-text 400. */
     const noItems = !preview || preview.items.length === 0;
     const lines = preview
-      ? preview.items.map(it => ({ label: `${it.description} — ${fmtHours(it.hours)}`, amount: money(it.amount) }))
+      ? preview.items.map(it => ({ label: `${it.description} — ${fmtBillHours(it.hours)} h`, amount: money(it.amount) }))
       : [];
     return invoiceSummary({
       title: `Live preview — ${p.number}`,
@@ -634,14 +637,14 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       const h = Math.max(3, Math.round(b.hours / max * areaH));
       const x = (i * slot + (slot - bw) / 2).toFixed(1);
       const cx = (i * slot + slot / 2).toFixed(1);
-      return `<g><title>${esc(`${b.label}: ${round2(b.hours)} hrs tracked`)}</title>` +
+      return `<g><title>${esc(`${b.label}: ${fmtTrackedHours(b.hours)} tracked`)}</title>` +
         `<rect x="${x}" y="${baseline - h}" width="${bw.toFixed(1)}" height="${h}" rx="4" class="tb-bar"/>` +
         `<text x="${cx}" y="${baseline + 18}" text-anchor="middle">${esc(b.label)}</text></g>`;
     }).join("");
     const total = totalOverride ?? round2(buckets.reduce((a, b) => a + b.hours, 0));
     return `<section class="inv-breakdown" aria-label="Time breakdown">` +
       `<div class="ui-block-title">Time breakdown</div>` +
-      `<p class="muted inv-breakdown-sub">Tracked time per ${per} — ${total} hrs total</p>` +
+      `<p class="muted inv-breakdown-sub">Tracked time per ${per} — ${fmtTrackedHours(total)} total</p>` +
       `<svg class="tb-chart" viewBox="0 0 ${W} 180" role="img" aria-label="Tracked time per ${per}">${bars}</svg>` +
       `</section>`;
   }
@@ -655,7 +658,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       <tr>
         <td class="inv-date">${esc(shortDateRange(it.date_from, it.date_to))}</td>
         <td class="desc">${esc(it.description)}</td>
-        <td class="num inv-hours${it.hours === 1 ? " inv-hours-1" : ""}">${it.hours}</td>
+        <td class="num inv-hours${it.hours === 1 ? " inv-hours-1" : ""}">${fmtBillHours(it.hours)}</td>
         <td class="num inv-rate">${money(it.rate)}</td>
         <td class="num inv-amount">${money(it.amount)}</td>
       </tr>`).join("");
@@ -973,7 +976,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     } else statusLine = "Sent · No due date";
     const activity: string[] = [];
     if (inv.paid_at) activity.push(`${shortYmd(inv.paid_at)} — Paid${inv.paid_via_stripe ? " via Stripe" : ""}`);
-    if (createdYmd) activity.push(`${shortYmd(createdYmd)} — Created${trackedHours > 0 ? ` from ${fmtHours(trackedHours)} of tracked time` : ""}`);
+    if (createdYmd) activity.push(`${shortYmd(createdYmd)} — Created${trackedHours > 0 ? ` from ${fmtTrackedHours(trackedHours)} of tracked time` : ""}`);
     const statusCard = card({ className: "no-print", content: `
       <div class="ui-card-head"><span class="ui-section-title">Status</span><span class="ui-card-head-end">${statusChipHtml}${stripeChip}</span></div>
       ${progressBar({ value: progress, label: "Zinvoice progress" })}
@@ -984,7 +987,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
         { label: "Subtotal", amount: money(t.subtotal) },
         { label: `Tax (${inv.tax_rate}%)`, amount: money(t.tax) },
       ] : []),
-      { label: "Time breakdown total", amount: fmtHours(round2(inv.items.reduce((a, it) => a + (Number(it.hours) || 0), 0))) },
+      { label: "Time breakdown total", amount: fmtTrackedHours(inv.items.reduce((a, it) => a + (Number(it.hours) || 0), 0)) },
       { label: inv.status === "sent" ? "Total due" : "Total", amount: money(t.total) },
     ];
     const linesCard = card({
@@ -992,7 +995,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
         items: inv.items.map(it => ({
           dateRange: shortDateRange(it.date_from, it.date_to),
           description: it.description,
-          hours: String(it.hours),
+          hours: fmtBillHours(it.hours),
           rate: money(it.rate),
           amount: money(it.amount),
         })),
