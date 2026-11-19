@@ -966,6 +966,8 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     const stripeChip = inv.paid_via_stripe
       ? ` <span class="stripe-paid-chip">${icon("bolt")}<span>Paid via Stripe</span></span>` : "";
     const progress = inv.status === "draft" ? 0 : inv.status === "sent" ? 50 : 100;
+    const dueInDays = inv.status === "sent" && inv.due_date ? daysBetween(todayStr(), inv.due_date) : null;
+    const progressTone = od ? "error" : dueInDays !== null && dueInDays >= 0 && dueInDays <= 7 ? "warning" : "neutral";
     let statusLine: string;
     if (inv.status === "draft") statusLine = `${createdYmd ? `Created ${shortYmd(createdYmd)} · ` : ""}Not sent yet`;
     else if (inv.status === "paid") statusLine = inv.paid_at ? `Paid ${shortYmd(inv.paid_at)}` : "Paid";
@@ -979,7 +981,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     if (createdYmd) activity.push(`${shortYmd(createdYmd)} — Created${trackedHours > 0 ? ` from ${fmtTrackedHours(trackedHours)} of tracked time` : ""}`);
     const statusCard = card({ className: "no-print", content: `
       <div class="ui-card-head"><span class="ui-section-title">Status</span><span class="ui-card-head-end">${statusChipHtml}${stripeChip}</span></div>
-      ${progressBar({ value: progress, label: "Zinvoice progress" })}
+      ${progressBar({ value: progress, label: "Zinvoice progress", tone: progressTone })}
       <p class="inv-status-line">${esc(statusLine)}</p>
       ${activity.length ? `<div class="inv-activity">${activity.map(a => `<div class="inv-activity-row">${esc(a)}</div>`).join("")}</div>` : ""}` });
     const totals = [

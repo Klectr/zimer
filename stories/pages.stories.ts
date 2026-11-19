@@ -279,7 +279,7 @@ export const pagesStories: Story[] = [
         card({
           content:
             `<div class="ui-card-head"><span class="ui-section-title">Status</span><span class="ui-card-head-end">${statusChip("sent")}</span></div>` +
-            progressBar({ value: 50, label: "Zinvoice progress" }) +
+            progressBar({ value: 50, label: "Zinvoice progress", tone: "neutral" }) +
             `<p style="color:var(--color-text-secondary);margin-top:8px">Due in 11 days · Due Nov 19</p>` +
             `<div class="inv-activity"><div class="inv-activity-row">Nov 5 — Created from 22h of tracked time</div></div>`,
         }) +
