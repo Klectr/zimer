@@ -415,9 +415,9 @@ export function createManageViews(deps: ManageViewDeps) {
     const body =
       `<form method="post" action="/business-profile" id="biz-profile-form" class="ui-settings-form" hx-post="/business-profile" hx-target="#biz-profile" hx-swap="outerHTML">` +
       `<div class="ui-settings-form-2col">` +
-      textField({ id: "bp-business_name", label: "Business name", name: "business_name", value: name }) +
-      textField({ id: "bp-business_email", label: "Email", name: "business_email", type: "email", value: email }) +
-      textField({ id: "bp-business_address", label: "Address", name: "business_address", value: address }) +
+      textField({ id: "bp-business_name", label: "Business name", name: "business_name", value: name, placeholder: "Your studio name" }) +
+      textField({ id: "bp-business_email", label: "Email", name: "business_email", type: "email", value: email, placeholder: "billing@you.example" }) +
+      textAreaField({ id: "bp-business_address", label: "Address", name: "business_address", value: address, rows: 3, placeholder: "123 Main St\nSuite 200\nSpringfield, IL 62701" }) +
       selectField({ id: "bp-terms", label: "Payment terms", name: "business_payment_terms", options, value: terms, className: "terms-select" }) +
       `</div>` +
       `<p class="terms-desc ui-settings-note">${esc(termsDescription(termsKey(null, terms)))}</p>` +

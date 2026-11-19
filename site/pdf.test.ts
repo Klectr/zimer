@@ -52,6 +52,17 @@ describe("#637: PDF From block prints email below the address", () => {
     expect(text).toContain("triston@klectr.dev");
     expect(text.indexOf("Holladay Tn, 38341")).toBeLessThan(text.indexOf("triston@klectr.dev"));
   });
+
+  test("a five-line From address prints every line (#1259)", () => {
+    const text = pdfText({
+      ...base,
+      fromName: "Test Studio",
+      fromAddress: "123 Main St\nSuite 200\nBuilding B\nSpringfield, IL 62701\nUSA",
+    });
+    for (const line of ["123 Main St", "Suite 200", "Building B", "Springfield, IL 62701", "USA"]) {
+      expect(text).toContain(line);
+    }
+  });
 });
 
 /** #687: paid invoices have nothing left due — the grand-total row reads
