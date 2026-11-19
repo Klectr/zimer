@@ -49,7 +49,7 @@ describe("static route test files (#1246)", () => {
 
   test("test source files return 404", async () => {
     const { handleWeb } = setup();
-    for (const path of ["/static/dialog.test.ts", "/static/shortcut.test.ts"]) {
+    for (const path of ["/static/dialog.test.ts", "/static/shortcut.test.ts", "/static/dialog.TEST.TS"]) {
       const res = await get(handleWeb, path);
       expect(res.status).toBe(404);
       expect(await res.text()).not.toContain("secret test source");
