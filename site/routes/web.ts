@@ -189,6 +189,7 @@ export function createWebRouter(deps: WebDeps) {
         if (path.startsWith("/static/")) {
           const p = normalize(join(STATIC_DIR, path.slice("/static/".length)));
           if (!p.startsWith(STATIC_DIR + sep) && p !== STATIC_DIR) return new Response("Forbidden", { status: 403 });
+          if (/\.test\.[^/]+$/.test(path)) return html(pages.notFoundPage(authedPage(req, TOKEN)), 404);
           const f = Bun.file(p);
           if (!(await f.exists())) return html(pages.notFoundPage(authedPage(req, TOKEN)), 404);
           /* #374: filenames aren't fingerprinted, so browsers must revalidate
