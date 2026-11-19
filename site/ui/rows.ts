@@ -1,4 +1,4 @@
-import { esc } from "../lib/format";
+import { esc, safeCssColor } from "../lib/format";
 import { icon } from "../lib/icons";
 import { statusChip, type ZinvoiceStatus } from "./status-chip";
 
@@ -60,7 +60,8 @@ export function entryRow(opts: EntryRowOptions): string {
   const actions = opts.actions ? `<span class="ui-row-actions">${opts.actions}</span>` : "";
   const id = opts.id ? ` id="${esc(opts.id)}"` : "";
   const attrs = opts.attrs ? ` ${opts.attrs}` : "";
-  const dot = opts.dot ? `<span class="ui-row-dot" style="background:${esc(opts.dot)}" aria-hidden="true"></span>` : "";
+  const safeDot = safeCssColor(opts.dot);
+  const dot = safeDot ? `<span class="ui-row-dot" style="background:${esc(safeDot)}" aria-hidden="true"></span>` : "";
   const meta = opts.metaHtml ? `<div class="ui-row-meta">${opts.metaHtml}</div>` : `<div class="ui-row-meta">${esc(opts.meta ?? "")}</div>`;
   const cls = `ui-row${opts.running ? " is-running" : ""}`;
   const open = opts.href ? `<a class="${cls}"${id}${attrs} href="${esc(opts.href)}">` : `<div class="${cls}"${id}${attrs}>`;

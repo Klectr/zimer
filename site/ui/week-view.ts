@@ -1,4 +1,4 @@
-import { esc } from "../lib/format";
+import { esc, safeCssColor } from "../lib/format";
 import { entryRow } from "./rows";
 
 export interface WeekEntry {
@@ -46,7 +46,7 @@ function gridDay(day: WeekDay): string {
   const entries = shown
     .map(
       (e) =>
-        `<div class="ui-week-entry"><div class="ui-week-entry-title">${esc(e.title)}</div>` +
+        `<div class="ui-week-entry"><div class="ui-week-entry-title">${safeCssColor(e.dot) ? `<span class="ui-row-dot" style="background:${esc(safeCssColor(e.dot)!)}" aria-hidden="true"></span>` : ""}${esc(e.title)}</div>` +
         `<div class="ui-week-entry-meta">${e.running ? "Running · " : ""}${esc(e.duration)}</div></div>`,
     )
     .join("");

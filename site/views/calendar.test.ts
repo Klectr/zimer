@@ -1052,4 +1052,27 @@ describe("calendar client color (#1212)", () => {
     expect(tags.find((t) => t.includes('data-id="22"'))!).toContain("--entry:var(--color-text-tertiary)");
     expect(html).toContain('class="ui-row-dot" style="background:#60a5fa"');
   });
+
+  test("legacy gold maps to the primary var; a malicious stored color renders neutral with no injection", () => {
+    const gold = {
+      id: 23, description: "gold work", project_id: 3, project_name: "Brand",
+      client_name: "Old Co", client_color: "#f2c14e", invoice_id: null,
+      invoice_number: null, invoice_status: null,
+      start_time: "2026-09-21T15:00:00.000Z", end_time: "2026-09-21T16:00:00.000Z",
+    };
+    const evil = { ...gold, id: 24, client_color: "#60a5fa;position:fixed;inset:0" };
+    const db = {
+      query: (_sql: string) => ({ get: () => ({ n: 1 }), all: () => [gold, evil] }),
+    } as unknown as Database;
+    const views = createCalendarViews({
+      db, qOne: stubQuery(), qRange: stubQuery(), entrySelect: "SELECT",
+      layout: (_t: string, b: string) => b, projectOptionRows: () => [],
+      weekTargetBar: () => "", calHourPx: 64,
+    } as any);
+    const html = views.weekInner("2026-09-20", "America/Chicago");
+    const tags = html.match(/<div class="ui-viz-block[^>]*>/g) || [];
+    expect(tags.find((t) => t.includes('data-id="23"'))!).toContain("--entry:var(--color-primary)");
+    expect(tags.find((t) => t.includes('data-id="24"'))!).toContain("--entry:var(--color-text-tertiary)");
+    expect(html).not.toContain("position:fixed");
+  });
 });

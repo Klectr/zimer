@@ -965,7 +965,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       e.preventDefault();
       var a=minsAt(e,col);
       var pv=document.createElement('div');
-      pv.className='ui-viz-block is-preview';
+      pv.className='ui-viz-block is-preview'; pv.style.setProperty('--entry','var(--color-primary)');
       col.appendChild(pv); paintGeo(pv,a,a+15);
       var dragMoved=false;
       function cmove(ev){ dragMoved=true; var m=minsAt(ev,col);

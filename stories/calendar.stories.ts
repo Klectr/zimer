@@ -127,16 +127,16 @@ export const calendarStories: Story[] = [
       visualizer({
         nowMin: 845,
         days: [
-          { date: "2026-11-02", label: "Mon Nov 2", total: "1h 24m", entries: [{ id: "e1", title: "Acme — homepage pass", startMin: 542, endMin: 626 }] },
+          { date: "2026-11-02", label: "Mon Nov 2", total: "1h 24m", entries: [{ id: "e1", title: "Acme — homepage pass", startMin: 542, endMin: 626, color: "#fb923c" }] },
           { date: "2026-11-03", label: "Tue Nov 3", total: "6h 57m", isToday: true, entries: [
-            { id: "e2", title: "Northwind — case dashboard", startMin: 540, endMin: 720 },
-            { id: "e3", title: "Acme — deploy", startMin: 780, endMin: 912, invoiced: true, locked: true },
-            { id: "e4", title: "Bluefin — POS fixes", startMin: 845, endMin: 905, running: true },
-            { id: "e5", title: "Harbor — overlap demo", startMin: 690, endMin: 750, overlap: true },
+            { id: "e2", title: "Northwind — case dashboard", startMin: 540, endMin: 720, color: "#b39ddb" },
+            { id: "e3", title: "Acme — deploy", startMin: 780, endMin: 912, invoiced: true, locked: true, color: "#fb923c" },
+            { id: "e4", title: "Bluefin — POS fixes", startMin: 845, endMin: 905, running: true, color: "#7cc4ff" },
+            { id: "e5", title: "Harbor — overlap demo", startMin: 690, endMin: 750, overlap: true, color: "#34d399" },
           ]},
-          { date: "2026-11-04", label: "Wed Nov 4", total: "3h 00m", entries: [{ id: "e6", title: "Harbor — import", startMin: 510, endMin: 690 }] },
+          { date: "2026-11-04", label: "Wed Nov 4", total: "3h 00m", entries: [{ id: "e6", title: "Harbor — import", startMin: 510, endMin: 690, color: "#34d399" }] },
           { date: "2026-11-05", label: "Thu Nov 5", total: "0h", entries: [] },
-          { date: "2026-11-06", label: "Fri Nov 6", total: "4h 40m", entries: [{ id: "e7", title: "Acme — QA pass", startMin: 540, endMin: 820 }] },
+          { date: "2026-11-06", label: "Fri Nov 6", total: "4h 40m", entries: [{ id: "e7", title: "Acme — QA pass", startMin: 540, endMin: 820, color: "#fb923c" }] },
           { date: "2026-11-07", label: "Sat Nov 7", total: "0h", entries: [] },
           { date: "2026-11-08", label: "Sun Nov 8", total: "0h", entries: [] },
         ],

@@ -4,7 +4,7 @@ import { join } from "node:path";
 
 const css = readFileSync(join(import.meta.dir, "../static/style.css"), "utf8");
 
-const INLINE_SET_VARS = ["--cal-hour", "--dot"];
+const INLINE_SET_VARS = ["--cal-hour", "--dot", "--entry"];
 
 describe("legacy snapshot compat", () => {
   test("the sheet table rules keep their .md-table aliases for frozen snapshots (#301)", () => {
