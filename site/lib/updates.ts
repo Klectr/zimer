@@ -141,13 +141,25 @@ export function updateStatusHtml(s: UpdateStatus): string {
   }
 }
 
-/* #340: Updates section in the Settings modal. The check itself is manual. */
-export function updateSectionHtml(): string {
-  const body =
+/* #340: Updates section in the Settings modal. The check itself is manual.
+   #1223: with aboutActionsHtml (the self-hosted Changelog and install-guide
+   links) the section becomes the single "About & updates" card — version,
+   links, and the update check in one place, so the version shows once. */
+export function updateSectionHtml(opts?: { aboutActionsHtml?: string }): string {
+  const statusRow =
     `<div id="update-status"><div class="status-row">${icon("info")}<div class="status-row-text">
         <p class="status-row-headline">Zimer v${esc(appVersion())}</p>
         <p class="status-row-supporting">Press the button to check for new releases.</p>
-      </div></div></div>` +
-    `<div class="ui-settings-actions">${button({ label: "Check for updates", icon: "refresh", spinner: true, attrs: 'id="check-updates-btn" hx-post="/check-updates" hx-target="#update-status" hx-swap="innerHTML" hx-disabled-elt="#check-updates-btn"' })}</div>`;
+      </div></div></div>`;
+  const checkBtn = button({ label: "Check for updates", icon: "refresh", spinner: true, attrs: 'id="check-updates-btn" hx-post="/check-updates" hx-target="#update-status" hx-swap="innerHTML" hx-disabled-elt="#check-updates-btn"' });
+  if (opts?.aboutActionsHtml !== undefined) {
+    return settingsSection({
+      level: 2, id: "about", title: "About & updates",
+      hint: "Free forever on your own server.",
+      bodyHtml: `<p class="ui-settings-note">One Bun process and one SQLite file. Updates are manual — pull the release and restart.</p>` + statusRow,
+      actionsHtml: opts.aboutActionsHtml + checkBtn,
+    });
+  }
+  const body = statusRow + `<div class="ui-settings-actions">${checkBtn}</div>`;
   return settingsSection({ level: 2, id: "update-section", title: "Updates", bodyHtml: body });
 }
