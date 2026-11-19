@@ -3,7 +3,7 @@
  *  ensurePublicToken) stay owned by server.ts until the invoices view slice
  *  (#171) and are injected here, so these pages render unchanged. */
 
-import { esc, money, shortYmd, termsDays, termsKey, todayStr } from "../lib/format.ts";
+import { daysBetween, esc, money, shortYmd, termsDays, termsKey, todayStr } from "../lib/format.ts";
 import { icon, logo } from "../lib/icons.ts";
 import type { ChangelogEntry } from "../lib/changelog.ts"; /* #303 */
 import type { TermsSection } from "../lib/license-terms.ts"; /* #341 */
@@ -78,9 +78,11 @@ export function createPublicViews(deps: PublicViewDeps) {
     else if (inv.status === "draft") chipHtml = tag({ label: "Draft", tone: "neutral" });
     else if (inv.status === "sent" && inv.due_date
       && termsDays(termsKey(inv.client_payment_terms, deps.paymentTerms?.())) !== null) {
-      chipHtml = inv.due_date < todayStr()
+      const today = todayStr();
+      const daysLeft = daysBetween(today, inv.due_date);
+      chipHtml = inv.due_date < today
         ? tag({ label: "Overdue", tone: "error" })
-        : tag({ label: `Due ${shortYmd(inv.due_date)}`, tone: "warning" });
+        : tag({ label: `Due ${shortYmd(inv.due_date)}`, tone: daysLeft <= 7 ? "warning" : "neutral" });
     } else if (inv.status === "sent") chipHtml = tag({ label: "Sent", tone: "neutral" });
     const issued = longYmd(inv.issue_date);
     const sheet = publicInvoice({
