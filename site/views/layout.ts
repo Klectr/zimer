@@ -230,8 +230,8 @@ export function createLayoutViews(qRunning: Statement, themeCss?: () => string, 
     const body = `
       <div class="error-page">
         <div class="error-mark">${logo(40)}</div>
-        <h1 class="ui-page-title">This zinvoice doesn&rsquo;t exist.</h1>
-        <p class="muted">The link you followed doesn&rsquo;t match any zinvoice. Check the address, or ask the sender for a fresh link.</p>
+        <h1 class="ui-page-title">This Zinvoice doesn&rsquo;t exist.</h1>
+        <p class="muted">The link you followed doesn&rsquo;t match any Zinvoice. Check the address, or ask the sender for a fresh link.</p>
       </div>`;
     return publicShell("Zinvoice not found", body);
   }

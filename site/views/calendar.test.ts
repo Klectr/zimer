@@ -445,13 +445,13 @@ describe("calendar week-only carousel (#572)", () => {
   test("nudge chip omits the amount when no billable time is invoiced yet (#1035)", () => {
     const aside = asideOf(viewsFor([monEntry, tueEntry]).weekInner("2026-09-20", "America/Chicago"));
     expect(aside).toContain("nudge-chip");
-    expect(aside).not.toContain("not yet zinvoiced");
+    expect(aside).not.toContain("not yet Zinvoiced");
   });
 
   test("nudge chip shows the amount once part of the week is invoiced (#1035)", () => {
     const invoicedMon = { ...monEntry, invoice_id: 7, invoice_number: "INV-0001", invoice_status: "sent" };
     const aside = asideOf(viewsFor([invoicedMon, tueEntry]).weekInner("2026-09-20", "America/Chicago"));
-    expect(aside).toContain("1h not yet zinvoiced");
+    expect(aside).toContain("1h not yet Zinvoiced");
   });
 
   test("slim chip rides inline in the summary, beside the total (#1041)", () => {

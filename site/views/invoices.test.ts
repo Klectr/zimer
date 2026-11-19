@@ -174,12 +174,12 @@ describe("paid-on date", () => {
 describe("#947: destructive invoice actions carry data-confirm", () => {
   test("Mark sent has a confirm (sent zinvoices can't be edited)", () => {
     const html = views([]).invoiceDetailBody(detailInv("draft", null) as any, "http://x");
-    expect(html).toContain('data-confirm="Mark this zinvoice as sent? Sent zinvoices can\'t be edited."');
+    expect(html).toContain('data-confirm="Mark this Zinvoice as sent? Sent Zinvoices can\'t be edited."');
     expect(html).toContain('data-confirm-label="Mark sent"');
   });
   test("Mark paid has a confirm", () => {
     const html = views([]).invoiceDetailBody(detailInv("sent", null) as any, "http://x");
-    expect(html).toContain('data-confirm="Mark this zinvoice as paid?"');
+    expect(html).toContain('data-confirm="Mark this Zinvoice as paid?"');
     expect(html).toContain('data-confirm-label="Mark paid"');
   });
   test("Regenerate link has a confirm (old URL stops working)", () => {
@@ -591,12 +591,12 @@ describe("list vs detail selection", () => {
   });
 
   test("the status filter narrows the table", () => {
-    expect(views(rows).invoicesPage(null, "http://x", { status: "paid" })).toContain("No zinvoices match this filter.");
+    expect(views(rows).invoicesPage(null, "http://x", { status: "paid" })).toContain("No Zinvoices match this filter.");
     expect(views(rows).invoicesPage(null, "http://x", { status: "sent" })).toContain("INV-0007");
   });
   test("search matches client or number", () => {
     expect(views(rows).invoicesPage(null, "http://x", { q: "acme" })).toContain("INV-0007");
-    expect(views(rows).invoicesPage(null, "http://x", { q: "zzz" })).toContain("No zinvoices match this filter.");
+    expect(views(rows).invoicesPage(null, "http://x", { q: "zzz" })).toContain("No Zinvoices match this filter.");
   });
 });
 
@@ -785,7 +785,7 @@ describe("#948: zinvoices header actions stay labeled", () => {
   test("New Zinvoice is a labeled primary link button", () => {
     const html = views([{ ...baseRow, status: "sent", paid_at: null }]).invoicesPage(null, "http://x");
     expect(html).toContain('class="ui-btn ui-btn-primary" href="/invoices/new"');
-    expect(html).toContain('aria-label="New zinvoice"');
+    expect(html).toContain('aria-label="New Zinvoice"');
     expect(html).toContain(">New Zinvoice</a>");
   });
 });

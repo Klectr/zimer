@@ -121,7 +121,7 @@ export function createPublicViews(deps: PublicViewDeps) {
     const sections: TermsSection[] = [
       {
         heading: "What we store",
-        body: "Your account email and a hash of your password (your actual password is never stored), plus everything you track: time entries, clients, projects, and zinvoices. That's the entire list.",
+        body: "Your account email and a hash of your password (your actual password is never stored), plus everything you track: time entries, clients, projects, and Zinvoices. That's the entire list.",
       },
       {
         heading: "Where it lives",

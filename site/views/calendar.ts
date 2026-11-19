@@ -295,7 +295,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     const showChipAmount = uninvoiced < weekBillable;
     const nudgeChip = uninvoiced > 0 ? `
       <a class="nudge-chip${showChipAmount ? "" : " nudge-chip--solo"}" href="/invoices/new?from=${sun}&to=${addDays(sun, 7)}">
-        ${showChipAmount ? `<span>${fmtDur(uninvoiced)} not yet zinvoiced</span>` : ""}
+        ${showChipAmount ? `<span>${fmtDur(uninvoiced)} not yet Zinvoiced</span>` : ""}
         ${/* #592: the link invoices the VIEWED week, so "this week" lies on
            past/future weeks. Keep it on the current week, "this period"
            everywhere else. */ ""}
@@ -603,7 +603,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       var locked=el.dataset.locked||''; /* #334: sent/paid time opens read-only */
       var running=el.classList.contains('is-running'); /* #462: the timer card owns
         the running entry — deleting it here orphaned the card. */
-      title.textContent=locked?'Entry (zinvoiced)':'Edit entry';
+      title.textContent=locked?'Entry (Zinvoiced)':'Edit entry';
       delBtn.hidden=!!locked||running; err.hidden=true;
       var d=new Date(dayStr+'T12:00:00');
       dateLine.textContent=d.toLocaleDateString([],{weekday:'long',month:'long',day:'numeric'});
