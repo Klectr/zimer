@@ -56,6 +56,11 @@ describe("social meta tags (#924)", () => {
     ]) expect(html).toContain(tag);
     expect(html).not.toContain("Acme"); // client names never leak
   });
+  test("#1217: public invoice tab title says Zinvoice, matching the heading and OG tags", () => {
+    const html = (views as any).publicInvoicePage(inv, "https://zimer.klectr.dev", "/i/abc123");
+    expect(html).toContain("<title>Zinvoice INV-0001 · Zimer</title>");
+    expect(html).not.toContain("<title>Invoice ");
+  });
   test("changelog page has OG tags", () => {
     const html = (views as any).changelogPage([], "https://zimer.klectr.dev");
     expect(html).toContain('property="og:title" content="Changelog · Zimer"');

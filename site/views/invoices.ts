@@ -907,7 +907,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     })();</script>`;
     const copyBtn = (url: string) => `
       ${iconButton({ icon: "copy", label: "Copy link", attrs: `data-copy data-url="${esc(url)}"` })}`;
-    const actBtn = (action: string, ic: string, label: string, cls = "", confirm = "", confirmLabel = "Delete", tip = label) => `
+    const actBtn = (action: string, ic: string, label: string, cls = "", confirm = "", confirmLabel = label, tip = label) => `
       <form method="post" action="${action}" hx-post="${action}" ${hxDetail}>
         ${iconButton({ icon: ic, label, tip, danger: cls === "ui-icon-btn-danger", type: "submit", attrs: confirm ? `data-confirm="${confirm}" data-confirm-label="${confirmLabel}"` : undefined })}
       </form>`;
