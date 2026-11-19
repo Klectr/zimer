@@ -232,6 +232,30 @@ describe("public invoice summary (#1136)", () => {
   });
 });
 
+describe("public invoice due chip tone (#1253)", () => {
+  const ymdIn = (days: number): string => {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+  const dueHtml = (days: number) =>
+    v.publicInvoicePage({ ...inv, due_date: ymdIn(days) }, "https://example.com", "/i/abc123");
+  test("due more than 7 days out is neutral, not warning", () => {
+    const html = dueHtml(30);
+    expect(html).toContain("ui-tag-neutral");
+    expect(html).not.toContain("ui-tag-warning");
+  });
+  test("due within 7 days is warning", () => {
+    const html = dueHtml(3);
+    expect(html).toContain("ui-tag-warning");
+  });
+  test("due today is warning, not overdue", () => {
+    const html = dueHtml(0);
+    expect(html).toContain("ui-tag-warning");
+    expect(html).not.toContain("Overdue");
+  });
+});
+
 describe("public invoice status edges (#1136 review)", () => {
   const mk = (globalTerms: string) => createPublicViews({
     getInvoice: () => null,
