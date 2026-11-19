@@ -180,7 +180,7 @@ export const pagesStories: Story[] = [
     group: "Pages",
     title: "Zinvoices",
     render: () =>
-      frame("invoices", "Zinvoices", "Outstanding $2,730.00 · Paid this month $425.00", linkButton({ label: "New Zinvoice", href: "/invoices/new", variant: "primary" }),
+      frame("invoices", "Zinvoices", "4 Zinvoices · 1 draft · 1 overdue", linkButton({ label: "New Zinvoice", href: "/invoices/new", variant: "primary" }),
         `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">` +
         card({ content: statBlock({ label: "Outstanding", value: "$2,730.00", sub: "2 sent, 1 overdue" }) }) +
         card({ content: statBlock({ label: "Drafts", value: "1", sub: "$1,827.50 not yet sent" }) }) +
