@@ -174,9 +174,9 @@ export const dataStories: Story[] = [
       wrap(
         lineItemsTable({
           items: [
-            { dateRange: "Oct 20 – Oct 24", description: "Intake form fixes", hours: "9.5h", rate: "$95", amount: "$902.50" },
-            { dateRange: "Oct 27 – Oct 31", description: "Case dashboard", hours: "11.0h", rate: "$95", amount: "$1,045.00" },
-            { dateRange: "Nov 3", description: "Review call", hours: "1.5h", rate: "$95", amount: "$140.00" },
+            { dateRange: "Oct 20 – Oct 24", description: "Intake form fixes", hours: "9.50", rate: "$95", amount: "$902.50" },
+            { dateRange: "Oct 27 – Oct 31", description: "Case dashboard", hours: "11.00", rate: "$95", amount: "$1,045.00" },
+            { dateRange: "Nov 3", description: "Review call", hours: "1.50", rate: "$95", amount: "$140.00" },
           ],
           totals: [
             { label: "Subtotal", amount: "$2,087.50" },

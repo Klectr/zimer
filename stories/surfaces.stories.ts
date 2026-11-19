@@ -65,9 +65,9 @@ export const surfacesStories: Story[] = [
         meta: "Zinvoice #1041 · Issued Nov 5, 2026",
         chipHtml: tag({ label: "Due Nov 19", tone: "warning" }),
         lines: [
-          { label: "Intake form fixes — 9.5h", amount: "$902.50" },
-          { label: "Case dashboard — 11.0h", amount: "$1,045.00" },
-          { label: "Review call — 1.5h", amount: "$140.00" },
+          { label: "Intake form fixes — 9.50 h", amount: "$902.50" },
+          { label: "Case dashboard — 11.00 h", amount: "$1,045.00" },
+          { label: "Review call — 1.50 h", amount: "$140.00" },
         ],
         totalLabel: "Total due",
         total: "$2,087.50",

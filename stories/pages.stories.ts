@@ -147,7 +147,7 @@ export const pagesStories: Story[] = [
         statStrip([
           { label: "Today", value: "5h 12m", note: "of 8h goal · met", meter: 100 },
           { label: "This week", value: "36h 52m", note: "of 40h · 4 clients", meter: 92 },
-          { label: "Unbilled", value: "$2,340", note: "27.5h · 3 clients", action: { label: "Create Zinvoice", href: "/invoices/new" } },
+          { label: "Unbilled", value: "$2,340", note: "27h 30m · 3 clients", action: { label: "Create Zinvoice", href: "/invoices/new" } },
         ]) +
         card({
           content:
@@ -240,9 +240,9 @@ export const pagesStories: Story[] = [
           title: "Live preview — #1042",
           chipHtml: statusChip("draft"),
           lines: [
-            { label: "Design — 12.5h", amount: "$1,062.50" },
-            { label: "Development — 8h", amount: "$680.00" },
-            { label: "Review call — 1h", amount: "$85.00" },
+            { label: "Design — 12.50 h", amount: "$1,062.50" },
+            { label: "Development — 8.00 h", amount: "$680.00" },
+            { label: "Review call — 1.00 h", amount: "$85.00" },
           ],
           totalLabel: "Total due",
           total: "$1,827.50",
@@ -265,12 +265,12 @@ export const pagesStories: Story[] = [
         card({
           content: lineItemsTable({
             items: [
-              { dateRange: "Nov 3 — Nov 5", description: "Intake form fixes", hours: "9.5", rate: "$95", amount: "$902.50" },
-              { dateRange: "Nov 3 — Nov 5", description: "Case dashboard", hours: "11.0", rate: "$95", amount: "$1,045.00" },
-              { dateRange: "Nov 5", description: "Review call", hours: "1.5", rate: "$95", amount: "$142.50" },
+              { dateRange: "Nov 3 — Nov 5", description: "Intake form fixes", hours: "9.50", rate: "$95", amount: "$902.50" },
+              { dateRange: "Nov 3 — Nov 5", description: "Case dashboard", hours: "11.00", rate: "$95", amount: "$1,045.00" },
+              { dateRange: "Nov 5", description: "Review call", hours: "1.50", rate: "$95", amount: "$142.50" },
             ],
             totals: [
-              { label: "Time breakdown total", amount: "22.0h" },
+              { label: "Time breakdown total", amount: "22h" },
               { label: "Total due", amount: "$2,090.00" },
             ],
           }),
@@ -303,9 +303,9 @@ export const pagesStories: Story[] = [
         meta: "Zinvoice #1041 · Issued Nov 5, 2026",
         chipHtml: tag({ label: "Due Nov 19", tone: "warning" }),
         lines: [
-          { label: "Intake form fixes — 9.5h", amount: "$902.50" },
-          { label: "Case dashboard — 11.0h", amount: "$1,045.00" },
-          { label: "Review call — 1.5h", amount: "$142.50" },
+          { label: "Intake form fixes — 9.50 h", amount: "$902.50" },
+          { label: "Case dashboard — 11.00 h", amount: "$1,045.00" },
+          { label: "Review call — 1.50 h", amount: "$142.50" },
         ],
         totalLabel: "Total due",
         total: "$2,090.00",
