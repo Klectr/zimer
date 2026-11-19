@@ -100,8 +100,10 @@ describe("privacy analytics disclosure (#1069)", () => {
     expect(html).toContain("Analytics");
     expect(html).toContain('<a href="https://posthog.com" target="_blank" rel="noopener">PostHog</a>');
     expect(html).toContain('<a href="https://posthog.com/privacy" target="_blank" rel="noopener">posthog.com/privacy</a>');
-    expect(html).toContain("On the landing page it records page views and clicks.");
-    expect(html).toContain("On the landing page and inside the app it records sessions (a replay of the visit)");
+    expect(html).toContain("On the landing page and inside the app it records errors when something breaks");
+    expect(html).toContain("On the landing page it records page views, clicks, and sessions (a replay of the visit).");
+    expect(html).toContain("Inside the app it does not record sessions.");
+    expect(html).not.toContain("inside the app it records sessions");
     expect(html).toContain("tied to your account ID, never your email");
     expect(html).toContain("Self-hosted instances send us nothing.");
     expect(html).toContain("The analytics we run on this site is described under Analytics above.");
