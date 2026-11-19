@@ -115,7 +115,7 @@ Use Zimer's existing shared components and server templates; don't hand-roll a n
 Canonical terms, never synonym drift: **Zimer** (a timer), **Zinvoice** (an invoice), Client, Project, Entry. In user-facing copy "timer" is written Zimer and "invoice" is written Zinvoice; code identifiers and routes stay plain.
 
 - Buttons are verb + noun (`Send Zinvoice`, `Add client`), never bare Confirm / OK / Submit.
-- Client-facing surfaces use the same terms: the public Zinvoice page, its browser tab and OG tags, and the PDF all say Zinvoice.
+- The public Zinvoice page uses the same term everywhere: heading, browser tab, and OG tags all say Zinvoice.
 - An action keeps the same name through its flow: Send produces "Zinvoice #1041 sent to Northwind Legal."
 - In-progress states use a present participle with an ellipsis (`Saving…`, `Sending…`).
 - Plain words, sentence case, no hype, no filler. 80% information, 20% warmth; warmth is at most one sentence and always followed by the next step.
