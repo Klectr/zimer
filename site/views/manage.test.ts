@@ -277,9 +277,9 @@ describe("manage labels (#827)", () => {
     const html = views.bizProfileSection();
     expect(html).toContain('placeholder="Your studio name"');
     expect(html).toContain('placeholder="billing@you.example"');
-    expect(html).toContain("<textarea");
-    expect(html).toContain('name="business_address"');
-    expect(html).toContain("123 Main St");
+    expect(html).toContain('<textarea class="ui-input" id="bp-business_address" name="business_address" rows="3"');
+    expect(html).toContain("placeholder=\"123 Main St\nSuite 200\nSpringfield, IL 62701\"");
+    expect(html).not.toContain('<input class="ui-input" type="text" id="bp-business_address"');
   });
 });
 

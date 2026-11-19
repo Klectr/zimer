@@ -314,7 +314,7 @@ function drawModern(inv: PdfInvoice, doc: PdfDoc) {
        then email last. */
     if (inv.fromName) { doc.rtext(RIGHT, fy, 12, inv.fromName, true); fy -= 16; }
     if (inv.fromAddress) {
-      for (const line of inv.fromAddress.split("\n").slice(0, 3)) {
+      for (const line of inv.fromAddress.split("\n").slice(0, 6)) {
         if (!line.trim()) continue;
         doc.rtext(RIGHT, fy, 10, line.trim(), false, true); fy -= 15;
       }
