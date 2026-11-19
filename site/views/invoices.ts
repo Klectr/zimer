@@ -360,7 +360,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
             ${textField({ id: "inv-rate", label: "Hourly rate", name: "rate", type: "number", value: p.rate || (selClient ? String(selClient.rate || "") : ""), min: "0", step: "0.01", prefix: "$", suffix: "/hr" })}
           </div>
         </div>
-        <p class="muted tiny">Only finished, unbilled entries on this client's projects are included. Rates come from the client default; edit the rate to override this zinvoice.</p>` });
+        <p class="muted tiny">Only finished, unbilled entries on this client's projects are included. Rates come from the client default; edit the rate to override this Zinvoice.</p>` });
 
 
 
@@ -562,7 +562,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
           <tbody>${rows}</tbody>
         </table></div>
         <div class="row">${button({ label: "Add manual line", icon: "add", variant: "ghost", attrs: "data-add-item" })}</div>
-        <p class="muted tiny">Amounts recalculate on save. Entries are marked billed when the zinvoice is created.</p>` });
+        <p class="muted tiny">Amounts recalculate on save. Entries are marked billed when the Zinvoice is created.</p>` });
     if (embedded) return section;
     return `<div id="inv-steps" hx-swap-oob="true">${steps({ items: STEP_ITEMS, current: 1 })}</div>`
       + section

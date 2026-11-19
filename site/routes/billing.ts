@@ -150,7 +150,7 @@ function billingWallPage(sub: Subscription | null): string {
     logoLockup() +
     `<h1 class="ui-page-title" style="margin-top:var(--spacing-md)">${headline}</h1>` +
     `<p class="ui-app-sub">${copy}</p>` +
-    `<p class="muted">Nothing is deleted — your time entries, clients, and zinvoices are saved and waiting.</p>` +
+    `<p class="muted">Nothing is deleted — your time entries, clients, and Zinvoices are saved and waiting.</p>` +
     cta +
     `<form method="POST" action="/logout" style="margin-top:var(--spacing-md)">${button({ label: "Log out", variant: "ghost", size: "sm", type: "submit" })}</form>`;
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
