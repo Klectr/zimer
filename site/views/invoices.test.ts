@@ -977,6 +977,28 @@ describe("#1269: detail Status bar tone reflects due state", () => {
       .invoiceDetailBody(sentDueIn(-3) as any, "http://x");
     expect(html).toContain("ui-progress-fill ui-progress-fill-error");
   });
+  test("the 7-day boundary: due in 7 warns, due in 8 is neutral", () => {
+    expect(views([]).invoiceDetailBody(sentDueIn(7) as any, "http://x"))
+      .toContain("ui-progress-fill ui-progress-fill-warning");
+    const html = views([]).invoiceDetailBody(sentDueIn(8) as any, "http://x");
+    expect(html).toContain("ui-progress-fill ui-progress-fill-neutral");
+    expect(html).not.toContain("ui-progress-fill-warning");
+  });
+  test("past due but not flagged overdue (pay-when-paid) stays neutral", () => {
+    const html = views([]).invoiceDetailBody(sentDueIn(-3) as any, "http://x");
+    expect(html).toContain("ui-progress-fill ui-progress-fill-neutral");
+    expect(html).not.toContain("ui-progress-fill-error");
+    expect(html).not.toContain("ui-progress-fill-warning");
+  });
+  test("sent with no due date renders neutral", () => {
+    const html = views([]).invoiceDetailBody({ ...detailInv("sent", null), due_date: null } as any, "http://x");
+    expect(html).toContain("ui-progress-fill ui-progress-fill-neutral");
+  });
+  test("paid with a due date inside the warning window still renders neutral", () => {
+    const html = views([]).invoiceDetailBody({ ...detailInv("paid", "2026-09-21"), due_date: addDays(todayStr(), 3) } as any, "http://x");
+    expect(html).toContain("ui-progress-fill ui-progress-fill-neutral");
+    expect(html).not.toContain("ui-progress-fill-warning");
+  });
   test("the Status bar never uses the plain primary fill", () => {
     const html = views([]).invoiceDetailBody(sentDueIn(30) as any, "http://x");
     expect(html).not.toContain('<span class="ui-progress-fill" style="width:50%"></span>');
