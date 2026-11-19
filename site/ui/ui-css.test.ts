@@ -245,3 +245,30 @@ describe("ui component CSS", () => {
     }
   });
 });
+
+describe("invoice list compact rows (#1210)", () => {
+  test("below 640px the list rows stack instead of scrolling sideways", () => {
+    const block = css.match(/@media screen and \(max-width: 640px\) \{[^]*?\.inv-table-card[^]*?\n\}/);
+    expect(block).not.toBeNull();
+    const b = block![0];
+    expect(b).toContain(".inv-table-card .table-wrap");
+    expect(b).toContain("overflow-x: visible");
+    expect(b).toContain(".inv-table-card tbody tr");
+    expect(b).toContain("display: flex");
+    expect(b).toContain("flex-wrap: wrap");
+    const colOpt = b.match(/\.inv-table-card td\.col-opt \{[^}]*\}/);
+    expect(colOpt).not.toBeNull();
+    expect(colOpt![0]).toContain("display: block");
+    expect(colOpt![0]).toContain("order: 5");
+    expect(b).toContain(".inv-table-card thead");
+    expect(b).toContain("clip-path: inset(50%)");
+    expect(b).toMatch(/td\.num \{ order: 2;/);
+    expect(b).toMatch(/td:nth-child\(5\) \{ order: 6;/);
+  });
+
+  test("invoice numbers never wrap", () => {
+    const rule = css.match(/\.inv-num-link \{[^}]*\}/);
+    expect(rule).not.toBeNull();
+    expect(rule![0]).toContain("white-space: nowrap");
+  });
+});
