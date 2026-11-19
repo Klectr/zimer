@@ -99,9 +99,14 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     };
   }
 
+  /* #1222: the header sub must not repeat the stat cards below it —
+     it carries the counts the cards don't say instead. */
   function statsSub(rows: any[]): string {
     const st = invoiceStats(rows);
-    return `Outstanding ${money(st.outstanding)} · Paid this month ${money(st.paidMonth)}`;
+    const parts = [`${rows.length} Zinvoice${rows.length === 1 ? "" : "s"}`];
+    if (st.draftsCount) parts.push(`${st.draftsCount} draft${st.draftsCount === 1 ? "" : "s"}`);
+    if (st.overdueCount) parts.push(`${st.overdueCount} overdue`);
+    return parts.join(" · ");
   }
 
   function statsRowHtml(rows: any[], oob = false): string {

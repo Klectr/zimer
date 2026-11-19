@@ -808,9 +808,9 @@ describe("#948: zinvoices header actions stay labeled", () => {
 
 /** #1121: the list page's summary figures follow the page-zinvoices
  *  mock — a stat-card row (Outstanding excludes drafts) under an
- *  appHeader whose sub carries the same outstanding / paid-this-month
- *  figures, and the OOB refresh re-emits both so detail actions never
- *  leave them stale. */
+ *  appHeader, and the OOB refresh re-emits both so detail actions never
+ *  leave them stale. #1222: the header sub carries counts instead of
+ *  repeating the cards' outstanding / paid-this-month figures. */
 describe("zinvoices stat cards (#1121)", () => {
   const statRows = () => [
     { ...baseRow, id: 1, status: "sent", subtotal: 2090, paid_at: null },
@@ -830,13 +830,18 @@ describe("zinvoices stat cards (#1121)", () => {
     const n = new Date();
     const paidAt = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-15`;
     expect(html).toContain("1 invoice paid");
-    expect(html).toContain("Outstanding $2,730.00 · Paid this month $425.00");
+    expect(html).toContain("5 Zinvoices · 1 draft");
+    expect(html).not.toContain("Outstanding $2,730.00 · Paid this month $425.00");
     expect(html).not.toContain("inv-outstanding");
   });
   test("OOB refresh re-emits the stat row and the header sub", () => {
     const html = views(statRows()).invoiceListOob(1);
     expect(html).toContain('<div class="ui-stat-row" id="inv-stats" hx-swap-oob="true">');
-    expect(html).toContain('<p class="ui-app-sub" id="inv-sub" hx-swap-oob="true">Outstanding $2,730.00 · Paid this month $425.00</p>');
+    expect(html).toContain('<p class="ui-app-sub" id="inv-sub" hx-swap-oob="true">5 Zinvoices · 1 draft</p>');
+  });
+  test("header sub singularizes and omits zero counts", () => {
+    const html = views([{ ...baseRow, status: "sent", paid_at: null }]).invoicesPage(null, "http://x");
+    expect(html).toContain('<p class="ui-app-sub" id="inv-sub">1 Zinvoice</p>');
   });
 });
 
