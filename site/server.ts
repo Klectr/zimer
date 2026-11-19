@@ -14,7 +14,7 @@ import type { Statement } from "bun:sqlite";
 import { invoicePdf } from "./pdf.ts";
 import { stripeConfigured, verifyWebhookSignature } from "./stripe.ts";
 import { entryToJson, csvResponse } from "./lib/format.ts";
-import { json, html, isHtmx, publicOrigin, secureResponse } from "./lib/http.ts";
+import { json, html, isHtmx, publicOrigin, secureResponse, compressResponse } from "./lib/http.ts";
 import { getToken, tokensEqual, authedApi, authedPage } from "./lib/auth.ts";
 import { createAccountsDb } from "./lib/accounts.ts"; /* #732 */
 import { createTenantStore } from "./lib/tenants.ts"; /* #733 */
@@ -258,7 +258,7 @@ Bun.serve({
       ?? await handleWeb(req, url, path, method)
       /* #733: tenant's app-layout 404 when there is one, else public chrome. */
       ?? html((getTenant(req)?.notFoundPage ?? publicNotFound)(authedPage(req, TOKEN)), 404);
-    return secureResponse(res, req); /* #910: security headers on every response */
+    return compressResponse(secureResponse(res, req), req); /* #910 + #993: security headers, then gzip, on every response */
   },
   /* #1023: unhandled route errors are logged (a custom error handler
      silences Bun's own logging) and reported to PostHog error tracking

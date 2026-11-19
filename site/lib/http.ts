@@ -68,6 +68,39 @@ export function secureResponse(res: Response, req?: Request): Response {
   return res;
 }
 
+/* #993: gzip text responses at the origin. Compression otherwise exists only
+   where Cloudflare provides it — Tailnet, direct, and self-host traffic got
+   raw bytes (CSS 121 KB vs 29 KB gzipped). Applied at the same server fetch
+   boundary as secureResponse so every route is covered in one place. Only
+   responses a client asked to gzip, with a text-like content type and a body
+   big enough to benefit; anything already encoded, ranged, or bodyless
+   passes through untouched. */
+const COMPRESSIBLE_TYPE = /^(?:text\/|application\/(?:json|javascript|xml|xhtml\+xml)|image\/svg\+xml)/;
+const GZIP_MIN_BYTES = 1024;
+
+export async function compressResponse(res: Response, req: Request): Promise<Response> {
+  if (req.method === "HEAD" || res.status === 204 || res.status === 304) return res;
+  if (res.headers.has("content-encoding") || res.headers.has("content-range")) return res;
+  if (!/(?:^|,)\s*gzip\s*(?:;|,|$)/.test(req.headers.get("accept-encoding") || "")) return res;
+  if (!COMPRESSIBLE_TYPE.test(res.headers.get("content-type") || "")) return res;
+  const body = new Uint8Array(await res.arrayBuffer());
+  const rebuild = (bytes: Uint8Array, encoded: boolean) => {
+    const headers = new Headers(res.headers);
+    if (encoded) {
+      headers.set("Content-Encoding", "gzip");
+      headers.delete("Content-Length");
+      const vary = (headers.get("vary") || "").split(",").map((s) => s.trim().toLowerCase());
+      if (!vary.includes("accept-encoding") && !vary.includes("*")) {
+        headers.set("Vary", [...vary.filter(Boolean), "Accept-Encoding"].join(", "));
+      }
+    }
+    return new Response(bytes, { status: res.status, statusText: res.statusText, headers });
+  };
+  if (body.byteLength < GZIP_MIN_BYTES) return rebuild(body, false);
+  const gz = Bun.gzipSync(body);
+  return gz.byteLength < body.byteLength ? rebuild(gz, true) : rebuild(body, false);
+}
+
 /* #916: X-Forwarded-Host/Proto are attacker-controlled input. Only values that
    can form a sane URL are honored — a syntactically valid host (no
    whitespace, @, /, ?, #) and http/https only. Anything else falls back to
