@@ -925,6 +925,12 @@ describe("#1257: list search field", () => {
 /* #1263: one hours format per meaning — decimal 2dp where hours bill
    (they multiply by the rate), h/m durations where time is read out. */
 describe("#1263: hours format by context", () => {
+  test("step-2 inline JS recompute uses the same billing format as the server", () => {
+    const html = views([]).invoiceNewPage(views([]).defaultNewInvParams());
+    expect(html).toContain("toFixed(2)+' h'");
+    expect(html).not.toContain("+'h';}");
+  });
+
   const items = [{
     description: "Design work", hours: 2.5, rate: 40, amount: 100, entry_ids: [1],
     date_from: "2026-09-21", date_to: "2026-09-26",
