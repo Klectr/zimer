@@ -130,7 +130,7 @@ export function createPublicViews(deps: PublicViewDeps) {
       {
         heading: "Analytics",
         html: true,
-        body: "The hosted site uses <a href=\"https://posthog.com\" target=\"_blank\" rel=\"noopener\">PostHog</a> for product analytics. On the landing page it records page views and clicks. On the landing page and inside the app it records sessions (a replay of the visit) and errors when something breaks, and in the app it records a small set of product events (starting a Zimer, creating a Zinvoice) tied to your account ID, never your email. Self-hosted instances send us nothing. PostHog's privacy policy is at <a href=\"https://posthog.com/privacy\" target=\"_blank\" rel=\"noopener\">posthog.com/privacy</a>.",
+        body: "The hosted site uses <a href=\"https://posthog.com\" target=\"_blank\" rel=\"noopener\">PostHog</a> for product analytics. On the landing page it records page views, clicks, and sessions (a replay of the visit). Inside the app it does not record sessions. On the landing page and inside the app it records errors when something breaks, and in the app it records a small set of product events (starting a Zimer, creating a Zinvoice) tied to your account ID, never your email. Self-hosted instances send us nothing. PostHog's privacy policy is at <a href=\"https://posthog.com/privacy\" target=\"_blank\" rel=\"noopener\">posthog.com/privacy</a>.",
       },
       {
         heading: "What we don't do",
