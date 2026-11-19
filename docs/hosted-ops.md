@@ -20,8 +20,10 @@ nothing fancier to check first.
 ## Error tracking (#1023)
 
 Exceptions land in PostHog's Error tracking: browser errors via the
-snippet's exception autocapture (attached to the session replay), and
-unhandled server errors via the Bun.serve error handler POSTing an
+snippet's exception autocapture (on the landing page they attach to
+the session replay; inside the app session recording is disabled, so
+they have no replay), and unhandled server errors via the Bun.serve
+error handler POSTing an
 $exception event (distinct id `zimer-server`). Both are gated on
 POSTHOG_KEY, so they exist only where analytics does. Server errors are
 also still logged to stderr; triage in PostHog, where the issue groups
