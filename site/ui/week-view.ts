@@ -7,6 +7,7 @@ export interface WeekEntry {
   duration: string;
   running?: boolean;
   invoiced?: boolean;
+  dot?: string;
   attrs?: string;
 }
 
@@ -65,6 +66,7 @@ function agendaDay(day: WeekDay): string {
               meta: e.meta,
               duration: e.duration,
               running: e.running,
+              dot: e.dot,
               mark: e.invoiced ? "Zinvoiced" : undefined,
               attrs: e.attrs,
             }),
