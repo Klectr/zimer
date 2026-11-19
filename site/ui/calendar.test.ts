@@ -59,7 +59,7 @@ describe("visualizer", () => {
     const html = visualizer({
       days: [{ ...VDAY, entries: [{ id: "e1", title: "Pass", startMin: 540, endMin: 660 }] }],
     });
-    expect(html).toContain('style="top:146px;height:92px"');
+    expect(html).toContain("top:146px;height:92px");
   });
 
   test("emits the real script's data-hook contract (HH:MM strings, date, locked)", () => {
@@ -136,6 +136,29 @@ describe("visualizer", () => {
     expect(html.match(/ui-viz-now/g)?.length).toBe(1);
     expect(visualizer({ nowMin: 120, days: [{ ...VDAY, isToday: true }] })).not.toContain("ui-viz-now");
     expect(visualizer({ days: [{ ...VDAY, isToday: true }] })).not.toContain("ui-viz-now");
+  });
+
+  test("blocks carry the client color as --entry, escaped; no color falls back to neutral", () => {
+    const colored = visualizer({
+      days: [{ ...VDAY, entries: [{ id: "c", title: "Colored", startMin: 540, endMin: 660, color: "#60a5fa" }] }],
+    });
+    expect(colored).toContain("--entry:#60a5fa;");
+    const plain = visualizer({
+      days: [{ ...VDAY, entries: [{ id: "p", title: "Plain", startMin: 540, endMin: 660 }] }],
+    });
+    expect(plain).toContain("--entry:var(--color-text-tertiary);");
+    const evil = visualizer({
+      days: [{ ...VDAY, entries: [{ id: "x", title: "X", startMin: 540, endMin: 660, color: 'red" onmouseover="alert(1)' }] }],
+    });
+    expect(evil).not.toContain('onmouseover="alert(1)"');
+    expect(evil).toContain("&quot;");
+  });
+
+  test("agenda rows show the client color dot", () => {
+    const html = weekView({
+      days: [{ ...DAY, entries: [{ title: "A", meta: "9 AM", duration: "1h", dot: "#a78bfa" }] }],
+    });
+    expect(html).toContain('class="ui-row-dot" style="background:#a78bfa"');
   });
 
   test("hour gutter spans the configured range in compact labels", () => {

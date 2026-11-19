@@ -945,8 +945,8 @@ describe("calendar legacy decoration removal (#1132)", () => {
     const css = await Bun.file("site/static/style.css").text();
     const block = css.match(/\.ui-viz-block \{[^}]*\}/);
     expect(block).not.toBeNull();
-    expect(block![0]).toContain("background: var(--color-primary-bg)");
-    expect(block![0]).toContain("border: 1px solid var(--color-primary-border)");
+    expect(block![0]).toContain("background: color-mix(in srgb, var(--entry, var(--color-text-tertiary)) 16%, transparent)");
+    expect(block![0]).toContain("border: 1px solid color-mix(in srgb, var(--entry, var(--color-text-tertiary)) 45%, transparent)");
     expect(block![0]).toContain("box-sizing: border-box");
     expect(block![0]).toContain("border-radius: var(--radius-sm)");
     expect(css).not.toContain(".cal-entry");
@@ -1022,5 +1022,34 @@ describe("intermediate week summary (#1202 parity)", () => {
     expect(css).toContain(".cal-supporting .cal-summary { display: flex;");
     expect(css).toContain(".cal-supporting .cal-summary .nudge-chip { display: none; }");
     expect(css).toContain(".cal-supporting { gap: 6px;");
+  });
+});
+
+describe("calendar client color (#1212)", () => {
+  const stubQuery = () => ({
+    get: (..._a: unknown[]) => ({ n: 1 }),
+    all: (..._a: unknown[]) => [],
+  });
+  test("grid block and agenda row carry the client's color; no-client stays neutral", () => {
+    const colored = {
+      id: 21, description: "brand work", project_id: 3, project_name: "Brand",
+      client_name: "Brightline Co", client_color: "#60a5fa", invoice_id: null,
+      invoice_number: null, invoice_status: null,
+      start_time: "2026-09-21T15:00:00.000Z", end_time: "2026-09-21T16:00:00.000Z",
+    };
+    const plain = { ...colored, id: 22, client_name: null, client_color: null, project_id: null, project_name: null };
+    const db = {
+      query: (_sql: string) => ({ get: () => ({ n: 1 }), all: () => [colored, plain] }),
+    } as unknown as Database;
+    const views = createCalendarViews({
+      db, qOne: stubQuery(), qRange: stubQuery(), entrySelect: "SELECT",
+      layout: (_t: string, b: string) => b, projectOptionRows: () => [],
+      weekTargetBar: () => "", calHourPx: 64,
+    } as any);
+    const html = views.weekInner("2026-09-20", "America/Chicago");
+    const tags = html.match(/<div class="ui-viz-block[^>]*>/g) || [];
+    expect(tags.find((t) => t.includes('data-id="21"'))!).toContain("--entry:#60a5fa");
+    expect(tags.find((t) => t.includes('data-id="22"'))!).toContain("--entry:var(--color-text-tertiary)");
+    expect(html).toContain('class="ui-row-dot" style="background:#60a5fa"');
   });
 });
