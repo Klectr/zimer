@@ -13,6 +13,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { resourcePath } from "./lib/paths.ts"; /* #519 */
+import { fmtDur } from "./lib/format.ts";
 
 export type PdfLineItem = {
   description: string;
@@ -360,7 +361,7 @@ function drawModern(inv: PdfInvoice, doc: PdfDoc) {
     const desc = it.description.length > 44 ? it.description.slice(0, 41) + "..." : it.description;
     doc.text(C_DATE + 10, doc.y - 2, 10, lineDate(it));
     doc.text(C_DESC + 10, doc.y - 2, 10, desc);
-    const hours = String(it.hours).replace(/\.0+$/, "").replace(/(\.\d*?)0+$/, "$1");
+    const hours = (Math.round(it.hours * 100) / 100).toFixed(2);
     doc.rtext(C_HOURS, doc.y - 2, 10, hours);
     doc.rtext(C_RATE, doc.y - 2, 10, money(it.rate));
     doc.rtext(C_AMT - 10, doc.y - 2, 10, money(it.amount));
@@ -444,7 +445,7 @@ function drawModern(inv: PdfInvoice, doc: PdfDoc) {
  * the billed total was reached. Renders only when the input carries
  * per-day breakdown data. */
 function fmtHrs(h: number): string {
-  return String(Math.round(h * 100) / 100).replace(/\.0+$/, "").replace(/(\.\d*?)0+$/, "$1");
+  return fmtDur(Math.round(h * 3600));
 }
 
 function drawTimeBreakdown(inv: PdfInvoice, doc: PdfDoc) {
@@ -454,7 +455,7 @@ function drawTimeBreakdown(inv: PdfInvoice, doc: PdfDoc) {
   doc.text(M, doc.y, 8.5, "T I M E   B R E A K D O W N", true, true);
   doc.y -= 24;
   const total = inv.timeBreakdownTotal ?? days.reduce((a, d) => a + d.hours, 0);
-  doc.text(M, doc.y, 13, `Tracked time by day  -  ${fmtHrs(total)} hrs total`, true);
+  doc.text(M, doc.y, 13, `Tracked time by day  -  ${fmtHrs(total)} total`, true);
   doc.y -= 36;
 
   const chartW = RIGHT - M;

@@ -391,7 +391,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
         function shortYmdStr(ymd){var p=String(ymd||'').split('-').map(Number);
           return p.length===3&&p[0] ? MONTHS[p[1]-1]+' '+p[2] : '';}
         function moneyFmt(n){return '$'+n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');}
-        function fmtH(h){var v=Math.round(h*100)/100;return (Number.isInteger(v)?String(v):String(v))+'h';}
+        function fmtH(h){return (Math.round(h*100)/100).toFixed(2)+' h';}
         function dueEl(){return document.getElementById('inv-due');}
         function issueEl(){return document.getElementById('inv-issue');}
         /* The create actions mirror the step-2 rows: disabled while the

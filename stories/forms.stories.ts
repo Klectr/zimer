@@ -166,9 +166,9 @@ export const formsStories: Story[] = [
         title: "Live preview — #1042",
         chipHtml: statusChip("draft"),
         lines: [
-          { label: "Design — 12.5h", amount: "$1,062.50" },
-          { label: "Development — 8h", amount: "$680.00" },
-          { label: "Review call — 1h", amount: "$85.00" },
+          { label: "Design — 12.50 h", amount: "$1,062.50" },
+          { label: "Development — 8.00 h", amount: "$680.00" },
+          { label: "Review call — 1.00 h", amount: "$85.00" },
         ],
         totalLabel: "Total due",
         total: "$1,827.50",

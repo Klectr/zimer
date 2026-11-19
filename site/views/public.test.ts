@@ -207,7 +207,8 @@ describe("public invoice summary (#1136)", () => {
     expect(html).toContain("Studio — Triston Armstrong");
     expect(html).toContain("Zinvoice INV-2001 · Issued Nov 5, 2026");
     expect(html).toContain("Due Nov 19");
-    expect(html).toContain("Intake form fixes — 9.5h");
+    expect(html).toContain("Intake form fixes — 9.50 h");
+    expect(html).not.toContain("9.5h");
     expect(html).toContain("$902.50");
     expect(html).toContain("Total due");
     expect(html).toContain("$1,045.00");

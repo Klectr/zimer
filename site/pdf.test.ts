@@ -144,8 +144,13 @@ describe("#899: PDF second page shows the time-breakdown chart", () => {
 
   test("#1049: timeBreakdownTotal overrides the per-day sum in the header", () => {
     const text = pdfText({ ...base, timeBreakdown: days, timeBreakdownTotal: 16.49 });
-    expect(text).toContain("16.49 hrs total");
-    expect(text).not.toContain("16.5 hrs total");
+    expect(text).toContain("16h 29m total");
+    expect(text).not.toContain("16h 30m total");
+  });
+
+  test("#1265: billing HOURS column prints decimal hours at 2dp", () => {
+    const text = pdfText({ ...base, items: [{ description: "Work", hours: 2.5, rate: 40, amount: 100 }] });
+    expect(text).toContain("2.50");
   });
 
   test("no second page without breakdown data", () => {
