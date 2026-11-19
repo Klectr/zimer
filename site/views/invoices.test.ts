@@ -16,7 +16,7 @@ const stubQuery = () => ({
 });
 const stubDb = { query: (_sql: string) => stubQuery() } as unknown as Database;
 
-function views(rows: any[], opts: { publicToken?: string | null; db?: Database } = {}) {
+function views(rows: any[], opts: { publicToken?: string | null; db?: Database; isOverdue?: (r: any) => boolean } = {}) {
   return createInvoiceViews({
     db: opts.db ?? stubDb,
     qInvoices: { all: () => rows } as unknown as Statement,
@@ -29,7 +29,7 @@ function views(rows: any[], opts: { publicToken?: string | null; db?: Database }
       const tax = subtotal * taxRate / 100;
       return { subtotal, tax, total: subtotal + tax };
     },
-    isOverdue: () => false,
+    isOverdue: opts.isOverdue ?? (() => false),
     unbilledByClient: () => [],
   });
 }
@@ -838,6 +838,15 @@ describe("zinvoices stat cards (#1121)", () => {
     const html = views(statRows()).invoiceListOob(1);
     expect(html).toContain('<div class="ui-stat-row" id="inv-stats" hx-swap-oob="true">');
     expect(html).toContain('<p class="ui-app-sub" id="inv-sub" hx-swap-oob="true">5 Zinvoices · 1 draft</p>');
+  });
+  test("header sub counts overdue sent invoices", () => {
+    const rows = [
+      { ...baseRow, id: 1, status: "sent", paid_at: null },
+      { ...baseRow, id: 2, status: "sent", paid_at: null },
+      { ...baseRow, id: 3, status: "draft", paid_at: null },
+    ];
+    const html = views(rows, { isOverdue: (r: any) => r.id === 2 }).invoicesPage(null, "http://x");
+    expect(html).toContain('<p class="ui-app-sub" id="inv-sub">3 Zinvoices · 1 draft · 1 overdue</p>');
   });
   test("header sub singularizes and omits zero counts", () => {
     const html = views([{ ...baseRow, status: "sent", paid_at: null }]).invoicesPage(null, "http://x");
