@@ -1,6 +1,6 @@
 /** #910: security headers on every response. */
 import { describe, expect, test } from "bun:test";
-import { secureResponse, isHttps, html, publicOrigin, originMatches } from "./http.ts";
+import { secureResponse, compressResponse, isHttps, html, publicOrigin, originMatches } from "./http.ts";
 
 describe("secureResponse", () => {
   test("adds the baseline headers to a bare response", () => {
@@ -151,6 +151,71 @@ describe("originMatches (#912)", () => {
       headers: { origin: "https://invoice.klectr.dev", "x-forwarded-host": "evil.com@invoice.klectr.dev" },
     });
     expect(originMatches(r)).toBe(false);
+  });
+});
+
+describe("compressResponse (#993)", () => {
+  const bigHtml = "<p>" + "hello world ".repeat(300) + "</p>";
+  const gzipReq = (headers: Record<string, string> = {}) =>
+    new Request("http://x/", { headers: { "accept-encoding": "gzip, deflate, br", ...headers } });
+
+  test("gzips a large text response when the client accepts gzip", async () => {
+    const res = await compressResponse(html(bigHtml), gzipReq());
+    expect(res.headers.get("Content-Encoding")).toBe("gzip");
+    expect(res.headers.get("Vary")).toContain("Accept-Encoding");
+    const raw = new Uint8Array(await res.arrayBuffer());
+    expect(raw.byteLength).toBeLessThan(bigHtml.length);
+    expect(new TextDecoder().decode(Bun.gunzipSync(raw))).toBe(bigHtml);
+  });
+
+  test("gzips JSON and CSS too", async () => {
+    const json = JSON.stringify({ rows: Array.from({ length: 200 }, (_, i) => ({ i, name: "entry" })) });
+    const res = await compressResponse(
+      new Response(json, { headers: { "Content-Type": "application/json" } }), gzipReq());
+    expect(res.headers.get("Content-Encoding")).toBe("gzip");
+  });
+
+  test("no Accept-Encoding: passes through untouched", async () => {
+    const res = await compressResponse(html(bigHtml), new Request("http://x/"));
+    expect(res.headers.get("Content-Encoding")).toBeNull();
+    expect(await res.text()).toBe(bigHtml);
+  });
+
+  test("gzip;q=0 is a refusal, not an acceptance", async () => {
+    const req = new Request("http://x/", { headers: { "accept-encoding": "gzip;q=0, deflate" } });
+    const res = await compressResponse(html(bigHtml), req);
+    expect(res.headers.get("Content-Encoding")).toBeNull();
+    expect(await res.text()).toBe(bigHtml);
+  });
+
+  test("small bodies are not worth gzipping", async () => {
+    const res = await compressResponse(html("<p>hi</p>"), gzipReq());
+    expect(res.headers.get("Content-Encoding")).toBeNull();
+    expect(await res.text()).toBe("<p>hi</p>");
+  });
+
+  test("binary bodies (PDF) are never gzipped", async () => {
+    const pdf = new Uint8Array(4096).fill(37);
+    const res = await compressResponse(
+      new Response(pdf, { headers: { "Content-Type": "application/pdf" } }), gzipReq());
+    expect(res.headers.get("Content-Encoding")).toBeNull();
+    expect((await res.arrayBuffer()).byteLength).toBe(4096);
+  });
+
+  test("already-encoded and 304 responses pass through", async () => {
+    const encoded = new Response(bigHtml, { headers: { "Content-Type": "text/html", "Content-Encoding": "br" } });
+    expect((await compressResponse(encoded, gzipReq())).headers.get("Content-Encoding")).toBe("br");
+    const notModified = new Response(null, { status: 304, headers: { ETag: '"x"' } });
+    expect((await compressResponse(notModified, gzipReq())).status).toBe(304);
+  });
+
+  test("preserves status, headers and cookies when gzipping", async () => {
+    const src = html(bigHtml, 201, { "Set-Cookie": "tk=abc; HttpOnly", "X-Test": "1" });
+    const res = await compressResponse(src, gzipReq());
+    expect(res.status).toBe(201);
+    expect(res.headers.get("X-Test")).toBe("1");
+    expect(res.headers.get("Set-Cookie")).toContain("tk=abc");
+    expect(res.headers.get("Content-Length")).toBeNull();
   });
 });
 

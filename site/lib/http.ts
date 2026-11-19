@@ -78,10 +78,19 @@ export function secureResponse(res: Response, req?: Request): Response {
 const COMPRESSIBLE_TYPE = /^(?:text\/|application\/(?:json|javascript|xml|xhtml\+xml)|image\/svg\+xml)/;
 const GZIP_MIN_BYTES = 1024;
 
+function acceptsGzip(req: Request): boolean {
+  return (req.headers.get("accept-encoding") || "").split(",").some((part) => {
+    const [token, ...params] = part.split(";").map((s) => s.trim().toLowerCase());
+    if (token !== "gzip" && token !== "*") return false;
+    const q = params.find((p) => p.startsWith("q="));
+    return !q || parseFloat(q.slice(2)) > 0;
+  });
+}
+
 export async function compressResponse(res: Response, req: Request): Promise<Response> {
   if (req.method === "HEAD" || res.status === 204 || res.status === 304) return res;
   if (res.headers.has("content-encoding") || res.headers.has("content-range")) return res;
-  if (!/(?:^|,)\s*gzip\s*(?:;|,|$)/.test(req.headers.get("accept-encoding") || "")) return res;
+  if (!acceptsGzip(req)) return res;
   if (!COMPRESSIBLE_TYPE.test(res.headers.get("content-type") || "")) return res;
   const body = new Uint8Array(await res.arrayBuffer());
   const rebuild = (bytes: Uint8Array, encoded: boolean) => {
