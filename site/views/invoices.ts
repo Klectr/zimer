@@ -210,7 +210,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       <form method="get" action="/invoices" class="inv-search"
         hx-get="/invoices" hx-target="#inv-list-region" hx-swap="innerHTML" hx-push-url="true">
         ${active !== "all" ? `<input type="hidden" name="status" value="${esc(active)}">` : ""}
-        ${textField({ id: "inv-q", label: "Search Zinvoices", name: "q", type: "search", value: q, placeholder: "Client or number" })}
+        ${textField({ id: "inv-q", label: "Search Zinvoices", labelHidden: true, icon: "search", name: "q", type: "search", value: q, placeholder: "Search client or number" })}
       </form>
     </div>`;
   }

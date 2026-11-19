@@ -190,6 +190,7 @@
 .ui-input-wrap .ui-input { width: 100%; box-sizing: border-box; }
 .ui-affix { position: absolute; top: 50%; transform: translateY(-50%); color: var(--color-text-tertiary); font-size: var(--font-size); pointer-events: none; }
 .ui-affix-prefix { left: var(--spacing-sm); }
+.ui-affix svg { width: 16px; height: 16px; display: block; }
 .ui-affix-suffix { right: var(--spacing-sm); }
 .ui-input-wrap:has(.ui-affix-prefix) .ui-input { padding-left: var(--spacing-xl); }
 .ui-input-wrap:has(.ui-affix-suffix) .ui-input { padding-right: var(--spacing-xl); }
@@ -1078,7 +1079,7 @@ body.app-fixed .ui-shell-main { min-height: 0; }
 }
 .inv-detail-rail { display: flex; flex-direction: column; gap: var(--spacing-md); min-width: 0; }
 .inv-detail-main { min-width: 0; }
-.inv-filter-row { display: flex; gap: var(--spacing-sm); align-items: flex-end; flex-wrap: wrap; margin-bottom: var(--spacing); }
+.inv-filter-row { display: flex; gap: var(--spacing-sm); align-items: center; flex-wrap: wrap; margin-bottom: var(--spacing); }
 .inv-search { margin-left: auto; }
 .inv-search .ui-field { min-width: 220px; }
 .ui-filter-chips { display: flex; gap: var(--spacing-xs); flex-wrap: wrap; align-items: center; }
@@ -1091,6 +1092,8 @@ body.app-fixed .ui-shell-main { min-height: 0; }
   .inv-table-card .col-opt { display: none; }
 }
 @media screen and (max-width: 640px) {
+  .inv-search { flex: 1 1 100%; margin-left: 0; }
+  .inv-search .ui-field { min-width: 0; }
   .inv-table-card .table-wrap { overflow-x: visible; margin: 0; padding: 0; }
   .inv-table-card .ui-table, .inv-table-card tbody { display: block; }
   .inv-table-card thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }

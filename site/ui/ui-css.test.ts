@@ -301,7 +301,7 @@ describe("invoice stat row on mobile (#1222)", () => {
 });
 
 describe("invoice search alignment (#1257)", () => {
-  test("the filter row centers the chips and the search input on one baseline", () => {
+  test("the filter row centers the chips and the search input on the cross axis", () => {
     const rule = css.match(/\.inv-filter-row \{[^}]*\}/);
     expect(rule).not.toBeNull();
     expect(rule![0]).toContain("align-items: center");
