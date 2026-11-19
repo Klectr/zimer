@@ -42,7 +42,7 @@ describe("#753: mascot placements", () => {
     const { landingPage } = createLandingViews();
     const html = landingPage("https://example.com"); /* #865 */
     expect(html).toContain('class="ui-hero-mascot"');
-    expect(html).toContain('src="/static/mascot.png"');
+    expect(html).toContain('src="/static/mascot-56.webp"');
     expect(html).toContain('property="og:image" content="https://example.com/static/og-image-v3.png"');
     expect(html).toContain('name="twitter:card" content="summary_large_image"');
     expect(html).toContain('href="/static/favicon-32.png"');

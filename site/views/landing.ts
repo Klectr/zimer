@@ -143,7 +143,7 @@ export function createLandingViews(posthogHead?: () => string) {
   <div class="ui-landing-top-in">
   <div class="ui-landing-brand">
   ${logoLockup()}
-  <img class="ui-hero-mascot" src="/static/mascot.png" alt="" width="28" height="28" style="width:28px;height:28px;border-radius:50%;object-fit:cover">
+  <img class="ui-hero-mascot" src="/static/mascot-56.webp" alt="" width="28" height="28" style="width:28px;height:28px;border-radius:50%;object-fit:cover">
   </div>
   <div class="ui-landing-top-actions">
   ${linkButton({ label: "View on GitHub", href: "https://github.com/Klectr/zimer", external: true })}
