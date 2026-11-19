@@ -45,6 +45,7 @@
   --color-text-secondary: #a1a1aa;
   --color-text-tertiary: #81818a;
   --color-text-quaternary: #52525b;
+  --color-text-on-filled: #08090a;
   --color-bg-layout: #08090a;
   --color-bg-container: #0d0d0f;
   --color-bg-container-secondary: #0a0b0c;
@@ -132,7 +133,7 @@
 .ui-btn-danger:hover { background: var(--color-error-bg-hover); }
 .ui-btn-ghost.ui-btn-danger { background: transparent; border-color: transparent; }
 .ui-btn-ghost.ui-btn-danger:hover { background: var(--color-error-bg); }
-.ui-btn-primary.ui-btn-danger { background: var(--color-error); color: var(--color-bg-layout); }
+.ui-btn-primary.ui-btn-danger { background: var(--color-error); color: var(--color-text-on-filled); }
 .ui-btn-primary.ui-btn-danger:hover { background: var(--color-error-hover); }
 .ui-btn-primary.ui-btn-danger:active { background: var(--color-error-active); }
 .ui-btn-sm { height: var(--control-height-sm); padding: 0 var(--spacing-xs); font-size: var(--font-size-sm); }

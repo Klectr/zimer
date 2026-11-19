@@ -44,6 +44,16 @@ describe("native picker indicators (#1220)", () => {
   });
 });
 
+describe("on-filled text token (#1095)", () => {
+  test("the token is defined and the solid-error button uses it, not a surface token", () => {
+    expect(css).toContain("--color-text-on-filled: #08090a;");
+    const rule = css.match(/\.ui-btn-primary\.ui-btn-danger \{[^}]*\}/);
+    expect(rule).not.toBeNull();
+    expect(rule![0]).toContain("color: var(--color-text-on-filled)");
+    expect(css).not.toContain("color: var(--color-bg-layout)");
+  });
+});
+
 describe("demo banner (#1218)", () => {
   test("the banner sits on a neutral surface — no primary wash or border", () => {
     const rule = css.match(/\.demo-banner \{[^}]*\}/);
