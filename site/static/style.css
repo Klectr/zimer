@@ -1084,17 +1084,20 @@ body.app-fixed .ui-shell-main { min-height: 0; }
 @media (max-width: 719px) {
   .inv-table-card .col-opt { display: none; }
 }
-@media (max-width: 640px) {
+@media screen and (max-width: 640px) {
   .inv-table-card .table-wrap { overflow-x: visible; margin: 0; padding: 0; }
   .inv-table-card .ui-table, .inv-table-card tbody { display: block; }
   .inv-table-card thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   .inv-table-card tbody tr { display: flex; flex-wrap: wrap; align-items: center; column-gap: var(--spacing-sm); row-gap: var(--spacing-xxs); padding: var(--spacing-sm); border-bottom: 1px solid var(--color-border-secondary); }
-  .inv-table-card td { display: block; border-bottom: 0; padding: 0; }
+  .inv-table-card td { display: block; border-bottom: 0; padding: 0; min-width: 0; }
   .inv-table-card td:nth-child(1) { order: 1; flex: 1 1 55%; }
+  .inv-table-card .inv-num-link { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; }
   .inv-table-card td.num { order: 2; flex: 0 0 auto; }
-  .inv-table-card td:nth-child(2) { order: 3; color: var(--color-text-secondary); font-size: var(--font-size-sm); }
+  .inv-table-card td:nth-child(2) { order: 3; color: var(--color-text-secondary); font-size: var(--font-size-sm); overflow-wrap: anywhere; }
   .inv-table-card td:nth-child(3) { order: 4; color: var(--color-text-secondary); font-size: var(--font-size-sm); white-space: nowrap; }
+  .inv-table-card td:nth-child(3)::before { content: "Issued "; color: var(--color-text-tertiary); }
   .inv-table-card td.col-opt { order: 5; display: block; color: var(--color-text-secondary); font-size: var(--font-size-sm); }
+  .inv-table-card td.col-opt::before { content: "Due "; color: var(--color-text-tertiary); }
   .inv-table-card td:nth-child(5) { order: 6; margin-left: auto; }
   .inv-table-card .inv-cell-main { display: inline; font-weight: 400; color: inherit; }
   .inv-table-card .inv-cell-sub { display: inline; margin: 0 0 0 var(--spacing-xxs); }
