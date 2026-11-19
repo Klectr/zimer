@@ -1729,7 +1729,7 @@ button.ui-tag { border: 0; font: inherit; cursor: pointer; }
 /* #956: proof-of-payment section — app surface only, tonal like internal notes. */
 .payment-proof { margin: 20px 0 0; padding: 14px 16px; border-radius: 12px;
   background: var(--color-bg-elevated); }
-.payment-proof .internal-notes-label svg { vertical-align: -4px; margin-right: 4px; }
+.payment-proof .ui-block-title svg { vertical-align: -4px; margin-right: 4px; width: 20px; height: 20px; }
 .proof-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; }
 .proof-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .proof-meta { font-size: 0.85rem; white-space: nowrap; }
@@ -1737,9 +1737,8 @@ button.ui-tag { border: 0; font: inherit; cursor: pointer; }
 .proof-icons .inline { display: inline; }
 .proof-nudge { margin: 4px 0 10px; }
 .proof-upload { display: flex; align-items: center; gap: 12px; margin-top: 10px; flex-wrap: wrap; }
-.proof-file-label { font-size: 0.9rem; color: var(--color-text-secondary);
-  padding: 8px 16px; border-radius: var(--radius); background: var(--color-bg-elevated);
-  cursor: pointer; white-space: nowrap; }
+.proof-file-label { cursor: pointer; white-space: nowrap; }
+.proof-upload:has(.proof-file-input:focus-visible) .proof-file-label { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 .proof-upload input[type="file"] { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
 .proof-hint { margin: 8px 0 0; font-size: 0.8rem; }
 
