@@ -467,10 +467,10 @@ describe("#679: singular hour marker", () => {
   const sheet = (hours: number) =>
     views([]).invoiceSheet({ ...detailInv("sent", null), items: mkItems(hours) } as any);
   test("1-hour line item gets the inv-hours-1 marker", () => {
-    expect(sheet(1)).toContain(`<td class="num inv-hours inv-hours-1">1</td>`);
+    expect(sheet(1)).toContain(`<td class="num inv-hours inv-hours-1">1.00</td>`);
   });
   test("other hours keep the plain inv-hours cell", () => {
-    expect(sheet(2.5)).toContain(`<td class="num inv-hours">2.5</td>`);
+    expect(sheet(2.5)).toContain(`<td class="num inv-hours">2.50</td>`);
     expect(sheet(2.5)).not.toContain(`inv-hours-1`);
   });
 });
@@ -724,8 +724,9 @@ describe("#899: time breakdown chart on the zinvoices sheet", () => {
     expect(html).toContain("tb-chart");
     expect(html).toContain("Sep 8");
     expect(html).toContain("Sep 9");
-    // 3.5 + 3.5 + 0.92 (rounded up) = 7.92 hrs total
-    expect(html).toContain("7.92 hrs total");
+    // 3.5 + 3.5 + 0.92 (rounded up) = 7.92h, read as a duration: 7h 55m
+    expect(html).toContain("7h 55m total");
+    expect(html).toContain("Sep 8: 7h tracked");
   });
 
   test("sheet shows no chart when no time entries are linked", () => {
@@ -761,8 +762,8 @@ describe("#899: time breakdown chart on the zinvoices sheet", () => {
     });
     const oneProject = { ...detailInv("sent", null), items: [item(2.67)] };
     const html = views([], { db: db1049 }).invoiceSheet(oneProject as any);
-    expect(html).toContain("2.67 hrs total");
-    expect(html).not.toContain("2.66 hrs total");
+    expect(html).toContain("2h 40m total");
+    expect(html).not.toContain("2h 39m total");
     const input = views([], { db: db1049 }).invoicePdfInput(
       { ...oneProject, client_payment_terms: null, public_token: null } as any,
       "http://x",
@@ -770,8 +771,8 @@ describe("#899: time breakdown chart on the zinvoices sheet", () => {
     expect(input.timeBreakdownTotal).toBe(2.67);
     const twoProjects = { ...detailInv("sent", null), items: [item(1.33), item(1.33)] };
     const html2 = views([], { db: db1049 }).invoiceSheet(twoProjects as any);
-    expect(html2).toContain("2.66 hrs total");
-    expect(html2).not.toContain("2.67 hrs total");
+    expect(html2).toContain("2h 39m total");
+    expect(html2).not.toContain("2h 40m total");
     const input2 = views([], { db: db1049 }).invoicePdfInput(
       { ...twoProjects, client_payment_terms: null, public_token: null } as any,
       "http://x",
@@ -918,5 +919,25 @@ describe("#1257: list search field", () => {
     expect(html).not.toContain('<label class="ui-field-label" for="inv-q">');
     expect(html).toContain('placeholder="Search client or number"');
     expect(html).toContain('<span class="ui-affix ui-affix-prefix"><svg');
+  });
+});
+
+/* #1263: one hours format per meaning — decimal 2dp where hours bill
+   (they multiply by the rate), h/m durations where time is read out. */
+describe("#1263: hours format by context", () => {
+  const items = [{
+    description: "Design work", hours: 2.5, rate: 40, amount: 100, entry_ids: [1],
+    date_from: "2026-09-21", date_to: "2026-09-26",
+  }];
+  test("detail billing table shows decimal hours at 2dp", () => {
+    const html = views([]).invoiceDetailBody({ ...detailInv("sent", null), items } as any, "http://x");
+    expect(html).toContain("<td class=\"num\">2.50</td>");
+    expect(html).not.toContain("<td class=\"num\">2.5</td>");
+  });
+  test("detail time-breakdown total reads as a duration", () => {
+    const html = views([]).invoiceDetailBody({ ...detailInv("sent", null), items } as any, "http://x");
+    expect(html).toContain("Time breakdown total");
+    expect(html).toContain("2h 30m");
+    expect(html).not.toContain("2.5h");
   });
 });
