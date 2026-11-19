@@ -383,10 +383,10 @@ export const pagesStories: Story[] = [
           actionsHtml: button({ label: "Download backup" }) + button({ label: "Entries CSV" }) + button({ label: "Zinvoices CSV" }),
         }) +
         settingsSection({
-          title: "Self-hosted",
-          hint: "Version 1.0.0 · free forever on your own server.",
-          bodyHtml: `<p style="color:var(--color-text-secondary);line-height:var(--line-height)">One Bun process and one SQLite file. Updates are manual — pull the release and restart.</p>`,
-          actionsHtml: button({ label: "Changelog" }) + button({ label: "Read the install guide" }),
+          title: "About & updates",
+          hint: "Free forever on your own server.",
+          bodyHtml: `<p style="color:var(--color-text-secondary);line-height:var(--line-height)">One Bun process and one SQLite file. Updates are manual — pull the release and restart.</p><p style="color:var(--color-text-secondary);line-height:var(--line-height)">Zimer v1.0.0 — press the button to check for new releases.</p>`,
+          actionsHtml: button({ label: "Changelog" }) + button({ label: "Read the install guide" }) + button({ label: "Check for updates" }),
         }) +
         settingsSection({
           title: "Daily hours target",

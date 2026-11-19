@@ -6,6 +6,7 @@
  */
 import { describe, expect, test, beforeAll, afterAll } from "bun:test";
 import { checkForUpdates, updateStatusFromFeed, updateSectionHtml } from "./updates.ts";
+import { appVersion } from "./version.ts";
 
 const CURRENT = "1.0.0";
 const MAJOR = 1;
@@ -120,7 +121,7 @@ describe("merged About & updates card (#1223)", () => {
     expect(html).toContain("About &amp; updates");
     expect(html).toContain('href="/changelog"');
     expect(html).toContain('id="check-updates-btn"');
-    expect(html.split("1.0.0").length - 1).toBe(1);
+    expect(html.split(appVersion()).length - 1).toBe(1);
   });
 
   test("plain section keeps the Updates card shape", () => {

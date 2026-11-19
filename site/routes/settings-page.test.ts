@@ -8,6 +8,7 @@ import { Database } from "bun:sqlite";
 import { createDb } from "../db.ts";
 import { createWebRouter } from "./web.ts";
 import { createManageViews } from "../views/manage.ts";
+import { appVersion } from "../lib/version.ts";
 
 function setup(billingSectionHtml?: (req: Request) => string) {
   const db = createDb(mkdtempSync(join(tmpdir(), "tk-settings-"))).db;
@@ -119,7 +120,16 @@ describe("settings page (#693)", () => {
     expect(body).not.toContain('id="update-section"');
     expect(body).toContain('id="check-updates-btn"');
     expect(body).toContain('href="https://github.com/Klectr/zimer#self-hosting"');
-    expect(body.split("1.0.0").length - 1).toBe(1);
+    expect(body.split(appVersion()).length - 1).toBe(1);
+  });
+
+  test("hosted settings keep the plain Updates card, no merged About card", async () => {
+    const { handleWeb } = setup(() => `<section id="billing-marker">BILLING</section>`);
+    const res = await getSettings(handleWeb, true);
+    const body = await res!.text();
+    expect(body).toContain('id="update-section"');
+    expect(body).not.toContain("About &amp; updates");
+    expect(body).not.toContain('href="https://github.com/Klectr/zimer#self-hosting"');
   });
 
   test("direct visit gets the full app layout", async () => {
