@@ -215,6 +215,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
           endMin: b,
           running: !e.end_time,
           invoiced: !!entryInvoiceMark(e),
+          color: schemeColor(e.client_color) ?? undefined,
           locked,
           lockedLabel: locked ? (e.invoice_number || "1") : undefined,
           /* Entries render full-width; an entry involved in an overlap
@@ -261,6 +262,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
           duration: fmtDur(durationSeconds(e.start_time, e.end_time)),
           running,
           invoiced: !!mark,
+          dot: schemeColor(e.client_color) ?? undefined,
           attrs: `data-entry-row data-id="${e.id}" data-desc="${esc(e.description)}" data-project-id="${e.project_id ?? ""}" data-date="${day}" data-start="${toHM(a)}" data-end="${running ? "" : toHM(Math.min(b, 1439))}" data-locked="${locked ? esc(e.invoice_number || "") : ""}" tabindex="0" role="button" aria-label="${esc(label)}"`,
         };
       });
