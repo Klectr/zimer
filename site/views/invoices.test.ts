@@ -7,7 +7,7 @@
 import { describe, expect, test } from "bun:test";
 import type { Database, Statement } from "bun:sqlite";
 import { createInvoiceViews } from "./invoices.ts";
-import { daysBetween } from "../lib/format.ts";
+import { addDays, daysBetween, todayStr } from "../lib/format.ts";
 
 const stubQuery = () => ({
   get: (..._a: unknown[]) => ({ n: 0 }),
@@ -945,5 +945,40 @@ describe("#1263: hours format by context", () => {
     expect(html).toContain("Time breakdown total");
     expect(html).toContain("2h 30m");
     expect(html).not.toContain("2.5h");
+  });
+});
+
+/* #1269 (slice of #1221): the detail Status bar is a status readout, not
+   the primary action — its fill tone carries the due state. */
+describe("#1269: detail Status bar tone reflects due state", () => {
+  const sentDueIn = (days: number) => ({ ...detailInv("sent", null), due_date: addDays(todayStr(), days) });
+  test("draft and paid render the neutral fill", () => {
+    expect(views([]).invoiceDetailBody(detailInv("draft", null) as any, "http://x"))
+      .toContain("ui-progress-fill ui-progress-fill-neutral");
+    expect(views([]).invoiceDetailBody(detailInv("paid", "2026-09-21") as any, "http://x"))
+      .toContain("ui-progress-fill ui-progress-fill-neutral");
+  });
+  test("sent with more than 7 days to the due date renders neutral", () => {
+    const html = views([]).invoiceDetailBody(sentDueIn(30) as any, "http://x");
+    expect(html).toContain("ui-progress-fill ui-progress-fill-neutral");
+    expect(html).not.toContain("ui-progress-fill-warning");
+    expect(html).not.toContain("ui-progress-fill-error");
+  });
+  test("sent due within 7 days renders the warning fill", () => {
+    const html = views([]).invoiceDetailBody(sentDueIn(3) as any, "http://x");
+    expect(html).toContain("ui-progress-fill ui-progress-fill-warning");
+  });
+  test("sent due today renders the warning fill", () => {
+    const html = views([]).invoiceDetailBody(sentDueIn(0) as any, "http://x");
+    expect(html).toContain("ui-progress-fill ui-progress-fill-warning");
+  });
+  test("overdue sent renders the error fill", () => {
+    const html = views([], { isOverdue: () => true })
+      .invoiceDetailBody(sentDueIn(-3) as any, "http://x");
+    expect(html).toContain("ui-progress-fill ui-progress-fill-error");
+  });
+  test("the Status bar never uses the plain primary fill", () => {
+    const html = views([]).invoiceDetailBody(sentDueIn(30) as any, "http://x");
+    expect(html).not.toContain('<span class="ui-progress-fill" style="width:50%"></span>');
   });
 });
