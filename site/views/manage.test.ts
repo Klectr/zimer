@@ -31,7 +31,7 @@ function pageHtml(): string {
 describe("manage tooltips (#486)", () => {
   test("project delete/add use data-tip, not native title", () => {
     const html = dialogHtml();
-    expect(html).toContain('data-tip="Delete"');
+    expect(html).toContain('data-tip="Delete project"');
     expect(html).toContain('data-tip="Add project"');
     expect(html).not.toContain('title="Delete"');
     expect(html).not.toContain('title="Add project"');
