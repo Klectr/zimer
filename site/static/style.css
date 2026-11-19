@@ -1446,10 +1446,10 @@ button.ui-tag { border: 0; font: inherit; cursor: pointer; }
 }
 
 /* ---------------- invoices ---------------- */
-.page-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; flex-wrap: wrap; }
+.page-head { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-bottom: 8px; flex-wrap: wrap; }
 .page-head h2 { margin: 0; }
 .page-head .row { display: flex; gap: 8px; align-items: center; }
-.invoice-detail-head { display: flex; align-items: center; gap: 12px; }
+.invoice-detail-head { display: flex; align-items: center; gap: 12px; margin-bottom: var(--spacing-xs); }
 .detail-title { margin-bottom: var(--spacing-sm); }
 .detail-title .ui-app-sub { margin-top: var(--spacing-xxs); }
 /* #328: "Unbilled time" section head on the invoices page. */
