@@ -10,9 +10,12 @@ import { round2, todayStr, daysBetween, termsDays } from "./format.ts";
 export function createRevenue(qRevenueRows: Statement, getGlobalTerms: () => string) {
   const revenueTotal = (r: RevenueRow) => round2(r.subtotal * (1 + (r.tax_rate || 0) / 100));
 
-  /** A1: top-level revenue totals, tax-inclusive. */
+  /** A1: top-level revenue totals, tax-inclusive. Drafts are not
+   *  invoiced yet, so they count nowhere here: invoiced is sent + paid,
+   *  and outstanding is sent only — the same definition the Zinvoices
+   *  page uses (#1126). */
   function revenueTotals() {
-    const rows = qRevenueRows.all() as RevenueRow[];
+    const rows = (qRevenueRows.all() as RevenueRow[]).filter(r => r.status !== "draft");
     const invoiced = round2(rows.reduce((a, r) => a + revenueTotal(r), 0));
     const paid = round2(rows.filter(r => r.status === "paid").reduce((a, r) => a + revenueTotal(r), 0));
     return { invoiced, paid, outstanding: round2(invoiced - paid) };
@@ -32,6 +35,7 @@ export function createRevenue(qRevenueRows: Statement, getGlobalTerms: () => str
       });
     }
     for (const r of rows) {
+      if (r.status === "draft") continue;
       const m = months.find(m => m.month === String(r.issue_date).slice(0, 7));
       if (!m) continue;
       const t = revenueTotal(r);
@@ -46,7 +50,7 @@ export function createRevenue(qRevenueRows: Statement, getGlobalTerms: () => str
     const rows = qRevenueRows.all() as RevenueRow[];
     const map = new Map<number, { client_id: number; name: string; color: string | null; invoiced: number; paid: number }>();
     for (const r of rows) {
-      if (r.client_id == null) continue;
+      if (r.status === "draft" || r.client_id == null) continue;
       const e = map.get(r.client_id) ?? {
         client_id: r.client_id, name: r.client_name || "Unknown",
         color: r.client_color, invoiced: 0, paid: 0,

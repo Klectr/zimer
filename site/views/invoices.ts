@@ -74,12 +74,10 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     return round2(r.subtotal * (1 + (r.tax_rate || 0) / 100));
   }
 
-  /* The mock's summary figures. Outstanding here means sent
-     (incl. overdue) — drafts carry their own card, as in the mock.
-     This deliberately differs from the Timer revenue pane, whose
-     Outstanding is invoiced-minus-paid over rows of every status
-     (drafts included); the two definitions sharing one label is a
-     recorded follow-up (#1126), not an accident of this change. */
+  /* The mock's summary figures. Outstanding means sent (incl.
+     overdue) — drafts carry their own card, as in the mock. The
+     revenue totals in site/lib/revenue.ts use the same definition
+     (#1126). */
   function invoiceStats(rows: any[]) {
     const sum = (xs: any[]) => round2(xs.reduce((a, r) => a + rowTotal(r), 0));
     const sent = rows.filter(r => r.status === "sent");
