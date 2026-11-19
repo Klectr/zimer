@@ -55,8 +55,7 @@ export function createPublicViews(deps: PublicViewDeps) {
   }
   function hoursLabel(hours: number): string {
     if (!hours) return "";
-    const h = (Math.round(hours * 100) / 100).toFixed(2).replace(/0$/, "");
-    return ` — ${h}h`;
+    return ` — ${(Math.round(hours * 100) / 100).toFixed(2)} h`;
   }
 
   /** Public client invoice page: no auth, read-only. #1136: the mocked
