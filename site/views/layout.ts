@@ -41,7 +41,8 @@ posthog.init(${jsStr(key)}, {
   capture_exceptions: true, /* #1023: error tracking — unhandled errors + rejections become $exception events */
 ${landing ? `  disable_session_recording: false,
   person_profiles: "identified_only",
-` : ""}  loaded: function(ph) { ${userId !== null ? `ph.identify(${jsStr(String(userId))}); try { var u = JSON.parse(localStorage.getItem("zimer_utm") || "null"); if (u) { localStorage.removeItem("zimer_utm"); if (u.p && Date.now() - (u.t || 0) < 2592000000) ph.capture("$set", { $set_once: u.p }); } } catch (e) {}` : ""} },
+` : `  disable_session_recording: true,
+`}  loaded: function(ph) { ${userId !== null ? `ph.identify(${jsStr(String(userId))}); try { var u = JSON.parse(localStorage.getItem("zimer_utm") || "null"); if (u) { localStorage.removeItem("zimer_utm"); if (u.p && Date.now() - (u.t || 0) < 2592000000) ph.capture("$set", { $set_once: u.p }); } } catch (e) {}` : ""} },
 });
 </script>`;
 }

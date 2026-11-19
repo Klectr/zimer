@@ -324,10 +324,12 @@ describe("PostHog snippet (#928)", () => {
     expect(html).not.toContain("zimer_utm");
   });
 
-  test("#998: app snippet keeps session-recording config out and capture off", () => {
+  test("#1239: app snippet disables session recording in init and keeps capture off", () => {
     const html = posthogSnippet("phc_test123", "https://us.i.posthog.com", 42);
-    expect(html).not.toContain("disable_session_recording");
+    expect(html).toContain("disable_session_recording: true");
     expect(html).not.toContain("person_profiles");
+    expect(html).toContain("autocapture: false");
+    expect(html).toContain("capture_pageview: false");
   });
 
   test("key is JSON-escaped, not interpolated raw", () => {
