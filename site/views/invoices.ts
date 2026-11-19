@@ -857,6 +857,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     const hxDetail = `hx-target="#invoice-detail" hx-swap="outerHTML"`;
     const next = inv.status === "draft" ? "sent" : inv.status === "sent" ? "paid" : null;
     const nextLabel = next === "sent" ? "Mark sent" : next === "paid" ? "Mark paid" : "";
+    const nextBtnLabel = next === "sent" ? "Mark Zinvoice sent" : next === "paid" ? "Mark Zinvoice paid" : "";
     const nextConfirm = next === "sent"
       ? "Mark this Zinvoice as sent? Sent Zinvoices can't be edited."
       : next === "paid" ? "Mark this Zinvoice as paid?" : "";
@@ -1004,21 +1005,21 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
        check icon + label). Nothing else in the header moves. */
     const termsLabel = PAYMENT_TERMS[termsKey(inv.client_payment_terms, termsKey(null, getMeta(db, "business_payment_terms")))].label;
     return `<div id="invoice-detail">
+      <div class="invoice-detail-head no-print">
+        ${linkButton({ label: "Zinvoices", href: "/invoices", icon: "arrow_left", variant: "ghost", className: "detail-back" })}
+      </div>
       <div class="detail-title no-print">
         <h2 class="ui-section-title">Zinvoice ${esc(inv.number)}${inv.client_name ? ` — ${esc(inv.client_name)}` : ""}</h2>
         <p class="ui-app-sub">Issued ${esc(shortYmd(inv.issue_date))}${inv.due_date ? ` · Due ${esc(shortYmd(inv.due_date))}` : ""} · ${esc(termsLabel)}</p>
       </div>
       <div class="page-head no-print">
-        <div class="invoice-detail-head">
-          ${linkButton({ label: "Zinvoices", href: "/invoices", icon: "arrow_left", variant: "ghost", className: "detail-back" })}
-        </div>
         <div class="row">
           ${inv.status === "paid" && inv.paid_at ? `<span class="inv-badge inv-badge-paid">${icon("check")}Paid ${esc(shortYmd(inv.paid_at))}</span>` : ""}
           ${clientLink ? iconButton({ icon: "copy", label: "Copy pay link", className: "tip-right", attrs: `data-copy data-url="${esc(clientLink)}"` }) : ""}
           <a class="ui-icon-btn tip-right" href="/invoices/${inv.id}.pdf" download data-tip="Download PDF" aria-label="Download PDF">${icon("download")}</a>
           ${next ? `<form method="post" action="/invoices/${inv.id}/status" class="inline" hx-post="/invoices/${inv.id}/status" ${hxDetail}>
             <input type="hidden" name="status" value="${next}">
-            ${iconButton({ icon: "check", label: nextLabel, className: "tip-right", type: "submit", attrs: `data-confirm="${nextConfirm}" data-confirm-label="${nextLabel}"` })}
+            ${button({ label: nextBtnLabel, variant: "primary", icon: "check", type: "submit", attrs: `data-confirm="${nextConfirm}" data-confirm-label="${nextLabel}"` })}
           </form>` : ""}
           ${inv.status === "draft" ? `<form method="post" action="/invoices/${inv.id}/delete" class="inline">
             ${iconButton({ icon: "delete", label: "Delete draft", danger: true, className: "tip-right", type: "submit", attrs: `data-confirm="Delete this draft Zinvoice? Its entries become unbilled again." data-confirm-label="Delete draft"` })}
