@@ -442,10 +442,10 @@ export function createCalendarViews(deps: CalendarViewDeps) {
           <p class="muted tiny" id="cal-locked" hidden></p>
           <p class="error tiny" id="cal-error" hidden></p>
           <div class="cal-dialog-actions">
-            ${button({ label: "Delete", variant: "ghost", danger: true, id: "cal-delete", attrs: "hidden" })}
+            ${button({ label: "Delete entry", variant: "ghost", danger: true, id: "cal-delete", attrs: "hidden" })}
             <span class="cal-spacer"></span>
             ${button({ label: "Cancel", variant: "ghost", id: "cal-cancel" })}
-            ${button({ label: "Save", variant: "primary", id: "cal-save" })}
+            ${button({ label: "Save entry", variant: "primary", id: "cal-save" })}
           </div>
         </div>
       </div>`;
@@ -806,7 +806,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     });
     delBtn.addEventListener('click',function(){
       /* #464: native confirm() replaced by the shared confirm dialog. */
-      window.tkConfirm('Delete this entry? This cannot be undone.').then(function(ok){
+      window.tkConfirm('Delete this entry? This cannot be undone.', 'Delete entry').then(function(ok){
         if(!ok) return;
         fetch('/entries/'+editId,{method:'DELETE'}).then(function(r){
           if(!r.ok) throw new Error('delete failed'); /* #334: locked entries 403 */
@@ -1136,7 +1136,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       <form method="post" action="/entries/${e.id}" class="form" id="edit-entry-form">
         ${editEntryFields(e, dis)}
         <div class="row">
-          ${locked ? "" : button({ label: "Save", variant: "primary", type: "submit" })}
+          ${locked ? "" : button({ label: "Save entry", variant: "primary", type: "submit" })}
           ${linkButton({ label: locked ? "Back" : "Cancel", href: "/calendar", variant: "ghost" })}
         </div>
       </form>
@@ -1179,7 +1179,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
         <div class="cal-dialog-actions">
           <span class="cal-spacer"></span>
           ${button({ label: locked ? "Back" : "Cancel", variant: "ghost", attrs: "data-close-entry" })}
-          ${locked ? "" : button({ label: "Save", variant: "primary", type: "submit" })}
+          ${locked ? "" : button({ label: "Save entry", variant: "primary", type: "submit" })}
         </div>
       </form>
       <script>(function(){

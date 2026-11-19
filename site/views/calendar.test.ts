@@ -103,6 +103,12 @@ describe("calendar entry aria-label (#479)", () => {
     expect(html).not.toContain('class="undefined"');
     expect(html).toContain('class="ui-btn ui-btn-ghost ui-btn-danger" id="cal-delete" hidden');
     expect(html).toContain('class="ui-btn ui-btn-primary" id="cal-save"');
+    /* #1217: dialog buttons are verb + noun, never bare Save/Delete. */
+    expect(html).toContain(">Save entry</button>");
+    expect(html).toContain(">Delete entry</button>");
+    expect(html).not.toContain(">Save</button>");
+    expect(html).not.toContain(">Delete</button>");
+    expect(html).toContain("tkConfirm('Delete this entry? This cannot be undone.', 'Delete entry')");
   });
 
   function labelFor(html: string, id: number): string {
@@ -717,6 +723,10 @@ describe("edit-entry floating labels (#709)", () => {
     return views.editPage(7) as string;
   }
 
+  test("save button is verb + noun (#1217)", () => {
+    expect(editPageHtml()).toContain(">Save entry</button>");
+  });
+
   test("each field's label is wired to its input via matching id/for", () => {
     const html = editPageHtml();
     for (const id of ["ee-desc", "ee-project", "ee-start", "ee-end"]) {
@@ -747,6 +757,11 @@ describe("entry edit dialog fragment (#903)", () => {
       calHourPx: 64,
     } as any);
   }
+
+  test("save button is verb + noun (#1217)", () => {
+    const html = dialogViews().editEntryDialog(7) as string;
+    expect(html).toContain(">Save entry</button>");
+  });
 
   test("fragment carries the dialog head and an htmx form", () => {
     const html = dialogViews().editEntryDialog(7) as string;

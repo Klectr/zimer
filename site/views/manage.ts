@@ -166,7 +166,7 @@ export function createManageViews(deps: ManageViewDeps) {
 
   const projectRow = (p: any) => clientRow({
     name: p.name,
-    actions: `<form method="post" action="/projects/${p.id}/delete" class="inline" hx-post="/projects/${p.id}/delete" hx-target="#client-dialog-projects" hx-swap="outerHTML">${iconButton({ icon: "delete", label: `Delete project ${p.name}`, tip: "Delete", danger: true, type: "submit", attrs: `data-confirm="Delete project? Entries keep their history."` })}</form>`,
+    actions: `<form method="post" action="/projects/${p.id}/delete" class="inline" hx-post="/projects/${p.id}/delete" hx-target="#client-dialog-projects" hx-swap="outerHTML">${iconButton({ icon: "delete", label: `Delete project ${p.name}`, tip: "Delete project", danger: true, type: "submit", attrs: `data-confirm="Delete project? Entries keep their history." data-confirm-label="Delete project"` })}</form>`,
   });
 
   const addProjectForm = (clientId: number | null) => `
@@ -196,7 +196,7 @@ export function createManageViews(deps: ManageViewDeps) {
     const c = sel.client;
     return clientSettingsForm(c) + clientDialogProjects(sel) + `
       <form method="post" action="/clients/${c.id}/delete" class="detail-form manage-delete-client">
-        ${button({ label: "Delete client", variant: "ghost", danger: true, type: "submit", attrs: 'data-confirm="Delete this client? Its projects move to No client."' })}
+        ${button({ label: "Delete client", variant: "ghost", danger: true, type: "submit", attrs: 'data-confirm="Delete this client? Its projects move to No client." data-confirm-label="Delete client"' })}
       </form>`;
   }
 
@@ -227,7 +227,7 @@ export function createManageViews(deps: ManageViewDeps) {
       textField({ id: "cs-phone", label: "Phone", name: "phone", type: "tel", value: c.phone || "" }) +
       textField({ id: "cs-website", label: "Website", name: "website", value: c.website || "", attrs: 'autocapitalize="none" spellcheck="false"' }) +
       textAreaField({ id: "cs-address", label: "Address", name: "address", value: c.address || "", rows: 3 }) +
-      `<div class="ui-settings-actions">${button({ label: "Cancel", type: "button", variant: "ghost", id: "client-settings-cancel" })}${button({ label: "Save", type: "submit", variant: "primary" })}</div>` +
+      `<div class="ui-settings-actions">${button({ label: "Cancel", type: "button", variant: "ghost", id: "client-settings-cancel" })}${button({ label: "Save client", type: "submit", variant: "primary" })}</div>` +
       `</form>`;
   }
 
@@ -421,7 +421,7 @@ export function createManageViews(deps: ManageViewDeps) {
       selectField({ id: "bp-terms", label: "Payment terms", name: "business_payment_terms", options, value: terms, className: "terms-select" }) +
       `</div>` +
       `<p class="terms-desc ui-settings-note">${esc(termsDescription(termsKey(null, terms)))}</p>` +
-      `<div class="ui-settings-actions">${button({ label: "Save", type: "submit", variant: "primary", icon: "save" })}</div>` +
+      `<div class="ui-settings-actions">${button({ label: "Save profile", type: "submit", variant: "primary", icon: "save" })}</div>` +
       `</form>`;
     return settingsSection({ level: 2, id: "biz-profile", title: "Business profile", hint: "Shown in the From block on zinvoices; the payment terms print on the zinvoice too.", bodyHtml: body });
   }
@@ -435,7 +435,7 @@ export function createManageViews(deps: ManageViewDeps) {
     return `<div class="settings-pref-control" id="daily-target">` +
       `<form method="post" action="/daily-target" id="daily-target-form" class="settings-inline-form" hx-post="/daily-target" hx-target="#daily-target" hx-swap="outerHTML">` +
       `<div class="ui-input-wrap settings-hours"><input class="ui-input" type="number" id="dt-hours" name="day_target_hours" value="${esc(String(hours))}" min="1" max="24" step="0.5" inputmode="decimal" aria-label="Daily hours target"><span class="ui-affix ui-affix-suffix">hr</span></div>` +
-      button({ label: "Save", type: "submit", variant: "primary", size: "sm" }) +
+      button({ label: "Save target", type: "submit", variant: "primary", size: "sm" }) +
       `</form></div>`;
   }
 

@@ -803,7 +803,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
         <span class="proof-icons">
           <a class="ui-icon-btn" href="/invoices/${inv.id}/payment-proof/${p.id}" download="${esc(p.filename)}" data-tip="Download" aria-label="Download proof">${icon("download")}</a>
           <form method="post" action="/invoices/${inv.id}/payment-proof/${p.id}/delete" class="inline">
-            ${iconButton({ icon: "delete", label: "Delete proof", danger: true, type: "submit", attrs: `data-confirm="Delete this proof of payment?"` })}
+            ${iconButton({ icon: "delete", label: "Delete proof", danger: true, type: "submit", attrs: `data-confirm="Delete this proof of payment?" data-confirm-label="Delete proof"` })}
           </form>
         </span>
       </div>`).join("");
@@ -1021,7 +1021,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
             ${iconButton({ icon: "check", label: nextLabel, className: "tip-right", type: "submit", attrs: `data-confirm="${nextConfirm}" data-confirm-label="${nextLabel}"` })}
           </form>` : ""}
           ${inv.status === "draft" ? `<form method="post" action="/invoices/${inv.id}/delete" class="inline">
-            ${iconButton({ icon: "delete", label: "Delete draft", danger: true, className: "tip-right", type: "submit", attrs: `data-confirm="Delete this draft zinvoice? Its entries become unbilled again."` })}
+            ${iconButton({ icon: "delete", label: "Delete draft", danger: true, className: "tip-right", type: "submit", attrs: `data-confirm="Delete this draft zinvoice? Its entries become unbilled again." data-confirm-label="Delete draft"` })}
           </form>` : ""}
         </div>
       </div>

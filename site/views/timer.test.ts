@@ -323,7 +323,7 @@ describe("entry row tooltips (#484)", () => {
   });
   test("delete gets a data-tip tooltip", () => {
     const html = row(finished);
-    expect(html).toContain('data-tip="Delete"');
+    expect(html).toContain('data-tip="Delete entry"');
     expect(html).not.toContain('title="Delete"');
   });
   test("running row's edit keeps the tooltip; no delete on running rows", () => {

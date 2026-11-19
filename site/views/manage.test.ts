@@ -31,7 +31,7 @@ function pageHtml(): string {
 describe("manage tooltips (#486)", () => {
   test("project delete/add use data-tip, not native title", () => {
     const html = dialogHtml();
-    expect(html).toContain('data-tip="Delete"');
+    expect(html).toContain('data-tip="Delete project"');
     expect(html).toContain('data-tip="Add project"');
     expect(html).not.toContain('title="Delete"');
     expect(html).not.toContain('title="Add project"');
@@ -188,12 +188,12 @@ describe("client dialog (#1203)", () => {
 
   /* #1160: the dialog names the client, offers Cancel next to Save, and a
      failed save re-renders with the error line + submitted values. */
-  test("settings form carries a Cancel button beside Save", () => {
+  test("settings form carries a Cancel button beside Save client", () => {
     const { db, client } = testDb();
     const views = createManageViews({ db, layout: (_t: string, b: string) => b, unbilledByClient: () => [] });
     const html = views.clientSettingsForm(client);
     expect(html).toContain('id="client-settings-cancel"');
-    expect(html.indexOf('id="client-settings-cancel"')).toBeLessThan(html.indexOf(">Save</button>"));
+    expect(html.indexOf('id="client-settings-cancel"')).toBeLessThan(html.indexOf(">Save client</button>"));
   });
 
   test("settings form with an error renders the alert line and keeps submitted values", () => {
@@ -252,6 +252,13 @@ describe("manage labels (#827)", () => {
       expect(page).toContain(`id="${id}"`);
       expect(page).toContain(`<label class="ui-field-label" for="${id}">`);
     }
+  });
+
+  test("business profile save button is verb + noun (#1217)", () => {
+    const { db } = testDb();
+    const views = createManageViews({ db, layout: (_t: string, b: string) => b, unbilledByClient: () => [] });
+    expect(views.bizProfileSection()).toContain(">Save profile</button>");
+    expect(views.dailyTargetSection()).toContain(">Save target</button>");
   });
 
   test("business profile labels are wired via matching id/for", () => {
