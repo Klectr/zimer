@@ -66,18 +66,33 @@ describe("paid-on date", () => {
     expect(html).not.toContain("Paid Sep");
   });
 
-  test("#432: detail actions are icon buttons with tooltips", () => {
+  test("#432: detail secondary actions are icon buttons with tooltips", () => {
     const html = views([]).invoiceDetailBody(detailInv("draft", null) as any, "http://x");
     const row = html.match(/<div class="page-head no-print">[\s\S]*?<div class="row">([\s\S]*?)<\/div>\s*<\/div>/)?.[1] || "";
     expect(row).toContain('data-tip="Download PDF"');
-    expect(row).toContain('data-tip="Mark sent"');
     expect(row).toContain('data-tip="Delete draft"');
     expect(row).toContain('aria-label="Download PDF"');
-    expect(row).not.toContain('class="ui-btn');
     expect(row).not.toContain("inv-overflow-menu-");
     const iconBtns = row.match(/class="ui-icon-btn/g) || [];
-    expect(iconBtns.length).toBe(3);
-    expect(row.match(/tip-right/g)?.length).toBe(3); // #434: tooltips anchor right
+    expect(iconBtns.length).toBe(2);
+    expect(row.match(/tip-right/g)?.length).toBe(2); // #434: tooltips anchor right
+  });
+
+  test("#1250: back link renders above the title, before it in DOM order", () => {
+    const html = views([]).invoiceDetailBody(detailInv("sent", null) as any, "http://x");
+    expect(html.indexOf("detail-back")).toBeGreaterThan(-1);
+    expect(html.indexOf("detail-back")).toBeLessThan(html.indexOf("detail-title"));
+  });
+
+  test("#1250: next lifecycle step is a labeled primary button, not an icon", () => {
+    const draft = views([]).invoiceDetailBody(detailInv("draft", null) as any, "http://x");
+    expect(draft).toContain('class="ui-btn ui-btn-primary ui-btn-sm"');
+    expect(draft).toContain("Mark Zinvoice sent");
+    const sent = views([]).invoiceDetailBody(detailInv("sent", null) as any, "http://x");
+    expect(sent).toContain("Mark Zinvoice paid");
+    expect(sent).not.toContain('aria-label="Mark paid"');
+    const paid = views([]).invoiceDetailBody(detailInv("paid", "2026-09-21") as any, "http://x");
+    expect(paid).not.toContain("Mark Zinvoice");
   });
 
   test("#432: paid invoice shows only the download icon button", () => {
@@ -96,7 +111,7 @@ describe("paid-on date", () => {
     // chip leads the actions row, ahead of Download PDF
     expect(actionsRow.indexOf("inv-badge")).toBeLessThan(actionsRow.indexOf("Download PDF"));
     // title block untouched: back link only, no paid date
-    const headBlock = html.match(/<div class="invoice-detail-head">[\s\S]*?<\/div>/)?.[0] || "";
+    const headBlock = html.match(/<div class="invoice-detail-head[^"]*">[\s\S]*?<\/div>/)?.[0] || "";
     expect(headBlock).not.toContain("Paid Sep 21");
     // no caption element anywhere
     expect(html).not.toContain("paid-meta");
