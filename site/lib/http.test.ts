@@ -209,6 +209,33 @@ describe("compressResponse (#993)", () => {
     expect((await compressResponse(notModified, gzipReq())).status).toBe(304);
   });
 
+  test("range requests pass through untouched (Bun synthesizes the 206 later)", async () => {
+    const req = gzipReq({ range: "bytes=0-99" });
+    const res = await compressResponse(html(bigHtml), req);
+    expect(res.headers.get("Content-Encoding")).toBeNull();
+    expect(await res.text()).toBe(bigHtml);
+  });
+
+  test("the gzipped variant weakens the identity ETag", async () => {
+    const src = html(bigHtml, 200, { ETag: '"abc-123"' });
+    const res = await compressResponse(src, gzipReq());
+    expect(res.headers.get("Content-Encoding")).toBe("gzip");
+    expect(res.headers.get("ETag")).toBe('W/"abc-123"');
+  });
+
+  test("explicit gzip;q=0 beats a wildcard acceptance", async () => {
+    const req = new Request("http://x/", { headers: { "accept-encoding": "gzip;q=0, *;q=1" } });
+    const res = await compressResponse(html(bigHtml), req);
+    expect(res.headers.get("Content-Encoding")).toBeNull();
+    expect(await res.text()).toBe(bigHtml);
+  });
+
+  test("identity responses for compressible types still Vary on Accept-Encoding", async () => {
+    const res = await compressResponse(html(bigHtml), new Request("http://x/"));
+    expect(res.headers.get("Content-Encoding")).toBeNull();
+    expect(res.headers.get("Vary")).toContain("Accept-Encoding");
+  });
+
   test("preserves status, headers and cookies when gzipping", async () => {
     const src = html(bigHtml, 201, { "Set-Cookie": "tk=abc; HttpOnly", "X-Test": "1" });
     const res = await compressResponse(src, gzipReq());

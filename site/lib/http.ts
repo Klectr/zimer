@@ -79,29 +79,48 @@ const COMPRESSIBLE_TYPE = /^(?:text\/|application\/(?:json|javascript|xml|xhtml\
 const GZIP_MIN_BYTES = 1024;
 
 function acceptsGzip(req: Request): boolean {
-  return (req.headers.get("accept-encoding") || "").split(",").some((part) => {
+  let wildcard: boolean | null = null;
+  for (const part of (req.headers.get("accept-encoding") || "").split(",")) {
     const [token, ...params] = part.split(";").map((s) => s.trim().toLowerCase());
-    if (token !== "gzip" && token !== "*") return false;
+    if (token !== "gzip" && token !== "*") continue;
     const q = params.find((p) => p.startsWith("q="));
-    return !q || parseFloat(q.slice(2)) > 0;
-  });
+    const ok = !q || parseFloat(q.slice(2)) > 0;
+    if (token === "gzip") return ok; /* an explicit entry beats the wildcard */
+    wildcard = ok;
+  }
+  return wildcard === true;
+}
+
+function withVary(headers: Headers): void {
+  const vary = (headers.get("vary") || "").split(",").map((s) => s.trim().toLowerCase());
+  if (!vary.includes("accept-encoding") && !vary.includes("*")) {
+    headers.set("Vary", [...vary.filter(Boolean), "Accept-Encoding"].join(", "));
+  }
 }
 
 export async function compressResponse(res: Response, req: Request): Promise<Response> {
   if (req.method === "HEAD" || res.status === 204 || res.status === 304) return res;
   if (res.headers.has("content-encoding") || res.headers.has("content-range")) return res;
-  if (!acceptsGzip(req)) return res;
+  /* Bun.serve synthesizes 206 responses from the request's Range header and
+     a file body after the handler returns — buffering the body here would
+     silently turn them into full 200s, so range requests pass through. */
+  if (req.headers.has("range")) return res;
   if (!COMPRESSIBLE_TYPE.test(res.headers.get("content-type") || "")) return res;
+  if (!acceptsGzip(req)) { withVary(res.headers); return res; }
+  const declaredHeader = res.headers.get("content-length");
+  const declared = declaredHeader === null ? NaN : Number(declaredHeader);
+  if (Number.isFinite(declared) && declared < GZIP_MIN_BYTES) { withVary(res.headers); return res; }
   const body = new Uint8Array(await res.arrayBuffer());
   const rebuild = (bytes: Uint8Array, encoded: boolean) => {
     const headers = new Headers(res.headers);
+    withVary(headers);
     if (encoded) {
       headers.set("Content-Encoding", "gzip");
       headers.delete("Content-Length");
-      const vary = (headers.get("vary") || "").split(",").map((s) => s.trim().toLowerCase());
-      if (!vary.includes("accept-encoding") && !vary.includes("*")) {
-        headers.set("Vary", [...vary.filter(Boolean), "Accept-Encoding"].join(", "));
-      }
+      /* The gzipped bytes are a different representation, so the identity
+         body's strong ETag must not ride along verbatim — weaken it. */
+      const etag = headers.get("etag");
+      if (etag && !etag.startsWith("W/")) headers.set("ETag", `W/${etag}`);
     }
     return new Response(bytes, { status: res.status, statusText: res.statusText, headers });
   };
