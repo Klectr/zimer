@@ -64,8 +64,8 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       </form>` : "";
     return emptyState({
       image: { src: "/static/mascot-empty.png", width: 132, height: 132 },
-      title: "No zinvoices yet",
-      body: "Turn tracked time into a zinvoice — or explore first with fictional sample data.",
+      title: "No Zinvoices yet",
+      body: "Turn tracked time into a Zinvoice — or explore first with fictional sample data.",
       action: demoCta || undefined,
     });
   }
@@ -162,7 +162,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       return card({
         content: emptyState({
           icon: "receipt",
-          body: filtered ? "No zinvoices match this filter." : "No zinvoices yet.",
+          body: filtered ? "No Zinvoices match this filter." : "No Zinvoices yet.",
           action: filtered ? linkButton({ label: "Clear filter", href: "/invoices", variant: "ghost" }) : undefined,
         }),
       });
@@ -200,7 +200,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
              never reloads the page or re-runs the layout. */
           attrs: `hx-get="${esc(hrefFor(f.key))}" hx-target="#inv-list-region" hx-swap="innerHTML" hx-push-url="true"`,
         })),
-        active, label: "Filter zinvoices by status",
+        active, label: "Filter Zinvoices by status",
       })}
       <form method="get" action="/invoices" class="inv-search"
         hx-get="/invoices" hx-target="#inv-list-region" hx-swap="innerHTML" hx-push-url="true">
@@ -235,7 +235,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       subId: "inv-sub",
       actions:
         (rows.length ? linkButton({ label: "Export CSV", href: "/export/invoices.csv", variant: "ghost", icon: "download", download: true, ariaLabel: "Export CSV" }) : "") +
-        linkButton({ label: "New Zinvoice", href: "/invoices/new", variant: "primary", icon: "add", ariaLabel: "New zinvoice" }),
+        linkButton({ label: "New Zinvoice", href: "/invoices/new", variant: "primary", icon: "add", ariaLabel: "New Zinvoice" }),
     });
     if (!rows.length) {
       return layout("Zinvoices", `${head}
@@ -364,7 +364,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
 
 
 
-    return layout("New zinvoice", `
+    return layout("New Zinvoice", `
       ${appHeader({ title: "New Zinvoice", sub: sub || "Pick a client and period", subId: "inv-new-sub", actions: linkButton({ label: "Cancel", href: "/invoices", variant: "ghost" }) })}
       <div id="inv-steps">${steps({ items: STEP_ITEMS, current: preview ? 1 : 0 })}</div>
       <form method="post" action="/invoices" class="form inv-new-form" id="inv-create-form">
@@ -858,8 +858,8 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     const next = inv.status === "draft" ? "sent" : inv.status === "sent" ? "paid" : null;
     const nextLabel = next === "sent" ? "Mark sent" : next === "paid" ? "Mark paid" : "";
     const nextConfirm = next === "sent"
-      ? "Mark this zinvoice as sent? Sent zinvoices can't be edited."
-      : next === "paid" ? "Mark this zinvoice as paid?" : "";
+      ? "Mark this Zinvoice as sent? Sent Zinvoices can't be edited."
+      : next === "paid" ? "Mark this Zinvoice as paid?" : "";
     const t = invoiceTotals(inv.items, inv.tax_rate);
     const token = getPublicToken(inv.id);
     const clientLink = token ? `${origin}/i/${token}` : null;
@@ -1021,7 +1021,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
             ${iconButton({ icon: "check", label: nextLabel, className: "tip-right", type: "submit", attrs: `data-confirm="${nextConfirm}" data-confirm-label="${nextLabel}"` })}
           </form>` : ""}
           ${inv.status === "draft" ? `<form method="post" action="/invoices/${inv.id}/delete" class="inline">
-            ${iconButton({ icon: "delete", label: "Delete draft", danger: true, className: "tip-right", type: "submit", attrs: `data-confirm="Delete this draft zinvoice? Its entries become unbilled again." data-confirm-label="Delete draft"` })}
+            ${iconButton({ icon: "delete", label: "Delete draft", danger: true, className: "tip-right", type: "submit", attrs: `data-confirm="Delete this draft Zinvoice? Its entries become unbilled again." data-confirm-label="Delete draft"` })}
           </form>` : ""}
         </div>
       </div>

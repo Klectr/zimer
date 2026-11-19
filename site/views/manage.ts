@@ -423,7 +423,7 @@ export function createManageViews(deps: ManageViewDeps) {
       `<p class="terms-desc ui-settings-note">${esc(termsDescription(termsKey(null, terms)))}</p>` +
       `<div class="ui-settings-actions">${button({ label: "Save profile", type: "submit", variant: "primary", icon: "save" })}</div>` +
       `</form>`;
-    return settingsSection({ level: 2, id: "biz-profile", title: "Business profile", hint: "Shown in the From block on zinvoices; the payment terms print on the zinvoice too.", bodyHtml: body });
+    return settingsSection({ level: 2, id: "biz-profile", title: "Business profile", hint: "Shown in the From block on Zinvoices; the payment terms print on the Zinvoice too.", bodyHtml: body });
   }
 
   /* #908: daily hours target — the pacing bars on the timer page (Today)

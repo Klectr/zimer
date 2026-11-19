@@ -593,6 +593,14 @@ describe("/manage stacked page (#1203)", () => {
     return { status: res.status, body: await res.text() };
   }
 
+  test("GET /clients redirects to /manage (#1217)", async () => {
+    const { handleWeb } = setupWith([]);
+    const req = new Request("http://x/clients", { method: "GET" });
+    const res = await handleWeb(req, new URL(req.url), "/clients", "GET");
+    expect(res.status).toBe(301);
+    expect(res.headers.get("Location")).toBe("/manage");
+  });
+
   test("zero clients: the stacked page renders with the No client row", async () => {
     const { handleWeb } = setupWith([]);
     const { status, body } = await getManage(handleWeb);

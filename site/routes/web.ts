@@ -693,6 +693,9 @@ export function createWebRouter(deps: WebDeps) {
           return csvResponse(out.join("\n"), "zimer-invoices.csv");
         }
 
+        if (path === "/clients" && method === "GET") {
+          return new Response(null, { status: 301, headers: { Location: "/manage" } });
+        }
         if (path === "/manage" && method === "GET") {
           return html(managePage());
         }
@@ -739,7 +742,7 @@ export function createWebRouter(deps: WebDeps) {
           const dataSection = settingsSection({
             level: 2, id: "your-data", title: "Your data",
             hint: "One SQLite file holds everything. Export or back it up any time.",
-            bodyHtml: `<p class="ui-settings-note">Leaving is allowed, so the exports actually work — clients, entries, and zinvoices come with you.</p>`,
+            bodyHtml: `<p class="ui-settings-note">Leaving is allowed, so the exports actually work — clients, entries, and Zinvoices come with you.</p>`,
             actionsHtml:
               linkButton({ label: "Download backup", href: "/backup", download: true, icon: "database" }) +
               linkButton({ label: "Entries CSV", href: "/export/entries.csv", download: true, icon: "table" }) +
@@ -1015,7 +1018,7 @@ export function createWebRouter(deps: WebDeps) {
               date_to: String(form.get(`g${i}_date_to`) || "") || null,
             });
           }
-          if (!items.length) return new Response("No line items — nothing to zinvoice.", { status: 400 });
+          if (!items.length) return new Response("No line items — nothing to Zinvoice.", { status: 400 });
           const number = String(form.get("number") || nextInvoiceNumber());
           if (db.query("SELECT 1 FROM invoices WHERE number = ?").get(number))
             return new Response("Zinvoice number already exists.", { status: 400 });
@@ -1172,7 +1175,7 @@ export function createWebRouter(deps: WebDeps) {
         if (m && method === "POST") {
           const inv = qInvoice.get(Number(m[1])) as Invoice | null;
           if (!inv) return html(notFoundPage(authedPage(req, TOKEN)), 404);
-          if (inv.status !== "draft") return new Response("Only draft zinvoices can be deleted.", { status: 400 });
+          if (inv.status !== "draft") return new Response("Only draft Zinvoices can be deleted.", { status: 400 });
           db.transaction(() => {
             db.query("UPDATE time_entries SET invoice_id = NULL WHERE invoice_id = ?").run(inv.id);
             db.query("DELETE FROM invoice_items WHERE invoice_id = ?").run(inv.id);
