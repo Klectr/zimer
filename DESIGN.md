@@ -64,7 +64,7 @@ Design values (LobeHub's, adopted from Ant Design): **Natural · Meaningful · C
 Consume tokens by name (`--color-text`, `--color-bg-container`, …). Never hard-code the hex above in a component.
 
 - Text ranks with the neutral ramp: `colorText` → `colorTextSecondary` → `colorTextTertiary` → `colorTextQuaternary` (disabled). Rank information with this ramp before reaching for color.
-- Text on a saturated filled surface (filled chips, the solid-error button) uses `colorTextOnFilled` — dark text on the fill (white on the error fill is ~2.8:1; dark is ~5.9:1). Never use a `colorBg*` surface token as a text color.
+- Text on a saturated semantic fill (the solid-error button) uses `colorTextOnFilled` — dark text on the fill (white on the error fill is ~2.8:1; dark is ~7.2:1). The primary fill is the exception: it keeps the per-theme `--on-primary`. Never use a `colorBg*` surface token as a text color.
 - Surfaces get lighter as they rise in dark: `colorBgLayout` (canvas) → `colorBgContainer` → `colorBgElevated` (popovers, menus, modals) → `colorBgSpotlight` (tooltips). `colorBgContainerSecondary` gives subtle separation within a container. Don't flatten the stack.
 - Borders and fills are translucent white so they layer over any surface. `colorBorderSecondary` is the everyday divider; `colorBorder` is the stronger edge.
 - `colorPrimary` is pumpkin `#fb923c` — Zimer's deliberate brand exception to LobeHub's monochrome default. It is reserved for the single most important action per view, the running-timer state, and links. Don't spread it as decoration.

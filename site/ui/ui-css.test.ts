@@ -50,7 +50,7 @@ describe("on-filled text token (#1095)", () => {
     const rule = css.match(/\.ui-btn-primary\.ui-btn-danger \{[^}]*\}/);
     expect(rule).not.toBeNull();
     expect(rule![0]).toContain("color: var(--color-text-on-filled)");
-    expect(css).not.toContain("color: var(--color-bg-layout)");
+    expect(css).not.toMatch(/(?:color|fill):\s*var\(--color-bg-/);
   });
 });
 
