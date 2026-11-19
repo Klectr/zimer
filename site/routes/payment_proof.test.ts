@@ -227,6 +227,16 @@ describe("invoice detail proof section (#956)", () => {
     expect(html).toContain('action="/invoices/1/payment-proof"');
     expect(html).toContain('type="file"');
   });
+  test("proof title is a sentence-case block title and the picker is an Attach proof button (#1261)", () => {
+    const html = views(stubDb).invoiceDetailBody(invRow("paid") as any, "");
+    expect(html).toContain('<div class="ui-block-title">');
+    expect(html).toContain("Proof of payment");
+    expect(html).not.toContain('class="internal-notes-label"><svg');
+    expect(html).toContain("Attach proof");
+    expect(html).not.toContain("Choose file");
+    expect(html).toContain('class="ui-btn proof-file-label"');
+    expect(html).toContain('for="proof-file-1"');
+  });
   test("paid invoice with proof lists it with view + delete", () => {
     const db = createDb(mkdtempSync(join(tmpdir(), "tk-ppv-"))).db;
     db.query("INSERT INTO clients (name, color, rate) VALUES ('Acme', '#fff', 40)").run();
