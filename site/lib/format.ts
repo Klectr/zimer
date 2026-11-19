@@ -221,5 +221,13 @@ export function entryToJson(e: Entry) {
 export function schemeColor(color: string | null | undefined): string | null | undefined {
   if (typeof color === "string" && color.toLowerCase() === "#f2c14e")
     return "var(--color-primary)";
-  return color;
+  if (color == null) return color;
+  return safeCssColor(color);
+}
+
+export function safeCssColor(color: string | null | undefined): string | undefined {
+  if (typeof color !== "string") return undefined;
+  const c = color.trim();
+  if (c === "var(--color-primary)") return c;
+  return /^#[0-9a-f]{6}$/i.test(c) ? c : undefined;
 }

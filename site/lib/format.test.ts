@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { clientColor, csvCell, fmtDur, greeting, schemeColor, shortDateRange, shortDateRangeYear, shortYmd } from "./format.ts";
+import { clientColor, csvCell, fmtDur, greeting, safeCssColor, schemeColor, shortDateRange, shortDateRangeYear, shortYmd } from "./format.ts";
 
 /* #914: CSV formula injection — cells starting with =, +, - or @ (after
    leading whitespace) get a single-quote prefix so Excel/Sheets open them
@@ -91,6 +91,9 @@ describe("schemeColor", () => {
   test("nullish colors pass through for call-site fallbacks", () => {
     expect(schemeColor(null)).toBeNull();
     expect(schemeColor(undefined)).toBeUndefined();
+    expect(schemeColor("#60a5fa;position:fixed;inset:0")).toBeUndefined();
+    expect(schemeColor("red")).toBeUndefined();
+    expect(schemeColor("var(--color-primary)")).toBe("var(--color-primary)");
   });
 });
 

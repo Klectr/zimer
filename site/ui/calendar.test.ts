@@ -151,7 +151,21 @@ describe("visualizer", () => {
       days: [{ ...VDAY, entries: [{ id: "x", title: "X", startMin: 540, endMin: 660, color: 'red" onmouseover="alert(1)' }] }],
     });
     expect(evil).not.toContain('onmouseover="alert(1)"');
-    expect(evil).toContain("&quot;");
+    expect(evil).toContain("--entry:var(--color-text-tertiary);");
+    const injected = visualizer({
+      days: [{ ...VDAY, entries: [{ id: "y", title: "Y", startMin: 540, endMin: 660, color: "#60a5fa;position:fixed;inset:0" }] }],
+    });
+    expect(injected).not.toContain("position:fixed");
+    expect(injected).toContain("--entry:var(--color-text-tertiary);");
+    const gold = visualizer({
+      days: [{ ...VDAY, entries: [{ id: "g", title: "G", startMin: 540, endMin: 660, color: "var(--color-primary)" }] }],
+    });
+    expect(gold).toContain("--entry:var(--color-primary);");
+    const dotInjected = weekView({
+      days: [{ ...DAY, entries: [{ title: "A", meta: "9 AM", duration: "1h", dot: "#a78bfa;position:fixed" }] }],
+    });
+    expect(dotInjected).not.toContain("position:fixed");
+    expect(dotInjected).not.toContain("ui-row-dot");
   });
 
   test("agenda rows show the client color dot", () => {
