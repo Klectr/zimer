@@ -21,7 +21,10 @@ import { TRIAL_NUDGE_DAYS, trialDaysLeft, type Billing } from "../lib/billing.ts
  *  the identity. #998: landing mode flips pageview + autocapture on so ad
  *  arrivals and CTA clicks are visible, with no person profiles for
  *  anonymous visitors. #1001: session recording is enabled in landing
- *  mode (owner decision) so landing visits produce replays. */
+ *  mode (owner decision) so landing visits produce replays. #1239: app
+ *  mode sets disable_session_recording: true in the init config, so the
+ *  PostHog project's remote settings cannot turn replay on inside the
+ *  app, where screens hold client names, hours and invoice amounts. */
 export function posthogSnippet(key: string, host: string, userId: number | null, opts?: { landing?: boolean }): string {
   const landing = opts?.landing === true;
   /* JSON.stringify alone doesn't neutralize </script> inside the key — escape
