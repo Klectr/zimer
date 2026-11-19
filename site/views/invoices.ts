@@ -815,11 +815,11 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     const nudge = inv.status === "paid" && proofs.length === 0 ? `
       <p class="proof-nudge muted">No proof attached — add the bank receipt or payment confirmation so this payment stays verifiable.</p>` : "";
     return `<section class="payment-proof no-print" id="proof" aria-label="Proof of payment">
-      <div class="internal-notes-label">${icon("receipt")} Proof of payment</div>
+      <div class="ui-block-title">${icon("receipt")} Proof of payment</div>
       ${rows}
       ${nudge}
       <form method="post" action="/invoices/${inv.id}/payment-proof" enctype="multipart/form-data" class="proof-upload" data-invoice-id="${inv.id}">
-        <label class="proof-file-label" for="proof-file-${inv.id}">Choose file</label>
+        <label class="ui-btn proof-file-label" for="proof-file-${inv.id}">${icon("upload")} Attach proof</label>
         <input id="proof-file-${inv.id}" class="proof-file-input" type="file" name="proof" accept="image/png,image/jpeg,image/gif,image/webp,application/pdf" required>
       </form>
       <p class="proof-hint muted">PNG, JPEG, GIF, WebP or PDF, up to 10 MB. Optional — cash payments have no file.</p>
