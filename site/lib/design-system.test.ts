@@ -211,6 +211,7 @@ describe("DESIGN.md token layer (#1092)", () => {
       "--color-text-secondary": "#a1a1aa",
       "--color-text-tertiary": "#81818a",
       "--color-text-quaternary": "#52525b",
+      "--color-text-on-filled": "#08090a",
       "--color-bg-layout": "#08090a",
       "--color-bg-container": "#0d0d0f",
       "--color-bg-container-secondary": "#0a0b0c",
@@ -284,7 +285,7 @@ describe("DESIGN.md token layer (#1092)", () => {
   test("the layer is complete: no DESIGN.md color is missing from the pins", () => {
     const tokens = rootTokens();
     const colorNames = [...tokens.keys()].filter((k) => k.startsWith("--color-"));
-    expect(colorNames.length).toBe(41);
+    expect(colorNames.length).toBe(42);
   });
 });
 
