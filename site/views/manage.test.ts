@@ -188,12 +188,12 @@ describe("client dialog (#1203)", () => {
 
   /* #1160: the dialog names the client, offers Cancel next to Save, and a
      failed save re-renders with the error line + submitted values. */
-  test("settings form carries a Cancel button beside Save", () => {
+  test("settings form carries a Cancel button beside Save client", () => {
     const { db, client } = testDb();
     const views = createManageViews({ db, layout: (_t: string, b: string) => b, unbilledByClient: () => [] });
     const html = views.clientSettingsForm(client);
     expect(html).toContain('id="client-settings-cancel"');
-    expect(html.indexOf('id="client-settings-cancel"')).toBeLessThan(html.indexOf(">Save</button>"));
+    expect(html.indexOf('id="client-settings-cancel"')).toBeLessThan(html.indexOf(">Save client</button>"));
   });
 
   test("settings form with an error renders the alert line and keeps submitted values", () => {

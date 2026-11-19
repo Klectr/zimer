@@ -103,6 +103,11 @@ describe("calendar entry aria-label (#479)", () => {
     expect(html).not.toContain('class="undefined"');
     expect(html).toContain('class="ui-btn ui-btn-ghost ui-btn-danger" id="cal-delete" hidden');
     expect(html).toContain('class="ui-btn ui-btn-primary" id="cal-save"');
+    /* #1217: dialog buttons are verb + noun, never bare Save/Delete. */
+    expect(html).toContain(">Save entry</button>");
+    expect(html).toContain(">Delete entry</button>");
+    expect(html).not.toContain(">Save</button>");
+    expect(html).not.toContain(">Delete</button>");
   });
 
   function labelFor(html: string, id: number): string {
