@@ -806,7 +806,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     });
     delBtn.addEventListener('click',function(){
       /* #464: native confirm() replaced by the shared confirm dialog. */
-      window.tkConfirm('Delete this entry? This cannot be undone.').then(function(ok){
+      window.tkConfirm('Delete this entry? This cannot be undone.', 'Delete entry').then(function(ok){
         if(!ok) return;
         fetch('/entries/'+editId,{method:'DELETE'}).then(function(r){
           if(!r.ok) throw new Error('delete failed'); /* #334: locked entries 403 */

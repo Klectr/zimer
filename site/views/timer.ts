@@ -85,7 +85,7 @@ export function createTimerViews(deps: TimerViewDeps) {
           ${iconButton({ icon: "repeat", label: "Repeat entry", tip: "Repeat", type: "submit" })}
         </form>`);
         }
-        parts.push(iconButton({ icon: "delete", label: "Delete entry", tip: "Delete entry", danger: true, attrs: `hx-delete="/entries/${e.id}" hx-target="#entry-${e.id}" hx-swap="outerHTML swap:220ms" data-confirm="Delete this entry? This cannot be undone."` }));
+        parts.push(iconButton({ icon: "delete", label: "Delete entry", tip: "Delete entry", danger: true, attrs: `hx-delete="/entries/${e.id}" hx-target="#entry-${e.id}" hx-swap="outerHTML swap:220ms" data-confirm="Delete this entry? This cannot be undone." data-confirm-label="Delete entry"` }));
       }
       actions = parts.join("");
     }

@@ -254,6 +254,13 @@ describe("manage labels (#827)", () => {
     }
   });
 
+  test("business profile save button is verb + noun (#1217)", () => {
+    const { db } = testDb();
+    const views = createManageViews({ db, layout: (_t: string, b: string) => b, unbilledByClient: () => [] });
+    expect(views.bizProfileSection()).toContain(">Save profile</button>");
+    expect(views.dailyTargetSection()).toContain(">Save target</button>");
+  });
+
   test("business profile labels are wired via matching id/for", () => {
     const { db } = testDb();
     const views = createManageViews({ db, layout: (_t: string, b: string) => b, unbilledByClient: () => [] });

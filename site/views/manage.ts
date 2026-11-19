@@ -166,7 +166,7 @@ export function createManageViews(deps: ManageViewDeps) {
 
   const projectRow = (p: any) => clientRow({
     name: p.name,
-    actions: `<form method="post" action="/projects/${p.id}/delete" class="inline" hx-post="/projects/${p.id}/delete" hx-target="#client-dialog-projects" hx-swap="outerHTML">${iconButton({ icon: "delete", label: `Delete project ${p.name}`, tip: "Delete project", danger: true, type: "submit", attrs: `data-confirm="Delete project? Entries keep their history."` })}</form>`,
+    actions: `<form method="post" action="/projects/${p.id}/delete" class="inline" hx-post="/projects/${p.id}/delete" hx-target="#client-dialog-projects" hx-swap="outerHTML">${iconButton({ icon: "delete", label: `Delete project ${p.name}`, tip: "Delete project", danger: true, type: "submit", attrs: `data-confirm="Delete project? Entries keep their history." data-confirm-label="Delete project"` })}</form>`,
   });
 
   const addProjectForm = (clientId: number | null) => `
@@ -196,7 +196,7 @@ export function createManageViews(deps: ManageViewDeps) {
     const c = sel.client;
     return clientSettingsForm(c) + clientDialogProjects(sel) + `
       <form method="post" action="/clients/${c.id}/delete" class="detail-form manage-delete-client">
-        ${button({ label: "Delete client", variant: "ghost", danger: true, type: "submit", attrs: 'data-confirm="Delete this client? Its projects move to No client."' })}
+        ${button({ label: "Delete client", variant: "ghost", danger: true, type: "submit", attrs: 'data-confirm="Delete this client? Its projects move to No client." data-confirm-label="Delete client"' })}
       </form>`;
   }
 
