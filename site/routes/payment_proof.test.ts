@@ -236,6 +236,8 @@ describe("invoice detail proof section (#956)", () => {
     expect(html).not.toContain("Choose file");
     expect(html).toContain('class="ui-btn proof-file-label"');
     expect(html).toContain('for="proof-file-1"');
+    expect(html).toMatch(/<div class="ui-block-title"><svg[\s\S]*?Proof of payment<\/div>/);
+    expect(html).toContain('<polyline points="17 8 12 3 7 8"/>');
   });
   test("paid invoice with proof lists it with view + delete", () => {
     const db = createDb(mkdtempSync(join(tmpdir(), "tk-ppv-"))).db;
