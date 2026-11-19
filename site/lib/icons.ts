@@ -10,6 +10,7 @@ export const ICONS: Record<string, string> = {
   receipt: `<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M14 8H8"/><path d="M16 12H8"/><path d="M13 16H8"/>`,
   download: `<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>`,
   check: `<polyline points="20 6 9 17 4 12"/>`,
+  search: `<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>`,
   card: `<rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/>`,
   add: `<path d="M5 12h14"/><path d="M12 5v14"/>`,
   /* #949: hamburger for the compact navigation drawer. */
@@ -51,7 +52,7 @@ export const ICONS: Record<string, string> = {
 };
 
 export function icon(name: keyof typeof ICONS): string {
-  return `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]}</svg>`;
+  return `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] ?? ""}</svg>`;
 }
 
 /** Brand mark: a hand-drawn hand keeping a wobbly clock. Drawn on a 64-grid

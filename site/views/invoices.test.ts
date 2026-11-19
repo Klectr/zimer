@@ -910,3 +910,13 @@ describe("wizard + detail parity (#1121)", () => {
     expect(html).toContain("Issued Sep 1 · Due Sep 30 · Net 15");
   });
 });
+
+describe("#1257: list search field", () => {
+  test("search carries a hidden label, a leading icon and the client-or-number placeholder", () => {
+    const html = views([{ ...baseRow, status: "sent", paid_at: null }]).invoicesPage(null, "http://x");
+    expect(html).toContain('<label class="ui-field-label ui-sr-only" for="inv-q">Search Zinvoices</label>');
+    expect(html).not.toContain('<label class="ui-field-label" for="inv-q">');
+    expect(html).toContain('placeholder="Search client or number"');
+    expect(html).toContain('<span class="ui-affix ui-affix-prefix"><svg');
+  });
+});

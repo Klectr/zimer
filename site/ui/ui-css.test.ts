@@ -299,3 +299,31 @@ describe("invoice stat row on mobile (#1222)", () => {
     expect(sub![0]).toContain("min-width: 0");
   });
 });
+
+describe("invoice search alignment (#1257)", () => {
+  test("the filter row centers the chips and the search input on the cross axis", () => {
+    const rule = css.match(/\.inv-filter-row \{[^}]*\}/);
+    expect(rule).not.toBeNull();
+    expect(rule![0]).toContain("align-items: center");
+  });
+
+  test("affix icons render at 16px, not the 24px svg default", () => {
+    const rule = css.match(/\.ui-affix svg \{[^}]*\}/);
+    expect(rule).not.toBeNull();
+    expect(rule![0]).toContain("width: 16px");
+    expect(rule![0]).toContain("height: 16px");
+  });
+
+  test("below 640px the search takes the full row under the chips", () => {
+    const block = css.match(/@media screen and \(max-width: 640px\) \{\n  \.inv-search \{[^]*?\n\}/);
+    expect(block).not.toBeNull();
+    const b = block![0];
+    const form = b.match(/\.inv-search \{[^}]*\}/);
+    expect(form).not.toBeNull();
+    expect(form![0]).toContain("flex: 1 1 100%");
+    expect(form![0]).toContain("margin-left: 0");
+    const field = b.match(/\.inv-search \.ui-field \{[^}]*\}/);
+    expect(field).not.toBeNull();
+    expect(field![0]).toContain("min-width: 0");
+  });
+});

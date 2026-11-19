@@ -141,3 +141,36 @@ describe("textField attrs", () => {
     expect(html).toContain('autocapitalize="none" spellcheck="false">');
   });
 });
+
+describe("textField icon + hidden label (#1257)", () => {
+  test("icon renders as a leading affix inside the input wrap", () => {
+    const html = textField({ id: "q", label: "Search", name: "q", type: "search", icon: "search", placeholder: "Search client or number" });
+    expect(html).toContain('<div class="ui-input-wrap">');
+    expect(html).toContain('<span class="ui-affix ui-affix-prefix"><svg');
+    expect(html).toContain('<circle cx="11" cy="11" r="8"/>');
+    expect(html).toContain('type="search"');
+    expect(html).toContain('placeholder="Search client or number"');
+  });
+
+  test("icon takes precedence over a text prefix", () => {
+    const html = textField({ id: "q", label: "Search", icon: "search", prefix: "$" });
+    expect(html).toContain('<span class="ui-affix ui-affix-prefix"><svg');
+    expect(html).not.toContain(">$</span>");
+  });
+
+  test("an unknown icon name never leaks the word undefined", () => {
+    const html = textField({ id: "q", label: "Search", icon: "bogus" as never });
+    expect(html).not.toContain("undefined");
+  });
+
+  test("labelHidden keeps the label for a11y but visually hides it", () => {
+    const html = textField({ id: "q", label: "Search Zinvoices", labelHidden: true });
+    expect(html).toContain('<label class="ui-field-label ui-sr-only" for="q">Search Zinvoices</label>');
+  });
+
+  test("without labelHidden the label renders as before", () => {
+    const html = textField({ id: "q", label: "Search Zinvoices" });
+    expect(html).toContain('<label class="ui-field-label" for="q">Search Zinvoices</label>');
+    expect(html).not.toContain("ui-input-wrap");
+  });
+});

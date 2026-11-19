@@ -1,4 +1,5 @@
 import { esc } from "../lib/format";
+import { icon, ICONS } from "../lib/icons";
 
 export type TextFieldType = "text" | "email" | "number" | "date" | "time" | "datetime-local" | "tel" | "url" | "password" | "search";
 
@@ -13,6 +14,8 @@ export interface TextFieldOptions {
   autocomplete?: string;
   prefix?: string;
   suffix?: string;
+  icon?: keyof typeof ICONS;
+  labelHidden?: boolean;
   min?: string;
   max?: string;
   step?: string;
@@ -34,12 +37,17 @@ export function textField(opts: TextFieldOptions): string {
   const list = opts.list ? ` list="${esc(opts.list)}"` : "";
   const attrs = opts.attrs ? ` ${opts.attrs}` : "";
   const input = `<input class="ui-input" type="${esc(opts.type ?? "text")}" id="${esc(opts.id)}"${name}${value}${placeholder}${required}${autocomplete}${min}${max}${step}${inputmode}${list}${attrs}>`;
-  const control = opts.prefix || opts.suffix
-    ? `<div class="ui-input-wrap">${opts.prefix ? `<span class="ui-affix ui-affix-prefix">${esc(opts.prefix)}</span>` : ""}${input}${opts.suffix ? `<span class="ui-affix ui-affix-suffix">${esc(opts.suffix)}</span>` : ""}</div>`
+  const prefixHtml = opts.icon
+    ? `<span class="ui-affix ui-affix-prefix">${icon(opts.icon)}</span>`
+    : opts.prefix
+      ? `<span class="ui-affix ui-affix-prefix">${esc(opts.prefix)}</span>`
+      : "";
+  const control = prefixHtml || opts.suffix
+    ? `<div class="ui-input-wrap">${prefixHtml}${input}${opts.suffix ? `<span class="ui-affix ui-affix-suffix">${esc(opts.suffix)}</span>` : ""}</div>`
     : input;
   return (
     `<div class="ui-field">` +
-    `<label class="ui-field-label" for="${esc(opts.id)}">${esc(opts.label)}</label>` +
+    `<label class="ui-field-label${opts.labelHidden ? " ui-sr-only" : ""}" for="${esc(opts.id)}">${esc(opts.label)}</label>` +
     `${control}</div>`
   );
 }
