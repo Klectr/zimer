@@ -280,6 +280,7 @@ describe("invoice stat row on mobile (#1222)", () => {
     const b = block![0];
     expect(b).toContain(".ui-stat-row .ui-card > div");
     expect(b).toContain("display: flex");
+    expect(b).toContain("flex-wrap: wrap");
     expect(b).toContain(".ui-stat-row .ui-stat-value");
     expect(b).toContain("font-size: var(--font-size-xl)");
     expect(b).not.toContain("font-size: var(--font-size-heading-3)");

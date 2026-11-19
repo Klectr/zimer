@@ -274,9 +274,9 @@
 @media (max-width: 639px) {
   .ui-stat-row { grid-template-columns: 1fr; gap: var(--spacing-sm); }
   .ui-stat-row .ui-card { padding: var(--spacing-sm) var(--spacing); }
-  .ui-stat-row .ui-card > div { display: flex; align-items: baseline; gap: var(--spacing-sm); }
+  .ui-stat-row .ui-card > div { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--spacing-sm); }
   .ui-stat-row .ui-stat-value { margin-top: 0; font-size: var(--font-size-xl); }
-  .ui-stat-row .ui-stat-sub { margin-top: 0; margin-left: auto; text-align: right; }
+  .ui-stat-row .ui-stat-sub { margin-top: 0; margin-left: auto; min-width: 0; text-align: right; }
 }
 .ui-app-title { font-size: var(--font-size-heading-4); font-weight: var(--font-weight-strong); margin: 0; }
 .ui-app-sub { font-size: var(--font-size); color: var(--color-text-secondary); margin: var(--spacing-xxs) 0 0; }
