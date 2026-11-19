@@ -270,6 +270,17 @@ describe("manage labels (#827)", () => {
       expect(html).toContain(`<label class="ui-field-label" for="${id}"`);
     }
   });
+
+  test("business profile fields carry placeholders and Address is a textarea (#1259)", () => {
+    const { db } = testDb();
+    const views = createManageViews({ db, layout: (_t: string, b: string) => b, unbilledByClient: () => [] });
+    const html = views.bizProfileSection();
+    expect(html).toContain('placeholder="Your studio name"');
+    expect(html).toContain('placeholder="billing@you.example"');
+    expect(html).toContain("<textarea");
+    expect(html).toContain('name="business_address"');
+    expect(html).toContain("123 Main St");
+  });
 });
 
 /** #1203: Manage follows the suite mock — one stacked page: appHeader
