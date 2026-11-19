@@ -97,7 +97,7 @@ describe("settings page (#693)", () => {
     expect(at('id="billing-marker"')).toBeLessThan(at('id="update-section"'));
   });
 
-  test("the mock's Your data and Self-hosted cards render with real export links", async () => {
+  test("the mock's Your data card renders with real export links", async () => {
     const { handleWeb } = setup();
     const res = await getSettings(handleWeb, true);
     const body = await res!.text();
@@ -107,6 +107,19 @@ describe("settings page (#693)", () => {
     expect(body).toContain('href="/export/invoices.csv"');
     expect(body).toContain('id="about"');
     expect(body).toContain('href="/changelog"');
+  });
+
+  /* #1223: one About & updates card — the version used to render in both
+     the Self-hosted card hint and the Updates card headline. */
+  test("self-hosted settings show the version once, in the merged About & updates card", async () => {
+    const { handleWeb } = setup();
+    const res = await getSettings(handleWeb, true);
+    const body = await res!.text();
+    expect(body).toContain("About &amp; updates");
+    expect(body).not.toContain('id="update-section"');
+    expect(body).toContain('id="check-updates-btn"');
+    expect(body).toContain('href="https://github.com/Klectr/zimer#self-hosting"');
+    expect(body.split("1.0.0").length - 1).toBe(1);
   });
 
   test("direct visit gets the full app layout", async () => {

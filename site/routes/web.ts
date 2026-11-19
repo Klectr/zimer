@@ -23,7 +23,6 @@ import { textField } from "../ui/field.ts";
 import { card } from "../ui/card.ts";
 import { settingsSection } from "../ui/settings-section.ts";
 import { linkButton } from "../ui/button.ts";
-import { appVersion } from "../lib/version.ts";
 
 /* #733: everything derived from one tenant's SQLite bundle. Resolved per
    request from the session (session → user → tenant tree, cached by user
@@ -733,13 +732,18 @@ export function createWebRouter(deps: WebDeps) {
            section, support channel. The License section left with the
            retired $59 key. */
         if (path === "/settings" && method === "GET") {
-          const updates = updateSectionHtml();
+          const billingHtml = billingSectionHtml ? billingSectionHtml(req) : "";
+          /* #1223: self-hosted gets one merged About & updates card (the
+             About card takes the plan slot); hosted keeps the plain
+             Updates card under the Billing card. */
+          const updates = billingHtml
+            ? updateSectionHtml()
+            : updateSectionHtml({ aboutActionsHtml:
+                linkButton({ label: "Changelog", href: "/changelog", icon: "receipt" }) +
+                linkButton({ label: "Read the install guide", href: "https://github.com/Klectr/zimer#self-hosting", external: true, icon: "download" }) });
           const support = `<p class="ui-settings-support">Need help? <a href="mailto:support@klectr.dev">support@klectr.dev</a></p>`;
-          /* The suite mock's "Your data" and "License" cards, in the same
-             two-column grid as the profile and billing sections. The
-             license-key flow retired in #883; the card now states the
-             self-hosted offer and points at the changelog and install
-             guide instead of collecting a key that does nothing. */
+          /* The suite mock's "Your data" card, in the same two-column
+             grid as the profile and billing sections. */
           const dataSection = settingsSection({
             level: 2, id: "your-data", title: "Your data",
             hint: "One SQLite file holds everything. Export or back it up any time.",
@@ -749,20 +753,11 @@ export function createWebRouter(deps: WebDeps) {
               linkButton({ label: "Entries CSV", href: "/export/entries.csv", download: true, icon: "table" }) +
               linkButton({ label: "Zinvoices CSV", href: "/export/invoices.csv", download: true, icon: "receipt" }),
           });
-          const aboutSection = settingsSection({
-            level: 2, id: "about", title: "Self-hosted",
-            hint: `Version ${appVersion()} · free forever on your own server.`,
-            bodyHtml: `<p class="ui-settings-note">One Bun process and one SQLite file. Updates are manual — pull the release and restart.</p>`,
-            actionsHtml:
-              linkButton({ label: "Changelog", href: "/changelog", icon: "receipt" }) +
-              linkButton({ label: "Read the install guide", href: "https://github.com/Klectr/zimer#self-hosting", external: true, icon: "download" }),
-          });
-          const billingHtml = billingSectionHtml ? billingSectionHtml(req) : "";
-          const plan = billingHtml || aboutSection;
+          const plan = billingHtml || updates;
           const body =
             `<div class="ui-settings-grid">` +
             `<div class="ui-settings-col">${bizProfileSection()}${preferencesSection()}</div>` +
-            `<div class="ui-settings-col">${plan}${dataSection}${updates}</div>` +
+            `<div class="ui-settings-col">${plan}${dataSection}${billingHtml ? updates : ""}</div>` +
             `</div>${support}`;
           if (isHtmx(req)) return html(body);
           /* #693: direct visits get the full app layout — the bare fragment
