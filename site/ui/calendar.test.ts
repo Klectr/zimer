@@ -104,6 +104,38 @@ describe("visualizer", () => {
     expect(html).toContain(", running");
   });
 
+  test("blocks of an hour or more are tall; shorter blocks are not (#1219)", () => {
+    const html = visualizer({
+      days: [{ ...VDAY, entries: [
+        { id: "t", title: "Tall", startMin: 540, endMin: 600 },
+        { id: "s", title: "Short", startMin: 660, endMin: 690 },
+      ]}],
+    });
+    expect(html).toContain("ui-viz-block is-tall");
+    expect(html.match(/is-tall/g)?.length).toBe(1);
+  });
+
+  test("finished block meta is compact so the end time fits the column (#1219)", () => {
+    const html = visualizer({
+      days: [{ ...VDAY, entries: [
+        { id: "a", title: "Same meridiem", startMin: 540, endMin: 660 },
+        { id: "b", title: "Cross meridiem", startMin: 540, endMin: 750 },
+      ]}],
+    });
+    expect(html).toContain("9–11 AM");
+    expect(html).toContain("9 AM–12:30 PM");
+    const metas = [...html.matchAll(/ui-viz-block-meta">([^<]*)</g)].map((m) => m[1]);
+    expect(metas).toEqual(["9–11 AM", "9 AM–12:30 PM"]);
+  });
+
+  test("short blocks omit the meta line but keep the full range in the aria-label (#1219)", () => {
+    const html = visualizer({
+      days: [{ ...VDAY, entries: [{ id: "s", title: "Short", startMin: 540, endMin: 570 }] }],
+    });
+    expect(html).not.toContain("ui-viz-block-meta");
+    expect(html).toContain('aria-label="Short, 9:00 AM – 9:30 AM"');
+  });
+
   test("overlap blocks get the layered-shadow class", () => {
     const html = visualizer({
       days: [{ ...VDAY, entries: [{ id: "o", title: "Over", startMin: 540, endMin: 660, overlap: true }] }],

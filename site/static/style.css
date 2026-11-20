@@ -693,6 +693,7 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .ui-viz-block.is-overlap { box-shadow: 0 -4px 8px -2px rgb(0 0 0 / 0.35); }
 .ui-viz-block.is-running { border-style: dashed; border-color: var(--color-success); background: var(--color-success-bg); cursor: default; }
 .ui-viz-block-title { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ui-viz-block.is-tall .ui-viz-block-title { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .ui-viz-block-meta { color: var(--color-text-secondary); font-family: var(--font-family-code); font-size: var(--font-size-sm); white-space: nowrap; }
 .ui-viz-handle { position: absolute; left: 0; right: 0; height: 9px; cursor: ns-resize; display: grid; place-items: center; touch-action: none; }
 .ui-viz-handle[data-resize="start"] { top: 0; }

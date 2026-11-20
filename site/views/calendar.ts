@@ -582,6 +582,10 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     function fmtD(mins){var h=Math.floor(mins/60),m=mins%60;return (h?h+'h ':'')+m+'m';}
     function fmt12(mins){var h24=Math.floor(mins/60),m=mins%60,s=h24>=12?'PM':'AM',
       h=h24%12===0?12:h24%12;return h+':'+String(m).padStart(2,'0')+' '+s;}
+    function fmtCompact(mins,withMer){var h24=Math.floor(mins/60),m=mins%60,
+      h=h24%12===0?12:h24%12;return h+(m?':'+String(m).padStart(2,'0'):'')+(withMer?(h24>=12?' PM':' AM'):'');}
+    function fmtRangeC(a,b){var same=Math.floor(a/720)===Math.floor(b/720);
+      return fmtCompact(a,!same)+'\u2013'+fmtCompact(b,true);}
     function updDur(){var s=toMin(startI.value||'00:00'),e=toMin(endI.value||'00:00');
       dur.textContent=e>s?fmtD(e-s):'';}
     startI.addEventListener('input',updDur); endI.addEventListener('input',updDur);
@@ -842,8 +846,9 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       paintGeo(block,a,b);
       block.dataset.start=toHM(a); block.dataset.end=toHM(b);
       var meta=block.querySelector('.ui-viz-block-meta');
-      if(meta) meta.textContent=block.classList.contains('is-running')
-        ? fmt12(a)+' \u2013 now' : fmt12(a)+' \u2013 '+fmt12(b);
+      if(meta){ meta.textContent=block.classList.contains('is-running')
+        ? fmt12(a)+' \u2013 now' : fmtRangeC(a,b);
+        meta.style.display=parseFloat(block.style.height)>=40?'':'none'; }
       var col=block.closest('.ui-viz-col'), viz=block.closest('.ui-viz');
       if(!col||!viz) return;
       var cols=Array.prototype.slice.call(viz.querySelectorAll('.ui-viz-col'));
