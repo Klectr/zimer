@@ -68,6 +68,15 @@ describe("demo banner CTAs (#1218)", () => {
     expect(html).not.toContain("ui-btn-primary");
   });
 
+  /* #1285: the banner shows the mascot at 44px — it must load the
+     purpose-sized WebP, not the 720px / 305 KB mascot.png. */
+  test("empty-workspace banner loads the purpose-sized mascot WebP", () => {
+    const db = createDb(mkdtempSync(join(tmpdir(), "tk-demo-"))).db;
+    const html = demoBanner(db);
+    expect(html).toContain('src="/static/mascot-88.webp"');
+    expect(html).not.toContain("mascot.png");
+  });
+
   test("seeded banner's Zinvoice link is not primary", () => {
     const html = demoBanner(seededDb());
     expect(html).toContain("Zinvoice the sample week");
