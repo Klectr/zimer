@@ -1136,3 +1136,34 @@ describe("calendar client color (#1212)", () => {
     expect(html).not.toContain("position:fixed");
   });
 });
+
+/** #1219 (item 1): past/future weeks opened at midnight — hours of empty
+ *  grid above the first entry. The strip script now opens on the week's
+ *  earliest entry (30 min headroom), 8 AM for an empty week, and keeps
+ *  now-line centring only while now is inside the entry range. */
+describe("calendar initial scroll (#1219)", () => {
+  test("initStripScroll no longer parks lineless strips at midnight", async () => {
+    const src = await Bun.file("site/views/calendar.ts").text();
+    const init = src.slice(src.indexOf("function initStripScroll"), src.indexOf("function centerVisible"));
+    expect(init).not.toContain("scrollTop=0");
+    expect(init).toContain("stripOpenMin(range)");
+    expect(init).toContain("stripEntryRange(strip)");
+  });
+
+  test("open target: earliest entry minus 30 min, 8 AM when the week is empty", async () => {
+    const src = await Bun.file("site/views/calendar.ts").text();
+    expect(src).toContain("function stripOpenMin(range){ return range?Math.max(0,range.first-30):480; }");
+    expect(src).toContain("function stripEntryRange(strip){");
+    expect(src).toContain("getAttribute('data-start')");
+    expect(src).toContain("getAttribute('data-end')");
+  });
+
+  test("now-line centring is gated on now inside the entry range, in both scroll paths", async () => {
+    const src = await Bun.file("site/views/calendar.ts").text();
+    expect(src).toContain("function nowOutsideRange(line,range){");
+    const cvStart = src.indexOf("function centerVisible");
+    const cv = src.slice(cvStart, src.indexOf("placeNow();", cvStart));
+    expect(cv).toContain("nowOutsideRange(line,range)");
+    expect(cv).toContain("stripOpenMin(range)");
+  });
+});
