@@ -367,7 +367,7 @@ export const pagesStories: Story[] = [
             textField({ id: "pg-set-name", label: "Business name", value: "Triston Armstrong — Studio" }) +
             textField({ id: "pg-set-email", label: "Email on Zinvoices", type: "email", value: "billing@studio.example" }) +
             textField({ id: "pg-set-terms", label: "Default payment terms", value: "Net 14" }) + `</div>`,
-          actionsHtml: button({ label: "Save profile", variant: "primary" }) + `<span style="color:var(--color-success);font-size:var(--font-size-sm)">Saved Nov 7</span>`,
+          actionsHtml: button({ label: "Save profile", icon: "save" }) + `<span style="color:var(--color-success);font-size:var(--font-size-sm)">Saved Nov 7</span>`,
         }) +
         settingsSection({
           title: "Billing — Hosted plan",

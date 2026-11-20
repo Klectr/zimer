@@ -7,6 +7,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createDb } from "../db.ts";
 import { createManageViews } from "./manage.ts";
+import { icon } from "../lib/icons.ts";
 
 function testDb() {
   const db = createDb(mkdtempSync(join(tmpdir(), "tk-manage-"))).db;
@@ -271,6 +272,8 @@ describe("manage labels (#827)", () => {
     expect(profile).toContain('<button type="submit" class="ui-btn">');
     expect(prefs).toContain('<button type="submit" class="ui-btn">');
     expect(prefs).not.toContain("ui-btn-sm");
+    expect(profile).toContain(icon("save") + "Save profile</button>");
+    expect(prefs).toContain(icon("save") + "Save target</button>");
   });
 
   test("business profile labels are wired via matching id/for", () => {

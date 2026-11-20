@@ -393,7 +393,7 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .ui-settings-form-2col { display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-md) var(--spacing-sm); }
 .ui-settings-form-2col .terms-desc { grid-column: 1 / -1; }
 @media (max-width: 639px) { .ui-settings-form-2col { grid-template-columns: 1fr; } }
-.settings-pref-row { display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-md); padding: var(--spacing-sm) 0; border-top: 1px solid var(--color-border-secondary); }
+.settings-pref-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--spacing-md); padding: var(--spacing-sm) 0; border-top: 1px solid var(--color-border-secondary); }
 .settings-pref-row:first-child { border-top: 0; padding-top: 0; }
 .settings-pref-row:last-child { padding-bottom: 0; }
 .settings-pref-text { min-width: 0; }
