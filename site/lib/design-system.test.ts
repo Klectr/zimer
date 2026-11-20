@@ -351,3 +351,17 @@ describe("tertiary text contrast (#1213)", () => {
     expect(tertiary).toBeGreaterThan(quaternary);
   });
 });
+
+describe("radius scale (#1215)", () => {
+  test("no border-radius in style.css uses the off-scale 12px", () => {
+    const radii = css.match(/border-radius:[^;]+;/g) ?? [];
+    expect(radii.length).toBeGreaterThan(0);
+    expect(radii.filter((r) => r.includes("12px"))).toEqual([]);
+  });
+
+  test("card surfaces that used 12px now read the radius-lg token", () => {
+    for (const sel of [".cal-first-run", ".internal-notes", ".payment-proof", ".form-info"]) {
+      expect(declarations(ruleBlock(sel)).get("border-radius")).toBe("var(--radius-lg)");
+    }
+  });
+});
