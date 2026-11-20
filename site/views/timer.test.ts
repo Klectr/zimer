@@ -537,7 +537,13 @@ describe("timer mock parity (#1121)", () => {
     expect(html).toContain('<header class="ui-app-head">');
     expect(html).toMatch(/<h1 class="ui-app-title">Good (morning|afternoon|evening)<\/h1>/);
     expect(html).toContain("here's your day so far.");
-    expect(html).toContain('id="invoice-week"');
+    expect(html).not.toContain('id="invoice-week"');
+    expect(html).not.toContain("Zinvoice this week");
+    /* #1273: the header carries no Zinvoice path; the Unbilled stat's
+       "Create Zinvoice" is the one link. (The demo banner, stubbed ""
+       here, adds its own sample-week link in production by design.) */
+    expect(html.split('<div id="today-stats"')[0]).not.toContain("/invoices/new");
+    expect(html.split('href="/invoices/new"').length - 1).toBe(1);
     expect(html).toContain('<div id="today-stats" hx-get="/partial/today-stats" hx-trigger="load, timer-updated from:body">');
     expect(html).toContain('<div class="ui-stat-strip">');
     for (const label of ["Today", "This week", "Unbilled"]) {

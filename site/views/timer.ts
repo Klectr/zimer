@@ -8,7 +8,7 @@ import { addDays, dayBounds, durationSeconds, entryInvoiceMark, entryIsLocked, e
 import { timerPanel } from "../ui/timer-display.ts";
 import { card } from "../ui/card.ts";
 import { selectField, textField } from "../ui/field.ts";
-import { button, linkButton } from "../ui/button.ts";
+import { button } from "../ui/button.ts";
 import { entryRow as uiEntryRow } from "../ui/rows.ts";
 import { progressBar } from "../ui/progress.ts";
 import { appHeader } from "../ui/app-header.ts";
@@ -248,7 +248,7 @@ export function createTimerViews(deps: TimerViewDeps) {
     const title = greeting();
     return layout(title, `
       ${demoBanner(db)}
-      ${appHeader({ title, sub: `${dateSub} — here's your day so far.`, actions: linkButton({ label: "Zinvoice this week", href: "/invoices/new", icon: "receipt", id: "invoice-week" }) })}
+      ${appHeader({ title, sub: `${dateSub} — here's your day so far.` })}
       <div id="today-stats" hx-get="/partial/today-stats" hx-trigger="load, timer-updated from:body">${statRow()}</div>
       <div class="scroll-region timer-home" data-enter="2" aria-label="Zimer and today's entries">
         ${timerPartial()}
@@ -272,13 +272,6 @@ export function createTimerViews(deps: TimerViewDeps) {
               var ttl=document.querySelector('.ui-app-head .ui-app-title');
               if(ttl)ttl.textContent=greet;
               document.title=greet+" · Zimer";
-              /* #299: point "Invoice this week" at the client-local week (Sun–Sat),
-                 matching the calendar's week convention. Server can't know the tz. */
-              var inv=document.getElementById('invoice-week');
-              if(inv){var sun=new Date(d.getFullYear(),d.getMonth(),d.getDate()-d.getDay());
-                var f2=function(x){return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');};
-                var wend=new Date(sun.getFullYear(),sun.getMonth(),sun.getDate()+7);
-                inv.setAttribute('href','/invoices/new?from='+f2(sun)+'&to='+f2(wend));}
               var s=new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime();
               var from=new Date(s).toISOString(), to=new Date(s+864e5).toISOString();
               el.setAttribute('hx-get','/partial/today?from='+encodeURIComponent(from)+'&to='+encodeURIComponent(to));
