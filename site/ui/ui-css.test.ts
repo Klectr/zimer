@@ -86,6 +86,15 @@ describe("today column and card (#1271)", () => {
   });
 });
 
+describe("viz day header gutter (#1219)", () => {
+  test("the header inner carries the column body's inset, so a day's total is separated from the next day's label and aligns with the blocks below", () => {
+    const inner = css.match(/\.ui-viz-day-inner \{[^}]*\}/);
+    expect(inner).not.toBeNull();
+    expect(inner![0]).toContain("padding-inline: var(--spacing-xxs)");
+    expect(inner![0]).toContain("box-sizing: border-box");
+  });
+});
+
 describe("viz block title wrap (#1219)", () => {
   test("tall blocks wrap the title to two lines; the base title stays one-line ellipsis", () => {
     const tall = css.match(/\.ui-viz-block\.is-tall \.ui-viz-block-title \{[^}]*\}/);
