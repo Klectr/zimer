@@ -114,7 +114,7 @@ export function visualizer(opts: VisualizerOptions): string {
           const top = Math.min(((e.startMin - dayStart) / 60) * hourPx + 2, height - blockHeight);
           const cls =
             "ui-viz-block" +
-            (e.endMin - e.startMin >= 60 ? " is-tall" : "") +
+            (e.endMin - e.startMin >= 60 && blockHeight >= 64 ? " is-tall" : "") +
             (e.invoiced ? " is-invoiced" : "") +
             (e.locked ? " is-locked" : "") +
             (e.overlap ? " is-overlap" : "") +
@@ -128,10 +128,10 @@ export function visualizer(opts: VisualizerOptions): string {
             ? `${fmtMin(e.startMin)} – now`
             : `${fmtMin(e.startMin)} – ${fmtMin(e.endMin)}`;
           /* #1219: below ~40px the meta line half-renders under the title —
-             omit it; the full range stays in the aria-label. */
-          const metaHtml = blockHeight >= 40
-            ? `<div class="ui-viz-block-meta">${esc(e.running ? meta : fmtRangeCompact(e.startMin, e.endMin))}</div>`
-            : "";
+             render it hidden instead of omitting it, so the drag paint and
+             the running-block growth can reveal it without a re-render.
+             The full range stays in the aria-label either way. */
+          const metaHtml = `<div class="ui-viz-block-meta"${blockHeight >= 40 ? "" : ` style="display:none"`}>${esc(e.running ? meta : fmtRangeCompact(e.startMin, e.endMin))}</div>`;
           const state = e.running ? ", running" : e.locked ? ", locked" : "";
           return (
             `<div class="${cls}" tabindex="0" role="button" aria-label="${esc(e.title)}, ${esc(meta)}${state}" ` +
