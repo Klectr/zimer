@@ -1010,6 +1010,51 @@ describe("calendar legend (#1202 parity)", () => {
   });
 });
 
+describe("calendar grid day totals (#1287)", () => {
+  const stubQuery = () => ({
+    get: (..._a: unknown[]) => ({ n: 1 }),
+    all: (..._a: unknown[]) => [],
+  });
+
+  function weekInnerHtml(entries: unknown[]) {
+    const db = {
+      query: (_sql: string) => ({ get: () => ({ n: 1 }), all: () => entries }),
+    } as unknown as Database;
+    const views = createCalendarViews({
+      db,
+      qOne: stubQuery(),
+      qRange: stubQuery(),
+      entrySelect: "SELECT",
+      layout: (_t: string, b: string) => b,
+      projectOptionRows: () => [],
+      weekTargetBar: () => "",
+      calHourPx: 64,
+    } as any);
+    return views.weekInner("2026-09-20", "America/Chicago");
+  }
+
+  test("empty days render no header total; the tooltip still says 0h tracked", () => {
+    const html = weekInnerHtml([]);
+    const totals = [...html.matchAll(/<span class="ui-viz-day-total" data-day-total>([^<]*)<\/span>/g)].map((m) => m[1]);
+    expect(totals.length).toBeGreaterThan(0);
+    expect(totals.every((t) => t === "")).toBe(true);
+    expect(html).toContain("0h tracked");
+  });
+
+  test("a day with time shows its total; the other days stay blank", () => {
+    const entry = {
+      id: 21, description: "work", project_id: null, project_name: null,
+      client_name: null, client_color: null, invoice_id: null,
+      invoice_number: null, invoice_status: null,
+      start_time: "2026-09-21T15:00:00.000Z", end_time: "2026-09-21T16:00:00.000Z",
+    };
+    const html = weekInnerHtml([entry]);
+    const totals = [...html.matchAll(/<span class="ui-viz-day-total" data-day-total>([^<]*)<\/span>/g)].map((m) => m[1]);
+    expect(totals.length).toBeGreaterThan(0);
+    expect(totals.filter((t) => t !== "")).toEqual(["1h"]);
+  });
+});
+
 /** The stacked breakpoint (840–1279) has the full content width but no
  *  side rail. Keep the summary to one compact band: total and billable
  *  inline, the zinvoice action beside the arrows, no tall empty block. */
