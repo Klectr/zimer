@@ -421,7 +421,7 @@ export function createManageViews(deps: ManageViewDeps) {
       selectField({ id: "bp-terms", label: "Payment terms", name: "business_payment_terms", options, value: terms, className: "terms-select" }) +
       `</div>` +
       `<p class="terms-desc ui-settings-note">${esc(termsDescription(termsKey(null, terms)))}</p>` +
-      `<div class="ui-settings-actions">${button({ label: "Save profile", type: "submit", variant: "primary", icon: "save" })}</div>` +
+      `<div class="ui-settings-actions">${button({ label: "Save profile", type: "submit", icon: "save" })}</div>` +
       `</form>`;
     return settingsSection({ level: 2, id: "biz-profile", title: "Business profile", hint: "Shown in the From block on Zinvoices; the payment terms print on the Zinvoice too.", bodyHtml: body });
   }
@@ -435,7 +435,7 @@ export function createManageViews(deps: ManageViewDeps) {
     return `<div class="settings-pref-control" id="daily-target">` +
       `<form method="post" action="/daily-target" id="daily-target-form" class="settings-inline-form" hx-post="/daily-target" hx-target="#daily-target" hx-swap="outerHTML">` +
       `<div class="ui-input-wrap settings-hours"><input class="ui-input" type="number" id="dt-hours" name="day_target_hours" value="${esc(String(hours))}" min="1" max="24" step="0.5" inputmode="decimal" aria-label="Daily hours target"><span class="ui-affix ui-affix-suffix">hr</span></div>` +
-      button({ label: "Save target", type: "submit", variant: "primary", size: "sm" }) +
+      button({ label: "Save target", type: "submit", icon: "save" }) +
       `</form></div>`;
   }
 
