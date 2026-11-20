@@ -386,6 +386,37 @@ export function createWebRouter(deps: WebDeps) {
           const inv = idRow ? t.getInvoice(idRow.id) : null;
           return inv ? html(t.publicInvoicePage(inv, shareOrigin(req), `/i/${pub[1]}`)) : html(noSuchInvoicePage(), 404);
         }
+        /* #1291: PDF download for the client holding the link — same token
+           lookup, rate limit and tenant routing as the page above. Fresh
+           PDF from current data, like the authed download (#609): no stored
+           snapshot is served. */
+        const pubPdf = path.match(/^\/i\/([A-Za-z0-9_-]{16,64})\.pdf$/);
+        if (pubPdf && method === "GET") {
+          const rl = invoiceLimiter.check(clientIp(req));
+          if (!rl.allowed) {
+            return html(rateLimitPage(), 429, { "Retry-After": String(rl.retryAfterSec) });
+          }
+          let t = tenant;
+          if (HOSTED && dataDir && tenantById) {
+            const userId = findTenantByPublicToken(dataDir, pubPdf[1]);
+            t = userId !== null ? tenantById(userId) : null;
+          }
+          if (!t) return html(noSuchInvoicePage(), 404);
+          const idRow = t.db.query("SELECT id FROM invoices WHERE public_token = ?").get(pubPdf[1]) as { id: number } | null;
+          const inv = idRow ? t.getInvoice(idRow.id) : null;
+          /* The PDF embeds the invoice's current public token as its pay
+             link — never serve one minted for a rotated/revoked token. */
+          if (!inv || inv.public_token !== pubPdf[1]) return html(noSuchInvoicePage(), 404);
+          const pdf = invoicePdf(t.invoicePdfInput(inv, shareOrigin(req)));
+          const filename = inv.number.replace(/[^A-Za-z0-9._-]+/g, "_") + ".pdf";
+          return new Response(pdf, {
+            headers: {
+              "Content-Type": "application/pdf",
+              "Content-Disposition": `attachment; filename="${filename}"`,
+              "Cache-Control": "private, no-store",
+            },
+          });
+        }
         /* Malformed /i/ paths (too short, bad chars): same dead-end. */
         if (method === "GET" && (path === "/i" || path === "/i/" || path.startsWith("/i/"))) {
           return html(noSuchInvoicePage(), 404);
