@@ -152,3 +152,60 @@ describe("PATCH /api/invoices/:id paid_at", () => {
     expect(paidAt(2)).toBeNull();
   });
 });
+
+describe("GET /api/invoices list projection (#1279)", () => {
+  test("exposes list fields and total, never internal notes, snapshots, Stripe id or public token", async () => {
+    const row = {
+      id: 7, client_id: 3, number: "INV-0007", issue_date: "2026-11-01",
+      due_date: "2026-11-15", status: "sent", tax_rate: 10, paid_at: null,
+      notes: "client-facing", internal_notes: "do not leak",
+      html_snapshot: "<html>frozen</html>", pdf_snapshot: new Uint8Array([1, 2, 3]),
+      stripe_payment_link_id: "plink_secret", stripe_payment_link: "https://pay.example/x",
+      public_token: "tok_secret", paid_via_stripe: 0, template: "modern",
+      client_name: "Acme", client_color: "#fb923c", client_payment_terms: "Net 30",
+      project_name: "Site", subtotal: 100,
+    };
+    const tenant = {
+      db: new BunDatabase(":memory:"),
+      qRunning: stubStatement(), qOne: stubStatement(), qRange: stubStatement(),
+      qInvoice: stubStatement(),
+      qInvoices: { all: () => [row] } as unknown as Statement,
+      groupToLineItems: () => [], unbilledEntries: () => [],
+      getInvoice: () => null, invoiceTotals: () => ({ subtotal: 0, tax: 0, total: 0 }),
+      nextInvoiceNumber: () => "INV-0001", mintPublicToken: () => "tok",
+      stripeLinkFor: async () => ({}),
+      revenueTotals: () => null, revenueMonthly: () => [], revenueByClient: () => [],
+      revenueOverdue: () => [], freezeInvoiceSnapshots: () => {},
+    };
+    const { handleApi } = createApiRouter({
+      getTenant: () => tenant as any,
+      TOKEN: ["test", "token"].join("-"),
+      authedApi: () => true,
+      json: (data: unknown, status = 200) => Response.json(data, { status }),
+      entryToJson: (e: any) => e,
+      verifyWebhookSignature: () => false,
+      shareOrigin: () => "",
+    });
+    const req = new Request("http://localhost/api/invoices");
+    const res = (await handleApi(req, new URL(req.url), "/api/invoices", "GET"))!;
+    expect(res.status).toBe(200);
+    const [item] = await res.json() as any[];
+    expect(item.id).toBe(7);
+    expect(item.client_id).toBe(3);
+    expect(item.number).toBe("INV-0007");
+    expect(item.issue_date).toBe("2026-11-01");
+    expect(item.due_date).toBe("2026-11-15");
+    expect(item.status).toBe("sent");
+    expect(item.tax_rate).toBe(10);
+    expect(item.paid_at).toBeNull();
+    expect(item.client_name).toBe("Acme");
+    expect(item.client_color).toBe("#fb923c");
+    expect(item.client_payment_terms).toBe("Net 30");
+    expect(item.project_name).toBe("Site");
+    expect(item.subtotal).toBe(100);
+    expect(item.total).toBe(110);
+    for (const key of ["internal_notes", "html_snapshot", "pdf_snapshot", "stripe_payment_link_id", "stripe_payment_link", "public_token", "notes", "template"])
+      expect(item).not.toHaveProperty(key);
+    expect(JSON.stringify(item)).not.toContain("do not leak");
+  });
+});
