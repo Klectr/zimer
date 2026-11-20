@@ -72,7 +72,7 @@ export const surfacesStories: Story[] = [
         totalLabel: "Total due",
         total: "$2,087.50",
         pay: { label: "Pay $2,087.50", href: "https://pay.example/i/x7f2" },
-        download: { label: "Download PDF", href: "/i/x7f2.pdf" },
+        download: { label: "Download PDF", href: "/i/x7f2demo-token-123456.pdf" },
         note: "Secure payment by card. Questions? Reply to the email this link came in.",
         footer: "Powered by Zimer · This page never asks for your Zimer password — you don't have one.",
       }),

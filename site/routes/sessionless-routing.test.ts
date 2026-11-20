@@ -36,6 +36,7 @@ function setupHosted() {
       freezeInvoiceSnapshots: () => {},
       getInvoice: (id: number) => db.query("SELECT * FROM invoices WHERE id = ?").get(id),
       publicInvoicePage: (inv: any) => `public-invoice-${inv.id}-${inv.number}`,
+      invoicePdfInput: (inv: any) => ({ number: inv.number }),
     } as any;
   });
 
@@ -79,7 +80,7 @@ function setupHosted() {
     rateLimitPage: noop,
     notFoundPage: noop,
     errorPage: noop,
-    invoicePdf: () => new Uint8Array(),
+    invoicePdf: (input: any) => new TextEncoder().encode(`%PDF-${input.number}`),
     stripeConfigured: () => false,
     workspaceEmpty: () => false,
     demoIds: () => [],
@@ -181,6 +182,49 @@ describe("#741: sessionless cross-tenant routing", () => {
     const res = (await handleWeb(req, new URL(req.url), "/i/tok_zzzzzzzzzzzzzzzz", "GET"))!;
     expect(res.status).toBe(404);
     expect(await res.text()).toBe("no-such-invoice");
+  });
+
+  test("#1291: two tenants' PDF links each serve the right tenant's PDF", async () => {
+    const { accounts, tenants, handleWeb } = setupHosted();
+    const a = await signupLogin(accounts, "a@example.com");
+    const b = await signupLogin(accounts, "b@example.com");
+    const invA = seedInvoice(tenants, a.user.id, "A1");
+    const invB = seedInvoice(tenants, b.user.id, "B1");
+
+    for (const [who, inv] of [["A", invA], ["B", invB]] as const) {
+      const path = `/i/${inv.public_token}.pdf`;
+      const req = new Request(`http://x${path}`);
+      const res = (await handleWeb(req, new URL(req.url), path, "GET"))!;
+      expect(res.status).toBe(200);
+      expect(res.headers.get("Content-Type")).toBe("application/pdf");
+      expect(await res.text()).toBe(`%PDF-INV-${who}1`);
+    }
+
+    /* A's session fetching B's PDF still gets B's — the token picks the tenant. */
+    const path = `/i/${invB.public_token}.pdf`;
+    const req = new Request(`http://x${path}`, { headers: { cookie: a.cookie } });
+    const res = (await handleWeb(req, new URL(req.url), path, "GET"))!;
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe("%PDF-INV-B1");
+  });
+
+  test("#1291: a revoked token's PDF 404s, and an unknown token's PDF 404s", async () => {
+    const { accounts, tenants, handleWeb } = setupHosted();
+    const a = await signupLogin(accounts, "a@example.com");
+    const invA = seedInvoice(tenants, a.user.id, "A1");
+    const dbA = (tenants.get(a.user.id) as any).db as Database;
+    dbA.query("UPDATE invoices SET public_token = NULL WHERE id = ?").run(invA.id);
+
+    const path = `/i/${invA.public_token}.pdf`;
+    const req = new Request(`http://x${path}`);
+    const res = (await handleWeb(req, new URL(req.url), path, "GET"))!;
+    expect(res.status).toBe(404);
+    expect(await res.text()).toBe("no-such-invoice");
+
+    const badPath = `/i/${"z".repeat(32)}.pdf`;
+    const badReq = new Request(`http://x${badPath}`);
+    const badRes = (await handleWeb(badReq, new URL(badReq.url), badPath, "GET"))!;
+    expect(badRes.status).toBe(404);
   });
 
   test("checkout.session.completed for B's link marks B's invoice paid, A's untouched", async () => {

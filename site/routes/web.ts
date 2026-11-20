@@ -404,13 +404,16 @@ export function createWebRouter(deps: WebDeps) {
           if (!t) return html(noSuchInvoicePage(), 404);
           const idRow = t.db.query("SELECT id FROM invoices WHERE public_token = ?").get(pubPdf[1]) as { id: number } | null;
           const inv = idRow ? t.getInvoice(idRow.id) : null;
-          if (!inv) return html(noSuchInvoicePage(), 404);
+          /* The PDF embeds the invoice's current public token as its pay
+             link — never serve one minted for a rotated/revoked token. */
+          if (!inv || inv.public_token !== pubPdf[1]) return html(noSuchInvoicePage(), 404);
           const pdf = invoicePdf(t.invoicePdfInput(inv, shareOrigin(req)));
           const filename = inv.number.replace(/[^A-Za-z0-9._-]+/g, "_") + ".pdf";
           return new Response(pdf, {
             headers: {
               "Content-Type": "application/pdf",
               "Content-Disposition": `attachment; filename="${filename}"`,
+              "Cache-Control": "private, no-store",
             },
           });
         }

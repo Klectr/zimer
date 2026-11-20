@@ -888,7 +888,7 @@ describe("bare datetime rejection (#964)", () => {
  * as the public page; a fresh PDF from the invoice, 404 for bad tokens. */
 describe("public invoice PDF download (#1291)", () => {
   const PUB_TOKEN = "pubtoken1234567890pubtoken123456";
-  function setupPublicPdf() {
+  function setupPublicPdf(invoiceToken: string = PUB_TOKEN) {
     const db = createDb(mkdtempSync(join(tmpdir(), "tk-web-pdf-"))).db;
     db.query("INSERT INTO clients (name, color, rate) VALUES ('Bytebot', '#fb923c', 40)").run();
     const invId = Number(db.query("INSERT INTO invoices (client_id, number, issue_date, status) VALUES (1, 'INV-0001', '2026-11-05', 'sent')").run().lastInsertRowid);
@@ -903,7 +903,7 @@ describe("public invoice PDF download (#1291)", () => {
       qInvoices: { all: () => [] } as any,
       notFoundPage: () => "nf", errorPage: () => "err",
       publicInvoicePage: noop,
-      getInvoice: (id: number) => (id === invId ? ({ id: invId, number: "INV-0001", items: [] } as any) : null),
+      getInvoice: (id: number) => (id === invId ? ({ id: invId, number: "INV-0001", items: [], public_token: invoiceToken } as any) : null),
       invoicePdfInput: () => ({} as any),
     };
     const { handleWeb } = createWebRouter({
@@ -939,6 +939,7 @@ describe("public invoice PDF download (#1291)", () => {
     expect(res!.status).toBe(200);
     expect(res!.headers.get("Content-Type")).toBe("application/pdf");
     expect(res!.headers.get("Content-Disposition")).toBe('attachment; filename="INV-0001.pdf"');
+    expect(res!.headers.get("Cache-Control")).toBe("private, no-store");
     expect(await res!.text()).toBe("%PDF-fake");
   });
 
@@ -952,6 +953,12 @@ describe("public invoice PDF download (#1291)", () => {
   test("a malformed token is a 404, not a PDF", async () => {
     const { get } = setupPublicPdf();
     const res = await get("/i/short.pdf");
+    expect(res!.status).toBe(404);
+  });
+
+  test("a token rotated between lookup and render never serves a PDF", async () => {
+    const { get } = setupPublicPdf("rotatedtoken1234567890rotated12");
+    const res = await get(`/i/${PUB_TOKEN}.pdf`);
     expect(res!.status).toBe(404);
   });
 });
