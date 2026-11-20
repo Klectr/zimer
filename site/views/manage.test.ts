@@ -261,6 +261,18 @@ describe("manage labels (#827)", () => {
     expect(views.dailyTargetSection()).toContain(">Save target</button>");
   });
 
+  test("settings saves share one model: default variant, same size, no primary (#1216)", () => {
+    const { db } = testDb();
+    const views = createManageViews({ db, layout: (_t: string, b: string) => b, unbilledByClient: () => [] });
+    const profile = views.bizProfileSection();
+    const prefs = views.preferencesSection();
+    expect(profile).not.toContain("ui-btn-primary");
+    expect(prefs).not.toContain("ui-btn-primary");
+    expect(profile).toContain('<button type="submit" class="ui-btn">');
+    expect(prefs).toContain('<button type="submit" class="ui-btn">');
+    expect(prefs).not.toContain("ui-btn-sm");
+  });
+
   test("business profile labels are wired via matching id/for", () => {
     const { db } = testDb();
     const views = createManageViews({ db, layout: (_t: string, b: string) => b, unbilledByClient: () => [] });
