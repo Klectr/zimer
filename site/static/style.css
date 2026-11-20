@@ -1864,6 +1864,7 @@ button.ui-tag { border: 0; font: inherit; cursor: pointer; }
   .ui-public-lines { border-top-color: #ccc; }
   .ui-public-lines .ui-summary-line { border-bottom-color: #ddd; }
   .ui-summary-total .num { color: #111; }
+  .ui-public .ui-summary-total .num { color: #111; }
   .ui-public .ui-tag { border: 1px solid #999; background: #fff !important; color: #111 !important; }
   .inv-detail-grid { display: block; }
   body { background: #fff; color: #111; }

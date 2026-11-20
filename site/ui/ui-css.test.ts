@@ -95,6 +95,10 @@ describe("public invoice total (#1277)", () => {
     const shared = css.match(/\.ui-summary-total \.num \{[^}]*\}/);
     expect(shared).not.toBeNull();
     expect(shared![0]).toContain("color: var(--color-primary)");
+    const print = css.slice(css.indexOf("@media print"));
+    const printPub = print.match(/\.ui-public \.ui-summary-total \.num \{[^}]*\}/);
+    expect(printPub).not.toBeNull();
+    expect(printPub![0]).toContain("color: #111");
   });
 });
 
