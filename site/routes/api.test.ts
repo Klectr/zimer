@@ -190,8 +190,18 @@ describe("GET /api/invoices list projection (#1279)", () => {
     const res = (await handleApi(req, new URL(req.url), "/api/invoices", "GET"))!;
     expect(res.status).toBe(200);
     const [item] = await res.json() as any[];
+    expect(item.id).toBe(7);
+    expect(item.client_id).toBe(3);
     expect(item.number).toBe("INV-0007");
+    expect(item.issue_date).toBe("2026-11-01");
+    expect(item.due_date).toBe("2026-11-15");
+    expect(item.status).toBe("sent");
+    expect(item.tax_rate).toBe(10);
+    expect(item.paid_at).toBeNull();
     expect(item.client_name).toBe("Acme");
+    expect(item.client_color).toBe("#fb923c");
+    expect(item.client_payment_terms).toBe("Net 30");
+    expect(item.project_name).toBe("Site");
     expect(item.subtotal).toBe(100);
     expect(item.total).toBe(110);
     for (const key of ["internal_notes", "html_snapshot", "pdf_snapshot", "stripe_payment_link_id", "stripe_payment_link", "public_token", "notes", "template"])
