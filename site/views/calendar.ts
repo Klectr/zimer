@@ -1059,10 +1059,15 @@ export function createCalendarViews(deps: CalendarViewDeps) {
        data-start/data-end — null when the week has no entries. */
     function stripEntryRange(strip){
       var first=null,last=null,blocks=strip.querySelectorAll('.ui-viz-block');
+      var nowD=new Date(),nowMin=nowD.getHours()*60+nowD.getMinutes();
       for(var i=0;i<blocks.length;i++){
         var s=blocks[i].getAttribute('data-start'),e=blocks[i].getAttribute('data-end');
         if(!s) continue;
         var sm=toMin(s),em=e?toMin(e):sm;
+        /* A running block's data-end is a render-time snapshot (start+15);
+           the entry actually runs to now — placeNow grows it on that basis,
+           and the range must agree or the now-line gate reads it as stale. */
+        if(blocks[i].classList.contains('is-running')&&nowMin>em) em=nowMin;
         if(first===null||sm<first) first=sm;
         if(last===null||em>last) last=em;
       }
