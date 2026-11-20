@@ -31,6 +31,21 @@ describe("progressBar", () => {
     expect(progressBar({ value: -5, label: "Goal" })).toContain('aria-valuenow="0"');
     expect(progressBar({ value: NaN, label: "Goal" })).toContain('aria-valuenow="0"');
   });
+
+  test("default and explicit primary render the plain fill, unchanged (#1269)", () => {
+    const plain = progressBar({ value: 50, label: "Goal" });
+    expect(plain).toContain('<span class="ui-progress-fill" style="width:50%"></span>');
+    expect(progressBar({ value: 50, label: "Goal", tone: "primary" })).toBe(plain);
+  });
+
+  test("tone lands as a fill modifier class (#1269)", () => {
+    expect(progressBar({ value: 50, label: "Goal", tone: "neutral" }))
+      .toContain('<span class="ui-progress-fill ui-progress-fill-neutral"');
+    expect(progressBar({ value: 50, label: "Goal", tone: "warning" }))
+      .toContain('<span class="ui-progress-fill ui-progress-fill-warning"');
+    expect(progressBar({ value: 50, label: "Goal", tone: "error" }))
+      .toContain('<span class="ui-progress-fill ui-progress-fill-error"');
+  });
 });
 
 describe("steps", () => {
