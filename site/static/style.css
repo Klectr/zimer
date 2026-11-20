@@ -654,7 +654,6 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
   .ui-week-agenda { display: block; }
 }
 .ui-day { background: var(--color-bg-container); border: 1px solid var(--color-border-secondary); border-radius: var(--radius); padding: var(--spacing-sm); min-width: 0; }
-.ui-day.is-today { border-color: color-mix(in srgb, var(--color-primary) 50%, transparent); background: color-mix(in srgb, var(--color-primary) 4%, var(--color-bg-container)); }
 .ui-day-head { display: flex; align-items: baseline; gap: var(--spacing-xs); margin-bottom: var(--spacing-xs); }
 .ui-day-name { font-size: var(--font-size-sm); color: var(--color-text-tertiary); white-space: nowrap; }
 .ui-day.is-today .ui-day-name { color: var(--color-text); font-weight: var(--font-weight-strong); }
@@ -679,7 +678,6 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .ui-viz-hours { position: relative; }
 .ui-viz-hour { position: absolute; right: var(--spacing-xs); transform: translateY(-50%); font-family: var(--font-family-code); font-size: var(--font-size-sm); color: var(--color-text-tertiary); white-space: nowrap; }
 .ui-viz-col { position: relative; overflow: hidden; touch-action: none; border: 1px solid var(--color-border-secondary); border-radius: var(--radius-lg); background-color: var(--color-fill-quaternary); background-image: linear-gradient(to bottom, var(--color-border-secondary) 1px, transparent 1px); background-size: 100% var(--viz-hour, 48px); }
-.ui-viz-col.is-today { background-color: color-mix(in srgb, var(--color-primary) 4%, transparent); border-color: var(--color-primary-border); }
 .ui-viz-block { position: absolute; left: var(--spacing-xxs); right: var(--spacing-xxs); background: color-mix(in srgb, var(--entry, var(--color-text-tertiary)) 16%, transparent); border: 1px solid color-mix(in srgb, var(--entry, var(--color-text-tertiary)) 45%, transparent); border-radius: var(--radius-sm); padding: var(--spacing-xxs) var(--spacing-xs); font-size: var(--font-size-sm); overflow: hidden; cursor: grab; box-sizing: border-box; touch-action: none; }
 .ui-viz-block:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 .ui-viz-block.is-invoiced { background: var(--color-fill-secondary); border-color: var(--color-border); }
