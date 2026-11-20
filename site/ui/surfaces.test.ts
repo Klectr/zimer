@@ -65,6 +65,38 @@ describe("public invoice", () => {
   });
 });
 
+describe("public invoice parties (#1224)", () => {
+  test("renders From and Bill to with email and multi-line address, escaped", () => {
+    const html = publicInvoice({
+      business: "B", meta: "M", lines: [], totalLabel: "Total due", total: "$0.00",
+      from: { name: "Studio <b>X</b>", email: "billing@studio.example", address: "1 Main St\nSpringfield" },
+      billTo: { name: "Acme", email: "ap@acme.example" },
+    });
+    expect(html).toContain("ui-public-parties");
+    expect(html).toContain(">From<");
+    expect(html).toContain(">Bill to<");
+    expect(html).toContain("Studio &lt;b&gt;X&lt;/b&gt;");
+    expect(html).toContain("billing@studio.example");
+    expect(html).toContain("1 Main St");
+    expect(html).toContain("Springfield");
+    expect(html).toContain("ap@acme.example");
+  });
+  test("escapes markup in address lines; whitespace-only and email-only parties", () => {
+    const html = publicInvoice({
+      business: "B", meta: "M", lines: [], totalLabel: "Total due", total: "$0.00",
+      from: { name: "  ", email: " ", address: "<script>x</script>" },
+      billTo: { email: "ap@acme.example" },
+    });
+    expect(html).not.toContain("<script>x</script>");
+    expect(html).toContain("&lt;script&gt;x&lt;/script&gt;");
+    expect(html).toContain("ap@acme.example");
+  });
+  test("no parties, no parties block", () => {
+    const html = publicInvoice({ business: "B", meta: "M", lines: [], totalLabel: "Total due", total: "$0.00" });
+    expect(html).not.toContain("ui-public-parties");
+  });
+});
+
 describe("public invoice pay action", () => {
   test("no pay link, no pay button (paid or linkless Zinvoices)", () => {
     const html = publicInvoice({ business: "B", meta: "M", lines: [], totalLabel: "Total due", total: "$0.00" });
