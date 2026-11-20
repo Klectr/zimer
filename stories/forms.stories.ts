@@ -101,7 +101,7 @@ export const formsStories: Story[] = [
           textField({ id: "prof-email", label: "Email on Zinvoices", type: "email", value: "billing@studio.example" }) +
           textField({ id: "prof-terms", label: "Default payment terms", value: "Net 14" }) +
           `</div>`,
-        actionsHtml: button({ label: "Save profile", variant: "primary" }) + `<span style="color:var(--color-success);font-size:var(--font-size-sm)">Saved Nov 7</span>`,
+        actionsHtml: button({ label: "Save profile", icon: "save" }) + `<span style="color:var(--color-success);font-size:var(--font-size-sm)">Saved Nov 7</span>`,
       }) +
       settingsSection({
         title: "Your data",

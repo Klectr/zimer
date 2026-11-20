@@ -111,6 +111,14 @@ describe("style.css token references", () => {
   });
 });
 
+describe("settings pref rows", () => {
+  test("pref row wraps so a wide control stacks instead of overflowing (#1216)", () => {
+    const rule = css.match(/\.settings-pref-row \{[^}]*\}/);
+    expect(rule).not.toBeNull();
+    expect(rule![0]).toContain("flex-wrap: wrap");
+  });
+});
+
 const RULES = [
   ".ui-btn {",
   ".ui-btn-primary {",
