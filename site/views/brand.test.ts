@@ -62,7 +62,7 @@ describe("#753: mascot placements", () => {
     const html = demoBanner(db);
     expect(html).toContain("New here?");
     expect(html).toContain('class="demo-mascot"');
-    expect(html).toContain('src="/static/mascot.png"');
+    expect(html).toContain('src="/static/mascot-88.webp"');
   });
 });
 
