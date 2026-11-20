@@ -267,6 +267,8 @@ describe("invoice detail projection (#1281)", () => {
     expect(item.client_email).toBe("a@example.com");
     expect(item.client_address).toBe("1 Main St");
     expect(item.items).toHaveLength(1);
+    expect(item.template).toBe("classic");
+    expect(item.paid_via_stripe).toBe(0);
     expect(item.subtotal).toBe(100);
     expect(item.total).toBe(110);
     for (const key of ["internal_notes", "html_snapshot", "pdf_snapshot", "stripe_payment_link_id", "stripe_payment_link", "public_token"])
@@ -286,5 +288,29 @@ describe("invoice detail projection (#1281)", () => {
     const item = await res.json() as any;
     for (const key of ["internal_notes", "html_snapshot", "pdf_snapshot", "stripe_payment_link_id", "stripe_payment_link", "public_token"])
       expect(item).not.toHaveProperty(key);
+  });
+  test("POST response uses the same projection", async () => {
+    const tenant = detailTenant();
+    tenant.db.exec(`CREATE TABLE invoice_items (id INTEGER PRIMARY KEY, invoice_id INTEGER, description TEXT, hours REAL, rate REAL, amount REAL, date_from TEXT, date_to TEXT)`);
+    tenant.db.exec(`CREATE TABLE time_entries (id INTEGER PRIMARY KEY, invoice_id INTEGER)`);
+    tenant.db.exec(`ALTER TABLE invoices ADD COLUMN client_id INTEGER`);
+    tenant.db.exec(`ALTER TABLE invoices ADD COLUMN number TEXT`);
+    tenant.db.exec(`ALTER TABLE invoices ADD COLUMN issue_date TEXT`);
+    tenant.db.exec(`ALTER TABLE invoices ADD COLUMN due_date TEXT`);
+    tenant.db.exec(`ALTER TABLE invoices ADD COLUMN tax_rate REAL DEFAULT 0`);
+    tenant.db.exec(`ALTER TABLE invoices ADD COLUMN notes TEXT DEFAULT ''`);
+    tenant.db.exec(`ALTER TABLE invoices ADD COLUMN internal_notes TEXT DEFAULT ''`);
+    const handleApi = routerFor(tenant);
+    const req = new Request("http://localhost/api/invoices", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ client_id: 3, items: [{ description: "Work", hours: 1, rate: 100 }] }),
+    });
+    const res = (await handleApi(req, new URL(req.url), "/api/invoices", "POST"))!;
+    expect(res.status).toBe(201);
+    const item = await res.json() as any;
+    expect(item.number).toBe("INV-0007");
+    for (const key of ["internal_notes", "html_snapshot", "pdf_snapshot", "stripe_payment_link_id", "stripe_payment_link", "public_token"])
+      expect(item).not.toHaveProperty(key);
+    expect(JSON.stringify(item)).not.toContain("tok_secret");
   });
 });

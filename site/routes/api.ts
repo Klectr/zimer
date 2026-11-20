@@ -167,6 +167,10 @@ export function createApiRouter(deps: ApiDeps) {
               freezeInvoiceSnapshots,
             } = tenant;
             const body = (await req.json().catch(() => ({}))) as any;
+            /* #1281: detail projection — more than the #1279 list (items,
+               notes, client contact fields, template, paid flag) but never
+               internal_notes, the frozen snapshots, the Stripe link/id, or
+               the public token. Shared by GET, POST and PATCH responses. */
             const invoiceDetail = (full: Invoice & { items: InvoiceItem[] }) => ({
               id: full.id,
               client_id: full.client_id,
