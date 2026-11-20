@@ -74,7 +74,7 @@ describe("today column and card (#1271)", () => {
     expect(todayRules.length).toBeGreaterThan(0);
     for (const rule of todayRules) {
       expect(rule).not.toContain("background");
-      expect(rule).not.toContain("border-color");
+      expect(rule).not.toContain("border");
       expect(rule).not.toContain("--color-primary");
     }
     const vizName = css.match(/\.ui-viz-day-head\.is-today \.ui-viz-day-name \{[^}]*\}/);
