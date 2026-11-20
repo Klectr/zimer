@@ -679,7 +679,7 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .ui-viz-heads { display: grid; grid-template-columns: subgrid; grid-column: 1 / -1; margin-bottom: var(--spacing-xs); }
 .ui-viz-day-head { display: flex; align-items: baseline; gap: var(--spacing-xs); min-width: 0; overflow: visible; }
 .ui-viz-day-head > .ui-tooltip { flex: 1; min-width: 0; width: 100%; }
-.ui-viz-day-inner { display: flex; align-items: baseline; gap: var(--spacing-xs); width: 100%; min-width: 0; }
+.ui-viz-day-inner { display: flex; align-items: baseline; gap: var(--spacing-xs); width: 100%; min-width: 0; box-sizing: border-box; padding-inline: var(--spacing-xxs); }
 .ui-viz-day-name { min-width: 0; font-size: var(--font-size-sm); color: var(--color-text-tertiary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ui-viz-day-head.is-today .ui-viz-day-name { color: var(--color-text); font-weight: var(--font-weight-strong); }
 .ui-viz-day-total { flex: none; margin-left: auto; font-family: var(--font-family-code); font-size: var(--font-size-sm); color: var(--color-text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap; }
