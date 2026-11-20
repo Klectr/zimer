@@ -1055,10 +1055,42 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       if(!strip) return;
       document.body.classList.toggle('cal-agenda-hint',strip.clientWidth<=639);
     }
+    /* #1219: the week's entry range (minutes), from the blocks' own
+       data-start/data-end — null when the week has no entries. */
+    function stripEntryRange(strip){
+      var first=null,last=null,blocks=strip.querySelectorAll('.ui-viz-block');
+      for(var i=0;i<blocks.length;i++){
+        var s=blocks[i].getAttribute('data-start'),e=blocks[i].getAttribute('data-end');
+        if(!s) continue;
+        var sm=toMin(s),em=e?toMin(e):sm;
+        if(first===null||sm<first) first=sm;
+        if(last===null||em>last) last=em;
+      }
+      return first===null?null:{first:first,last:last};
+    }
+    /* #1219: where a strip with no usable now-line should open — the
+       earliest entry with 30 minutes of headroom, or 8 AM (480) when the
+       week is empty. Past/future weeks used to open at midnight, hours of
+       empty grid above the first entry. */
+    function stripOpenMin(range){ return range?range.first-30:480; }
+    /* #1219: the now-line keeps its centring only while now sits inside
+       the week's entry range — an evening view of a morning-only week
+       opens on the work, not on the empty evening. */
+    function nowOutsideRange(line,range){
+      if(!range) return false;
+      var top=parseFloat(line.style.top);
+      if(isNaN(top)) return false;
+      var nowMin=START+top/HOUR*60;
+      return nowMin<range.first-30||nowMin>range.last+30;
+    }
     function initStripScroll(strip){
       var sc=strip.querySelector('.cal-scroll'); if(!sc) return;
       var line=strip.querySelector('[data-now]');
-      if(!line||line.hidden){ sc.scrollTop=0; return; }
+      var range=stripEntryRange(strip);
+      if(!line||line.hidden||nowOutsideRange(line,range)){
+        sc.scrollTop=Math.max(0,(stripOpenMin(range)-START)/60*HOUR);
+        return;
+      }
       var lr=line.getBoundingClientRect(),sr=sc.getBoundingClientRect();
       sc.scrollTop=Math.max(0,sc.scrollTop+(lr.top-sr.top)-sr.height/2);
     }
@@ -1069,9 +1101,15 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       var strip=strips[1];
       var line=strip.querySelector('[data-now]');
       var sc=strip.querySelector('.cal-scroll');
-      if(!line||line.hidden||!sc) return;
-      var lr=line.getBoundingClientRect(),sr=sc.getBoundingClientRect();
-      var target=Math.max(0,sc.scrollTop+(lr.top-sr.top)-sr.height/2);
+      if(!sc) return;
+      var range=stripEntryRange(strip);
+      var target;
+      if(!line||line.hidden||nowOutsideRange(line,range)){
+        target=Math.max(0,(stripOpenMin(range)-START)/60*HOUR);
+      } else {
+        var lr=line.getBoundingClientRect(),sr=sc.getBoundingClientRect();
+        target=Math.max(0,sc.scrollTop+(lr.top-sr.top)-sr.height/2);
+      }
       if(!smooth||panReduce){ sc.scrollTop=target; return; }
       /* eased scrollTop animation; user input (wheel/touch) cancels it so the
          page never fights an in-progress gesture */
@@ -1091,8 +1129,8 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     }
     initCarousel();
     placeNow();
-    /* Side strips settle instantly; the visible strip smooth-glides to the
-       now-line after the entrance animations finish (~590ms) — measuring
+    /* Side strips settle instantly; the visible strip smooth-glides to its
+       open target after the entrance animations finish (~590ms) — measuring
        mid-animation lands the scroll ~12px off. */
     (function initScroll(){
       var strips=trackStrips();
