@@ -345,3 +345,47 @@ describe("public invoice status edges (#1136 review)", () => {
     expect(html).toContain("Overdue");
   });
 });
+
+describe("public invoice parties (#1224)", () => {
+  const mk = (biz: Record<string, string>) => createPublicViews({
+    getInvoice: () => null,
+    invoiceTotals: (items: any[]) => {
+      const total = items.reduce((s: number, i: any) => s + i.amount, 0);
+      return { subtotal: total, tax: 0, total };
+    },
+    businessName: () => biz.name || "",
+    businessEmail: () => biz.email || "",
+    businessAddress: () => biz.address || "",
+    ensurePublicToken: () => "",
+  } as any) as any;
+  const inv: any = {
+    id: 11, number: "INV-2011", status: "sent", tax_rate: 0,
+    issue_date: "2026-11-05", due_date: "2099-11-19", notes: "",
+    stripe_payment_link: "", public_token: "abc123",
+    client_name: "Acme Studio", client_email: "ap@acme.example", client_address: "9 Client Rd",
+    items: [{ description: "Work", hours: 2, rate: 50, amount: 100 }],
+  };
+  test("shows From from the business profile and Bill to from the client", () => {
+    const html = mk({ name: "Studio", email: "billing@studio.example", address: "1 Main St\nSpringfield" })
+      .publicInvoicePage(inv, "https://example.com", "/i/abc123");
+    expect(html).toContain(">From<");
+    expect(html).toContain("billing@studio.example");
+    expect(html).toContain("Springfield");
+    expect(html).toContain(">Bill to<");
+    expect(html).toContain("Acme Studio");
+    expect(html).toContain("ap@acme.example");
+    expect(html).toContain("9 Client Rd");
+  });
+  test("empty business profile hides From; Bill to still shows", () => {
+    const html = mk({}).publicInvoicePage(inv, "https://example.com", "/i/abc123");
+    expect(html).not.toContain(">From<");
+    expect(html).toContain(">Bill to<");
+    expect(html).toContain("Acme Studio");
+  });
+  test("no client on the invoice hides Bill to", () => {
+    const html = mk({ name: "Studio", email: "billing@studio.example" })
+      .publicInvoicePage({ ...inv, client_name: null, client_email: null, client_address: null }, "https://example.com", "/i/abc123");
+    expect(html).toContain(">From<");
+    expect(html).not.toContain(">Bill to<");
+  });
+});

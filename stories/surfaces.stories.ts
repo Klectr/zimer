@@ -63,6 +63,8 @@ export const surfacesStories: Story[] = [
       publicInvoice({
         business: "Studio — Triston Armstrong",
         meta: "Zinvoice #1041 · Issued Nov 5, 2026",
+        from: { email: "billing@studio.example", address: "1 Main St\nSpringfield, IL" },
+        billTo: { name: "Northwind Legal", email: "ap@northwind.example" },
         chipHtml: tag({ label: "Due Nov 19", tone: "warning" }),
         lines: [
           { label: "Intake form fixes — 9.50 h", amount: "$902.50" },

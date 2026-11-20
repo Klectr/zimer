@@ -511,6 +511,11 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .ui-public { max-width: 560px; margin: 0 auto; }
 .ui-public-sheet { background: linear-gradient(180deg, var(--color-fill-tertiary), var(--color-fill-quaternary)); border: 1px solid var(--color-border-secondary); border-radius: var(--radius-xl); padding: var(--spacing-lg); }
 .ui-public-meta { font-size: var(--font-size-sm); color: var(--color-text-secondary); margin-top: var(--spacing-xxs); }
+.ui-public-parties { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--spacing-md); margin-top: var(--spacing-md); }
+.ui-public-party { min-width: 0; }
+.ui-public-party-label { font-size: var(--font-size-sm); color: var(--color-text-tertiary); margin-bottom: var(--spacing-xxs); }
+.ui-public-party-name { font-weight: var(--font-weight-strong); overflow-wrap: anywhere; }
+.ui-public-party-line { font-size: var(--font-size-sm); line-height: var(--line-height-sm); color: var(--color-text-secondary); overflow-wrap: anywhere; }
 .ui-public-lines { border-top: 1px solid var(--color-border-secondary); margin: var(--spacing-sm) 0 var(--spacing-md); }
 .ui-public .ui-summary-total .num { color: var(--color-text); }
 .ui-public-notes { font-size: var(--font-size-sm); line-height: var(--line-height-sm); color: var(--color-text-secondary); white-space: pre-wrap; margin: 0 0 var(--spacing-md); }
@@ -1860,7 +1865,8 @@ button.ui-tag { border: 0; font: inherit; cursor: pointer; }
   /* #1136: the public summary on paper — dark text, visible tag outline,
      hairlines that survive without backgrounds. */
   .ui-public-sheet { background: #fff; color: #111; border-color: #999; }
-  .ui-public-meta, .ui-public-notes { color: #333; }
+  .ui-public-meta, .ui-public-notes, .ui-public-party-line { color: #333; }
+  .ui-public-party-label { color: #555; }
   .ui-public-lines { border-top-color: #ccc; }
   .ui-public-lines .ui-summary-line { border-bottom-color: #ddd; }
   .ui-summary-total .num { color: #111; }

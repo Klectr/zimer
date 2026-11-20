@@ -18,6 +18,8 @@ export interface PublicViewDeps {
   getInvoice: (id: number) => (Invoice & { items: InvoiceItem[] }) | null;
   invoiceTotals: (items: InvoiceItem[], taxRate: number) => { subtotal: number; tax: number; total: number };
   businessName?: () => string;
+  businessEmail?: () => string;
+  businessAddress?: () => string;
   paymentTerms?: () => string;
   ensurePublicToken: (id: number) => string;
 }
@@ -86,6 +88,8 @@ export function createPublicViews(deps: PublicViewDeps) {
     const issued = longYmd(inv.issue_date);
     const sheet = publicInvoice({
       business: business || `Zinvoice ${inv.number}`,
+      from: { email: deps.businessEmail?.() || "", address: deps.businessAddress?.() || "" },
+      billTo: { name: inv.client_name || "", email: inv.client_email || "", address: inv.client_address || "" },
       meta: business
         ? `Zinvoice ${inv.number}${issued ? ` · Issued ${issued}` : ""}`
         : `${issued ? `Issued ${issued}` : ""}`,
