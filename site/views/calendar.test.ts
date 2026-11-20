@@ -1167,3 +1167,16 @@ describe("calendar initial scroll (#1219)", () => {
     expect(cv).toContain("stripOpenMin(range)");
   });
 });
+
+/** #1219 follow-up: a running block's data-end is a render-time snapshot
+ *  (start+15), so stripEntryRange must extend it to now — otherwise the
+ *  now-line gate treats a live timer as long finished and opens the week
+ *  on the earliest entry with the running block off-screen. */
+describe("calendar initial scroll — running entries (#1219)", () => {
+  test("stripEntryRange extends running blocks to now", async () => {
+    const src = await Bun.file("site/views/calendar.ts").text();
+    const fn = src.slice(src.indexOf("function stripEntryRange"), src.indexOf("function stripOpenMin"));
+    expect(fn).toContain("classList.contains('is-running')");
+    expect(fn).toContain("nowMin>em");
+  });
+});
