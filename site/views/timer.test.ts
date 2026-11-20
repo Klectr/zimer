@@ -537,7 +537,9 @@ describe("timer mock parity (#1121)", () => {
     expect(html).toContain('<header class="ui-app-head">');
     expect(html).toMatch(/<h1 class="ui-app-title">Good (morning|afternoon|evening)<\/h1>/);
     expect(html).toContain("here's your day so far.");
-    expect(html).toContain('id="invoice-week"');
+    expect(html).not.toContain('id="invoice-week"');
+    expect(html).not.toContain("Zinvoice this week");
+    expect(html.split("/invoices/new").length - 1).toBe(1);
     expect(html).toContain('<div id="today-stats" hx-get="/partial/today-stats" hx-trigger="load, timer-updated from:body">');
     expect(html).toContain('<div class="ui-stat-strip">');
     for (const label of ["Today", "This week", "Unbilled"]) {
