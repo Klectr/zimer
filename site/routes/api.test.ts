@@ -209,3 +209,82 @@ describe("GET /api/invoices list projection (#1279)", () => {
     expect(JSON.stringify(item)).not.toContain("do not leak");
   });
 });
+
+describe("invoice detail projection (#1281)", () => {
+  const fullRow = () => ({
+    id: 7, client_id: 3, number: "INV-0007", issue_date: "2026-11-01",
+    due_date: "2026-11-15", status: "sent", tax_rate: 10, paid_at: null,
+    notes: "client-facing", internal_notes: "do not leak",
+    html_snapshot: "<html>frozen</html>", pdf_snapshot: new Uint8Array([1, 2, 3]),
+    stripe_payment_link_id: "plink_secret", stripe_payment_link: "https://pay.example/x",
+    public_token: "tok_secret", paid_via_stripe: 0, template: "classic",
+    created_at: "2026-11-01T00:00:00Z",
+    client_name: "Acme", client_color: "#fb923c", client_payment_terms: "net_30",
+    client_email: "a@example.com", client_phone: "555-0100",
+    client_website: "https://example.com", client_address: "1 Main St",
+    items: [{ id: 1, description: "Work", hours: 1, rate: 100, amount: 100, date_from: null, date_to: null }],
+  });
+  function detailTenant() {
+    const db = new BunDatabase(":memory:");
+    db.exec(`CREATE TABLE invoices (id INTEGER PRIMARY KEY, status TEXT NOT NULL DEFAULT 'draft', paid_at TEXT)`);
+    db.query("INSERT INTO invoices (id, status) VALUES (7, 'sent')").run();
+    return {
+      db,
+      qRunning: stubStatement(), qOne: stubStatement(), qRange: stubStatement(),
+      qInvoice: { get: (id: number) => db.query("SELECT id, status FROM invoices WHERE id = ?").get(id) } as unknown as Statement,
+      qInvoices: stubStatement(),
+      groupToLineItems: () => [], unbilledEntries: () => [],
+      getInvoice: () => fullRow() as any,
+      invoiceTotals: (items: any[], taxRate: number) => {
+        const subtotal = items.reduce((a: number, it: any) => a + it.amount, 0);
+        return { subtotal, tax: Math.round(subtotal * taxRate) / 100, total: Math.round(subtotal * (100 + taxRate)) / 100 };
+      },
+      nextInvoiceNumber: () => "INV-0001", mintPublicToken: () => "tok",
+      stripeLinkFor: async () => ({}),
+      revenueTotals: () => null, revenueMonthly: () => [], revenueByClient: () => [],
+      revenueOverdue: () => [], freezeInvoiceSnapshots: () => {},
+    };
+  }
+  function routerFor(tenant: any) {
+    return createApiRouter({
+      getTenant: () => tenant as any,
+      TOKEN: "test-token",
+      authedApi: () => true,
+      json: (data: unknown, status = 200) => Response.json(data, { status }),
+      entryToJson: (e: any) => e,
+      verifyWebhookSignature: () => false,
+      shareOrigin: () => "",
+    }).handleApi;
+  }
+  test("GET detail keeps items, notes and client contact, drops secrets and snapshots", async () => {
+    const handleApi = routerFor(detailTenant());
+    const req = new Request("http://localhost/api/invoices/7");
+    const res = (await handleApi(req, new URL(req.url), "/api/invoices/7", "GET"))!;
+    expect(res.status).toBe(200);
+    const item = await res.json() as any;
+    expect(item.number).toBe("INV-0007");
+    expect(item.notes).toBe("client-facing");
+    expect(item.client_email).toBe("a@example.com");
+    expect(item.client_address).toBe("1 Main St");
+    expect(item.items).toHaveLength(1);
+    expect(item.subtotal).toBe(100);
+    expect(item.total).toBe(110);
+    for (const key of ["internal_notes", "html_snapshot", "pdf_snapshot", "stripe_payment_link_id", "stripe_payment_link", "public_token"])
+      expect(item).not.toHaveProperty(key);
+    expect(JSON.stringify(item)).not.toContain("do not leak");
+    expect(JSON.stringify(item)).not.toContain("tok_secret");
+    expect(JSON.stringify(item)).not.toContain("plink_secret");
+  });
+  test("PATCH detail uses the same projection", async () => {
+    const handleApi = routerFor(detailTenant());
+    const req = new Request("http://localhost/api/invoices/7", {
+      method: "PATCH", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ status: "paid" }),
+    });
+    const res = (await handleApi(req, new URL(req.url), "/api/invoices/7", "PATCH"))!;
+    expect(res.status).toBe(200);
+    const item = await res.json() as any;
+    for (const key of ["internal_notes", "html_snapshot", "pdf_snapshot", "stripe_payment_link_id", "stripe_payment_link", "public_token"])
+      expect(item).not.toHaveProperty(key);
+  });
+});

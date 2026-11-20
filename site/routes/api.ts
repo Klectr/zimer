@@ -167,6 +167,29 @@ export function createApiRouter(deps: ApiDeps) {
               freezeInvoiceSnapshots,
             } = tenant;
             const body = (await req.json().catch(() => ({}))) as any;
+            const invoiceDetail = (full: Invoice & { items: InvoiceItem[] }) => ({
+              id: full.id,
+              client_id: full.client_id,
+              number: full.number,
+              issue_date: full.issue_date,
+              due_date: full.due_date,
+              status: full.status,
+              tax_rate: full.tax_rate,
+              notes: full.notes,
+              template: full.template,
+              created_at: full.created_at,
+              paid_at: full.paid_at,
+              paid_via_stripe: full.paid_via_stripe,
+              client_name: full.client_name,
+              client_color: full.client_color,
+              client_payment_terms: full.client_payment_terms,
+              client_email: full.client_email,
+              client_phone: full.client_phone,
+              client_website: full.client_website,
+              client_address: full.client_address,
+              items: full.items,
+              ...invoiceTotals(full.items, full.tax_rate),
+            });
 
             if (path === "/api/status" && method === "GET") {
               const running = qRunning.get() as Entry | null;
@@ -337,7 +360,7 @@ export function createApiRouter(deps: ApiDeps) {
               })();
               mintPublicToken(inv.id); /* #227: client link exists from birth */
               const full = getInvoice(inv.id)!;
-              return json({ ...full, ...invoiceTotals(full.items, full.tax_rate) }, 201);
+              return json(invoiceDetail(full), 201);
             }
             m = path.match(/^\/api\/invoices\/(\d+)$/);
             if (m) {
@@ -345,7 +368,7 @@ export function createApiRouter(deps: ApiDeps) {
               if (method === "GET") {
                 const inv = getInvoice(id);
                 if (!inv) return json({ error: "not found" }, 404);
-                return json({ ...inv, ...invoiceTotals(inv.items, inv.tax_rate) });
+                return json(invoiceDetail(inv));
               }
               if (method === "PATCH") {
                 const inv = qInvoice.get(id) as Invoice | null;
@@ -365,7 +388,7 @@ export function createApiRouter(deps: ApiDeps) {
                   freezeInvoiceSnapshots(id, shareOrigin(req));
                 }
                 const full = getInvoice(id)!;
-                return json({ ...full, ...invoiceTotals(full.items, full.tax_rate) });
+                return json(invoiceDetail(full));
               }
               if (method === "DELETE") {
                 const inv = qInvoice.get(id) as Invoice | null;
