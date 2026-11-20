@@ -183,7 +183,9 @@ db.exec(`DROP TABLE IF EXISTS recurring_schedules;`);
    FROM invoices i LEFT JOIN clients c ON c.id = i.client_id WHERE i.id = ?`);
   const qInvoiceItems = db.query("SELECT * FROM invoice_items WHERE invoice_id = ? ORDER BY id");
   const qInvoices = db.query(
-    `SELECT i.*, c.name AS client_name, c.color AS client_color,
+    `SELECT i.id, i.client_id, i.number, i.issue_date, i.due_date, i.status,
+          i.tax_rate, i.paid_at,
+          c.name AS client_name, c.color AS client_color,
           c.payment_terms AS client_payment_terms,
           (SELECT p.name FROM time_entries e JOIN projects p ON p.id = e.project_id
             WHERE e.invoice_id = i.id AND e.project_id IS NOT NULL LIMIT 1) AS project_name,
