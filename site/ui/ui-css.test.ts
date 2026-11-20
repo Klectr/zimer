@@ -86,6 +86,18 @@ describe("today column and card (#1271)", () => {
   });
 });
 
+describe("viz block title wrap (#1219)", () => {
+  test("tall blocks wrap the title to two lines; the base title stays one-line ellipsis", () => {
+    const tall = css.match(/\.ui-viz-block\.is-tall \.ui-viz-block-title \{[^}]*\}/);
+    expect(tall).not.toBeNull();
+    expect(tall![0]).toContain("-webkit-line-clamp: 2");
+    expect(tall![0]).toContain("white-space: normal");
+    const base = css.match(/\.ui-viz-block-title \{[^}]*\}/);
+    expect(base).not.toBeNull();
+    expect(base![0]).toContain("white-space: nowrap");
+  });
+});
+
 describe("public invoice total (#1277)", () => {
   test("the public sheet total uses the text color, not primary; the app summary keeps primary", () => {
     const pub = css.match(/\.ui-public \.ui-summary-total \.num \{[^}]*\}/);
