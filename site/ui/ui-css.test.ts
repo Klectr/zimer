@@ -86,6 +86,18 @@ describe("today column and card (#1271)", () => {
   });
 });
 
+describe("public invoice total (#1277)", () => {
+  test("the public sheet total uses the text color, not primary; the app summary keeps primary", () => {
+    const pub = css.match(/\.ui-public \.ui-summary-total \.num \{[^}]*\}/);
+    expect(pub).not.toBeNull();
+    expect(pub![0]).toContain("color: var(--color-text)");
+    expect(pub![0]).not.toContain("primary");
+    const shared = css.match(/\.ui-summary-total \.num \{[^}]*\}/);
+    expect(shared).not.toBeNull();
+    expect(shared![0]).toContain("color: var(--color-primary)");
+  });
+});
+
 describe("style.css token references", () => {
   test("every var() reference resolves to a definition (or an inline-set legacy var)", () => {
     const defs = new Set([...css.matchAll(/(--[\w-]+)\s*:/g)].map((m) => m[1]));
