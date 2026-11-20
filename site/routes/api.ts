@@ -267,9 +267,25 @@ export function createApiRouter(deps: ApiDeps) {
             }
             /* ---- invoicing API ---- */
             if (path === "/api/invoices" && method === "GET") {
+              /* #1279: list projection only — the full row carries
+                 internal_notes, the frozen HTML/PDF snapshots, the Stripe
+                 link id and the public token, none of which belong in a
+                 list response. */
               const rows = qInvoices.all() as any[];
               return json(rows.map(r => ({
-                ...r,
+                id: r.id,
+                client_id: r.client_id,
+                number: r.number,
+                issue_date: r.issue_date,
+                due_date: r.due_date,
+                status: r.status,
+                tax_rate: r.tax_rate,
+                paid_at: r.paid_at,
+                client_name: r.client_name,
+                client_color: r.client_color,
+                client_payment_terms: r.client_payment_terms,
+                project_name: r.project_name,
+                subtotal: r.subtotal,
                 total: round2(r.subtotal * (1 + (r.tax_rate || 0) / 100)),
               })));
             }
