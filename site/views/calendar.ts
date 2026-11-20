@@ -1072,7 +1072,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
        earliest entry with 30 minutes of headroom, or 8 AM (480) when the
        week is empty. Past/future weeks used to open at midnight, hours of
        empty grid above the first entry. */
-    function stripOpenMin(range){ return range?range.first-30:480; }
+    function stripOpenMin(range){ return range?Math.max(0,range.first-30):480; }
     /* #1219: the now-line keeps its centring only while now sits inside
        the week's entry range — an evening view of a morning-only week
        opens on the work, not on the empty evening. */
@@ -1134,7 +1134,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
        mid-animation lands the scroll ~12px off. */
     (function initScroll(){
       var strips=trackStrips();
-      for(var i=0;i<strips.length;i++) if(i!==1) initStripScroll(strips[i]);
+      for(var i=0;i<strips.length;i++) initStripScroll(strips[i]);
       setTimeout(function(){ centerVisible(true); }, 650);
     })();
     setInterval(placeNow,30000);

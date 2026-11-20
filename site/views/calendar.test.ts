@@ -1152,7 +1152,7 @@ describe("calendar initial scroll (#1219)", () => {
 
   test("open target: earliest entry minus 30 min, 8 AM when the week is empty", async () => {
     const src = await Bun.file("site/views/calendar.ts").text();
-    expect(src).toContain("function stripOpenMin(range){ return range?range.first-30:480; }");
+    expect(src).toContain("function stripOpenMin(range){ return range?Math.max(0,range.first-30):480; }");
     expect(src).toContain("function stripEntryRange(strip){");
     expect(src).toContain("getAttribute('data-start')");
     expect(src).toContain("getAttribute('data-end')");
