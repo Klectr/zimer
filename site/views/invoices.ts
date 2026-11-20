@@ -951,10 +951,11 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
           ${actBtn(`/invoices/${inv.id}/stripe-link`, "refresh", "Retry payment link")}
         </span>
       </div>` : "";
+    const canPay = inv.status === "sent" && (!!inv.stripe_payment_link || !!(getMeta(db, "business_payment_instructions") || "").trim());
     const publicLinkCard = `
       <section class="ui-card share-lines no-print" aria-label="Public link">
         <div class="ui-card-head"><span class="ui-section-title">Public link</span></div>
-        <p class="muted">Anyone with the link can view${stripeConfigured() ? " and pay" : ""} — no login for your client.</p>
+        <p class="muted">Anyone with the link can view${canPay ? " and pay" : ""} — no login for your client.</p>
         ${clientLine}
         ${stripeWarn}
       </section>`;

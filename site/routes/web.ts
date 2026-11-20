@@ -739,12 +739,12 @@ export function createWebRouter(deps: WebDeps) {
           setMeta(db, "business_name", String(form.get("business_name") || "").trim());
           setMeta(db, "business_email", String(form.get("business_email") || "").trim());
           setMeta(db, "business_address", String(form.get("business_address") || "").trim());
+          setMeta(db, "business_payment_instructions", String(form.get("business_payment_instructions") || "").replace(/\r\n/g, "\n").trim());
           /* #243: payment terms. #293: fixed option list — reject anything
              that isn't a known key. */
           const gterms = String(form.get("business_payment_terms") || "").trim();
           if (!isPaymentTermsKey(gterms)) return new Response("Unknown payment terms.", { status: 400 });
           setMeta(db, "business_payment_terms", gterms);
-          setMeta(db, "business_payment_instructions", String(form.get("business_payment_instructions") || "").trim());
           if (isHtmx(req)) return html(bizProfileSection());
           return new Response(null, { status: 302, headers: { Location: "/manage" } });
         }

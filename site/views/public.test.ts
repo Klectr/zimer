@@ -341,6 +341,10 @@ describe("public invoice payment instructions (#1296)", () => {
     const html = v.publicInvoicePage({ ...inv, status: "paid" }, "https://example.com", "/i/abc123");
     expect(html).not.toContain("How to pay");
   });
+  test("hidden on a draft — a draft never reads as money due", () => {
+    const html = v.publicInvoicePage({ ...inv, status: "draft" }, "https://example.com", "/i/abc123");
+    expect(html).not.toContain("How to pay");
+  });
 });
 
 describe("public invoice status edges (#1136 review)", () => {
