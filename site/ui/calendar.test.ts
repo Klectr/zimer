@@ -118,6 +118,12 @@ describe("visualizer", () => {
     expect(html).toContain("Mon Nov 2");
   });
 
+  test("empty total with no detail falls back to 0h in the tooltip (#1287)", () => {
+    const html = visualizer({ days: [{ ...VDAY, total: "" }] });
+    expect(html).toContain("Mon Nov 2 · 0h tracked");
+    expect(html).not.toContain("·  tracked");
+  });
+
   test("day headers carry the day detail in the tooltip component", () => {
     const html = visualizer({
       days: [{ ...VDAY, detail: "Monday Nov 2 · 2h tracked · 0 entries" }],

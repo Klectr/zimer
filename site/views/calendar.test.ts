@@ -1052,6 +1052,21 @@ describe("calendar grid day totals (#1287)", () => {
     const totals = [...html.matchAll(/<span class="ui-viz-day-total" data-day-total>([^<]*)<\/span>/g)].map((m) => m[1]);
     expect(totals.length).toBeGreaterThan(0);
     expect(totals.filter((t) => t !== "")).toEqual(["1h"]);
+    expect(totals[8]).toBe("1h");
+    expect(html).toContain("1h tracked");
+  });
+
+  test("a sub-minute day still shows its total in header and tooltip", () => {
+    const entry = {
+      id: 22, description: "blip", project_id: null, project_name: null,
+      client_name: null, client_color: null, invoice_id: null,
+      invoice_number: null, invoice_status: null,
+      start_time: "2026-09-21T15:00:00.000Z", end_time: "2026-09-21T15:00:30.000Z",
+    };
+    const html = weekInnerHtml([entry]);
+    const totals = [...html.matchAll(/<span class="ui-viz-day-total" data-day-total>([^<]*)<\/span>/g)].map((m) => m[1]);
+    expect(totals.filter((t) => t !== "")).toEqual(["30s"]);
+    expect(html).toContain("30s tracked");
   });
 });
 

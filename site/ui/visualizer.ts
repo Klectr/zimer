@@ -73,7 +73,7 @@ export function visualizer(opts: VisualizerOptions): string {
         return `<div class="ui-viz-day-head${day.isToday ? " is-today" : ""}">` +
           tooltip({
             id: `viz-day-${day.date}`,
-            label: day.detail || `${day.label} · ${day.total} tracked`,
+            label: day.detail || `${day.label} · ${day.total || "0h"} tracked`,
             placement: "bottom",
             align,
             contentHtml: content,

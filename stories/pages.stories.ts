@@ -63,7 +63,7 @@ const WEEK: WeekDay[] = [
   { weekday: "Wed", dateLabel: "Nov 4", total: "5h 45m", entries: [{ title: "Northwind — Dashboard", meta: "Case list", duration: "5h 45m", invoiced: true }] },
   { weekday: "Thu", dateLabel: "Nov 5", total: "8h 00m", entries: [{ title: "Northwind — Dashboard", meta: "Shipped #1041", duration: "8h 00m", invoiced: true }] },
   { weekday: "Fri", dateLabel: "Nov 6", total: "4h 10m", entries: [{ title: "Acme — Review", meta: "Client call", duration: "1h 00m" }, { title: "Harbor — Booking", meta: "Page draft", duration: "3h 10m" }] },
-  { weekday: "Sat", dateLabel: "Nov 7", total: "0h", entries: [] },
+  { weekday: "Sat", dateLabel: "Nov 7", total: "", entries: [] },
   {
     weekday: "Sun", dateLabel: "Nov 8", total: "5h 12m", isToday: true, logHref: "/",
     entries: [
