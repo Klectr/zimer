@@ -224,14 +224,15 @@ export function createCalendarViews(deps: CalendarViewDeps) {
           overlap: blocks.some((o) => o.e !== e && o.a < b && o.b > a),
         };
       });
-      const total = dayTotalSecs(day, wd) > 0 ? fmtDur(dayTotalSecs(day, wd)) : "0h";
+      const secs = dayTotalSecs(day, wd);
+      const total = secs > 0 ? fmtDur(secs) : "";
       const count = entries.length;
       const invoiced = entries.filter((e) => e.invoiced).length;
       days.push({
         date: day,
         label: `${weekdayOf(y, m, d).slice(0, 1)} ${d}`,
         total,
-        detail: `${weekdayOf(y, m, d)} ${MONTHS[m - 1]} ${d} · ${total} tracked · ${count} ${count === 1 ? "entry" : "entries"}${invoiced ? ` · ${invoiced} invoiced` : ""}`,
+        detail: `${weekdayOf(y, m, d)} ${MONTHS[m - 1]} ${d} · ${secs > 0 ? fmtDur(secs) : "0h"} tracked · ${count} ${count === 1 ? "entry" : "entries"}${invoiced ? ` · ${invoiced} invoiced` : ""}`,
         isToday: day === wd.today,
         entries,
       });

@@ -14,7 +14,7 @@ const DAYS: WeekDay[] = [
     { title: "Northwind — case dashboard", meta: "9:00 AM – 12:00 PM", duration: "3h 00m" },
     { title: "Acme Studio — deploy", meta: "1:00 PM – 3:12 PM", duration: "2h 12m", invoiced: true },
   ]},
-  { weekday: "Wed", dateLabel: "Nov 4", total: "0h", logHref: "/timer", entries: [] },
+  { weekday: "Wed", dateLabel: "Nov 4", total: "", logHref: "/timer", entries: [] },
   { weekday: "Thu", dateLabel: "Nov 5", total: "7h 05m", logHref: "/timer", entries: [
     { title: "Harbor — records import", meta: "8:30 AM – 12:00 PM", duration: "3h 30m" },
     { title: "Bluefin — POS fixes", meta: "1:00 PM – 4:35 PM", duration: "3h 35m" },
@@ -25,7 +25,7 @@ const DAYS: WeekDay[] = [
   { weekday: "Sat", dateLabel: "Nov 7", total: "1h 05m", logHref: "/timer", entries: [
     { title: "Northwind — review call", meta: "10:00 AM – 11:05 AM", duration: "1h 05m" },
   ]},
-  { weekday: "Sun", dateLabel: "Nov 8", total: "0h", logHref: "/timer", entries: [] },
+  { weekday: "Sun", dateLabel: "Nov 8", total: "", logHref: "/timer", entries: [] },
 ];
 
 const DRAG_SCRIPT = `<script>
@@ -135,10 +135,10 @@ export const calendarStories: Story[] = [
             { id: "e5", title: "Harbor — overlap demo", startMin: 690, endMin: 750, overlap: true, color: "#34d399" },
           ]},
           { date: "2026-11-04", label: "Wed Nov 4", total: "3h 00m", entries: [{ id: "e6", title: "Harbor — import", startMin: 510, endMin: 690, color: "#34d399" }] },
-          { date: "2026-11-05", label: "Thu Nov 5", total: "0h", entries: [] },
+          { date: "2026-11-05", label: "Thu Nov 5", total: "", entries: [] },
           { date: "2026-11-06", label: "Fri Nov 6", total: "4h 40m", entries: [{ id: "e7", title: "Acme — QA pass", startMin: 540, endMin: 820, color: "#fb923c" }] },
-          { date: "2026-11-07", label: "Sat Nov 7", total: "0h", entries: [] },
-          { date: "2026-11-08", label: "Sun Nov 8", total: "0h", entries: [] },
+          { date: "2026-11-07", label: "Sat Nov 7", total: "", entries: [] },
+          { date: "2026-11-08", label: "Sun Nov 8", total: "", entries: [] },
         ],
       }) + DRAG_SCRIPT,
   },
