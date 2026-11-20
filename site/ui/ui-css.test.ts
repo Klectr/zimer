@@ -345,3 +345,13 @@ describe("invoice search alignment (#1257)", () => {
     expect(field![0]).toContain("min-width: 0");
   });
 });
+
+describe("internal notes label (#1221)", () => {
+  test("the label renders in sentence case on the type scale — no uppercase eyebrow", () => {
+    const rule = css.match(/\.internal-notes-label \{[^}]*\}/);
+    expect(rule).not.toBeNull();
+    expect(rule![0]).toContain("font-size: var(--font-size-sm)");
+    expect(rule![0]).not.toContain("text-transform");
+    expect(rule![0]).not.toContain("letter-spacing");
+  });
+});

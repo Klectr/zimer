@@ -1724,7 +1724,7 @@ button.ui-tag { border: 0; font: inherit; cursor: pointer; }
 /* #302: internal-only notes — app surface only, never printed or shared. */
 .internal-notes { margin: 20px 0 0; padding: 14px 16px; border-radius: var(--radius-lg);
   background: var(--color-bg-elevated); }
-.internal-notes-label { font-size: 0.75rem; letter-spacing: .4px; text-transform: uppercase;
+.internal-notes-label { font-size: var(--font-size-sm);
   color: var(--color-text-secondary); margin-bottom: 6px; }
 .internal-notes p { margin: 0; white-space: pre-wrap; }
 /* #956: proof-of-payment section — app surface only, tonal like internal notes. */
