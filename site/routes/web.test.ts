@@ -883,3 +883,75 @@ describe("bare datetime rejection (#964)", () => {
     expect(r!.status).toBe(201);
   });
 });
+
+/** #1291: GET /i/:token.pdf — the client's PDF download. Same token lookup
+ * as the public page; a fresh PDF from the invoice, 404 for bad tokens. */
+describe("public invoice PDF download (#1291)", () => {
+  const PUB_TOKEN = "pubtoken1234567890pubtoken123456";
+  function setupPublicPdf() {
+    const db = createDb(mkdtempSync(join(tmpdir(), "tk-web-pdf-"))).db;
+    db.query("INSERT INTO clients (name, color, rate) VALUES ('Bytebot', '#fb923c', 40)").run();
+    const invId = Number(db.query("INSERT INTO invoices (client_id, number, issue_date, status) VALUES (1, 'INV-0001', '2026-11-05', 'sent')").run().lastInsertRowid);
+    db.query("UPDATE invoices SET public_token = ? WHERE id = ?").run(PUB_TOKEN, invId);
+    const noop = () => "";
+    const tenant = {
+      db, dbPath: "",
+      qRunning: { get: () => null } as any,
+      qOne: { get: () => null } as any,
+      qRange: { all: () => [] } as any,
+      qInvoice: { get: () => null } as any,
+      qInvoices: { all: () => [] } as any,
+      notFoundPage: () => "nf", errorPage: () => "err",
+      publicInvoicePage: noop,
+      getInvoice: (id: number) => (id === invId ? ({ id: invId, number: "INV-0001", items: [] } as any) : null),
+      invoicePdfInput: () => ({} as any),
+    };
+    const { handleWeb } = createWebRouter({
+      getTenant: () => tenant as any,
+      STATIC_DIR: "", TOKEN: "t",
+      authedPage: () => false,
+      tokensEqual: (a: string, b: string) => a === b,
+      html: (body: string, status = 200) => new Response(body, { status }),
+      json: (data: unknown, status = 200) => Response.json(data, { status }),
+      isHtmx: () => false,
+      csvResponse: (f: string) => new Response(f),
+      shareOrigin: () => "https://example.com",
+      PORT: 3000,
+      loginPage: noop, signupPage: noop, hostedLoginPage: noop,
+      HOSTED: false, accounts: null,
+      changelogPage: () => [], termsPage: () => [],
+      notFoundPage: () => "nf", noSuchInvoicePage: () => "no-such-invoice",
+      rateLimitPage: () => "rl", errorPage: () => "err",
+      invoicePdf: () => new TextEncoder().encode("%PDF-fake"), stripeConfigured: () => false,
+      workspaceEmpty: () => false, demoIds: () => [], seedDemoData: () => {},
+      removeDemoData: () => {}, entryToJson: (e: any) => e,
+    });
+    const get = (path: string) => {
+      const req = new Request(`http://x${path}`);
+      return handleWeb(req, new URL(req.url), path, "GET");
+    };
+    return { get };
+  }
+
+  test("a valid token serves the PDF as an attachment named for the invoice", async () => {
+    const { get } = setupPublicPdf();
+    const res = await get(`/i/${PUB_TOKEN}.pdf`);
+    expect(res!.status).toBe(200);
+    expect(res!.headers.get("Content-Type")).toBe("application/pdf");
+    expect(res!.headers.get("Content-Disposition")).toBe('attachment; filename="INV-0001.pdf"');
+    expect(await res!.text()).toBe("%PDF-fake");
+  });
+
+  test("an unknown token gets the same 404 dead-end as the page", async () => {
+    const { get } = setupPublicPdf();
+    const res = await get(`/i/${"z".repeat(32)}.pdf`);
+    expect(res!.status).toBe(404);
+    expect(await res!.text()).toContain("no-such-invoice");
+  });
+
+  test("a malformed token is a 404, not a PDF", async () => {
+    const { get } = setupPublicPdf();
+    const res = await get("/i/short.pdf");
+    expect(res!.status).toBe(404);
+  });
+});

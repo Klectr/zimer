@@ -279,6 +279,36 @@ describe("public invoice due chip tone (#1253)", () => {
   });
 });
 
+describe("public invoice PDF download (#1291)", () => {
+  const v = createPublicViews({
+    getInvoice: () => null,
+    invoiceTotals: (items: any[]) => {
+      const total = items.reduce((s: number, i: any) => s + i.amount, 0);
+      return { subtotal: total, tax: 0, total };
+    },
+    businessName: () => "Studio",
+    ensurePublicToken: () => "",
+  } as any) as any;
+  const inv: any = {
+    id: 7, number: "INV-2001", status: "sent", tax_rate: 0,
+    issue_date: "2026-11-05", due_date: "2099-11-19", notes: "",
+    stripe_payment_link: "", public_token: "abc123",
+    items: [{ description: "Work", hours: 2, rate: 50, amount: 100 }],
+  };
+  test("the sheet always offers Download PDF at <token>.pdf, never as the primary", () => {
+    const html = v.publicInvoicePage(inv, "https://example.com", "/i/abc123");
+    expect(html).toContain('href="/i/abc123.pdf"');
+    expect(html).toContain("Download PDF");
+    expect(html).toContain(" download>");
+    expect(html).not.toContain("ui-btn-primary");
+  });
+  test("with Stripe on, Pay stays the single primary and Download PDF is default", () => {
+    const html = v.publicInvoicePage({ ...inv, stripe_payment_link: "https://pay.example/x" }, "https://example.com", "/i/abc123");
+    expect(html).toContain('href="/i/abc123.pdf"');
+    expect(html.split("ui-btn-primary").length - 1).toBe(1);
+  });
+});
+
 describe("public invoice status edges (#1136 review)", () => {
   const mk = (globalTerms: string) => createPublicViews({
     getInvoice: () => null,
