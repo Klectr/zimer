@@ -68,6 +68,24 @@ describe("demo banner (#1218)", () => {
   });
 });
 
+describe("today column and card (#1271)", () => {
+  test("no is-today rule paints a primary wash or border — today is marked by the bold header, the dot and the now-line", () => {
+    const todayRules = [...css.matchAll(/\.is-today[^{]*\{[^}]*\}/g)].map((m) => m[0]);
+    expect(todayRules.length).toBeGreaterThan(0);
+    for (const rule of todayRules) {
+      expect(rule).not.toContain("background");
+      expect(rule).not.toContain("border");
+      expect(rule).not.toContain("--color-primary");
+    }
+    const vizName = css.match(/\.ui-viz-day-head\.is-today \.ui-viz-day-name \{[^}]*\}/);
+    expect(vizName).not.toBeNull();
+    expect(vizName![0]).toContain("font-weight: var(--font-weight-strong)");
+    const dayName = css.match(/\.ui-day\.is-today \.ui-day-name \{[^}]*\}/);
+    expect(dayName).not.toBeNull();
+    expect(dayName![0]).toContain("font-weight: var(--font-weight-strong)");
+  });
+});
+
 describe("style.css token references", () => {
   test("every var() reference resolves to a definition (or an inline-set legacy var)", () => {
     const defs = new Set([...css.matchAll(/(--[\w-]+)\s*:/g)].map((m) => m[1]));
