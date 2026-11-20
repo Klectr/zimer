@@ -49,6 +49,35 @@ function detailInv(status: string, paid_at: string | null) {
   };
 }
 
+describe("public link copy (#1296)", () => {
+  const metaDb = (instructions: string) => ({
+    query: (_sql: string) => ({
+      get: (..._a: unknown[]) => ({ value: instructions }),
+      all: (..._a: unknown[]) => [],
+      run: (..._a: unknown[]) => {},
+    }),
+  }) as unknown as Database;
+  test("sent with no pay channel says view only", () => {
+    const html = views([]).invoiceDetailBody(detailInv("sent", null) as any, "http://x");
+    expect(html).toContain("Anyone with the link can view —");
+    expect(html).not.toContain("can view and pay");
+  });
+  test("sent with payment instructions set says view and pay", () => {
+    const html = views([], { db: metaDb("Bank transfer to Acct 123") }).invoiceDetailBody(detailInv("sent", null) as any, "http://x");
+    expect(html).toContain("Anyone with the link can view and pay —");
+  });
+  test("sent with a Stripe payment link says view and pay", () => {
+    const inv = { ...detailInv("sent", null), stripe_payment_link: "https://pay.example/x" };
+    const html = views([]).invoiceDetailBody(inv as any, "http://x");
+    expect(html).toContain("Anyone with the link can view and pay —");
+  });
+  test("draft with instructions set still says view only", () => {
+    const html = views([], { db: metaDb("Bank transfer to Acct 123") }).invoiceDetailBody(detailInv("draft", null) as any, "http://x");
+    expect(html).toContain("Anyone with the link can view —");
+    expect(html).not.toContain("can view and pay");
+  });
+});
+
 describe("paid-on date", () => {
   test("list row shows the paid date in the status chip", () => {
     const html = views([{ ...baseRow, status: "paid", paid_at: "2026-09-21" }]).invoiceListOob(7);

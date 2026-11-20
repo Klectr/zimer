@@ -97,6 +97,16 @@ describe("public invoice parties (#1224)", () => {
   });
 });
 
+describe("public invoice how to pay (#1296)", () => {
+  test("renders the instructions block, escaped; blank text renders nothing", () => {
+    const html = publicInvoice({ business: "B", meta: "M", lines: [], totalLabel: "Total due", total: "$1.00", howToPay: "Wire to <i>Acct 9</i>" });
+    expect(html).toContain("How to pay");
+    expect(html).toContain("Wire to &lt;i&gt;Acct 9&lt;/i&gt;");
+    const blank = publicInvoice({ business: "B", meta: "M", lines: [], totalLabel: "Total due", total: "$1.00", howToPay: "  " });
+    expect(blank).not.toContain("How to pay");
+  });
+});
+
 describe("public invoice pay action", () => {
   test("no pay link, no pay button (paid or linkless Zinvoices)", () => {
     const html = publicInvoice({ business: "B", meta: "M", lines: [], totalLabel: "Total due", total: "$0.00" });

@@ -20,6 +20,7 @@ export interface PublicViewDeps {
   businessName?: () => string;
   businessEmail?: () => string;
   businessAddress?: () => string;
+  paymentInstructions?: () => string;
   paymentTerms?: () => string;
   ensurePublicToken: (id: number) => string;
 }
@@ -98,6 +99,7 @@ export function createPublicViews(deps: PublicViewDeps) {
       totalLabel: inv.status === "paid" ? "Total paid" : inv.status === "draft" ? "Total" : "Total due",
       total: money(t.total),
       pay: inv.stripe_payment_link ? { label: `Pay ${money(t.total)}`, href: inv.stripe_payment_link } : undefined,
+      howToPay: !inv.stripe_payment_link && inv.status === "sent" ? (deps.paymentInstructions?.() || undefined) : undefined,
       download: { label: "Download PDF", href: `${tokenPath}.pdf` }, /* #1291 */
       note: inv.stripe_payment_link ? "Secure payment by card. Questions? Reply to the email this link came in." : undefined,
       notes: inv.notes || undefined,

@@ -296,6 +296,14 @@ describe("manage labels (#827)", () => {
     expect(html).toContain("placeholder=\"123 Main St\nSuite 200\nSpringfield, IL 62701\"");
     expect(html).not.toContain('<input class="ui-input" type="text" id="bp-business_address"');
   });
+
+  test("business profile carries the payment instructions field (#1296)", () => {
+    const { db } = testDb();
+    const views = createManageViews({ db, layout: (_t: string, b: string) => b, unbilledByClient: () => [] });
+    const html = views.bizProfileSection();
+    expect(html).toContain('<textarea class="ui-input" id="bp-payment_instructions" name="business_payment_instructions" rows="3"');
+    expect(html).toContain("How to pay on the public Zinvoice");
+  });
 });
 
 /** #1203: Manage follows the suite mock — one stacked page: appHeader

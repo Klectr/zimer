@@ -18,6 +18,7 @@ export interface PublicInvoiceOptions {
   totalLabel: string;
   total: string;
   pay?: { label: string; href: string };
+  howToPay?: string;
   download?: { label: string; href: string };
   note?: string;
   notes?: string;
@@ -43,6 +44,7 @@ export function publicInvoice(opts: PublicInvoiceOptions): string {
   const parties = party("From", opts.from) + party("Bill to", opts.billTo);
   const partiesHtml = parties ? `<div class="ui-public-parties">${parties}</div>` : "";
   const pay = opts.pay ? linkButton({ label: opts.pay.label, href: opts.pay.href, variant: "primary", size: "lg", block: true, external: true }) : "";
+  const howToPay = (opts.howToPay || "").trim() ? `<div class="ui-public-howtopay"><div class="ui-public-party-label">How to pay</div><p class="ui-public-howtopay-text">${esc(opts.howToPay!.trim())}</p></div>` : "";
   const download = opts.download ? linkButton({ label: opts.download.label, href: opts.download.href, variant: "default", size: "lg", block: true, download: true, icon: "download" }) : "";
   const note = opts.note ? `<p class="ui-public-note">${esc(opts.note)}</p>` : "";
   const notes = opts.notes ? `<p class="ui-public-notes">${esc(opts.notes)}</p>` : "";
@@ -54,6 +56,7 @@ export function publicInvoice(opts: PublicInvoiceOptions): string {
     partiesHtml +
     `<div class="ui-public-lines">${lines}</div>` +
     notes +
+    howToPay +
     pay +
     download +
     `${note}</div>`;
