@@ -34,13 +34,15 @@ describe("invoice list query (#1293, slice of #992)", () => {
     expect(r.paid_at).toBe("2026-11-10");
     expect(r.client_name).toBe("Acme");
     expect(r.client_payment_terms).toBe("net_15");
+    expect("client_color" in r).toBe(true);
+    expect("project_name" in r).toBe(true);
     expect(r.subtotal).toBe(100);
   });
 
   test("list rows do not load snapshots, internal notes, or tokens", () => {
     const { qInvoices } = seededBundle();
     const r = qInvoices.all()[0] as any;
-    for (const col of ["html_snapshot", "pdf_snapshot", "internal_notes", "notes", "public_token", "stripe_payment_link", "stripe_payment_link_id", "template", "created_at"])
+    for (const col of ["html_snapshot", "pdf_snapshot", "internal_notes", "notes", "public_token", "stripe_payment_link", "stripe_payment_link_id", "paid_via_stripe", "template", "created_at"])
       expect(col in r).toBe(false);
   });
 
@@ -50,5 +52,9 @@ describe("invoice list query (#1293, slice of #992)", () => {
     expect(inv.html_snapshot).toBe("<html>frozen</html>");
     expect(inv.internal_notes).toBe("internal secret");
     expect(inv.public_token).toBe("tok_secret");
+    expect(inv.notes).toBe("client note");
+    expect(inv.template).toBe("classic");
+    expect(inv.stripe_payment_link).toBe("https://pay.example/x");
+    expect(inv.pdf_snapshot).not.toBeNull();
   });
 });
