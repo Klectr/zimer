@@ -410,6 +410,7 @@ export function createManageViews(deps: ManageViewDeps) {
     const email = getMeta(db, "business_email");
     const address = getMeta(db, "business_address");
     const terms = getMeta(db, "business_payment_terms");
+    const payInstructions = getMeta(db, "business_payment_instructions");
     const options = (Object.entries(PAYMENT_TERMS) as [PaymentTermsKey, { label: string; description: string }][])
       .map(([k, v]) => ({ value: k, label: v.label, desc: v.description }));
     const body =
@@ -421,6 +422,8 @@ export function createManageViews(deps: ManageViewDeps) {
       selectField({ id: "bp-terms", label: "Payment terms", name: "business_payment_terms", options, value: terms, className: "terms-select" }) +
       `</div>` +
       `<p class="terms-desc ui-settings-note">${esc(termsDescription(termsKey(null, terms)))}</p>` +
+      textAreaField({ id: "bp-payment_instructions", label: "Payment instructions", name: "business_payment_instructions", value: payInstructions, rows: 3, placeholder: "Bank transfer to …\nOr mail a check to …" }) +
+      `<p class="ui-settings-note">Shown as How to pay on the public Zinvoice when there is no card payment link.</p>` +
       `<div class="ui-settings-actions">${button({ label: "Save profile", type: "submit", icon: "save" })}</div>` +
       `</form>`;
     return settingsSection({ level: 2, id: "biz-profile", title: "Business profile", hint: "Shown in the From block on Zinvoices; the payment terms print on the Zinvoice too.", bodyHtml: body });

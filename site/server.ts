@@ -149,6 +149,7 @@ function buildTenantTree(bundle: DbBundle, dbPath: string): WebTenant & ApiTenan
     businessName: () => getMeta(db, "business_name"),
     businessEmail: () => getMeta(db, "business_email"),
     businessAddress: () => getMeta(db, "business_address"),
+    paymentInstructions: () => getMeta(db, "business_payment_instructions"),
     paymentTerms: () => getMeta(db, "business_payment_terms"),
   });
 

@@ -519,6 +519,8 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .ui-public-lines { border-top: 1px solid var(--color-border-secondary); margin: var(--spacing-sm) 0 var(--spacing-md); }
 .ui-public .ui-summary-total .num { color: var(--color-text); }
 .ui-public-notes { font-size: var(--font-size-sm); line-height: var(--line-height-sm); color: var(--color-text-secondary); white-space: pre-wrap; margin: 0 0 var(--spacing-md); }
+.ui-public-howtopay { margin: 0 0 var(--spacing-md); }
+.ui-public-howtopay-text { font-size: var(--font-size-sm); line-height: var(--line-height-sm); color: var(--color-text-secondary); white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
 .ui-public-note { font-size: var(--font-size-sm); line-height: var(--line-height-sm); color: var(--color-text-tertiary); text-align: center; margin-top: var(--spacing-sm); }
 .ui-public-footer { font-size: var(--font-size-sm); color: var(--color-text-tertiary); text-align: center; margin-top: var(--spacing-sm); }
 .ui-hero { text-align: center; padding: var(--spacing-xl) var(--spacing-md) var(--spacing-lg); }
@@ -1865,7 +1867,7 @@ button.ui-tag { border: 0; font: inherit; cursor: pointer; }
   /* #1136: the public summary on paper — dark text, visible tag outline,
      hairlines that survive without backgrounds. */
   .ui-public-sheet { background: #fff; color: #111; border-color: #999; }
-  .ui-public-meta, .ui-public-notes, .ui-public-party-line { color: #333; }
+  .ui-public-meta, .ui-public-notes, .ui-public-party-line, .ui-public-howtopay-text { color: #333; }
   .ui-public-party-label { color: #555; }
   .ui-public-lines { border-top-color: #ccc; }
   .ui-public-lines .ui-summary-line { border-bottom-color: #ddd; }

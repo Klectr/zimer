@@ -309,6 +309,40 @@ describe("public invoice PDF download (#1291)", () => {
   });
 });
 
+describe("public invoice payment instructions (#1296)", () => {
+  const v = createPublicViews({
+    getInvoice: () => null,
+    invoiceTotals: (items: any[]) => {
+      const total = items.reduce((s: number, i: any) => s + i.amount, 0);
+      return { subtotal: total, tax: 0, total };
+    },
+    businessName: () => "Studio",
+    paymentInstructions: () => "Bank transfer to <b>Acct 123</b>\nRef: invoice number",
+    ensurePublicToken: () => "",
+  } as any) as any;
+  const inv: any = {
+    id: 7, number: "INV-2001", status: "sent", tax_rate: 0,
+    issue_date: "2026-11-05", due_date: "2099-11-19", notes: "",
+    stripe_payment_link: "", public_token: "abc123",
+    items: [{ description: "Work", hours: 2, rate: 50, amount: 100 }],
+  };
+  test("unpaid with no card link shows How to pay, escaped, line breaks kept", () => {
+    const html = v.publicInvoicePage(inv, "https://example.com", "/i/abc123");
+    expect(html).toContain("How to pay");
+    expect(html).toContain("Bank transfer to &lt;b&gt;Acct 123&lt;/b&gt;");
+    expect(html).not.toContain("<b>Acct 123</b>");
+    expect(html).toContain("ui-public-howtopay-text");
+  });
+  test("hidden when a card payment link exists", () => {
+    const html = v.publicInvoicePage({ ...inv, stripe_payment_link: "https://pay.example/x" }, "https://example.com", "/i/abc123");
+    expect(html).not.toContain("How to pay");
+  });
+  test("hidden once paid", () => {
+    const html = v.publicInvoicePage({ ...inv, status: "paid" }, "https://example.com", "/i/abc123");
+    expect(html).not.toContain("How to pay");
+  });
+});
+
 describe("public invoice status edges (#1136 review)", () => {
   const mk = (globalTerms: string) => createPublicViews({
     getInvoice: () => null,

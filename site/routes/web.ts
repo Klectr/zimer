@@ -744,6 +744,7 @@ export function createWebRouter(deps: WebDeps) {
           const gterms = String(form.get("business_payment_terms") || "").trim();
           if (!isPaymentTermsKey(gterms)) return new Response("Unknown payment terms.", { status: 400 });
           setMeta(db, "business_payment_terms", gterms);
+          setMeta(db, "business_payment_instructions", String(form.get("business_payment_instructions") || "").trim());
           if (isHtmx(req)) return html(bizProfileSection());
           return new Response(null, { status: 302, headers: { Location: "/manage" } });
         }

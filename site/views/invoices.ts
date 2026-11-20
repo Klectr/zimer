@@ -954,7 +954,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     const publicLinkCard = `
       <section class="ui-card share-lines no-print" aria-label="Public link">
         <div class="ui-card-head"><span class="ui-section-title">Public link</span></div>
-        <p class="muted">Anyone with the link can view and pay — no login for your client.</p>
+        <p class="muted">Anyone with the link can view${stripeConfigured() ? " and pay" : ""} — no login for your client.</p>
         ${clientLine}
         ${stripeWarn}
       </section>`;
