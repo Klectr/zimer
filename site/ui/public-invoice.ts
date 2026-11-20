@@ -10,6 +10,7 @@ export interface PublicInvoiceOptions {
   totalLabel: string;
   total: string;
   pay?: { label: string; href: string };
+  download?: { label: string; href: string };
   note?: string;
   notes?: string;
   footer?: string;
@@ -19,6 +20,7 @@ export function publicInvoice(opts: PublicInvoiceOptions): string {
   const chip = opts.chipHtml ? `<span class="ui-card-head-end">${opts.chipHtml}</span>` : "";
   const lines = summaryLines(opts.lines, opts.totalLabel, opts.total);
   const pay = opts.pay ? linkButton({ label: opts.pay.label, href: opts.pay.href, variant: "primary", size: "lg", block: true, external: true }) : "";
+  const download = opts.download ? linkButton({ label: opts.download.label, href: opts.download.href, variant: "default", size: "lg", block: true, download: true, icon: "download" }) : "";
   const note = opts.note ? `<p class="ui-public-note">${esc(opts.note)}</p>` : "";
   const notes = opts.notes ? `<p class="ui-public-notes">${esc(opts.notes)}</p>` : "";
   const footer = opts.footer ? `<p class="ui-public-footer">${esc(opts.footer)}</p>` : "";
@@ -29,6 +31,7 @@ export function publicInvoice(opts: PublicInvoiceOptions): string {
     `<div class="ui-public-lines">${lines}</div>` +
     notes +
     pay +
+    download +
     `${note}</div>`;
   return `<div class="ui-public">${sheet}${footer}</div>`;
 }
