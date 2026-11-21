@@ -12,6 +12,12 @@ function accountsDb() {
 }
 
 describe("hosted accounts (#732)", () => {
+  test("accounts DB waits on a locked write instead of failing fast (#1319)", () => {
+    const a = accountsDb();
+    const row = a.db.query("PRAGMA busy_timeout").get() as { timeout: number };
+    expect(row.timeout).toBe(5000);
+  });
+
   test("signup stores an argon2 hash, never the plaintext password", async () => {
     const a = accountsDb();
     const { user, error } = await a.signup("Ada@example.com", "correct-horse-8");
