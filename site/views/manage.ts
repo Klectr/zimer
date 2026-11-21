@@ -474,6 +474,7 @@ export function createManageViews(deps: ManageViewDeps) {
       level: 2, id: "preferences", title: "Preferences",
       hint: "Defaults for the timer and calendar.",
       bodyHtml:
+        `<div class="settings-pref-list">` +
         `<div class="settings-pref-row">` +
         `<div class="settings-pref-text"><div class="settings-pref-title">Daily hours target</div><div class="settings-pref-hint">Drives the pacing bars on the timer and calendar; the week target is five days at this rate.</div></div>` +
         dailyTargetControl() +
@@ -481,6 +482,7 @@ export function createManageViews(deps: ManageViewDeps) {
         `<div class="settings-pref-row">` +
         `<div class="settings-pref-text"><div class="settings-pref-title">Accent color</div><div class="settings-pref-hint">Pumpkin is the default. Changes your app only; Zinvoices keep your brand.</div></div>` +
         `<div class="settings-pref-control">${themeDotsHtml()}</div>` +
+        `</div>` +
         `</div>`,
     });
   }
