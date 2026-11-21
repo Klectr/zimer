@@ -756,6 +756,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     },true);
     function pan(dir){
       panning=true;
+      trackEl.classList.add('is-panning'); /* #1219: phones collapse neighbour strips at rest */
       if(panReduce){ settlePan(dir); return; }
       trackEl.style.transform=dir>0?'translateX(-200%)':'translateX(0)';
       var done=false;
@@ -779,6 +780,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       trackEl.style.transform='translateX(-100%)';
       void trackEl.offsetWidth;
       trackEl.classList.remove('no-anim');
+      trackEl.classList.remove('is-panning');
       /* The pane is week-scoped: swap it instantly from the incoming
          (middle) strip's pre-rendered template. */
       var mid=trackStrips()[1];

@@ -983,14 +983,21 @@ body.app-fixed .ui-shell-main { min-height: 0; }
   body main { padding-bottom: calc(96px + var(--nav-bar-height)); }
   body.app-fixed main { padding-bottom: calc(16px + var(--nav-bar-height)); }
   .ui-toast-live { bottom: calc(24px + var(--nav-bar-height)); }
-  /* #1211: on phones the fixed viewport nests the page in a short inner
-     scroller under pinned chrome. Let the document scroll instead — except
-     the calendar, whose week carousel needs the fixed strip height. */
-  body.app-fixed:not(:has(#week)) { height: auto; overflow: visible; display: block; }
-  body.app-fixed:not(:has(#week)) .ui-shell { min-height: 100dvh; }
-  body.app-fixed:not(:has(#week)) .ui-shell-main { min-height: auto; }
-  body.app-fixed:not(:has(#week)) main { flex: none; min-height: auto; padding-bottom: calc(96px + var(--nav-bar-height)); }
-  body.app-fixed:not(:has(#week)) .scroll-region { flex: none; min-height: auto; overflow: visible; padding: 0; }
+  /* #1211, #1219: on phones the fixed viewport nests the page in a short
+     inner scroller under pinned chrome. Let the document scroll instead. */
+  body.app-fixed { height: auto; overflow: visible; display: block; }
+  body.app-fixed .ui-shell { min-height: 100dvh; }
+  body.app-fixed .ui-shell-main { min-height: auto; }
+  body.app-fixed main { flex: none; min-height: auto; padding-bottom: calc(96px + var(--nav-bar-height)); }
+  body.app-fixed .scroll-region { flex: none; min-height: auto; overflow: visible; padding: 0; }
+  /* Calendar: strips size to their own week; at rest the off-screen
+     neighbours collapse so a longer week can't pad the page, and the pan
+     lifts that while the incoming week slides in. */
+  body.app-fixed #week { display: block; min-height: auto; }
+  body.app-fixed .cal-pane-layout { min-height: auto; }
+  body.app-fixed .cal-track { height: auto; align-items: flex-start; }
+  body.app-fixed .cal-track:not(.is-panning) > .cal-strip:not(:nth-child(2)) { height: 0; overflow: hidden; }
+  body.app-fixed .cal-strip > .ui-week { flex: none; overflow: visible; }
 }
 /* #1211: on phones the line-items table stacks each item (description +
    amount, then the date range, then hours × rate) instead of overflowing
