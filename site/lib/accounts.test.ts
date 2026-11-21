@@ -12,7 +12,7 @@ function accountsDb() {
 }
 
 describe("hosted accounts (#732)", () => {
-  test("accounts DB waits on a locked write instead of failing fast (#1319)", () => {
+  test("accounts DB is created with a 5000ms busy timeout (#1319)", () => {
     const a = accountsDb();
     const row = a.db.query("PRAGMA busy_timeout").get() as { timeout: number };
     expect(row.timeout).toBe(5000);

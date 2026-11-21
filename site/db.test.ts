@@ -46,12 +46,6 @@ describe("invoice list query (#1293, slice of #992)", () => {
       expect(col in r).toBe(false);
   });
 
-  test("tenant DB waits on a locked write instead of failing fast (#1319)", () => {
-    const { db } = createDb(mkdtempSync(join(tmpdir(), "tk-db-")));
-    const row = db.query("PRAGMA busy_timeout").get() as { timeout: number };
-    expect(row.timeout).toBe(5000);
-  });
-
   test("the single-invoice query stays full-width for the detail view", () => {
     const { qInvoice } = seededBundle();
     const inv = qInvoice.get(1) as any;
@@ -62,5 +56,13 @@ describe("invoice list query (#1293, slice of #992)", () => {
     expect(inv.template).toBe("classic");
     expect(inv.stripe_payment_link).toBe("https://pay.example/x");
     expect(inv.pdf_snapshot).not.toBeNull();
+  });
+});
+
+describe("sqlite busy timeout (#1319, slice of #996)", () => {
+  test("tenant DB is created with a 5000ms busy timeout", () => {
+    const { db } = createDb(mkdtempSync(join(tmpdir(), "tk-db-")));
+    const row = db.query("PRAGMA busy_timeout").get() as { timeout: number };
+    expect(row.timeout).toBe(5000);
   });
 });
