@@ -53,7 +53,7 @@ describe("#753: mascot placements", () => {
   test("invoices empty state shows the stopwatch mascot, not the receipt icon", () => {
     const html = invoiceViews().invoicesPage(null, "/invoices");
     expect(html).toContain('class="empty-mascot"');
-    expect(html).toContain('src="/static/mascot-empty.png"');
+    expect(html).toContain('src="/static/mascot-empty.webp"');
     expect(html).toContain("No Zinvoices yet");
   });
 
