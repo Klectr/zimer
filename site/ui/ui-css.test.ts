@@ -531,9 +531,20 @@ describe("button icon size (#1340)", () => {
  *  names may wrap, so the table fits a 375px screen. */
 describe("clients table on phones (#1344)", () => {
   test("compact rules hide the wide columns and let names wrap", () => {
-    expect(css).toContain(".manage-table-card .col-month, .manage-table-card .col-last { display: none; }");
+    expect(css).toContain(".manage-table-card .col-month { display: none; }");
+    expect(css).toContain(".manage-table-card .col-last { display: none; }");
     expect(css).toContain(".manage-table-card .mg-chev, .manage-table-card .mg-table th:last-child { display: none; }");
     expect(css).toContain(".manage-table-card .mg-table td:first-child { white-space: normal; }");
+  });
+
+  /* The card overflowed at ~625px (wide viewport, narrow content column)
+     because the tiers keyed off the viewport. They key off the card now. */
+  test("tiers are container queries on the card, and the bar and hover card can shrink", () => {
+    expect(css).toContain(".manage-table-card { container-type: inline-size; }");
+    expect(css).toMatch(/@container \(max-width: 639px\) \{\s*\.manage-table-card \.col-last \{ display: none; \}/);
+    expect(css).toMatch(/@container \(max-width: 519px\) \{\s*\.manage-table-card \.col-month \{ display: none; \}/);
+    expect(css).not.toMatch(/\.mg-bar \{[^}]*\bwidth: 160px/);
+    expect(css).toMatch(/\.mg-card \{[^}]*width: min\(280px, calc\(100cqw/);
   });
 
   test("the hover card only opens on hover-capable devices or keyboard focus", () => {
