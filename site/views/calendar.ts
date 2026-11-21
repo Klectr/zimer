@@ -579,7 +579,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       scroller.scrollTop=Math.max(0,r.top-s.top+scroller.scrollTop-scroller.clientHeight*0.35);}
     function toMin(t){var p=t.split(':');return (+p[0])*60+(+p[1]);}
     function toHM(m){m=((m%1440)+1440)%1440;return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');}
-    function fmtD(mins){var h=Math.floor(mins/60),m=mins%60;return (h?h+'h ':'')+m+'m';}
+    function fmtD(mins){if(mins<=0)return '';var h=Math.floor(mins/60),m=mins%60;if(h)return m?h+'h '+String(m).padStart(2,'0')+'m':h+'h';return m+'m';}
     function fmt12(mins){var h24=Math.floor(mins/60),m=mins%60,s=h24>=12?'PM':'AM',
       h=h24%12===0?12:h24%12;return h+':'+String(m).padStart(2,'0')+' '+s;}
     function fmtCompact(mins,withMer){var h24=Math.floor(mins/60),m=mins%60,

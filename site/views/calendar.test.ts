@@ -1180,3 +1180,24 @@ describe("calendar initial scroll — running entries (#1219)", () => {
     expect(fn).toContain("nowMin>em");
   });
 });
+
+/** #1219: the live drag/resize paint and the dialog duration readout format
+ *  durations with the inline fmtD, while the server renders the same figures
+ *  with fmtDur. fmtD drifted: "1h 5m" / "1h 0m" / "0m" where a reload shows
+ *  "1h 05m" / "1h" / blank — totals changed format after any drag, and an
+ *  emptied day gained a "0m" the server never renders. */
+describe("calendar live duration format (#1219)", () => {
+  test("fmtD mirrors fmtDur: padded minutes, no 00m, blank at zero", async () => {
+    const src = await Bun.file("site/views/calendar.ts").text();
+    const start = src.indexOf("function fmtD");
+    const fnSrc = src.slice(start, src.indexOf("function fmt12", start));
+    const fmtD = new Function(`${fnSrc}; return fmtD;`)() as (mins: number) => string;
+    expect(fmtD(0)).toBe("");
+    expect(fmtD(5)).toBe("5m");
+    expect(fmtD(30)).toBe("30m");
+    expect(fmtD(60)).toBe("1h");
+    expect(fmtD(65)).toBe("1h 05m");
+    expect(fmtD(125)).toBe("2h 05m");
+    expect(fmtD(600)).toBe("10h");
+  });
+});
