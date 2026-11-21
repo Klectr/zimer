@@ -463,6 +463,18 @@ describe("type-scale weights and sizes (#1215 slice)", () => {
   });
 });
 
+describe("dead pane/form CSS (#1313)", () => {
+  test("the unemitted pane-layout, unbilled-head, two-field and form-spacer rules stay out of style.css", () => {
+    for (const sel of [".pane-layout", ".pane-focus", ".pane-supporting", ".unbilled-head", ".two-field", ".ui-form-spacer"]) {
+      expect(css).not.toContain(sel);
+    }
+    expect(css).toContain(".cal-pane-layout");
+    expect(css).toContain(".scroll-region");
+    expect(css).toContain(".ui-form-row");
+    expect(css).toContain("--layout-supporting-pane");
+  });
+});
+
 describe("dead invoice-widget CSS (#1311)", () => {
   test("the unemitted invoice-widget family stays out of style.css", () => {
     for (const sel of [".inv-widgets", ".inv-widgets-col", ".inv-wsub", ".inv-wrow", ".inv-wmain", ".inv-wtext", ".inv-wname", ".inv-wamt", ".inv-wval", ".inv-bar", ".inv-dot", ".inv-view-cell", ".inv-overdue-text"]) {
