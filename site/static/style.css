@@ -725,8 +725,6 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
-.md-title-medium { font-size: var(--font-size-lg); line-height: 24px; font-weight: 500; letter-spacing: 0.15px; }
-
 .muted { color: var(--color-text-secondary); }
 .tiny { font-size: var(--font-size-sm); }
 .error { color: var(--color-error); }

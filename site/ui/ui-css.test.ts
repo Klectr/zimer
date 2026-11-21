@@ -426,7 +426,6 @@ describe("type-scale weights and sizes (#1215 slice)", () => {
     const cases: Array<[RegExp, string]> = [
       [/\.tb-chart text \{[^}]*font-size: [^}]*\}/, "var(--font-size-sm)"],
       [/\.ui-landing-title \{[^}]*font-size: [^}]*\}/, "var(--font-size-heading-2)"],
-      [/\.md-title-medium \{[^}]*font-size: [^}]*\}/, "var(--font-size-lg)"],
       [/\.tiny \{[^}]*font-size: [^}]*\}/, "var(--font-size-sm)"],
       [/\.skip-link \{[^}]*font-size: [^}]*\}/, "var(--font-size)"],
       [/\.cal-supporting \.week-clients \{[^}]*font-size: [^}]*\}/, "var(--font-size-sm)"],
