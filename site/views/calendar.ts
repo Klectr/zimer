@@ -313,7 +313,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
   /** #572: the supporting pane's inner HTML for one week. Rendered live in
       the aside and once per carousel strip inside a <template>, so the pane
       swaps instantly (no fetch) when a pan settles on a pre-rendered week. */
-  function paneInner(wd: CalWeekData): string {
+  function paneInner(wd: CalWeekData, empty?: boolean): string {
     const { sun, today, weekTotal, weekBillable, clientRows, uninvoiced, prevBillable, weekPhase } = wd;
     const prev = addDays(sun, -7), next = addDays(sun, 7);
     const isThisWeek = sun === sundayOfYmd(today);
@@ -382,7 +382,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
          the 24h grid, the per-day + button on the narrow agenda. Both variants
          render in place; the client picks by strip width (see syncCalHint). */ ""}
       <p class="muted tiny cal-hint"><span class="cal-hint-grid">Drag across the calendar to log time. Click an entry to edit it.</span><span class="cal-hint-agenda">Tap + to log time, tap an entry to edit.</span></p>
-      ${workspaceEmpty(db) ? `<div class="cal-first-run">
+      ${(empty ?? workspaceEmpty(db)) ? `<div class="cal-first-run">
         ${icon("info")}
         <p><strong>New here?</strong> Load fictional sample data to explore the calendar.</p>
         <form method="post" action="/demo/load" class="inline">${button({ label: "Load demo data", variant: "ghost", type: "submit" })}</form>
@@ -392,8 +392,8 @@ export function createCalendarViews(deps: CalendarViewDeps) {
   /** #572: a carousel strip's inner HTML for one week — the visualizer
       grid, the narrow agenda, and the week's supporting pane in a
       <template>. */
-  function stripInnerHtml(sun: string, tz: string | null): string {
-    const wd = weekData(sun, tz);
+  function stripInnerHtml(sun: string, tz: string | null, pre?: { wd?: CalWeekData; empty?: boolean }): string {
+    const wd = pre?.wd && pre.wd.sun === sun ? pre.wd : weekData(sun, tz);
     const nowP = tzParts(new Date(), tz);
     const nowMin = nowP.hh * 60 + nowP.mm;
     return `
@@ -404,12 +404,12 @@ export function createCalendarViews(deps: CalendarViewDeps) {
         ${linkButton({ label: "Export week CSV", href: `/export/entries.csv?from=${sun}&to=${addDays(sun, 7)}`, size: "sm", download: true, className: "cal-legend-export" })}
       </div>
       ${weekView({ agendaOnly: true, days: agendaDays(wd) })}
-      <template class="cal-pane-tpl">${paneInner(wd)}</template>`;
+      <template class="cal-pane-tpl">${paneInner(wd, pre?.empty)}</template>`;
   }
 
   /** #572: one carousel strip — a full week, tagged with its Sunday. */
-  function stripHtml(sun: string, tz: string | null): string {
-    return `<div class="cal-strip" data-sun="${sun}">${stripInnerHtml(sun, tz)}</div>`;
+  function stripHtml(sun: string, tz: string | null, pre?: { wd?: CalWeekData; empty?: boolean }): string {
+    return `<div class="cal-strip" data-sun="${sun}">${stripInnerHtml(sun, tz, pre)}</div>`;
   }
 
   /** Inner HTML of the #week section (everything that changes when entries do).
@@ -423,11 +423,12 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     const today = ymdOf(tzParts(new Date(), tz));
     const sun = weekStr && /^\d{4}-\d{2}-\d{2}$/.test(weekStr) ? weekStr : sundayOfYmd(today);
     const wd = weekData(sun, tz);
-    const strips = [addDays(sun, -7), sun, addDays(sun, 7)].map((s) => stripHtml(s, tz)).join("");
+    const empty = workspaceEmpty(db);
+    const strips = [addDays(sun, -7), sun, addDays(sun, 7)].map((s) => stripHtml(s, tz, s === sun ? { wd, empty } : { empty })).join("");
     return `
     <div class="cal-pane-layout">
       <aside class="cal-supporting" data-enter="3" aria-label="Week summary">
-        ${paneInner(wd)}
+        ${paneInner(wd, empty)}
       </aside>
       <div class="cal-carousel">
         <div class="cal-track">
