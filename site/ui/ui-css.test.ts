@@ -475,6 +475,13 @@ describe("dead pane/form CSS (#1313)", () => {
   });
 });
 
+describe("dead page-narrow CSS (#1315)", () => {
+  test("the unemitted page-narrow rules stay out of style.css", () => {
+    expect(css).not.toContain(".page-narrow");
+    expect(css).toContain(".ui-card.form-card { max-width: 720px; }");
+  });
+});
+
 describe("dead invoice-widget CSS (#1311)", () => {
   test("the unemitted invoice-widget family stays out of style.css", () => {
     for (const sel of [".inv-widgets", ".inv-widgets-col", ".inv-wsub", ".inv-wrow", ".inv-wmain", ".inv-wtext", ".inv-wname", ".inv-wamt", ".inv-wval", ".inv-bar", ".inv-dot", ".inv-view-cell", ".inv-overdue-text"]) {
