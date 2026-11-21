@@ -51,7 +51,7 @@ function setup() {
     STATIC_DIR: "", TOKEN: "t",
     authedPage: () => true,
     tokensEqual: (a: string, b: string) => a === b,
-    html: (body: string, status = 200) => new Response(body, { status }),
+    html: (body: string, status = 200, extra: Record<string, string> = {}) => new Response(body, { status, headers: extra }),
     json: (data: unknown, status = 200) => Response.json(data, { status }),
     isHtmx: (req: Request) => req.headers.get("HX-Request") === "true",
     csvResponse: (f: string) => new Response(f),
@@ -382,7 +382,7 @@ function setupSend() {
     STATIC_DIR: "", TOKEN: "t",
     authedPage: () => true,
     tokensEqual: (a: string, b: string) => a === b,
-    html: (body: string, status = 200) => new Response(body, { status }),
+    html: (body: string, status = 200, extra: Record<string, string> = {}) => new Response(body, { status, headers: extra }),
     json: (data: unknown, status = 200) => Response.json(data, { status }),
     isHtmx: (req: Request) => req.headers.get("HX-Request") === "true",
     csvResponse: (f: string) => new Response(f),
@@ -569,7 +569,7 @@ describe("/manage stacked page (#1203)", () => {
       STATIC_DIR: "", TOKEN: "t",
       authedPage: () => true,
       tokensEqual: (a: string, b: string) => a === b,
-      html: (body: string, status = 200) => new Response(body, { status }),
+      html: (body: string, status = 200, extra: Record<string, string> = {}) => new Response(body, { status, headers: extra }),
       json: (data: unknown, status = 200) => Response.json(data, { status }),
       isHtmx: (req: Request) => req.headers.get("HX-Request") === "true",
       csvResponse: (f: string) => new Response(f),
@@ -740,6 +740,17 @@ describe("daily target (#908)", () => {
     }
   });
 
+  /* #1335: the save confirms itself by name via an HX-Trigger tk-toast
+     event; a rejected value must not claim success. */
+  test("an htmx save asks for the Daily target saved toast; a 400 does not", async () => {
+    const { handleWeb } = setup();
+    const ok = await postTarget(handleWeb, { day_target_hours: "6" });
+    expect(JSON.parse(ok!.headers.get("HX-Trigger")!)).toEqual({ "tk-toast": "Daily target saved" });
+    const bad = await postTarget(handleWeb, { day_target_hours: "99" });
+    expect(bad!.status).toBe(400);
+    expect(bad!.headers.get("HX-Trigger")).toBeNull();
+  });
+
   test("plain POST redirects to /settings", async () => {
     const { db, handleWeb } = setup();
     const res = await postTarget(handleWeb, { day_target_hours: "6" }, false);
@@ -757,6 +768,30 @@ describe("daily target (#908)", () => {
     const body = await res!.text();
     expect(body).toContain('id="daily-target"');
     expect(body).toContain("Daily hours target");
+  });
+});
+
+/** #1335: POST /business-profile confirms with a tk-toast HX-Trigger. */
+describe("business profile save toast (#1335)", () => {
+  function postProfile(handleWeb: any, fields: Record<string, string>) {
+    const form = new FormData();
+    for (const [k, v] of Object.entries(fields)) form.append(k, v);
+    const req = new Request("http://x/business-profile", { method: "POST", body: form, headers: { "HX-Request": "true" } });
+    return handleWeb(req, new URL(req.url), "/business-profile", "POST");
+  }
+
+  test("a valid save asks for the Business profile saved toast", async () => {
+    const { handleWeb } = setup();
+    const res = await postProfile(handleWeb, { business_name: "Studio", business_payment_terms: "net_30" });
+    expect(res!.status).toBe(200);
+    expect(JSON.parse(res!.headers.get("HX-Trigger")!)).toEqual({ "tk-toast": "Business profile saved" });
+  });
+
+  test("unknown payment terms are rejected without a toast", async () => {
+    const { handleWeb } = setup();
+    const res = await postProfile(handleWeb, { business_name: "Studio", business_payment_terms: "net999" });
+    expect(res!.status).toBe(400);
+    expect(res!.headers.get("HX-Trigger")).toBeNull();
   });
 });
 
@@ -911,7 +946,7 @@ describe("public invoice PDF download (#1291)", () => {
       STATIC_DIR: "", TOKEN: "t",
       authedPage: () => false,
       tokensEqual: (a: string, b: string) => a === b,
-      html: (body: string, status = 200) => new Response(body, { status }),
+      html: (body: string, status = 200, extra: Record<string, string> = {}) => new Response(body, { status, headers: extra }),
       json: (data: unknown, status = 200) => Response.json(data, { status }),
       isHtmx: () => false,
       csvResponse: (f: string) => new Response(f),
