@@ -418,6 +418,8 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .ui-form-section-title { font-weight: 600; margin-bottom: var(--spacing-sm); }
 .ui-summary-line { display: flex; justify-content: space-between; gap: var(--spacing-sm); padding: var(--spacing-xs) 0; border-bottom: 1px solid var(--color-border-secondary); font-size: var(--font-size); }
 .ui-summary-line .num { font-family: var(--font-family-code); font-variant-numeric: tabular-nums; }
+.ui-summary-label { min-width: 0; overflow-wrap: anywhere; }
+.ui-summary-detail { display: block; margin-top: 2px; font-family: var(--font-family-code); font-variant-numeric: tabular-nums; font-size: var(--font-size-sm); line-height: var(--line-height-sm); color: var(--color-text-secondary); }
 .ui-summary-total { display: flex; justify-content: space-between; gap: var(--spacing-sm); padding: var(--spacing-sm) 0; font-weight: 600; }
 .ui-summary-total .num { font-family: var(--font-family-code); color: var(--color-primary); }
 .ui-card-head { display: flex; align-items: center; gap: var(--spacing-xs); margin-bottom: var(--spacing-xs); }
@@ -1755,7 +1757,7 @@ button.ui-tag { border: 0; font: inherit; cursor: pointer; }
   /* #1136: the public summary on paper — dark text, visible tag outline,
      hairlines that survive without backgrounds. */
   .ui-public-sheet { background: #fff; color: #111; border-color: #999; }
-  .ui-public-meta, .ui-public-notes, .ui-public-party-line, .ui-public-howtopay-text { color: #333; }
+  .ui-public-meta, .ui-public-notes, .ui-public-party-line, .ui-public-howtopay-text, .ui-public .ui-summary-detail { color: #333; }
   .ui-public-party-label { color: #555; }
   .ui-public-lines { border-top-color: #ccc; }
   .ui-public-lines .ui-summary-line { border-bottom-color: #ddd; }

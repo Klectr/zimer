@@ -153,7 +153,8 @@ describe("public page-mock parity (#1121)", () => {
     expect(html).toContain('href="https://pay.example/x"');
     expect(html).toContain("Pay $120.00");
     expect(html).toContain("Secure payment by card.");
-    expect(html).toContain("never asks for your Zimer password");
+    expect(html).toContain("Sent with Zimer. We&#39;ll never ask you to log in or enter a password here.");
+    expect(html).not.toContain("Zimer password");
     expect(html).not.toContain("md-filled-button");
   });
 
@@ -207,7 +208,10 @@ describe("public invoice summary (#1136)", () => {
     expect(html).toContain("Studio — Triston Armstrong");
     expect(html).toContain("Zinvoice INV-2001 · Issued Nov 5, 2026");
     expect(html).toContain("Due Nov 19");
-    expect(html).toContain("Intake form fixes — 9.50 h");
+    /* #1224: the description stays clean and the billing math sits under it. */
+    expect(html).toContain('<span class="ui-summary-label">Intake form fixes<span class="ui-summary-detail">9.50 h × $95.00</span></span>');
+    expect(html).toContain('<span class="ui-summary-detail">1.50 h × $95.00</span>');
+    expect(html).not.toContain("Intake form fixes — 9.50 h");
     expect(html).not.toContain("9.5h");
     expect(html).toContain("$902.50");
     expect(html).toContain("Total due");
