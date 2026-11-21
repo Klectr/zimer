@@ -1517,10 +1517,6 @@ button.ui-tag { border: 0; font: inherit; cursor: pointer; }
 /* ---------------- form cards: capped like the invoice sheet ---------------- */
 .ui-card.form-card { max-width: 720px; }
 
-/* ---------------- focused task pages: centered narrow body column ---------------- */
-.page-narrow { max-width: 720px; margin-inline: auto; }
-.page-narrow .ui-card.form-card { max-width: none; }
-
 /* ---------------- form info callout (tonal container + leading icon) ---------------- */
 .form-info { display: flex; gap: 12px; align-items: flex-start;
   background: var(--color-bg-elevated);
