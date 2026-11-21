@@ -195,25 +195,10 @@ const RULES = [
   ".ui-plan {",
   ".ui-landing-body {",
   ".ui-landing-top {",
-  ".ui-landing-hero {",
-  ".ui-landing-h1 {",
-  ".ui-landing-window {",
   ".ui-landing-section {",
   ".ui-landing-title {",
   ".ui-landing-sub {",
   ".ui-landing-cards {",
-  ".ui-landing-card {",
-  ".ui-landing-fig {",
-  ".ui-landing-join {",
-  ".ui-landing-winbar {",
-  ".ui-landing-side {",
-  ".ui-landing-nav {",
-  ".ui-landing-week {",
-  ".ui-landing-day {",
-  ".ui-landing-entry {",
-  ".ui-landing-miniweek {",
-  ".ui-landing-term {",
-  ".ui-landing-arrive {",
   ".ui-landing-foot {",
   ".ui-logo {",
   ".ui-logo-mark {",
@@ -443,7 +428,7 @@ describe("type-scale weights and sizes (#1215 slice)", () => {
   test("app-chrome rules read type tokens, not font-size literals", () => {
     const cases: Array<[RegExp, string]> = [
       [/\.tb-chart text \{[^}]*font-size: [^}]*\}/, "var(--font-size-sm)"],
-      [/\.ui-landing-term \{[^}]*font-size: [^}]*\}/, "var(--font-size)"],
+      [/\.ui-landing-title \{[^}]*font-size: [^}]*\}/, "var(--font-size-heading-2)"],
       [/\.md-title-medium \{[^}]*font-size: [^}]*\}/, "var(--font-size-lg)"],
       [/\.tiny \{[^}]*font-size: [^}]*\}/, "var(--font-size-sm)"],
       [/\.skip-link \{[^}]*font-size: [^}]*\}/, "var(--font-size)"],
@@ -477,8 +462,6 @@ describe("type-scale weights and sizes (#1215 slice)", () => {
     expect(css).toContain(".cal-supporting .cal-hint { font-size: 0.6875rem");
     expect(css).toContain(".cal-supporting .cal-hint { margin: 0; font-size: 0.6875rem");
     expect(css).not.toContain(".cal-supporting .week-clients { gap: 4px 12px; font-size: 0.8125rem");
-    expect(css).not.toContain(".ui-landing-term { font-family: var(--font-family-code); font-size: 13px");
-    expect(css).toContain(".ui-landing-h1 { font-size: var(--font-size-heading-2); }");
-    expect(css).not.toContain(".ui-landing-h1 { font-size: 30px");
+    expect(css).toContain(".ui-landing-title { font-size: var(--font-size-heading-2);");
   });
 });
