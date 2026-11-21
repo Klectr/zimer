@@ -592,3 +592,26 @@ describe("timer mock parity (#1121)", () => {
     expect(html).toContain("35m · 1 client");
   });
 });
+
+/** #1342: the Zimer card and Today's entries share a grid wrapper so wide
+ *  content can lay them side by side (container query on .timer-home). */
+describe("timer home side-by-side grid (#1342)", () => {
+  test("both cards sit inside .timer-home-grid; the inline script stays outside", async () => {
+    const src = await Bun.file("site/views/timer.ts").text();
+    const grid = src.indexOf('<div class="timer-home-grid">');
+    const timer = src.indexOf("${timerPartial()}", grid);
+    const entries = src.indexOf("Today's entries</div>", grid);
+    const close = src.indexOf("</section>\n        </div>", grid);
+    const script = src.indexOf("<script>(function(){/* #255", grid);
+    expect(grid).toBeGreaterThan(-1);
+    expect(timer).toBeGreaterThan(grid);
+    expect(entries).toBeGreaterThan(timer);
+    expect(script).toBeGreaterThan(close);
+  });
+
+  test("the grid goes two-column only on wide content", async () => {
+    const css = await Bun.file("site/static/style.css").text();
+    expect(css).toContain(".timer-home { display: flex; flex-direction: column; gap: var(--spacing); container-type: inline-size; }");
+    expect(css).toMatch(/@container \(min-width: 960px\) \{\s*\.timer-home-grid \{ display: grid; grid-template-columns: minmax\(0, 5fr\) minmax\(0, 7fr\); align-items: start; \}/);
+  });
+});
