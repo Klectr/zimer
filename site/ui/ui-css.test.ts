@@ -442,4 +442,44 @@ describe("type-scale weights and sizes (#1215 slice)", () => {
     expect(mark![0]).toContain("line-height: 1");
     expect(mark![0]).not.toContain("font-size: 10px");
   });
+
+  test("app-chrome rules read type tokens, not font-size literals", () => {
+    const cases: Array<[RegExp, string]> = [
+      [/\.ui-rev-chart text \{[^}]*font-size: [^}]*\}/, "var(--font-size-sm)"],
+      [/\.tb-chart text \{[^}]*font-size: [^}]*\}/, "var(--font-size-sm)"],
+      [/\.ui-landing-term \{[^}]*font-size: [^}]*\}/, "var(--font-size)"],
+      [/\.md-title-medium \{[^}]*font-size: [^}]*\}/, "var(--font-size-lg)"],
+      [/\.tiny \{[^}]*font-size: [^}]*\}/, "var(--font-size-sm)"],
+      [/\.skip-link \{[^}]*font-size: [^}]*\}/, "var(--font-size)"],
+      [/\.cal-supporting \.week-clients \{[^}]*font-size: [^}]*\}/, "var(--font-size-sm)"],
+      [/\.cal-supporting \.cal-hint \{ font-size: [^}]*\}/, "var(--font-size-sm)"],
+      [/\.nav-drawer-head \{[^}]*font-size: [^}]*\}/, "var(--font-size)"],
+      [/\.nav-drawer-row \{[^}]*font-size: [^}]*\}/, "var(--font-size)"],
+      [/\.terms-desc \{[^}]*font-size: [^}]*\}/, "var(--font-size-sm)"],
+      [/\.status-row-headline \{[^}]*font-size: [^}]*\}/, "var(--font-size-lg)"],
+      [/\.status-row-supporting \{[^}]*font-size: [^}]*\}/, "var(--font-size)"],
+      [/\.status-row-supporting code \{[^}]*font-size: [^}]*\}/, "var(--font-size-sm)"],
+      [/\.update-cmd \{[^}]*font-size: [^}]*\}/, "var(--font-size-sm)"],
+      [/\.form-info \{[^}]*font-size: [^}]*\}/, "var(--font-size-sm)"],
+      [/\.proof-meta \{[^}]*font-size: [^}]*\}/, "var(--font-size)"],
+      [/\.proof-hint \{[^}]*font-size: [^}]*\}/, "var(--font-size-sm)"],
+      [/\.share-url \{[^}]*font-size: [^}]*\}/, "var(--font-size-sm)"],
+    ];
+    for (const [re, token] of cases) {
+      const rule = css.match(re);
+      expect(rule).not.toBeNull();
+      expect(rule![0]).toContain(`font-size: ${token}`);
+      expect(rule![0]).not.toMatch(/font-size: [0-9]/);
+    }
+  });
+
+  test("no app-chrome chart or calendar-supporting text sits off the type scale", () => {
+    expect(css).not.toContain("font-size: 0.625rem");
+    expect(css).not.toContain(".cal-supporting .cal-hint { font-size: 0.6875rem");
+    expect(css).toContain(".cal-supporting .cal-hint { margin: 0; font-size: 0.6875rem");
+    expect(css).not.toContain(".cal-supporting .week-clients { gap: 4px 12px; font-size: 0.8125rem");
+    expect(css).not.toContain(".ui-landing-term { font-family: var(--font-family-code); font-size: 13px");
+    expect(css).toContain(".ui-landing-h1 { font-size: var(--font-size-heading-2); }");
+    expect(css).not.toContain(".ui-landing-h1 { font-size: 30px");
+  });
 });
