@@ -60,11 +60,29 @@ export function createCalendarViews(deps: CalendarViewDeps) {
   const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   const ymdOf = (p: { y: number; m: number; d: number }) =>
     `${p.y}-${String(p.m).padStart(2, "0")}-${String(p.d).padStart(2, "0")}`;
+  const tzFmtCache = new Map<string, Intl.DateTimeFormat>();
+  function tzFmt(tz: string): Intl.DateTimeFormat {
+    let f = tzFmtCache.get(tz);
+    if (!f) {
+      f = new Intl.DateTimeFormat("en-US", { timeZone: tz, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+      tzFmtCache.set(tz, f);
+    }
+    return f;
+  }
+  const tzFmtSecCache = new Map<string, Intl.DateTimeFormat>();
+  function tzFmtSec(tz: string): Intl.DateTimeFormat {
+    let f = tzFmtSecCache.get(tz);
+    if (!f) {
+      f = new Intl.DateTimeFormat("en-US", { timeZone: tz, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      tzFmtSecCache.set(tz, f);
+    }
+    return f;
+  }
   /** Wall-clock parts of an instant in the client's zone. */
   function tzParts(d: Date, tz: string | null): { y: number; m: number; d: number; hh: number; mm: number } {
     if (!tz) return { y: d.getFullYear(), m: d.getMonth() + 1, d: d.getDate(), hh: d.getHours(), mm: d.getMinutes() };
     const p: Record<string, string> = {};
-    for (const x of new Intl.DateTimeFormat("en-US", { timeZone: tz, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).formatToParts(d)) p[x.type] = x.value;
+    for (const x of tzFmt(tz).formatToParts(d)) p[x.type] = x.value;
     return { y: +p.year, m: +p.month, d: +p.day, hh: +p.hour, mm: +p.minute };
   }
   /** Validate an IANA zone string; null when absent or invalid. */
@@ -75,7 +93,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
   /** UTC offset of a zone at an instant, in minutes (CDT = -300). */
   function zoneOffsetMin(tz: string, at: Date): number {
     const p: Record<string, string> = {};
-    for (const x of new Intl.DateTimeFormat("en-US", { timeZone: tz, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }).formatToParts(at)) p[x.type] = x.value;
+    for (const x of tzFmtSec(tz).formatToParts(at)) p[x.type] = x.value;
     const asUTC = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second);
     return Math.round((asUTC - at.getTime()) / 60000);
   }
