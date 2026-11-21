@@ -871,8 +871,15 @@ describe("mobile week-summary compaction (#945)", () => {
     const block = css.match(/@media\s*\(max-width:\s*839px\)\s*\{[^}]*\.cal-supporting[^}]*\}/);
     expect(block).not.toBeNull();
     expect(css).toMatch(/@media\s*\(max-width:\s*839px\)[\s\S]*?\.cal-supporting\s*\{[^}]*gap:\s*6px/);
-    /* Hint stays visible but compact — never display:none. */
-    expect(css).toMatch(/@media\s*\(max-width:\s*839px\)[\s\S]*?\.cal-supporting\s+\.cal-hint\s*\{[^}]*font-size:\s*0\.6875rem/);
+    /* Hint stays visible but compact — never display:none. The assertion is
+       scoped to the 839px block itself: a lazy [\s\S]*? match across the
+       whole sheet also matches the 840–1279px block's identical declaration
+       and passes vacuously. */
+    const compactBlock = css
+      .split("@media")
+      .find((b) => b.startsWith(" (max-width: 839px)") && b.includes(".cal-hint"));
+    expect(compactBlock).toBeDefined();
+    expect(compactBlock!).toMatch(/\.cal-supporting\s+\.cal-hint\s*\{[^}]*font-size:\s*0\.6875rem/);
     expect(css).not.toMatch(/\.cal-supporting\s+\.cal-hint\s*\{[^}]*display:\s*none/);
     /* CTA, progress, and clients legend are tightened. */
     expect(css).toMatch(/@media\s*\(max-width:\s*839px\)[\s\S]*?\.cal-supporting\s+\.nudge-chip\s*\{[^}]*padding:\s*4px 10px/);

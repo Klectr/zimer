@@ -490,7 +490,7 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .ui-rev-chart .ui-rev-bar-out { fill: var(--color-fill); }
 .ui-rev-chart .ui-rev-bar-paid { fill: var(--color-primary); }
 .ui-rev-chart .ui-rev-bar-out, .ui-rev-chart .ui-rev-bar-paid { transform-box: fill-box; transform-origin: 50% 100%; animation: bar-grow var(--motion-duration-medium2) var(--motion-easing-emphasized-decelerate) backwards; }
-.ui-rev-chart text { fill: var(--color-text-tertiary); font-size: 0.625rem; }
+.ui-rev-chart text { fill: var(--color-text-tertiary); font-size: var(--font-size-sm); }
 .ui-rev-legend { display: flex; align-items: center; gap: var(--spacing-xs); margin-top: var(--spacing-xs); color: var(--color-text-tertiary); font-size: var(--font-size-sm); }
 .ui-rev-swatch { width: 12px; height: 12px; border-radius: var(--radius-xs); display: inline-block; }
 .ui-rev-swatch.paid { background: var(--color-primary); }
@@ -600,7 +600,7 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .ui-landing-sheet-meta { color: var(--color-text-tertiary); font-size: var(--font-size-sm); margin-bottom: var(--spacing-sm); }
 .ui-landing-inv-row { display: flex; justify-content: space-between; gap: var(--spacing-md); padding: 7px 0; border-bottom: 1px solid var(--color-border-secondary); font-size: var(--font-size-sm); }
 .ui-landing-inv-total { display: flex; justify-content: space-between; padding-top: var(--spacing-sm); font-weight: 600; }
-.ui-landing-term { font-family: var(--font-family-code); font-size: 13px; line-height: 1.9; }
+.ui-landing-term { font-family: var(--font-family-code); font-size: var(--font-size); line-height: 1.9; }
 .ui-landing-term-dim { color: var(--color-text-tertiary); }
 .ui-landing-term-ok { color: var(--color-success); }
 .ui-landing-join { border-top: 1px solid var(--color-border-secondary); padding: 56px 0; position: relative; z-index: 1; }
@@ -637,7 +637,7 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 }
 @media (max-width: 760px) {
   .ui-landing-hero { grid-template-columns: 1fr; padding: 56px 0 40px; }
-  .ui-landing-h1 { font-size: 30px; }
+  .ui-landing-h1 { font-size: var(--font-size-heading-2); }
   .ui-landing-hero-art { width: min(320px, 100%); margin: 0 auto; }
   .ui-landing-side { display: none; }
   .ui-landing-winbody { grid-template-columns: 1fr; }
@@ -823,10 +823,10 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
-.md-title-medium { font-size: 1rem; line-height: 24px; font-weight: 500; letter-spacing: 0.15px; }
+.md-title-medium { font-size: var(--font-size-lg); line-height: 24px; font-weight: 500; letter-spacing: 0.15px; }
 
 .muted { color: var(--color-text-secondary); }
-.tiny { font-size: 0.75rem; }
+.tiny { font-size: var(--font-size-sm); }
 .error { color: var(--color-error); }
 /* the UA [hidden] rule loses to component display styles; enforce it */
 [hidden] { display: none !important; }
@@ -874,7 +874,7 @@ main.login { max-width: 420px; margin: 0 auto; margin-top: 8vh; }
   border-radius: var(--radius);
   background: var(--color-primary-bg);
   color: var(--color-text);
-  font-size: 0.875rem;
+  font-size: var(--font-size);
   font-weight: 500;
   text-decoration: none;
   transition: top var(--motion-duration-short4) var(--motion-easing-standard);
@@ -1058,7 +1058,7 @@ body.app-fixed .ui-shell-main { min-height: 0; }
   }
   .ui-mobile-nav .ui-navitem {
     flex: 1; min-width: 0; flex-direction: column; justify-content: center;
-    gap: 4px; border-radius: 0; padding: 8px 4px; font-size: 0.75rem;
+    gap: 4px; border-radius: 0; padding: 8px 4px; font-size: var(--font-size-sm);
   }
   .ui-mobile-nav .ui-navitem span {
     max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -1191,11 +1191,11 @@ body.app-fixed .ui-shell-main { min-height: 0; }
    is untouched. */
 @media (max-width: 839px) {
   .cal-supporting { gap: 6px; margin: 4px 0 6px; }
-  .cal-supporting .week-nav h1 { font-size: 1.25rem; line-height: 28px; }
-  .cal-supporting .cal-summary .cal-summary-total { font-size: 1.25rem; line-height: 28px; }
+  .cal-supporting .week-nav h1 { font-size: var(--font-size-xl); line-height: 28px; }
+  .cal-supporting .cal-summary .cal-summary-total { font-size: var(--font-size-xl); line-height: 28px; }
   .cal-supporting .nudge-chip { padding: 4px 10px; }
   .cal-supporting .week-target { gap: 8px; }
-  .cal-supporting .week-clients { gap: 4px 12px; font-size: 0.8125rem; }
+  .cal-supporting .week-clients { gap: 4px 12px; font-size: var(--font-size-sm); }
   .cal-supporting .cal-hint { font-size: 0.6875rem; line-height: 16px; }
 }
 /* #542: the week-over-week delta's trend icon rides the muted label baseline
@@ -1359,7 +1359,7 @@ body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
 .nav-drawer-scrim.open .nav-drawer { transform: translateX(0); }
 .nav-drawer-head {
   padding: 12px 16px 16px;
-  font-size: 0.875rem; font-weight: 500;
+  font-size: var(--font-size); font-weight: 500;
   color: var(--color-text-tertiary);
 }
 .nav-drawer-row {
@@ -1367,7 +1367,7 @@ body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
   min-height: 56px; padding: 0 16px;
   border: 0; border-radius: var(--radius);
   background: transparent; color: var(--color-text-secondary);
-  font: inherit; font-size: 0.875rem; font-weight: 500; text-align: left;
+  font: inherit; font-size: var(--font-size); font-weight: 500; text-align: left;
   text-decoration: none; cursor: pointer; width: 100%;
 }
 .nav-drawer-row:hover, .nav-drawer-row:focus-visible {
@@ -1405,7 +1405,7 @@ button.ui-tag { border: 0; font: inherit; cursor: pointer; }
 .manage-delete-client { margin-top: var(--spacing-md); }
 .detail-form { margin-bottom: 12px; }
 /* #293: canned payment-terms description under the dropdown (supporting text). */
-.terms-desc { flex: 1 1 100%; margin: 0; font-size: 0.75rem; line-height: 1.4; }
+.terms-desc { flex: 1 1 100%; margin: 0; font-size: var(--font-size-sm); line-height: 1.4; }
 #biz-profile .terms-desc { margin-top: 8px; }
 
 /* Milestone 11: demo onboarding banner. */
@@ -1435,13 +1435,13 @@ button.ui-tag { border: 0; font: inherit; cursor: pointer; }
 .status-row-error > svg { color: var(--color-error); }
 .status-row-error .status-row-headline { color: var(--color-error); }
 .status-row-text { flex: 1; min-width: 0; }
-.status-row-headline { margin: 0; font-size: 1rem; line-height: 24px;
+.status-row-headline { margin: 0; font-size: var(--font-size-lg); line-height: 24px;
   color: var(--color-text); }
-.status-row-supporting { margin: 2px 0 0; font-size: 0.875rem; line-height: 20px;
+.status-row-supporting { margin: 2px 0 0; font-size: var(--font-size); line-height: 20px;
   color: var(--color-text-secondary); }
-.status-row-supporting code { font-size: 0.8125rem; }
+.status-row-supporting code { font-size: var(--font-size-sm); }
 /* #340: update command shown by the update check — tonal, monospace, wraps. */
-.update-cmd { display: block; font-family: ui-monospace, monospace; font-size: 0.8125rem;
+.update-cmd { display: block; font-family: ui-monospace, monospace; font-size: var(--font-size-sm);
   background: var(--color-bg-elevated);
   color: var(--color-text);
   border-radius: 8px; padding: 10px 12px; overflow-wrap: anywhere; }
@@ -1653,7 +1653,7 @@ button.ui-tag { border: 0; font: inherit; cursor: pointer; }
   background: var(--color-bg-elevated);
   color: var(--color-text-secondary);
   border-radius: var(--radius-lg); padding: 12px 16px; margin: 0 0 16px;
-  font-size: 0.8125rem; line-height: 1.5; }
+  font-size: var(--font-size-sm); line-height: 1.5; }
 .form-info svg { flex: none; width: 20px; height: 20px; margin-top: 1px; color: var(--color-primary); }
 .form-info p { margin: 0; }
 .form-info a { color: var(--color-primary); }
@@ -1742,7 +1742,7 @@ button.ui-tag { border: 0; font: inherit; cursor: pointer; }
 .payment-proof .ui-block-title svg { vertical-align: -4px; margin-right: 4px; width: 20px; height: 20px; }
 .proof-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; }
 .proof-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.proof-meta { font-size: 0.85rem; white-space: nowrap; }
+.proof-meta { font-size: var(--font-size); white-space: nowrap; }
 .proof-icons { display: flex; align-items: center; gap: 4px; margin-left: auto; }
 .proof-icons .inline { display: inline; }
 .proof-nudge { margin: 4px 0 10px; }
@@ -1750,7 +1750,7 @@ button.ui-tag { border: 0; font: inherit; cursor: pointer; }
 .proof-file-label { cursor: pointer; white-space: nowrap; }
 .proof-upload:has(.proof-file-input:focus-visible) .proof-file-label { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 .proof-upload input[type="file"] { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
-.proof-hint { margin: 8px 0 0; font-size: 0.8rem; }
+.proof-hint { margin: 8px 0 0; font-size: var(--font-size-sm); }
 
 /* ---------------- Modern invoice template (#233) ---------------- */
 .template-modern { overflow: hidden; }
@@ -1822,7 +1822,7 @@ button.ui-tag { border: 0; font: inherit; cursor: pointer; }
 .share-label { font-weight: 500; white-space: nowrap; }
 .share-label.warn { color: var(--color-error); }
 .share-url { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  color: var(--color-text-secondary); font-size: 0.8125rem; }
+  color: var(--color-text-secondary); font-size: var(--font-size-sm); }
 /* #502: the client link truncates with ellipsis — its full URL lives in the
    house plain tooltip (hover / focus / 450ms touch long-press via the
    site-wide [data-tip] handler) instead of a native title. The wrapper anchors
@@ -1837,7 +1837,7 @@ button.ui-tag { border: 0; font: inherit; cursor: pointer; }
   color: var(--color-text);
   border-radius: var(--radius-xs);
   padding: 4px 8px;
-  font-size: 0.75rem; line-height: 16px;
+  font-size: var(--font-size-sm); line-height: 16px;
   max-width: 0; overflow: hidden; /* #556: collapse while hidden */
   max-height: 0; /* #650: the URL wraps at zero width into dozens of lines —
      without this the hidden box is ~960px tall and stretches the detail
@@ -1909,7 +1909,7 @@ button.ui-tag { border: 0; font: inherit; cursor: pointer; }
 .inv-breakdown-sub { margin: 2px 0 8px; }
 .tb-chart { width: 100%; height: auto; display: block; }
 .tb-chart .tb-bar { fill: var(--color-primary); }
-.tb-chart text { fill: var(--color-text-secondary); font-size: 0.625rem; }
+.tb-chart text { fill: var(--color-text-secondary); font-size: var(--font-size-sm); }
 /* Error pages (404/500): centered, tonal, no hard borders. */
 .error-page { max-width: 560px; margin: 0 auto; padding: 96px 24px; text-align: center; }
 .error-page h1 { margin: 0 0 12px; }
