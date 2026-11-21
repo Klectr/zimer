@@ -142,21 +142,16 @@
 .ui-btn-primary:disabled { background: color-mix(in srgb, var(--color-primary) 45%, transparent); }
 
 .ui-chip {
-  display: inline-flex; align-items: center; gap: var(--spacing-xxs);
+  display: inline-flex; align-items: center; gap: var(--spacing-xxs); white-space: nowrap;
   padding: 3px var(--spacing-sm); font-size: var(--font-size-sm);
   font-weight: var(--font-weight-strong); border-radius: 999px;
 }
+.ui-chip svg { width: 12px; height: 12px; flex: none; }
 .ui-chip-draft { background: var(--color-fill-secondary); color: var(--color-text-secondary); }
 .ui-chip-sent { background: var(--color-info-bg); color: var(--color-info); }
 .ui-chip-paid { background: var(--color-success-bg); color: var(--color-success); }
 .ui-chip-overdue { background: var(--color-error-bg); color: var(--color-error); }
 
-.inv-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 650; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
-.inv-badge svg { width: 11px; height: 11px; flex: none; }
-.inv-badge-paid { background: var(--color-success); color: #052e1b; }
-.inv-badge-sent { background: var(--color-info-bg); color: #93c5fd; }
-.inv-badge-overdue { background: var(--color-error-bg); color: #fca5a5; }
-.inv-badge-draft { background: var(--color-fill-secondary); color: var(--color-text-secondary); }
 .inv-cell-main { display: flex; align-items: center; gap: 8px; color: var(--color-text); font-weight: 600; }
 .inv-cell-sub { display: block; font-size: var(--font-size-sm); color: var(--color-text-tertiary); margin-top: 2px; }
 .inv-amt { font-weight: 600; color: var(--color-text); }
@@ -1764,7 +1759,7 @@ button.ui-tag { border: 0; font: inherit; cursor: pointer; }
   .md-table tfoot td { color: #333; }
   .inv-table tfoot tr.grand td,
   .md-table tfoot tr.grand td { color: #000; }
-  .ui-chip, .inv-badge { border: 1px solid #999; background: #fff !important; color: #111 !important; }
+  .ui-chip { border: 1px solid #999; background: #fff !important; color: #111 !important; }
   .inv-notes { color: #333; }
 }
 

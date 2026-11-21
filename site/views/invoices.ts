@@ -18,6 +18,7 @@ import { appHeader } from "../ui/app-header.ts";
 import { iconButton } from "../ui/icon-button.ts";
 import { emptyState } from "../ui/empty-state.ts";
 import { statBlock } from "../ui/stat.ts";
+import { statusChip } from "../ui/status-chip.ts";
 import { filterChips } from "../ui/filter-chips.ts";
 import { lineItemsTable } from "../ui/line-items.ts";
 import { progressBar } from "../ui/progress.ts";
@@ -122,10 +123,9 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
   }
 
   function invBadge(r: any): string {
-    if (isOverdue(r)) return `<span class="inv-badge inv-badge-overdue">Overdue</span>`;
-    if (r.status === "paid") return `<span class="inv-badge inv-badge-paid">${icon("check")}Paid</span>`;
-    if (r.status === "sent") return `<span class="inv-badge inv-badge-sent">Sent</span>`;
-    return `<span class="inv-badge inv-badge-draft">Draft</span>`;
+    if (isOverdue(r)) return statusChip("sent", { overdue: true });
+    if (r.status === "paid") return statusChip("paid", { icon: "check" });
+    return statusChip(r.status === "sent" ? "sent" : "draft");
   }
 
   /* The mock's list rows are one line per column: Number, Client, Issued,
@@ -142,7 +142,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
   function rowStatus(r: any): string {
     if (isOverdue(r)) {
       const days = r.due_date ? Math.max(0, daysBetween(r.due_date as string, todayStr())) : 0;
-      return `<span class="inv-badge inv-badge-overdue">Overdue${days ? ` ${days}d` : ""}</span>`;
+      return statusChip("sent", { overdue: true, suffix: days ? `${days}d` : undefined });
     }
     return invBadge(r);
   }
@@ -1025,7 +1025,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       </div>
       <div class="page-head no-print">
         <div class="row">
-          ${inv.status === "paid" && inv.paid_at ? `<span class="inv-badge inv-badge-paid">${icon("check")}Paid ${esc(shortYmd(inv.paid_at))}</span>` : ""}
+          ${inv.status === "paid" && inv.paid_at ? statusChip("paid", { icon: "check", suffix: shortYmd(inv.paid_at) }) : ""}
           ${clientLink ? iconButton({ icon: "copy", label: "Copy pay link", className: "tip-right", attrs: `data-copy data-url="${esc(clientLink)}"` }) : ""}
           <a class="ui-icon-btn tip-right" href="/invoices/${inv.id}.pdf" download data-tip="Download PDF" aria-label="Download PDF">${icon("download")}</a>
           ${next ? `<form method="post" action="/invoices/${inv.id}/status" class="inline" hx-post="/invoices/${inv.id}/status" ${hxDetail}>

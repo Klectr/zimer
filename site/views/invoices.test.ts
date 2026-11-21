@@ -136,10 +136,10 @@ describe("paid-on date", () => {
   test("#424: paid label is a badge first in the detail actions row", () => {
     const html = views([]).invoiceDetailBody(detailInv("paid", "2026-09-21") as any, "http://x");
     const actionsRow = html.match(/<div class="page-head no-print">[\s\S]*?<div class="row">([\s\S]*?)<\/div>\s*<\/div>/)?.[1] || "";
-    expect(actionsRow).toContain("inv-badge inv-badge-paid");
+    expect(actionsRow).toContain("ui-chip ui-chip-paid");
     expect(actionsRow).toContain("Paid Sep 21");
     // chip leads the actions row, ahead of Download PDF
-    expect(actionsRow.indexOf("inv-badge")).toBeLessThan(actionsRow.indexOf("Download PDF"));
+    expect(actionsRow.indexOf("ui-chip")).toBeLessThan(actionsRow.indexOf("Download PDF"));
     // title block untouched: back link only, no paid date
     const headBlock = html.match(/<div class="invoice-detail-head[^"]*">[\s\S]*?<\/div>/)?.[0] || "";
     expect(headBlock).not.toContain("Paid Sep 21");
@@ -162,7 +162,7 @@ describe("paid-on date", () => {
     const html2 = views([{ ...baseRow, status: "sent", paid_at: null }]).invoiceListOob(0);
     expect(html2).toContain("<td>Sep 1</td>");
     expect(html2).toContain('<span class="inv-cell-main">Sep 30</span>');
-    expect(html2).toContain("inv-badge-sent");
+    expect(html2).toContain("ui-chip-sent");
   });
 
   test("draft rows dash both dates; the number links to the detail", () => {
@@ -695,18 +695,18 @@ describe("#829: new-zinvoice due-date prefill follows global payment terms", () 
 describe("#831: detail status chip labels drafts Draft, not Unpaid", () => {
   test("draft chip reads Draft with the draft (neutral) treatment", () => {
     const html = views([]).invoiceDetailBody(detailInv("draft", null) as any, "http://x");
-    expect(html).toContain('<span class="inv-badge inv-badge-draft">Draft</span>');
+    expect(html).toContain('<span class="ui-chip ui-chip-draft">Draft</span>');
     expect(html).not.toContain("Unpaid");
   });
 
   test("sent chip reads Sent with the info treatment", () => {
     const html = views([]).invoiceDetailBody(detailInv("sent", null) as any, "http://x");
-    expect(html).toContain('<span class="inv-badge inv-badge-sent">Sent</span>');
+    expect(html).toContain('<span class="ui-chip ui-chip-sent">Sent</span>');
   });
 
   test("paid chip reads Paid with the paid treatment", () => {
     const html = views([]).invoiceDetailBody(detailInv("paid", "2026-09-21") as any, "http://x");
-    expect(html).toContain('<span class="inv-badge inv-badge-paid">');
+    expect(html).toContain('<span class="ui-chip ui-chip-paid">');
   });
 });
 
@@ -1031,5 +1031,22 @@ describe("#1269: detail Status bar tone reflects due state", () => {
   test("the Status bar never uses the plain primary fill", () => {
     const html = views([]).invoiceDetailBody(sentDueIn(30) as any, "http://x");
     expect(html).not.toContain('<span class="ui-progress-fill" style="width:50%"></span>');
+  });
+});
+
+/** #1214: the Zinvoices pages render status with the shared ui-chip family
+ *  only; the retired .inv-badge (solid Paid, hard-coded hex, 11px/650) must
+ *  not come back. */
+describe("#1214: one status-chip system", () => {
+  test("list and detail markup never emit inv-badge", () => {
+    const list = views([{ ...baseRow, status: "sent", paid_at: null }]).invoiceListOob(0);
+    const paid = views([]).invoiceDetailBody(detailInv("paid", "2026-09-21") as any, "http://x");
+    const draft = views([]).invoiceDetailBody(detailInv("draft", null) as any, "http://x");
+    for (const html of [list, paid, draft]) expect(html).not.toContain("inv-badge");
+  });
+
+  test("style.css has no .inv-badge rules left", async () => {
+    const css = await Bun.file(new URL("../static/style.css", import.meta.url)).text();
+    expect(css).not.toContain(".inv-badge");
   });
 });
