@@ -368,8 +368,8 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     return `
       <div class="cal-scroll" data-enter="3">${visualizer({ days: vizDays(wd), startHour: 0, endHour: 24, hourPx: calHourPx, nowMin })}</div>
       <div class="cal-legend">
-        ${tag({ label: "Billable", tone: "primary" })}
-        ${tag({ label: "Invoiced", tone: "success" })}
+        ${tag({ label: "Invoiced", tone: "neutral" })}
+        ${tag({ label: "Running", tone: "success", dot: true })}
         ${linkButton({ label: "Export week CSV", href: `/export/entries.csv?from=${sun}&to=${addDays(sun, 7)}`, size: "sm", download: true, className: "cal-legend-export" })}
       </div>
       ${weekView({ agendaOnly: true, days: agendaDays(wd) })}

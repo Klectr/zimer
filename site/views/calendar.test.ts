@@ -989,8 +989,15 @@ describe("calendar legend (#1202 parity)", () => {
     } as any);
     const html = views.weekInner("2026-11-01", "America/Chicago");
     expect(html).toContain('class="cal-legend"');
-    expect(html).toContain("Billable");
     expect(html).toContain("Invoiced");
+    expect(html).toContain("Running");
+    /* #1216: blocks are client-colored, so the legend names only the states
+       that override client color, in the tones they render. */
+    const legend = html.match(/<div class="cal-legend">([\s\S]*?)<\/div>/)?.[1] ?? "";
+    expect(legend).not.toContain("ui-tag-primary");
+    expect(legend).not.toContain("Billable");
+    expect(legend).toContain('<span class="ui-tag ui-tag-neutral">Invoiced</span>');
+    expect(legend).toContain('<span class="ui-tag ui-tag-success"><span class="ui-tag-dot"></span>Running</span>');
     expect(html).toContain("/export/entries.csv?from=2026-10-25&amp;to=2026-11-01");
   });
 
