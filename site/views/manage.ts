@@ -419,9 +419,11 @@ export function createManageViews(deps: ManageViewDeps) {
       textField({ id: "bp-business_name", label: "Business name", name: "business_name", value: name, placeholder: "Your studio name" }) +
       textField({ id: "bp-business_email", label: "Email", name: "business_email", type: "email", value: email, placeholder: "billing@you.example" }) +
       textAreaField({ id: "bp-business_address", label: "Address", name: "business_address", value: address, rows: 3, placeholder: "123 Main St\nSuite 200\nSpringfield, IL 62701" }) +
+      `<div class="ui-settings-field">` +
       selectField({ id: "bp-terms", label: "Payment terms", name: "business_payment_terms", options, value: terms, className: "terms-select" }) +
-      `</div>` +
       `<p class="terms-desc ui-settings-note">${esc(termsDescription(termsKey(null, terms)))}</p>` +
+      `</div>` +
+      `</div>` +
       textAreaField({ id: "bp-payment_instructions", label: "Payment instructions", name: "business_payment_instructions", value: payInstructions, rows: 3, placeholder: "Bank transfer to …\nOr mail a check to …" }) +
       `<p class="ui-settings-note">Shown as How to pay on the public Zinvoice when there is no card payment link.</p>` +
       `<div class="ui-settings-actions">${button({ label: "Save profile", type: "submit", icon: "save" })}</div>` +
