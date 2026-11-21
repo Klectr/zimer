@@ -1298,3 +1298,68 @@ describe("carousel pan marks the track while sliding (#1219)", () => {
     expect(clear).toBeGreaterThan(reset);
   });
 });
+
+/** #1348: one weekInner render must not compute the current week twice
+ *  (pane + its own carousel strip) or re-run workspaceEmpty's COUNT
+ *  queries in every pane. Three distinct weeks are rendered, so the
+ *  entry query and the COUNT batch each run exactly three times total
+ *  (once per week / once per render), and the output is unchanged. */
+describe("weekInner shares week data and the empty check (#1348)", () => {
+  test("current week computed once; workspaceEmpty counted once", () => {
+    let entryQueries = 0;
+    let countQueries = 0;
+    const db = {
+      query: (sql: string) => {
+        if (sql.includes("COUNT(*)")) countQueries++;
+        else if (sql.includes("WHERE e.start_time")) entryQueries++;
+        return { get: () => ({ n: 1 }), all: () => [] };
+      },
+    } as unknown as Database;
+    const stub = () => ({ get: () => null, all: () => [] });
+    const views = createCalendarViews({
+      db,
+      qOne: stub(),
+      qRange: stub(),
+      entrySelect: "SELECT",
+      layout: (_t: string, b: string) => b,
+      projectOptionRows: () => [],
+      weekTargetBar: () => "",
+      calHourPx: 64,
+    } as any);
+    entryQueries = 0;
+    countQueries = 0;
+    const html = views.weekInner("2026-09-20", "America/Chicago");
+    expect(entryQueries).toBe(3);
+    expect(countQueries).toBe(3);
+    expect(html.match(/cal-strip"/g)).toHaveLength(3);
+    expect(html).toContain("cal-pane-layout");
+  });
+});
+
+describe("weekInner first-run hint follows the shared empty check (#1348)", () => {
+  function render(n: number) {
+    const db = {
+      query: (_sql: string) => ({ get: () => ({ n }), all: () => [] }),
+    } as unknown as Database;
+    const stub = () => ({ get: () => null, all: () => [] });
+    const views = createCalendarViews({
+      db,
+      qOne: stub(),
+      qRange: stub(),
+      entrySelect: "SELECT",
+      layout: (_t: string, b: string) => b,
+      projectOptionRows: () => [],
+      weekTargetBar: () => "",
+      calHourPx: 64,
+    } as any);
+    return views.weekInner("2026-09-20", "America/Chicago");
+  }
+
+  test("empty workspace: hint in the live pane and all three strip templates", () => {
+    expect(render(0).match(/cal-first-run/g)).toHaveLength(4);
+  });
+
+  test("non-empty workspace: no hint anywhere", () => {
+    expect(render(1)).not.toContain("cal-first-run");
+  });
+});
