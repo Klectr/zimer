@@ -439,6 +439,7 @@ describe("type-scale weights and sizes (#1215 slice)", () => {
     const mark = css.match(/\.ui-inv-mark \{[^}]*\}/);
     expect(mark).not.toBeNull();
     expect(mark![0]).toContain("font-size: var(--font-size-sm)");
+    expect(mark![0]).toContain("line-height: 1");
     expect(mark![0]).not.toContain("font-size: 10px");
   });
 });

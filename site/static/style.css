@@ -462,7 +462,7 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .ui-target { margin-bottom: var(--spacing-sm); }
 .ui-target-label { font-size: var(--font-size-sm); line-height: var(--line-height-sm); color: var(--color-text-tertiary); margin-top: var(--spacing-xxs); }
 .ui-card .ui-row:last-child { border-bottom: none; }
-.ui-inv-mark { display: inline-flex; align-items: center; height: 18px; padding: 0 var(--spacing-xs); border-radius: var(--radius-xs); font-size: var(--font-size-sm); font-weight: 600; letter-spacing: 0.4px; white-space: nowrap; flex: none; background: var(--color-fill-secondary); color: var(--color-text-secondary); margin-right: var(--spacing-xs); }
+.ui-inv-mark { display: inline-flex; align-items: center; height: 18px; padding: 0 var(--spacing-xs); border-radius: var(--radius-xs); font-size: var(--font-size-sm); line-height: 1; font-weight: 600; letter-spacing: 0.4px; white-space: nowrap; flex: none; background: var(--color-fill-secondary); color: var(--color-text-secondary); margin-right: var(--spacing-xs); }
 .ui-inv-mark.draft { opacity: 0.7; }
 .ui-inv-mark[data-tip] { position: relative; overflow: visible; }
 .ui-inv-mark[data-tip]::after { content: attr(data-tip); position: absolute; left: 50%; top: calc(100% + var(--spacing-xs)); transform: translateX(-50%) translateY(-2px); background: var(--color-bg-spotlight); color: var(--color-text); border-radius: var(--radius-sm); padding: var(--spacing-xs) var(--spacing-sm); white-space: nowrap; max-width: 0; overflow: hidden; font-size: var(--font-size-sm); line-height: var(--line-height-sm); font-weight: 400; letter-spacing: 0; opacity: 0; pointer-events: none; z-index: 30; transition: opacity 0.15s ease, transform 0.15s ease; }
