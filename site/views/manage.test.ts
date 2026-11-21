@@ -360,25 +360,23 @@ describe("manage suite-mock composition (#1203)", () => {
     expect(html).toContain('<td class="num">$150</td>');
   });
 
-  test("projects card chips every project across clients, with the new-project chip and history note", () => {
+  /* The Projects card listed "Client — Project" chips that did nothing on
+     click; projects are managed in each client's dialog instead. */
+  test("the page has no standalone Projects card or New project dialog", () => {
     const { db } = testDb();
-    db.query("INSERT INTO projects (client_id, name) VALUES (NULL, 'Loose')").run();
     const views = createManageViews({ db, layout: (_t: string, b: string) => b, unbilledByClient: () => [] });
     const html = views.managePage();
-    expect(html).toContain("Acme — Website");
-    expect(html).toContain("Loose");
-    expect(html).toContain('id="new-project-open"');
-    expect(html).toContain("Deleting a project never deletes time");
-    expect(html).toContain('id="new-project-form"');
-    expect(html).toContain('name="context" value="page"');
+    expect(html).not.toContain('id="projects-card"');
+    expect(html).not.toContain('id="new-project-form"');
+    expect(html).not.toContain('id="new-project-open"');
   });
 
-  test("lists OOB refresh carries both cards and the header counts sub", () => {
+  test("lists OOB refresh carries the client table and the header counts sub", () => {
     const { db } = testDb();
     const views = createManageViews({ db, layout: (_t: string, b: string) => b, unbilledByClient: () => [] });
     const html = views.manageListsOob();
     expect(html).toContain('id="client-table-card" hx-swap-oob="true"');
-    expect(html).toContain('id="projects-card" hx-swap-oob="true"');
+    expect(html).not.toContain('id="projects-card"');
     expect(html).toContain('<p class="ui-app-sub" id="mg-sub" hx-swap-oob="true">1 client · 1 project</p>');
   });
 });
