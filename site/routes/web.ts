@@ -85,7 +85,7 @@ export interface WebTenant {
 
 /** #912: the CSRF rejection page — minimal public chrome, no app nav leaked. */
 function csrfBlockedPage(): string {
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Request blocked · Zimer</title>
   <link rel="stylesheet" href="/static/style.css">
   <link rel="icon" type="image/svg+xml" href="/static/logo.svg"></head>
