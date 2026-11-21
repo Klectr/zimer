@@ -364,7 +364,6 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .ui-section-title { font-size: var(--font-size-heading-5); font-weight: 600; margin: 0; }
 .ui-settings-form { display: grid; gap: var(--spacing-md); }
 .ui-form-row { display: flex; gap: var(--spacing-sm); align-items: flex-end; flex-wrap: wrap; }
-.ui-form-spacer { flex: 1; }
 .ui-add-project-form { display: flex; gap: var(--spacing-sm); align-items: flex-end; margin-bottom: var(--spacing-sm); }
 .ui-add-project-grow { flex: 1; min-width: 0; }
 .ui-settings-actions { display: flex; justify-content: flex-end; gap: var(--spacing-sm); }
@@ -430,13 +429,9 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .ui-timer-context { font-size: var(--font-size); color: var(--color-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .ui-timer-started { margin-left: auto; font-size: var(--font-size-sm); color: var(--color-text-tertiary); }
 .ui-timer-panel .ui-timer { margin: var(--spacing-sm) 0 var(--spacing-xs); }
-.pane-layout .ui-card { margin-bottom: var(--spacing); }
 /* #1131: the timer page is fixed-viewport — its cards sit in the permanent
    stack above the entries scroll region, so they pad tighter vertically. */
 #today-stats .ui-card { padding-top: var(--spacing-sm); padding-bottom: var(--spacing-sm); }
-.pane-layout #timer-card { padding-top: var(--spacing-sm); padding-bottom: var(--spacing-sm); }
-.pane-layout .ui-timer-panel .ui-timer { margin: var(--spacing-xs) 0 var(--spacing-xxs); }
-.pane-supporting .ui-page-title { margin-bottom: var(--spacing-sm); }
 .ui-timer-form { display: flex; gap: var(--spacing-sm); align-items: flex-end; flex-wrap: wrap; margin-top: var(--spacing-sm); }
 .ui-timer-form-grow { flex: 2 1 220px; min-width: 0; }
 .ui-timer-form-project { flex: 1 1 160px; min-width: 0; }
@@ -1049,26 +1044,6 @@ body.app-fixed .ui-shell-main { min-height: 0; }
 /* #588: the list-row date phrases share one nowrap group, so a narrow pane
    wraps between the client name and the dates — never between segments. */
 .inv-dates { white-space: nowrap; }
-/* ---------------- supporting-pane layout (timer page) ----------------
- * <840px: single stacked column — timer card stays pinned above, entries + revenue
- * share one scroll region. ≥840px (expanded): focus pane (entries) + trailing
- * fixed supporting pane (revenue) with a 24px gap — 360px at expanded, 412px at
- * large/XL (via --layout-supporting-pane) — each scrolling independently.
- * Spec: supporting-pane example. */
-.pane-layout { display: flex; flex-direction: column; flex: 1; min-height: 0; }
-.pane-focus, .pane-supporting { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
-.pane-supporting { container-type: inline-size; }
-@media (max-width: 839px) {
-  .pane-layout { overflow-y: auto; }
-  .pane-focus, .pane-supporting { flex: none; }
-  .pane-layout .scroll-region { flex: none; overflow: visible; }
-  .pane-supporting { margin-top: var(--layout-pane-gap); } /* match the desktop pane gap */
-}
-@media (min-width: 840px) {
-  .pane-layout { flex-direction: row; gap: var(--layout-pane-gap); }
-  .pane-focus { flex: 1; }
-  .pane-supporting { flex: 0 0 var(--layout-supporting-pane); }
-}
 /* ---------------- calendar supporting pane (#67) ----------------
  * The week grid is the primary content, the week summary is supplementary.
  * The summary keeps its position above the grid (its long-standing spot; the
@@ -1379,18 +1354,9 @@ button.ui-tag { border: 0; font: inherit; cursor: pointer; }
 .invoice-detail-head { display: flex; align-items: center; gap: 12px; margin-bottom: var(--spacing-xs); }
 .detail-title { margin-bottom: var(--spacing-sm); }
 .detail-title .ui-app-sub { margin-top: var(--spacing-xxs); }
-/* #328: "Unbilled time" section head on the invoices page. */
-.unbilled-head { margin-top: var(--spacing); }
-@media (max-width: 599px) {
-  .unbilled-head { margin-top: var(--spacing-sm); }
-}
-
 /* (the status .pill retired with the zinvoices migration — statusChip is its successor) */
 
 /* #330: "Invoiced"/"Draft" mark on timer entry rows — tonal pill, no border. */
-.two-field { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-/* #353: content-driven — form field stacking, not a window size class. */
-@media (max-width: 560px) { .two-field { grid-template-columns: 1fr; } }
 
 .table-wrap { overflow-x: auto; margin: 0 -4px; padding: 0 4px; }
 /* The invoice sheet's table: .inv-table is the live class; .md-table is
