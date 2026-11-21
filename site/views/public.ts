@@ -230,7 +230,7 @@ export function createPublicViews(deps: PublicViewDeps) {
   }
 
   function loginPage(error?: string): string {
-    return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+    return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
   <title>Log in · Zimer</title>
   <link rel="stylesheet" href="/static/style.css">
@@ -251,7 +251,7 @@ export function createPublicViews(deps: PublicViewDeps) {
 
   /* #732: hosted signup + login pages. Same ui auth card as the token login. */
   function authShell(title: string, cardHtml: string): string {
-    return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+    return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
   <title>${title} · Zimer</title>
   <link rel="stylesheet" href="/static/style.css">

@@ -153,7 +153,7 @@ function billingWallPage(sub: Subscription | null): string {
     `<p class="muted">Nothing is deleted — your time entries, clients, and Zinvoices are saved and waiting.</p>` +
     cta +
     `<form method="POST" action="/logout" style="margin-top:var(--spacing-md)">${button({ label: "Log out", variant: "ghost", size: "sm", type: "submit" })}</form>`;
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${headline} · Zimer</title>
   <link rel="stylesheet" href="/static/style.css">
   <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
