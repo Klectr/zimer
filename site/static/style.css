@@ -989,6 +989,34 @@ body.app-fixed .ui-shell-main { min-height: 0; }
   body main { padding-bottom: calc(96px + var(--nav-bar-height)); }
   body.app-fixed main { padding-bottom: calc(16px + var(--nav-bar-height)); }
   .ui-toast-live { bottom: calc(24px + var(--nav-bar-height)); }
+  /* #1211: on phones the fixed viewport nests the page in a short inner
+     scroller under pinned chrome. Let the document scroll instead — except
+     the calendar, whose week carousel needs the fixed strip height. */
+  body.app-fixed:not(:has(#week)) { height: auto; overflow: visible; display: block; }
+  body.app-fixed:not(:has(#week)) .ui-shell { min-height: 100dvh; }
+  body.app-fixed:not(:has(#week)) .ui-shell-main { min-height: auto; }
+  body.app-fixed:not(:has(#week)) main { flex: none; min-height: auto; padding-bottom: calc(96px + var(--nav-bar-height)); }
+  body.app-fixed:not(:has(#week)) .scroll-region { flex: none; min-height: auto; overflow: visible; padding: 0; }
+}
+/* #1211: on phones the line-items table stacks each item (description +
+   amount, then the date range, then hours × rate) instead of overflowing
+   its card; the header row stays for screen readers only. */
+@media (max-width: 599px) {
+  .ui-line-items, .ui-line-items tbody, .ui-line-items tfoot { display: block; width: 100%; }
+  .ui-line-items thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .ui-line-items tbody tr { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: var(--spacing-sm); row-gap: var(--spacing-xxs); padding: var(--spacing-sm) 0; border-bottom: 1px solid var(--color-border-secondary); }
+  .ui-line-items tbody td { padding: 0; border: 0; }
+  .ui-line-items tbody td:nth-child(2) { order: 0; flex: 1 1 0; min-width: 0; font-weight: 500; overflow-wrap: anywhere; }
+  .ui-line-items tbody td:nth-child(5) { order: 1; margin-left: auto; white-space: nowrap; }
+  .ui-line-items tbody td:nth-child(1) { order: 2; flex: 1 1 100%; font-size: var(--font-size-sm); color: var(--color-text-secondary); }
+  .ui-line-items tbody td:nth-child(1):empty { display: none; }
+  .ui-line-items tbody td:nth-child(3),
+  .ui-line-items tbody td:nth-child(4) { order: 3; font-size: var(--font-size-sm); color: var(--color-text-secondary); text-align: left; }
+  .ui-line-items tbody td:nth-child(3)::after { content: " h\00a0×"; }
+  .ui-line-items tbody td:nth-child(4) { margin-left: calc(-1 * var(--spacing-xs)); }
+  .ui-line-items tbody td[colspan] { flex: 1 1 100%; }
+  .ui-line-items tfoot tr { display: flex; justify-content: space-between; gap: var(--spacing-sm); }
+  .ui-line-items tfoot td { padding: var(--spacing-xs) 0; }
 }
 
 /* ---------------- invoices: mock list + detail ----------------

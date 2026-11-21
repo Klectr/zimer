@@ -147,7 +147,7 @@ describe("lineItemsTable", () => {
       items: [{ dateRange: "Oct 20 – Oct 24", description: "Fixes", hours: "9.5h", rate: "$95", amount: "$902.50" }],
       totals: [{ label: "Total due", amount: "$902.50" }],
     });
-    expect(html).toContain('<table class="ui-table">');
+    expect(html).toContain('<table class="ui-table ui-line-items">');
     expect(html).toContain('<th scope="col">Date</th>');
     expect(html).toContain('<th scope="col" class="num">Hours</th>');
     expect(html).toContain('<td class="num">9.5h</td>');

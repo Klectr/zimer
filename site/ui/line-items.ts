@@ -37,7 +37,7 @@ export function lineItemsTable(opts: LineItemsTableOptions): string {
     )
     .join("");
   return (
-    `<table class="ui-table"><thead><tr><th scope="col">Date</th><th scope="col">Description</th>` +
+    `<table class="ui-table ui-line-items"><thead><tr><th scope="col">Date</th><th scope="col">Description</th>` +
     `<th scope="col" class="num">Hours</th><th scope="col" class="num">Rate</th>` +
     `<th scope="col" class="num">Amount</th></tr></thead><tbody>${body}</tbody>` +
     `<tfoot>${foot}</tfoot></table>`

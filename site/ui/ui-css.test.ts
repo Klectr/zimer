@@ -497,3 +497,15 @@ describe("dead invoice-widget CSS (#1311)", () => {
     expect(css).toContain(".inv-amt");
   });
 });
+
+/** #1211: on phones, fixed-viewport pages (timer, Zinvoices) scroll the
+ *  document rather than a short inner region under pinned chrome; the
+ *  calendar keeps its fixed strip height for the week carousel. */
+describe("phones scroll the page, not an inner region (#1211)", () => {
+  test("the compact block releases app-fixed for everything but the calendar", () => {
+    const compact = css.split("@media").find((b) => b.startsWith(" (max-width: 599px)") && b.includes("#1211"));
+    expect(compact).toBeDefined();
+    expect(compact!).toContain("body.app-fixed:not(:has(#week)) { height: auto; overflow: visible; display: block; }");
+    expect(compact!).toMatch(/body\.app-fixed:not\(:has\(#week\)\) \.scroll-region \{[^}]*overflow: visible/);
+  });
+});
