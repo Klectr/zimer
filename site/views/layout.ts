@@ -160,7 +160,7 @@ export function createLayoutViews(qRunning: Statement, themeCss?: () => string, 
   ${/* #355: the settings scrim is a direct body child — inside the app bar it
        would be trapped in the header's stacking context and paint below the
        bottom navigation bar. The entry edit scrim rides along for the same
-       reason (#903), and so does the #949 navigation drawer. */ navDrawer(demoRow ? demoRow() : "")}${settingsDialog()}${entryDialog()}
+       reason (#903), and so does the #949 navigation drawer. */ navDrawer(demoRow ? demoRow() : "")}${settingsToasts()}${entryDialog()}
   </body>
   </html>`;
   }
@@ -250,40 +250,27 @@ export function createLayoutViews(qRunning: Statement, themeCss?: () => string, 
   return { layout, publicShell, notFoundPage, noSuchInvoicePage, rateLimitPage, errorPage };
 }
 
-/** Issue #654: the hamburger account menu (#155) is gone — Triston wanted the
-    four global actions visible instead of two taps deep. Settings, Export
-    entries CSV, Download backup, and Log out are icon buttons in the
-    sidebar footer on every page (#1119). Tooltips (data-tip) replace
-    the menu's text labels; the settings dialog still opens from the cog.
-    #949: on compact screens the icon row gives way to a hamburger that opens
-    the labeled navigation drawer (navDrawer below) — tooltips don't exist on
-    touch, so the four actions get text labels there instead. */
+/** #1223: the sidebar footer keeps only Log out. Settings is a primary nav
+    item, and the exports live labelled in Settings → Your data (one layer
+    down, per DESIGN.md) — #654's icon row of all four actions retired. */
 function shellActions(): string {
   return `<div class="ui-shell-actions">
-    ${iconButton({ icon: "settings", label: "Settings", id: "appbar-settings-btn" })}
-    <a class="ui-icon-btn" href="/export/entries.csv" download
-      data-tip="Export entries CSV" aria-label="Export entries CSV">${icon("table")}</a>
-    <a class="ui-icon-btn" href="/backup" download
-      data-tip="Download backup" aria-label="Download backup">${icon("database")}</a>
     <form method="POST" action="/logout" class="ui-shell-logout">
       ${iconButton({ icon: "logout", label: "Log out", type: "submit" })}
     </form>
   </div>`;
 }
 
-/** #949: navigation drawer for compact screens — the four app-bar actions
-    as labeled icon+text rows, since icon-only buttons are undiscoverable on
-    touch. Rendered as a direct body child (same stacking-context reason as
-    the settings scrim, #355). The Settings row carries its own id; the
-    settings dialog script wires it as a second opener. Desktop never shows
-    the hamburger, so the drawer is unreachable there. */
+/** #949: navigation drawer for compact screens — Settings (the bottom bar
+    has no slot for it) and Log out as labeled rows, since icon-only buttons
+    are undiscoverable on touch. Rendered as a direct body child (#355
+    stacking context). Desktop never shows the hamburger, so the drawer is
+    unreachable there. */
 function navDrawer(demoRowHtml: string = ""): string {
   return `<div class="nav-drawer-scrim" id="nav-drawer-scrim" hidden>
     <nav class="nav-drawer" role="dialog" aria-modal="true" aria-label="Menu">
       <div class="nav-drawer-head">Menu</div>
-      <button class="nav-drawer-row" id="drawer-settings-btn" type="button">${icon("settings")}<span>Settings</span></button>
-      <a class="nav-drawer-row" href="/export/entries.csv" download>${icon("table")}<span>Export entries CSV</span></a>
-      <a class="nav-drawer-row" href="/backup" download>${icon("database")}<span>Download backup</span></a>
+      <a class="nav-drawer-row" href="/settings">${icon("settings")}<span>Settings</span></a>
       <form method="POST" action="/logout" class="nav-drawer-logout">
         <button class="nav-drawer-row" type="submit">${icon("logout")}<span>Log out</span></button>
       </form>
@@ -344,86 +331,11 @@ function navDrawer(demoRowHtml: string = ""): string {
   })();</script>`;
 }
 
-/** Issue #245: settings modal reached through the account menu button. The shell
-    is a direct body child (rendered by layout(), not accountMenu()) so its
-    scrim isn't trapped in the app bar's stacking context — #355: otherwise the
-    bottom navigation bar would paint above it. The business-profile form loads
-    lazily via htmx on open so layout() needs no db access. Follows the
-    .cal-scrim/.cal-dialog motion pattern (scrim fade + dialog scale/fade). */
-function settingsDialog(): string {
-  return `<div class="cal-scrim ui-scrim" id="settings-scrim" hidden>
-    <div class="settings-dialog ui-dialog" role="dialog" aria-modal="true" aria-labelledby="settings-dialog-title">
-      <div class="settings-dialog-head">
-        <h2 class="ui-dialog-title" id="settings-dialog-title">Settings</h2>
-        ${iconButton({ icon: "close", label: "Close settings", id: "settings-close", tip: null })}
-      </div>
-      <div id="settings-body"><p class="muted">Loading…</p></div>
-    </div>
-  </div>
-  <script>(function(){
-    var scrim=document.getElementById('settings-scrim');
-    var body=document.getElementById('settings-body');
-    var closeBtn=document.getElementById('settings-close');
-    var menuItem=document.getElementById('appbar-settings-btn');
-    /* #949: the drawer Settings row is a second opener; on close, focus goes
-       to the hamburger (the drawer row is hidden again by then). */
-    var drawerItem=document.getElementById('drawer-settings-btn');
-    var menuBtn=document.getElementById('appbar-menu-btn');
-    if(!scrim||!body||!closeBtn||!menuItem) return;
-    var open_=false, focusOnSwap=false, opener=menuItem;
-    var loadGen=0;
-    function open(){
-      open_=true; loadGen++;
-      body.innerHTML='<p class="muted">Loading…</p>';
-      scrim.hidden=false; void scrim.offsetWidth; scrim.classList.add('open');
-      /* Fresh form on every open — the profile may have changed elsewhere. */
-      focusOnSwap=true;
-      htmx.ajax('GET','/settings','#settings-body');
-      document.addEventListener('keydown',onKey,true);
-    }
-    function close(refocus){
-      if(!open_) return; open_=false; focusOnSwap=false; loadGen++;
-      scrim.classList.remove('open');
-      document.removeEventListener('keydown',onKey,true);
-      var gen=loadGen, done=false, finish=function(){ if(done||gen!==loadGen) return; done=true; scrim.hidden=true; };
-      var onEnd=function(e){ if(e.target===scrim&&e.propertyName==='opacity'){ scrim.removeEventListener('transitionend',onEnd); finish(); } };
-      scrim.addEventListener('transitionend',onEnd); setTimeout(finish,300);
-      if(refocus){ var t=(opener===drawerItem&&menuBtn)?menuBtn:opener; if(t) t.focus(); }
-    }
-    /* #456: trap Tab inside the modal while it's open. onKey only runs
-       while open (attached on open, detached on close), so no extra open
-       guard is needed. The scrim's only child is the dialog itself. */
-    function onKey(e){ if(e.key==='Escape'){ e.preventDefault(); close(true); }
-      else if(e.key==='Tab'&&window.tkTrapTab){ window.tkTrapTab(scrim,e); } }
-    body.addEventListener('htmx:afterSwap',function(){
-      if(!focusOnSwap) return; focusOnSwap=false;
-      var f=body.querySelector('input'); if(f) f.focus();
-    });
-    document.body.addEventListener('htmx:beforeRequest',function(e){
-      var cfg=e.detail.requestConfig||{};
-      var pi=e.detail.pathInfo||{};
-      if(e.detail.target===body&&(cfg.verb||'').toLowerCase()==='get'&&(pi.requestPath||cfg.path||'')==='/settings')
-        e.detail.xhr.tkSettingsGen=loadGen;
-    });
-    body.addEventListener('htmx:beforeSwap',function(e){
-      var cfg=e.detail.requestConfig||{};
-      if((cfg.verb||'').toLowerCase()!=='get') return;
-      var g=e.detail.xhr?e.detail.xhr.tkSettingsGen:null;
-      if(g!=null&&g!==loadGen) e.detail.shouldSwap=false;
-    });
-    scrim.addEventListener('pointerdown',function(e){ if(e.target===scrim) close(false); });
-    closeBtn.addEventListener('click',function(){ close(true); });
-    menuItem.addEventListener('click',function(){
-      opener=menuItem;
-      open();
-    });
-    if(drawerItem) drawerItem.addEventListener('click',function(){
-      opener=drawerItem;
-      open();
-    });
-    /* #247: visible save confirmation — the form re-renders silently, so
-       announce success with the shared ui toast. Delegated on body so it
-       survives the #biz-profile outerHTML swap. */
+/** #247: visible save confirmation on the Settings page — the forms
+    re-render silently, so announce success with the shared ui toast.
+    Delegated on body so it survives the #biz-profile outerHTML swap. */
+function settingsToasts(): string {
+  return `<script>(function(){
     document.body.addEventListener('htmx:afterRequest',function(e){
       var elt=e.detail.elt;
       if(!elt||!e.detail.successful||!window.tkSnackbar) return;
@@ -433,8 +345,7 @@ function settingsDialog(): string {
   })();</script>`;
 }
 
-/** #903: entry edit dialog for the timer page. Same .cal-scrim pattern as the
-    settings dialog above: the shell is a direct body child, the form
+/** #903: entry edit dialog for the timer page. The .cal-scrim pattern: the shell is a direct body child, the form
     lazy-loads via htmx on open, Escape/scrim-click close it, Tab is trapped
     via the shared tkTrapTab, and focus returns to the edit button. */
 function entryDialog(): string {

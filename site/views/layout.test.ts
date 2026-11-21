@@ -44,26 +44,6 @@ describe("layout entry edit dialog (#903)", () => {
  *  from the previous open can't paint or be submitted while the next
  *  fragment loads. Same treatment as the client settings dialog. */
 describe("layout lazy dialogs reset their body on open (#1177)", () => {
-  test("settings dialog body starts on the loading placeholder", () => {
-    const { layout } = createLayoutViews(noRunning);
-    const body = layout("T", "body");
-    expect(body).toContain('<div id="settings-body"><p class="muted">Loading…</p></div>');
-  });
-
-  test("settings opener resets the body before the dialog shows and the fragment load", () => {
-    const { layout } = createLayoutViews(noRunning);
-    const body = layout("T", "body");
-    const script = body.indexOf("getElementById('settings-body')");
-    const open = body.indexOf("function open(){", script);
-    const reset = body.indexOf("body.innerHTML='<p class=\"muted\">Loading…</p>';", open);
-    const show = body.indexOf("scrim.hidden=false;", open);
-    const load = body.indexOf("htmx.ajax('GET','/settings','#settings-body');", open);
-    expect(open).toBeGreaterThan(-1);
-    expect(reset).toBeGreaterThan(open);
-    expect(show).toBeGreaterThan(reset);
-    expect(load).toBeGreaterThan(reset);
-  });
-
   test("entry dialog body starts on the loading placeholder", () => {
     const { layout } = createLayoutViews(noRunning);
     const body = layout("T", "body");
@@ -89,25 +69,6 @@ describe("layout lazy dialogs reset their body on open (#1177)", () => {
  *  must not swap in — each opener bumps a load generation, the request is
  *  stamped with it, and a stale stamp is dropped at beforeSwap. */
 describe("layout lazy dialogs drop stale loads (#1189)", () => {
-  test("settings opener bumps the load generation before the fragment load", () => {
-    const { layout } = createLayoutViews(noRunning);
-    const body = layout("T", "body");
-    const script = body.indexOf("getElementById('settings-body')");
-    const open = body.indexOf("function open(){", script);
-    const bump = body.indexOf("loadGen++;", open);
-    const load = body.indexOf("htmx.ajax('GET','/settings','#settings-body');", open);
-    expect(open).toBeGreaterThan(-1);
-    expect(bump).toBeGreaterThan(open);
-    expect(load).toBeGreaterThan(bump);
-  });
-
-  test("settings loads are stamped at request time and dropped before swap when stale", () => {
-    const { layout } = createLayoutViews(noRunning);
-    const body = layout("T", "body");
-    expect(body).toContain("e.detail.xhr.tkSettingsGen=loadGen;");
-    expect(body).toContain("if(g!=null&&g!==loadGen) e.detail.shouldSwap=false;");
-  });
-
   test("entry opener bumps the load generation before the fragment load", () => {
     const { layout } = createLayoutViews(noRunning);
     const body = layout("T", "body");
@@ -127,29 +88,18 @@ describe("layout lazy dialogs drop stale loads (#1189)", () => {
     expect(body).toContain("if(g!=null&&g!==loadGen) e.detail.shouldSwap=false;");
   });
 
-  test("both dialogs bump the load generation on close too", () => {
+  test("the entry dialog bumps the load generation on close too", () => {
     const { layout } = createLayoutViews(noRunning);
     const body = layout("T", "body");
-    const sScript = body.indexOf("getElementById('settings-body')");
-    const sClose = body.indexOf("function close(refocus){", sScript);
-    expect(sClose).toBeGreaterThan(-1);
-    expect(body.indexOf("loadGen++;", sClose)).toBeGreaterThan(sClose);
     const eScript = body.indexOf("getElementById('entry-dialog-body')");
     const eClose = body.indexOf("function closeDialog(refocus){", eScript);
     expect(eClose).toBeGreaterThan(-1);
     expect(body.indexOf("loadGen++;", eClose)).toBeGreaterThan(eClose);
   });
 
-  test("both closes capture the generation so a reopen during the fade cancels the hide (#1192)", () => {
+  test("the entry dialog's close captures the generation so a reopen during the fade cancels the hide (#1192)", () => {
     const { layout } = createLayoutViews(noRunning);
     const body = layout("T", "body");
-    const sScript = body.indexOf("getElementById('settings-body')");
-    const sClose = body.indexOf("function close(refocus){", sScript);
-    expect(sClose).toBeGreaterThan(-1);
-    const sBump = body.indexOf("loadGen++;", sClose);
-    const sCapture = body.indexOf("var gen=loadGen, done=false,", sClose);
-    expect(sCapture).toBeGreaterThan(sBump);
-    expect(body.indexOf("if(done||gen!==loadGen) return;", sClose)).toBeGreaterThan(sCapture);
     const eScript = body.indexOf("getElementById('entry-dialog-body')");
     const eClose = body.indexOf("function closeDialog(refocus){", eScript);
     expect(eClose).toBeGreaterThan(-1);
@@ -342,34 +292,46 @@ describe("PostHog snippet (#928)", () => {
 
 /** #949: on compact screens the icon-only actions are undiscoverable,
  *  so a hamburger opens a labeled navigation drawer carrying the same four
- *  actions as icon+text rows. Desktop keeps the #654 icon row, now in the
- *  sidebar footer (#1119). */
+ *  actions as icon+text rows. #1223 trimmed both the drawer and the sidebar
+ *  footer to Settings (page link) + Log out. */
 describe("layout navigation drawer (#949)", () => {
-  test("compact head carries the hamburger; sidebar footer carries the settings opener", () => {
+  test("compact head carries the hamburger; the sidebar footer keeps only Log out (#1223)", () => {
     const { layout } = createLayoutViews(noRunning);
     const body = layout("T", "body", "timer");
     expect(body).toContain('id="appbar-menu-btn"');
-    expect(body).toContain('id="appbar-settings-btn"');
+    expect(body).not.toContain('id="appbar-settings-btn"');
+    const foot = body.slice(body.indexOf('<div class="ui-side-foot">'), body.indexOf("</aside>"));
+    expect(foot).toContain('action="/logout"');
+    expect(foot).not.toContain('href="/backup"');
+    expect(foot).not.toContain('href="/export/entries.csv"');
     expect(body).toContain('<aside class="ui-side">');
     expect(body).toContain('class="ui-navitem is-active" aria-current="page"');
     expect(body).toContain('href="/settings"');
   });
 
-  test("drawer carries all four actions as labeled rows", () => {
+  test("drawer carries Settings (a link to the page) and Log out (#1223)", () => {
     const { layout } = createLayoutViews(noRunning);
     const body = layout("T", "body");
-    expect(body).toContain('id="nav-drawer-scrim"');
-    expect(body).toContain('id="drawer-settings-btn"');
-    expect(body).toContain("<span>Settings</span>");
-    expect(body).toContain("<span>Export entries CSV</span>");
-    expect(body).toContain("<span>Download backup</span>");
-    expect(body).toContain("<span>Log out</span>");
+    const drawer = body.slice(body.indexOf('id="nav-drawer-scrim"'), body.indexOf("</nav>", body.indexOf('id="nav-drawer-scrim"')));
+    expect(drawer).toContain('<a class="nav-drawer-row" href="/settings">');
+    expect(drawer).toContain("<span>Settings</span>");
+    expect(drawer).toContain("<span>Log out</span>");
+    expect(drawer).not.toContain("Export entries CSV");
+    expect(drawer).not.toContain("Download backup");
+  });
+
+  test("there is one Settings surface: no settings dialog in the shell (#1223)", () => {
+    const { layout } = createLayoutViews(noRunning);
+    const body = layout("T", "body");
+    expect(body).not.toContain('id="settings-scrim"');
+    expect(body).toContain("tkSnackbar('Business profile saved')");
+    expect(body).toContain("tkSnackbar('Daily target saved')");
   });
 
   test("drawer header is the spec headline — no close button", () => {
     const { layout } = createLayoutViews(noRunning);
     const body = layout("T", "body");
-    const drawer = body.slice(body.indexOf('id="nav-drawer-scrim"'), body.indexOf('id="settings-scrim"'));
+    const drawer = body.slice(body.indexOf('id="nav-drawer-scrim"'), body.indexOf("</nav>", body.indexOf('id="nav-drawer-scrim"')));
     expect(drawer).toContain('<div class="nav-drawer-head">Menu</div>');
     expect(drawer).not.toContain('id="nav-drawer-close"');
   });
@@ -378,7 +340,7 @@ describe("layout navigation drawer (#949)", () => {
     const { layout } = createLayoutViews(noRunning, undefined, undefined, undefined,
       () => `<form method="POST" action="/demo/load" class="nav-drawer-form nav-drawer-demo"><button class="nav-drawer-row" type="submit"><span>Load demo data</span></button></form>`);
     const body = layout("T", "body");
-    const drawer = body.slice(body.indexOf('id="nav-drawer-scrim"'), body.indexOf('id="settings-scrim"'));
+    const drawer = body.slice(body.indexOf('id="nav-drawer-scrim"'), body.indexOf("</nav>", body.indexOf('id="nav-drawer-scrim"')));
     expect(drawer).toContain('action="/demo/load"');
     expect(drawer).toContain("<span>Load demo data</span>");
   });
