@@ -1,9 +1,8 @@
-/** #654: the account menu is gone — Triston wanted its four actions (Settings,
- *  Export entries CSV, Download backup, Log out) visible as icons instead of
- *  two taps deep. The old #395 locked spec (menu geometry) is retired; the
- *  lock is now the .ui-shell-actions row in the sidebar footer (#1119) that
- *  carries the four ui icon buttons: flex, 4px gap, on the shared
- *  .ui-icon-button (36px control height, tooltips via data-tip).
+/** #654 → #1223: the sidebar footer's .ui-shell-actions row (#1119) now
+ *  carries only Log out — Settings is a primary nav item and the exports
+ *  live labelled in Settings → Your data. The row keeps its geometry: flex,
+ *  4px gap, on the shared .ui-icon-button (36px control height, tooltips
+ *  via data-tip).
  *
  *  Red here means the change needs a GitHub issue and a spec update —
  *  never a silent restyle.
@@ -300,9 +299,9 @@ describe("new-zinvoice layout (#1202 parity)", () => {
 });
 
 describe("settings layout (#1202 parity)", () => {
-  test("the page is two balanced columns, one column inside the modal", () => {
+  test("the page is two balanced columns (the settings modal is gone, #1223)", () => {
     expect(css).toContain(".ui-settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));");
-    expect(css).toContain(".settings-dialog .ui-settings-grid { grid-template-columns: 1fr; }");
+    expect(css).not.toContain(".settings-dialog .ui-settings-grid");
     expect(css).toContain(".ui-settings-col { display: flex; flex-direction: column;");
     expect(css).toContain(".ui-settings-form-2col { display: grid; grid-template-columns: 1fr 1fr;");
   });
