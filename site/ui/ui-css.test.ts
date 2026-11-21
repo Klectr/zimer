@@ -426,7 +426,6 @@ describe("type-scale weights and sizes (#1215 slice)", () => {
     const cases: Array<[RegExp, string]> = [
       [/\.tb-chart text \{[^}]*font-size: [^}]*\}/, "var(--font-size-sm)"],
       [/\.ui-landing-title \{[^}]*font-size: [^}]*\}/, "var(--font-size-heading-2)"],
-      [/\.md-title-medium \{[^}]*font-size: [^}]*\}/, "var(--font-size-lg)"],
       [/\.tiny \{[^}]*font-size: [^}]*\}/, "var(--font-size-sm)"],
       [/\.skip-link \{[^}]*font-size: [^}]*\}/, "var(--font-size)"],
       [/\.cal-supporting \.week-clients \{[^}]*font-size: [^}]*\}/, "var(--font-size-sm)"],
@@ -479,6 +478,13 @@ describe("dead page-narrow CSS (#1315)", () => {
   test("the unemitted page-narrow rules stay out of style.css", () => {
     expect(css).not.toContain(".page-narrow");
     expect(css).toContain(".ui-card.form-card { max-width: 720px; }");
+  });
+});
+
+describe("dead md-title-medium CSS (#1323)", () => {
+  test("the unemitted Material type class stays out of style.css", () => {
+    expect(css).not.toContain(".md-title-medium");
+    expect(css).toContain(".md-table");
   });
 });
 
