@@ -1335,3 +1335,31 @@ describe("weekInner shares week data and the empty check (#1348)", () => {
     expect(html).toContain("cal-pane-layout");
   });
 });
+
+describe("weekInner first-run hint follows the shared empty check (#1348)", () => {
+  function render(n: number) {
+    const db = {
+      query: (_sql: string) => ({ get: () => ({ n }), all: () => [] }),
+    } as unknown as Database;
+    const stub = () => ({ get: () => null, all: () => [] });
+    const views = createCalendarViews({
+      db,
+      qOne: stub(),
+      qRange: stub(),
+      entrySelect: "SELECT",
+      layout: (_t: string, b: string) => b,
+      projectOptionRows: () => [],
+      weekTargetBar: () => "",
+      calHourPx: 64,
+    } as any);
+    return views.weekInner("2026-09-20", "America/Chicago");
+  }
+
+  test("empty workspace: hint in the live pane and all three strip templates", () => {
+    expect(render(0).match(/cal-first-run/g)).toHaveLength(4);
+  });
+
+  test("non-empty workspace: no hint anywhere", () => {
+    expect(render(1)).not.toContain("cal-first-run");
+  });
+});

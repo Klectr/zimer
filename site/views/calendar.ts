@@ -393,7 +393,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       grid, the narrow agenda, and the week's supporting pane in a
       <template>. */
   function stripInnerHtml(sun: string, tz: string | null, pre?: { wd?: CalWeekData; empty?: boolean }): string {
-    const wd = pre?.wd && pre.wd.sun === sun ? pre.wd : weekData(sun, tz);
+    const wd = pre?.wd && pre.wd.sun === sun && pre.wd.tz === tz ? pre.wd : weekData(sun, tz);
     const nowP = tzParts(new Date(), tz);
     const nowMin = nowP.hh * 60 + nowP.mm;
     return `
