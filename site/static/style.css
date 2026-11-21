@@ -1196,7 +1196,7 @@ body.app-fixed .ui-shell-main { min-height: 0; }
   .cal-supporting .nudge-chip { padding: 4px 10px; }
   .cal-supporting .week-target { gap: 8px; }
   .cal-supporting .week-clients { gap: 4px 12px; font-size: var(--font-size-sm); }
-  .cal-supporting .cal-hint { font-size: var(--font-size-sm); line-height: 16px; }
+  .cal-supporting .cal-hint { font-size: 0.6875rem; line-height: 16px; }
 }
 /* #542: the week-over-week delta's trend icon rides the muted label baseline
    at label size — the same 14px treatment the Stripe paid chip's icon gets. */

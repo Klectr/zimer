@@ -452,7 +452,10 @@ describe("type-scale weights and sizes (#1215 slice)", () => {
       [/\.tiny \{[^}]*font-size: [^}]*\}/, "var(--font-size-sm)"],
       [/\.skip-link \{[^}]*font-size: [^}]*\}/, "var(--font-size)"],
       [/\.cal-supporting \.week-clients \{[^}]*font-size: [^}]*\}/, "var(--font-size-sm)"],
-      [/\.cal-supporting \.cal-hint \{ font-size: [^}]*\}/, "var(--font-size-sm)"],
+      [/\.ui-mobile-nav \.ui-navitem \{[^}]*font-size: [^}]*\}/, "var(--font-size-sm)"],
+      [/\.cal-supporting \.week-nav h1 \{[^}]*font-size: [^}]*\}/, "var(--font-size-xl)"],
+      [/\.cal-supporting \.cal-summary \.cal-summary-total \{[^}]*font-size: [^}]*\}/, "var(--font-size-xl)"],
+      [/\.share-url-wrap\[data-tip\]::after \{[^}]*font-size: [^}]*\}/, "var(--font-size-sm)"],
       [/\.nav-drawer-head \{[^}]*font-size: [^}]*\}/, "var(--font-size)"],
       [/\.nav-drawer-row \{[^}]*font-size: [^}]*\}/, "var(--font-size)"],
       [/\.terms-desc \{[^}]*font-size: [^}]*\}/, "var(--font-size-sm)"],
@@ -473,9 +476,9 @@ describe("type-scale weights and sizes (#1215 slice)", () => {
     }
   });
 
-  test("no app-chrome chart or calendar-supporting text sits off the type scale", () => {
+  test("chart text is on the type scale; the cal-hint keeps its compact size (#945)", () => {
     expect(css).not.toContain("font-size: 0.625rem");
-    expect(css).not.toContain(".cal-supporting .cal-hint { font-size: 0.6875rem");
+    expect(css).toContain(".cal-supporting .cal-hint { font-size: 0.6875rem");
     expect(css).toContain(".cal-supporting .cal-hint { margin: 0; font-size: 0.6875rem");
     expect(css).not.toContain(".cal-supporting .week-clients { gap: 4px 12px; font-size: 0.8125rem");
     expect(css).not.toContain(".ui-landing-term { font-family: var(--font-family-code); font-size: 13px");
