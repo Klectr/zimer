@@ -1710,6 +1710,8 @@ button.ui-tag { border: 0; font: inherit; cursor: pointer; }
 .share-line { display: flex; align-items: center; gap: 12px; padding: 7px 0; min-width: 0; }
 .share-label { font-weight: 500; white-space: nowrap; }
 .share-label.warn { color: var(--color-error); }
+.share-line-wrap { flex-wrap: wrap; row-gap: var(--spacing-xs); }
+.share-note { flex: 1 1 12rem; min-width: 0; color: var(--color-text-secondary); }
 .share-url { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   color: var(--color-text-secondary); font-size: var(--font-size-sm); }
 /* #502: the client link truncates with ellipsis — its full URL lives in the

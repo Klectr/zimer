@@ -1050,3 +1050,43 @@ describe("#1214: one status-chip system", () => {
     expect(css).not.toContain(".inv-badge");
   });
 });
+
+/** #1224: a sent Zinvoice with no card link and no saved payment
+ *  instructions gives the client no way to pay; the in-app Public link card
+ *  says so (the public page itself never shows this nudge). */
+describe("#1224: no-pay-path warning on the Public link card", () => {
+  const dbWith = (instructions: string) => ({
+    query: (sql: string) => ({
+      get: (key?: string) => (sql.includes("FROM meta") && key === "business_payment_instructions" ? { value: instructions } : null),
+      all: () => [],
+      run: () => ({}),
+    }),
+  }) as unknown as Database;
+
+  test("sent, no card link, no instructions → warning with a Settings link", () => {
+    const html = views([], { db: dbWith("") }).invoiceDetailBody(detailInv("sent", null) as any, "http://x");
+    expect(html).toContain("Your client won't see how to pay.");
+    expect(html).toContain('href="/settings"');
+    expect(html).toContain("Add payment instructions");
+    expect(html).toContain("Anyone with the link can view — no login");
+  });
+
+  test("saved instructions remove the warning", () => {
+    const html = views([], { db: dbWith("Bank transfer to 12-34") }).invoiceDetailBody(detailInv("sent", null) as any, "http://x");
+    expect(html).not.toContain("won't see how to pay");
+    expect(html).toContain("Anyone with the link can view and pay");
+  });
+
+  test("a card payment link removes the warning", () => {
+    const inv = { ...detailInv("sent", null), stripe_payment_link: "https://pay.example/x" };
+    const html = views([], { db: dbWith("") }).invoiceDetailBody(inv as any, "http://x");
+    expect(html).not.toContain("won't see how to pay");
+  });
+
+  test("drafts and paid Zinvoices never show it", () => {
+    for (const status of ["draft", "paid"]) {
+      const html = views([], { db: dbWith("") }).invoiceDetailBody(detailInv(status, status === "paid" ? "2026-09-21" : null) as any, "http://x");
+      expect(html).not.toContain("won't see how to pay");
+    }
+  });
+});

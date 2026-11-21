@@ -952,12 +952,22 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
         </span>
       </div>` : "";
     const canPay = inv.status === "sent" && (!!inv.stripe_payment_link || !!(getMeta(db, "business_payment_instructions") || "").trim());
+    /* #1224: a sent Zinvoice with no card link and no saved instructions
+       leaves the client's page without any way to pay — say so here, to the
+       user, never on the public page. */
+    const noPayPathWarn = (inv.status === "sent" && !canPay && !stripeWarn) ? `
+      <div class="share-line share-line-wrap">
+        <span class="share-label warn">How to pay</span>
+        <span class="share-note">Your client won't see how to pay.</span>
+        ${linkButton({ label: "Add payment instructions", href: "/settings", size: "sm" })}
+      </div>` : "";
     const publicLinkCard = `
       <section class="ui-card share-lines no-print" aria-label="Public link">
         <div class="ui-card-head"><span class="ui-section-title">Public link</span></div>
         <p class="muted">Anyone with the link can view${canPay ? " and pay" : ""} — no login for your client.</p>
         ${clientLine}
         ${stripeWarn}
+        ${noPayPathWarn}
       </section>`;
     /* The timeline carries only events the data records: creation
        (created_at) and payment (paid_at). There is no sent-at or
