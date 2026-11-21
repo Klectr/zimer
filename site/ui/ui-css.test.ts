@@ -482,6 +482,13 @@ describe("dead page-narrow CSS (#1315)", () => {
   });
 });
 
+describe("dead md-title-medium CSS (#1323)", () => {
+  test("the unemitted Material type class stays out of style.css", () => {
+    expect(css).not.toContain(".md-title-medium");
+    expect(css).toContain(".md-table");
+  });
+});
+
 describe("dead invoice-widget CSS (#1311)", () => {
   test("the unemitted invoice-widget family stays out of style.css", () => {
     for (const sel of [".inv-widgets", ".inv-widgets-col", ".inv-wsub", ".inv-wrow", ".inv-wmain", ".inv-wtext", ".inv-wname", ".inv-wamt", ".inv-wval", ".inv-bar", ".inv-dot", ".inv-view-cell", ".inv-overdue-text"]) {
