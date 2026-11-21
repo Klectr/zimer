@@ -155,9 +155,9 @@ export function updateSectionHtml(opts?: { aboutActionsHtml?: string }): string 
   if (opts?.aboutActionsHtml !== undefined) {
     return settingsSection({
       level: 2, id: "about", title: "About & updates",
-      hint: "Free forever on your own server.",
-      bodyHtml: `<p class="ui-settings-note">One Bun process and one SQLite file. Updates are manual — pull the release and restart.</p>` + statusRow,
-      actionsHtml: opts.aboutActionsHtml + checkBtn,
+      hint: "Free forever on your own server. Updates are manual: check here, then re-run the installer.",
+      bodyHtml: `<div class="ui-about-row">${statusRow}${checkBtn}</div>`,
+      actionsHtml: opts.aboutActionsHtml,
     });
   }
   const body = statusRow + `<div class="ui-settings-actions">${checkBtn}</div>`;

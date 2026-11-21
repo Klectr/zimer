@@ -303,7 +303,15 @@ describe("settings layout (#1202 parity)", () => {
     expect(css).toContain(".ui-settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));");
     expect(css).not.toContain(".settings-dialog .ui-settings-grid");
     expect(css).toContain(".ui-settings-col { display: flex; flex-direction: column;");
-    expect(css).toContain(".ui-settings-form-2col { display: grid; grid-template-columns: 1fr 1fr;");
+    /* #1338: tracks can shrink (minmax(0, 1fr)), inputs fill their field,
+       and the form drops to one column by its CARD's width, not the
+       viewport's — a half-width card at 1024 overflowed by 26px. */
+    expect(css).toContain(".ui-settings-form-2col { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));");
+    expect(css).toContain(".ui-settings-grid .ui-card { container-type: inline-size; min-width: 0; }");
+    expect(css).toContain(".ui-settings-form .ui-input { width: 100%; min-width: 0; box-sizing: border-box; }");
+    expect(css).toContain("@container (max-width: 459px) { .ui-settings-form-2col { grid-template-columns: minmax(0, 1fr); } }");
+    expect(css).toContain(".ui-settings-form textarea.ui-input { resize: vertical; }");
+    expect(css).not.toContain("@media (max-width: 639px) { .ui-settings-form-2col");
   });
 });
 

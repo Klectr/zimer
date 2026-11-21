@@ -23,6 +23,7 @@ import { textField } from "../ui/field.ts";
 import { card } from "../ui/card.ts";
 import { settingsSection } from "../ui/settings-section.ts";
 import { linkButton } from "../ui/button.ts";
+import { icon } from "../lib/icons.ts";
 
 /* #733: everything derived from one tenant's SQLite bundle. Resolved per
    request from the session (session → user → tenant tree, cached by user
@@ -771,19 +772,23 @@ export function createWebRouter(deps: WebDeps) {
           const updates = billingHtml
             ? updateSectionHtml()
             : updateSectionHtml({ aboutActionsHtml:
-                linkButton({ label: "Changelog", href: "/changelog", icon: "receipt" }) +
-                linkButton({ label: "Read the install guide", href: "https://github.com/Klectr/zimer#self-hosting", external: true, icon: "download" }) });
+                linkButton({ label: "Changelog", href: "/changelog", variant: "ghost", size: "sm" }) +
+                linkButton({ label: "Install guide", href: "https://github.com/Klectr/zimer#self-hosting", external: true, variant: "ghost", size: "sm" }) });
           const support = `<p class="ui-settings-support">Need help? <a href="mailto:support@klectr.dev">support@klectr.dev</a></p>`;
           /* The suite mock's "Your data" card, in the same two-column
              grid as the profile and billing sections. */
+          const dataRow = (ic: "database" | "table" | "receipt", title: string, desc: string, href: string, aria: string) =>
+            `<div class="ui-data-row">${icon(ic)}<div class="ui-data-row-text"><div class="ui-data-row-title">${title}</div>` +
+            `<div class="ui-data-row-desc">${desc}</div></div>` +
+            linkButton({ label: "Download", href, download: true, icon: "download", size: "sm", ariaLabel: aria }) + `</div>`;
           const dataSection = settingsSection({
             level: 2, id: "your-data", title: "Your data",
-            hint: "One SQLite file holds everything. Export or back it up any time.",
-            bodyHtml: `<p class="ui-settings-note">Leaving is allowed, so the exports actually work — clients, entries, and Zinvoices come with you.</p>`,
-            actionsHtml:
-              linkButton({ label: "Download backup", href: "/backup", download: true, icon: "database" }) +
-              linkButton({ label: "Entries CSV", href: "/export/entries.csv", download: true, icon: "table" }) +
-              linkButton({ label: "Zinvoices CSV", href: "/export/invoices.csv", download: true, icon: "receipt" }),
+            hint: "Leaving is allowed, so the exports actually work: clients, entries and Zinvoices come with you.",
+            bodyHtml: `<div class="ui-data-list">` +
+              dataRow("database", "Full backup", "The whole SQLite file. Restore it anywhere.", "/backup", "Download backup") +
+              dataRow("table", "Entries CSV", "Every time entry, for spreadsheets.", "/export/entries.csv", "Download entries CSV") +
+              dataRow("receipt", "Zinvoices CSV", "Every Zinvoice with its totals.", "/export/invoices.csv", "Download Zinvoices CSV") +
+              `</div>`,
           });
           const plan = billingHtml || updates;
           const body =

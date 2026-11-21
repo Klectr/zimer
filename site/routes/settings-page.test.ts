@@ -143,3 +143,37 @@ describe("settings page (#693)", () => {
     expect(body).toContain('id="biz-profile"');
   });
 });
+
+/** #1338: the cleaned-up settings sections — payment terms description lives
+ *  with its select; About pairs the version with the update check; Your data
+ *  is three labelled rows with specific accessible names. */
+async function settingsBodyHtml(): Promise<string> {
+  const { handleWeb } = setup();
+  return await (await getSettings(handleWeb, true))!.text();
+}
+
+describe("settings cleanup (#1338)", () => {
+  test("the terms description sits inside the payment-terms field group", async () => {
+    const body = await settingsBodyHtml();
+    const group = body.slice(body.indexOf('<div class="ui-settings-field">'));
+    expect(group.indexOf('id="bp-terms"')).toBeGreaterThan(-1);
+    expect(group.indexOf('class="terms-desc')).toBeGreaterThan(group.indexOf('id="bp-terms"'));
+    expect(group.indexOf('class="terms-desc')).toBeLessThan(group.indexOf('id="bp-payment_instructions"'));
+  });
+
+  test("About pairs the version status with Check for updates", async () => {
+    const body = await settingsBodyHtml();
+    const row = body.slice(body.indexOf('<div class="ui-about-row">'));
+    expect(row.indexOf('id="update-status"')).toBeGreaterThan(-1);
+    expect(row.indexOf('id="check-updates-btn"')).toBeGreaterThan(row.indexOf('id="update-status"'));
+    expect(body).not.toContain("One Bun process and one SQLite file.");
+  });
+
+  test("Your data is three rows, each with a specific download name", async () => {
+    const body = await settingsBodyHtml();
+    expect((body.match(/class="ui-data-row"/g) || []).length).toBe(3);
+    for (const [href, name] of [["/backup", "Download backup"], ["/export/entries.csv", "Download entries CSV"], ["/export/invoices.csv", "Download Zinvoices CSV"]]) {
+      expect(body).toMatch(new RegExp(`href="${href.replace(/[./]/g, "\\$&")}"[^>]*aria-label="${name}"|aria-label="${name}"[^>]*href="${href.replace(/[./]/g, "\\$&")}"`));
+    }
+  });
+});

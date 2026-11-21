@@ -366,9 +366,26 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .ui-page-title { font-size: var(--font-size-heading-3); font-weight: var(--font-weight-strong); margin: 0; }
 .ui-settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--spacing-sm); align-items: start; }
 .ui-settings-col { display: flex; flex-direction: column; gap: var(--spacing-sm); min-width: 0; }
-.ui-settings-form-2col { display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-md) var(--spacing-sm); }
-.ui-settings-form-2col .terms-desc { grid-column: 1 / -1; }
-@media (max-width: 639px) { .ui-settings-form-2col { grid-template-columns: 1fr; } }
+.ui-settings-form-2col { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--spacing-md) var(--spacing-sm); }
+.ui-settings-field { display: flex; flex-direction: column; gap: var(--spacing-xs); min-width: 0; }
+.ui-settings-grid .ui-card { container-type: inline-size; min-width: 0; }
+.ui-settings-form .ui-field { min-width: 0; }
+.ui-settings-form .ui-input { width: 100%; min-width: 0; box-sizing: border-box; }
+.ui-settings-form textarea.ui-input { resize: vertical; }
+@container (max-width: 459px) { .ui-settings-form-2col { grid-template-columns: minmax(0, 1fr); } }
+.ui-about-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--spacing-sm) var(--spacing); }
+.ui-about-row #update-status { flex: 1 1 14rem; min-width: 0; }
+#about .ui-section-actions { gap: var(--spacing-xs); margin-top: var(--spacing-sm); }
+.ui-data-list { display: flex; flex-direction: column; }
+.ui-data-row { display: flex; align-items: center; gap: var(--spacing-sm); padding: var(--spacing-sm) 0; border-top: 1px solid var(--color-border-secondary); }
+.ui-data-row:first-child { border-top: 0; padding-top: 0; }
+.ui-data-row:last-child { padding-bottom: 0; }
+.ui-data-row > svg { flex: none; width: 20px; height: 20px; color: var(--color-text-tertiary); }
+.ui-data-row-text { flex: 1; min-width: 0; }
+.ui-data-row-title { font-weight: 500; }
+.ui-data-row-desc { font-size: var(--font-size-sm); line-height: var(--line-height-sm); color: var(--color-text-secondary); }
+.ui-data-row .ui-btn { flex: none; }
+.ui-settings-grid .ui-btn svg { width: 16px; height: 16px; flex: none; }
 .settings-pref-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--spacing-md); padding: var(--spacing-sm) 0; border-top: 1px solid var(--color-border-secondary); }
 .settings-pref-row:first-child { border-top: 0; padding-top: 0; }
 .settings-pref-row:last-child { padding-bottom: 0; }
@@ -1337,7 +1354,7 @@ button.ui-tag { border: 0; font: inherit; cursor: pointer; }
 .detail-form { margin-bottom: 12px; }
 /* #293: canned payment-terms description under the dropdown (supporting text). */
 .terms-desc { flex: 1 1 100%; margin: 0; font-size: var(--font-size-sm); line-height: 1.4; }
-#biz-profile .terms-desc { margin-top: 8px; }
+#biz-profile .terms-desc { margin-top: 0; }
 
 /* Milestone 11: demo onboarding banner. */
 .demo-banner {
