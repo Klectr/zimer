@@ -58,3 +58,11 @@ describe("invoice list query (#1293, slice of #992)", () => {
     expect(inv.pdf_snapshot).not.toBeNull();
   });
 });
+
+describe("sqlite busy timeout (#1319, slice of #996)", () => {
+  test("tenant DB is created with a 5000ms busy timeout", () => {
+    const { db } = createDb(mkdtempSync(join(tmpdir(), "tk-db-")));
+    const row = db.query("PRAGMA busy_timeout").get() as { timeout: number };
+    expect(row.timeout).toBe(5000);
+  });
+});
