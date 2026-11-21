@@ -423,3 +423,22 @@ describe("internal notes label (#1221)", () => {
     expect(rule![0]).not.toContain("letter-spacing");
   });
 });
+
+describe("type-scale weights and sizes (#1215 slice)", () => {
+  test("invoice list emphasis uses fontWeightStrong 600, not off-system 550", () => {
+    const main = css.match(/\.inv-cell-main \{[^}]*\}/);
+    expect(main).not.toBeNull();
+    expect(main![0]).toContain("font-weight: 600");
+    const wname = css.match(/\.inv-wname \{[^}]*\}/);
+    expect(wname).not.toBeNull();
+    expect(wname![0]).toContain("font-weight: 600");
+    expect(css).not.toContain("font-weight: 550");
+  });
+
+  test("the timer invoice mark sits on the type scale at --font-size-sm", () => {
+    const mark = css.match(/\.ui-inv-mark \{[^}]*\}/);
+    expect(mark).not.toBeNull();
+    expect(mark![0]).toContain("font-size: var(--font-size-sm)");
+    expect(mark![0]).not.toContain("font-size: 10px");
+  });
+});
