@@ -411,9 +411,6 @@ describe("type-scale weights and sizes (#1215 slice)", () => {
     const main = css.match(/\.inv-cell-main \{[^}]*\}/);
     expect(main).not.toBeNull();
     expect(main![0]).toContain("font-weight: 600");
-    const wname = css.match(/\.inv-wname \{[^}]*\}/);
-    expect(wname).not.toBeNull();
-    expect(wname![0]).toContain("font-weight: 600");
     expect(css).not.toContain("font-weight: 550");
   });
 
@@ -463,5 +460,15 @@ describe("type-scale weights and sizes (#1215 slice)", () => {
     expect(css).toContain(".cal-supporting .cal-hint { margin: 0; font-size: 0.6875rem");
     expect(css).not.toContain(".cal-supporting .week-clients { gap: 4px 12px; font-size: 0.8125rem");
     expect(css).toContain(".ui-landing-title { font-size: var(--font-size-heading-2);");
+  });
+});
+
+describe("dead invoice-widget CSS (#1311)", () => {
+  test("the unemitted invoice-widget family stays out of style.css", () => {
+    for (const sel of [".inv-widgets", ".inv-widgets-col", ".inv-wsub", ".inv-wrow", ".inv-wmain", ".inv-wtext", ".inv-wname", ".inv-wamt", ".inv-wval", ".inv-bar", ".inv-dot", ".inv-view-cell", ".inv-overdue-text"]) {
+      expect(css).not.toContain(sel);
+    }
+    expect(css).toContain(".inv-cell-main");
+    expect(css).toContain(".inv-amt");
   });
 });
