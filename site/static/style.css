@@ -366,14 +366,29 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .ui-page-title { font-size: var(--font-size-heading-3); font-weight: var(--font-weight-strong); margin: 0; }
 .ui-settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--spacing-sm); align-items: start; }
 .ui-settings-col { display: flex; flex-direction: column; gap: var(--spacing-sm); min-width: 0; }
-.settings-dialog .ui-settings-grid { grid-template-columns: 1fr; }
-@media (max-width: 860px) { .ui-settings-grid { grid-template-columns: 1fr; } }
 .ui-settings-form-2col { display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-md) var(--spacing-sm); }
 .ui-settings-form-2col .terms-desc { grid-column: 1 / -1; }
 @media (max-width: 639px) { .ui-settings-form-2col { grid-template-columns: 1fr; } }
 .settings-pref-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--spacing-md); padding: var(--spacing-sm) 0; border-top: 1px solid var(--color-border-secondary); }
 .settings-pref-row:first-child { border-top: 0; padding-top: 0; }
 .settings-pref-row:last-child { padding-bottom: 0; }
+.ui-settings-wide { grid-column: 1 / -1; min-width: 0; }
+.ui-settings-wide .settings-pref-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--spacing-xl); }
+.ui-settings-wide .settings-pref-row { border-top: 0; padding: 0; align-items: flex-start; }
+.settings-dialog .ui-settings-grid { grid-template-columns: 1fr; }
+.settings-dialog .ui-settings-wide { order: 1; }
+.settings-dialog .ui-settings-col + .ui-settings-col { order: 2; }
+.settings-dialog .ui-settings-wide .settings-pref-list { display: block; }
+.settings-dialog .ui-settings-wide .settings-pref-row { border-top: 1px solid var(--color-border-secondary); padding: var(--spacing-sm) 0; align-items: center; }
+.settings-dialog .ui-settings-wide .settings-pref-row:first-child { border-top: 0; padding-top: 0; }
+@media (max-width: 860px) {
+  .ui-settings-grid { grid-template-columns: 1fr; }
+  .ui-settings-wide { order: 1; }
+  .ui-settings-col + .ui-settings-col { order: 2; }
+  .ui-settings-wide .settings-pref-list { display: block; }
+  .ui-settings-wide .settings-pref-row { border-top: 1px solid var(--color-border-secondary); padding: var(--spacing-sm) 0; align-items: center; }
+  .ui-settings-wide .settings-pref-row:first-child { border-top: 0; padding-top: 0; }
+}
 .settings-pref-text { min-width: 0; }
 .settings-pref-title { font-weight: var(--font-weight-strong); }
 .settings-pref-hint { margin-top: 2px; font-size: var(--font-size-sm); line-height: var(--line-height-sm); color: var(--color-text-secondary); }
@@ -381,12 +396,12 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .settings-inline-form { display: flex; align-items: center; gap: var(--spacing-xs); }
 .settings-hours { width: 96px; }
 .settings-hours .ui-input { width: 100%; box-sizing: border-box; }
-.ui-settings-support { margin: 0; font-size: var(--font-size-sm); line-height: var(--line-height-sm); color: var(--color-text-tertiary); }
+.ui-settings-support { margin: var(--spacing) 0 0; text-align: center; font-size: var(--font-size-sm); line-height: var(--line-height-sm); color: var(--color-text-tertiary); }
 .ui-theme-dots { display: flex; flex-wrap: wrap; gap: var(--spacing-sm); }
 .ui-theme-dot { width: 36px; height: 36px; border-radius: 9999px; background: transparent; border: none; padding: 0; cursor: pointer; display: inline-grid; place-items: center; }
 .ui-theme-dot::before { content: ""; grid-area: 1 / 1; width: 26px; height: 26px; border-radius: 9999px; background: var(--dot); border: 1px solid var(--color-border); transition: transform 120ms ease; }
 .ui-theme-dot:hover::before { transform: scale(1.08); }
-.ui-theme-dot.selected::before { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--dot); }
+.ui-theme-dot.selected::before { box-shadow: 0 0 0 2px var(--color-text), 0 0 0 4px var(--dot); }
 .ui-theme-dot svg { grid-area: 1 / 1; width: 14px; height: 14px; color: rgba(0, 0, 0, 0.75); }
 .ui-section-hint { font-size: var(--font-size-sm); line-height: var(--line-height-sm); color: var(--color-text-secondary); margin-top: var(--spacing-xxs); }
 .ui-section-actions { display: flex; align-items: center; gap: var(--spacing-sm); margin-top: var(--spacing-md); flex-wrap: wrap; }

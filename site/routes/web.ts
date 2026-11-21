@@ -788,8 +788,9 @@ export function createWebRouter(deps: WebDeps) {
           const plan = billingHtml || updates;
           const body =
             `<div class="ui-settings-grid">` +
-            `<div class="ui-settings-col">${bizProfileSection()}${preferencesSection()}</div>` +
+            `<div class="ui-settings-col">${bizProfileSection()}</div>` +
             `<div class="ui-settings-col">${plan}${dataSection}${billingHtml ? updates : ""}</div>` +
+            `<div class="ui-settings-wide">${preferencesSection()}</div>` +
             `</div>${support}`;
           if (isHtmx(req)) return html(body);
           /* #693: direct visits get the full app layout — the bare fragment
