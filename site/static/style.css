@@ -483,18 +483,7 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .ui-row-lead-icon svg { width: 24px; height: 24px; }
 .ui-row-chevron { display: inline-flex; flex: none; color: var(--color-text-tertiary); }
 .ui-row-chevron svg { width: 20px; height: 20px; }
-.ui-rev-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--spacing-sm); margin-bottom: var(--spacing-sm); }
-@container (max-width: 480px) { .ui-rev-cards { grid-template-columns: 1fr; } }
 .ui-rev-paid { color: var(--color-primary); }
-.ui-rev-chart { width: 100%; height: auto; display: block; }
-.ui-rev-chart .ui-rev-bar-out { fill: var(--color-fill); }
-.ui-rev-chart .ui-rev-bar-paid { fill: var(--color-primary); }
-.ui-rev-chart .ui-rev-bar-out, .ui-rev-chart .ui-rev-bar-paid { transform-box: fill-box; transform-origin: 50% 100%; animation: bar-grow var(--motion-duration-medium2) var(--motion-easing-emphasized-decelerate) backwards; }
-.ui-rev-chart text { fill: var(--color-text-tertiary); font-size: var(--font-size-sm); }
-.ui-rev-legend { display: flex; align-items: center; gap: var(--spacing-xs); margin-top: var(--spacing-xs); color: var(--color-text-tertiary); font-size: var(--font-size-sm); }
-.ui-rev-swatch { width: 12px; height: 12px; border-radius: var(--radius-xs); display: inline-block; }
-.ui-rev-swatch.paid { background: var(--color-primary); }
-.ui-rev-swatch.out { background: var(--color-fill); margin-left: var(--spacing-sm); }
 .ui-attn-chip { display: inline-block; flex: none; white-space: nowrap; background: var(--color-error-bg); color: var(--color-error); padding: var(--spacing-xs) var(--spacing-sm); border-radius: var(--radius-xs); font-size: var(--font-size-sm); font-weight: 500; }
 .ui-timer-bottom { display: flex; align-items: center; gap: var(--spacing-sm); }
 .ui-timer-meta { display: flex; gap: var(--spacing-xs); flex-wrap: wrap; }
@@ -1902,7 +1891,6 @@ button.ui-tag { border: 0; font: inherit; cursor: pointer; }
 }
 
 /* ---------------- revenue (milestone 1) ---------------- */
-@keyframes bar-grow { from { transform: scaleY(0); } }
 /* #899: time-breakdown chart on the zinvoices sheet — same bar treatment
    as the revenue chart, single-series (no animation: it prints). */
 .inv-breakdown { margin-top: 20px; }

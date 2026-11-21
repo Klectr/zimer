@@ -265,9 +265,6 @@ const RULES = [
   ".ui-target {",
   ".ui-target-label {",
   ".ui-inv-mark {",
-  ".ui-rev-cards {",
-  ".ui-rev-chart {",
-  ".ui-rev-legend {",
   ".ui-attn-chip {",
   ".ui-row-main {",
   ".ui-row-title {",
@@ -445,7 +442,6 @@ describe("type-scale weights and sizes (#1215 slice)", () => {
 
   test("app-chrome rules read type tokens, not font-size literals", () => {
     const cases: Array<[RegExp, string]> = [
-      [/\.ui-rev-chart text \{[^}]*font-size: [^}]*\}/, "var(--font-size-sm)"],
       [/\.tb-chart text \{[^}]*font-size: [^}]*\}/, "var(--font-size-sm)"],
       [/\.ui-landing-term \{[^}]*font-size: [^}]*\}/, "var(--font-size)"],
       [/\.md-title-medium \{[^}]*font-size: [^}]*\}/, "var(--font-size-lg)"],
