@@ -63,7 +63,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
         ${button({ label: "Load demo data", icon: "info", variant: "ghost", type: "submit" })}
       </form>` : "";
     return emptyState({
-      image: { src: "/static/mascot-empty.png", width: 132, height: 132 },
+      image: { src: "/static/mascot-empty.webp", width: 132, height: 132 },
       title: "No Zinvoices yet",
       body: "Turn tracked time into a Zinvoice — or explore first with fictional sample data.",
       action: demoCta || undefined,
