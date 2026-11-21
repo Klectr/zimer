@@ -1200,4 +1200,15 @@ describe("calendar live duration format (#1219)", () => {
     expect(fmtD(125)).toBe("2h 05m");
     expect(fmtD(600)).toBe("10h");
   });
+
+  test("fmtD matches fmtDur across every whole minute in a day", async () => {
+    const { fmtDur } = await import("../lib/format.ts");
+    const src = await Bun.file("site/views/calendar.ts").text();
+    const start = src.indexOf("function fmtD");
+    const fnSrc = src.slice(start, src.indexOf("function fmt12", start));
+    const fmtD = new Function(`${fnSrc}; return fmtD;`)() as (mins: number) => string;
+    /* Zero is the one deliberate difference: fmtDur(0) is "0s", and the
+       server call sites guard it to blank — fmtD mirrors the rendering. */
+    for (let m = 1; m < 1440; m++) expect(fmtD(m)).toBe(fmtDur(m * 60));
+  });
 });
