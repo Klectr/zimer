@@ -251,6 +251,7 @@ export function createTimerViews(deps: TimerViewDeps) {
       ${appHeader({ title, sub: `${dateSub} — here's your day so far.` })}
       <div id="today-stats" hx-get="/partial/today-stats" hx-trigger="load, timer-updated from:body">${statRow()}</div>
       <div class="scroll-region timer-home" data-enter="2" aria-label="Zimer and today's entries">
+        <div class="timer-home-grid">
         ${timerPartial()}
         <section class="ui-card">
           <div class="ui-block-title">Today's entries</div>
@@ -262,6 +263,7 @@ export function createTimerViews(deps: TimerViewDeps) {
             </div>
           </div>
         </section>
+        </div>
         <script>(function(){/* #255: client day bounds + client-side time formatting.
               Runs at parse time, before htmx's load trigger fires. */
               var el=document.getElementById('today-list');if(!el)return;
