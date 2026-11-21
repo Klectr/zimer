@@ -898,8 +898,7 @@ describe("calendar summary pane breakpoint (#1077)", () => {
        crosses its 639px grid floor around 1231px, and 1280 is the chosen
        breakpoint above that crossing. */
     expect(css).toMatch(/@media\s*\(min-width:\s*1280px\)\s*\{[^}]*\.cal-pane-layout\s*\{[^}]*grid-template-areas:\s*"grid summary"/);
-    /* No 840px block may carry the calendar pane (the timer page's own
-       .pane-layout keeps its separate 840px rule — this is scoped to
+    /* No 840px block may carry the calendar pane (scoped to
        .cal-pane-layout only). */
     expect(css).not.toMatch(/@media\s*\(min-width:\s*840px\)\s*\{[^}]*\.cal-pane-layout/);
     /* The stacked default (summary above grid) remains the base layout. */
