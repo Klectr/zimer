@@ -13,7 +13,6 @@ import { settingsSection } from "../ui/settings-section.ts";
 import { selectField, textAreaField, textField } from "../ui/field.ts";
 import { button } from "../ui/button.ts";
 import { card } from "../ui/card.ts";
-import { tag } from "../ui/tag.ts";
 import { clientRow } from "../ui/rows.ts";
 import { dayTargetSecs } from "../lib/domain.ts"; /* #908: daily target setting */
 import { appHeader } from "../ui/app-header.ts";
@@ -243,24 +242,8 @@ export function createManageViews(deps: ManageViewDeps) {
   const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   const shortDate = (ymd: string): string => { const [, m, d] = ymd.split("-").map(Number); return m && d ? `${MONTHS[m - 1]} ${d}` : ymd; };
 
-  function projectsCard(): string {
-    const { clients, byClient, unassigned } = manageData();
-    const chips: string[] = [];
-    for (const c of clients)
-      for (const p of byClient.get(c.id) || []) chips.push(tag({ label: `${c.name} — ${p.name}` }));
-    for (const p of unassigned) chips.push(tag({ label: p.name }));
-    return card({
-      id: "projects-card",
-      content:
-        `<h3 class="ui-block-title">Projects</h3>` +
-        `<div class="manage-chips">${chips.join("")}<button type="button" class="ui-tag ui-tag-neutral manage-new-project" id="new-project-open">${icon("add")}New project</button></div>` +
-        `<p class="manage-note">Projects live under their client. Deleting a project never deletes time: its entries keep their history, and past Zinvoices keep their lines.</p>`,
-    });
-  }
-
   function manageListsOob(): string {
     return clientTableCard().replace(`id="client-table-card"`, `id="client-table-card" hx-swap-oob="true"`)
-      + projectsCard().replace(`id="projects-card"`, `id="projects-card" hx-swap-oob="true"`)
       + `<p class="ui-app-sub" id="mg-sub" hx-swap-oob="true">${esc(countsSub())}</p>`;
   }
 
@@ -346,40 +329,14 @@ export function createManageViews(deps: ManageViewDeps) {
     </div>`;
   }
 
-  function newProjectDialog(): string {
-    const { clients } = manageData();
-    const options = [
-      { value: "", label: "No client" },
-      ...clients.map(c => ({ value: String(c.id), label: c.name })),
-    ];
-    return `<div class="cal-scrim ui-scrim" id="new-project-scrim" hidden>
-      <div class="settings-dialog ui-dialog" role="dialog" aria-modal="true" aria-labelledby="new-project-title">
-        <div class="settings-dialog-head">
-          <div>
-            <h2 class="ui-dialog-title" id="new-project-title">New project</h2>
-          </div>
-          ${iconButton({ icon: "close", label: "Close new project", id: "new-project-close", tip: null })}
-        </div>
-        <form method="post" action="/projects" id="new-project-form" class="ui-settings-form" hx-post="/projects" hx-swap="none">
-          <input type="hidden" name="context" value="page">
-          ${selectField({ id: "np-client", label: "Client", name: "client_id", options, value: "" })}
-          ${textField({ id: "np-name", label: "Project name", name: "name", required: true })}
-          <div class="ui-settings-actions">${button({ label: "Cancel", type: "button", variant: "ghost", id: "new-project-cancel" })}${button({ label: "Add project", type: "submit", variant: "primary" })}</div>
-        </form>
-      </div>
-    </div>`;
-  }
-
   function managePage(): string {
     return layout("Manage", `
       ${appHeader({ title: "Manage", sub: countsSub(), subId: "mg-sub" })}
       <div class="manage-stack" data-enter="2">
         ${addClientCard()}
         ${clientTableCard()}
-        ${projectsCard()}
       </div>
       ${clientDialog()}
-      ${newProjectDialog()}
       <script>(function(){
         var stack = document.querySelector(".manage-stack");
         if (!stack) return;
@@ -457,40 +414,6 @@ export function createManageViews(deps: ManageViewDeps) {
             closeClientDialog(false);
           }
         });
-        var npScrim = document.getElementById("new-project-scrim");
-        var npForm = document.getElementById("new-project-form");
-        var npClose = document.getElementById("new-project-close");
-        var npCancel = document.getElementById("new-project-cancel");
-        var npGen = 0;
-        function openNewProject(){
-          if(!npScrim) return;
-          npGen++;
-          npScrim.hidden = false; void npScrim.offsetWidth; npScrim.classList.add("open");
-          document.addEventListener("keydown", onNewProjectKey, true);
-          var f=npForm ? npForm.querySelector("select") : null; if(f) f.focus();
-        }
-        function closeNewProject(refocus){
-          if(!npScrim || npScrim.hidden) return;
-          npGen++;
-          npScrim.classList.remove("open");
-          document.removeEventListener("keydown", onNewProjectKey, true);
-          var gen=npGen, done=false, finish=function(){ if(done||gen!==npGen) return; done=true; npScrim.hidden=true; };
-          var onEnd=function(e){ if(e.target===npScrim&&e.propertyName==="opacity"){ npScrim.removeEventListener("transitionend",onEnd); finish(); } };
-          npScrim.addEventListener("transitionend",onEnd); setTimeout(finish,300);
-          if(refocus){ var chip=document.getElementById("new-project-open"); if(chip) chip.focus(); }
-        }
-        function onNewProjectKey(e){
-          if(e.key==="Escape"){ e.preventDefault(); closeNewProject(true); }
-          else if(e.key==="Tab" && window.tkTrapTab){ window.tkTrapTab(npScrim, e); }
-        }
-        if(npScrim){
-          npScrim.addEventListener("pointerdown", function(e){ if(e.target===npScrim) closeNewProject(false); });
-          if(npClose) npClose.addEventListener("click", function(){ closeNewProject(true); });
-          if(npCancel) npCancel.addEventListener("click", function(){ closeNewProject(true); });
-          if(npForm) npForm.addEventListener("htmx:afterRequest", function(e){
-            if(e.detail.successful){ if(window.tkSnackbar) window.tkSnackbar("Project added"); npForm.reset(); closeNewProject(false); }
-          });
-        }
         /* #1344: client rows are focusable; Enter or Space opens them like a button. */
         document.addEventListener("keydown", function(ev){
           if(ev.key !== "Enter" && ev.key !== " ") return;
@@ -504,8 +427,7 @@ export function createManageViews(deps: ManageViewDeps) {
            finished loading after this inline script ran. */
         document.addEventListener("click", function(ev){
           var edit = ev.target.closest("[data-client-edit]");
-          if(edit){ openClientDialog(edit.getAttribute("data-client-edit")); return; }
-          if(ev.target.closest("#new-project-open")) openNewProject();
+          if(edit) openClientDialog(edit.getAttribute("data-client-edit"));
         });
       })();</script>`, "manage");
   }

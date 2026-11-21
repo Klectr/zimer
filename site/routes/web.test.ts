@@ -607,7 +607,7 @@ describe("/manage stacked page (#1203)", () => {
     expect(status).toBe(200);
     expect(body).toContain('<h1 class="ui-app-title">Manage</h1>');
     expect(body).toContain("No client");
-    expect(body).toContain('id="projects-card"');
+    expect(body).toContain('data-client-edit="none"');
     expect(body).not.toContain("has-selection");
     expect(body).not.toContain("client-list-detail");
   });

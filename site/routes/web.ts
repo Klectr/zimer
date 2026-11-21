@@ -909,7 +909,6 @@ export function createWebRouter(deps: WebDeps) {
             .run(String(form.get("name")), cid ? Number(cid) : null);
           const sel = clientSelection(cid ? String(cid) : "none");
           if (isHtmx(req)) {
-            if (String(form.get("context") || "") === "page") return html(manageListsOob());
             return html(clientDialogProjects(sel!) + manageListsOob());
           }
           return new Response(null, { status: 302, headers: { Location: "/manage" } });
