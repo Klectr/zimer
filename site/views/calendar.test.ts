@@ -3,7 +3,7 @@
  *  the calendar entry dialog must not offer Delete on it — same rule as the
  *  Today list's entry row (see timer.test.ts).
  */
-import { describe, expect, test } from "bun:test";
+import { describe, expect, setSystemTime, test } from "bun:test";
 import type { Database, Statement } from "bun:sqlite";
 import { createCalendarViews } from "./calendar.ts";
 
@@ -565,6 +565,64 @@ describe("week summary delta (#524)", () => {
        a -50% delta, i.e. the down case. */
     const down = summaryHtml([{ ...entry, start_time: "2026-09-14T15:00:00.000Z", end_time: "2026-09-14T17:00:00.000Z" }]);
     expect(down).toMatch(/<\/svg>\s*50% down vs prev week</);
+  });
+});
+
+/** #1219 item 8: on the current week the delta compares against the
+ *  previous week only up to the same moment, so an early-week partial total
+ *  isn't measured against a full week. Future weeks show no delta. */
+describe("week summary delta is pro-rated on the current week (#1219)", () => {
+  const entry = {
+    id: 21, description: "work", project_id: 3, project_name: "p",
+    client_name: "Acme", client_color: null, invoice_id: null,
+    invoice_number: null, invoice_status: null,
+    start_time: "2026-09-21T15:00:00.000Z", end_time: "2026-09-21T16:00:00.000Z",
+  };
+  function summaryAt(now: string, prevRows: unknown[]) {
+    setSystemTime(new Date(now));
+    try {
+      const db = { query: (_sql: string) => ({ get: () => ({ n: 1 }), all: () => [entry] }) } as unknown as Database;
+      const views = createCalendarViews({
+        db,
+        qOne: { get: () => ({ n: 1 }), all: () => [] },
+        qRange: { get: () => ({ n: 1 }), all: () => prevRows },
+        entrySelect: "SELECT",
+        layout: (_t: string, b: string) => b,
+        projectOptionRows: () => [],
+        weekTargetBar: () => "",
+        calHourPx: 64,
+      } as any);
+      return views.weekInner("2026-09-20", "America/Chicago");
+    } finally {
+      setSystemTime();
+    }
+  }
+  /* Tue 2026-09-22 12:00 Chicago → the cutoff is Tue 2026-09-15 17:00Z. */
+  const NOW = "2026-09-22T17:00:00.000Z";
+  const monPrev = { ...entry, start_time: "2026-09-14T15:00:00.000Z", end_time: "2026-09-14T16:00:00.000Z" };
+  const thuPrev = { ...entry, start_time: "2026-09-17T15:00:00.000Z", end_time: "2026-09-17T17:00:00.000Z" };
+
+  test("previous-week time after the same moment is ignored", () => {
+    const html = summaryAt(NOW, [monPrev, thuPrev]);
+    expect(html).toContain('aria-label="0% unchanged vs this time last week"');
+    expect(html).not.toContain("% down vs this time last week");
+  });
+
+  test("an entry spanning the cutoff counts only up to it", () => {
+    const spanning = { ...entry, start_time: "2026-09-15T16:30:00.000Z", end_time: "2026-09-15T19:00:00.000Z" };
+    const html = summaryAt(NOW, [spanning]);
+    /* 30m counted against this week's 1h → +100%. */
+    expect(html).toContain('aria-label="100% up vs this time last week"');
+  });
+
+  test("past weeks keep full-week vs full-week wording", () => {
+    const html = summaryAt("2026-10-05T17:00:00.000Z", [monPrev, thuPrev]);
+    expect(html).toContain('aria-label="67% down vs prev week"');
+  });
+
+  test("future weeks show no delta", () => {
+    const html = summaryAt("2026-09-10T17:00:00.000Z", [monPrev]);
+    expect(html).not.toContain("cal-delta");
   });
 });
 

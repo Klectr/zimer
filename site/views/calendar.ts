@@ -118,6 +118,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     clientRows: { name: string; color: string | null; secs: number }[];
     uninvoiced: number;
     prevBillable: number;
+    weekPhase: "past" | "current" | "future";
   }
 
   function weekData(sun: string, tz: string | null): CalWeekData {
@@ -156,9 +157,20 @@ export function createCalendarViews(deps: CalendarViewDeps) {
        vs billable, since it sits next to the billable figure. */
     const [pFrom, pTo] = weekBoundsISO(addDays(sun, -7), tz);
     const prevRows = qRange.all(pFrom, pTo) as Entry[];
-    const prevBillable = prevRows.reduce(
-      (a, e) => a + (e.project_id != null ? durationSeconds(e.start_time, e.end_time) : 0), 0);
-    return { tz, today, sun, rows, byDay, weekTotal, weekBillable, clientRows, uninvoiced, prevBillable };
+    /* #1219: on the current week, compare against the previous week only up
+       to the same moment (now − 7 days) — a partial week against a full one
+       always reads as a steep drop early in the week. */
+    const currentSun = sundayOfYmd(today);
+    const weekPhase = sun === currentSun ? "current" : sun > currentSun ? "future" : "past";
+    const cutoff = weekPhase === "current" ? Date.now() - 7 * 86_400_000 : Infinity;
+    const prevBillable = prevRows.reduce((a, e) => {
+      if (e.project_id == null) return a;
+      const start = new Date(e.start_time).getTime();
+      if (start >= cutoff) return a;
+      const end = Math.min(e.end_time ? new Date(e.end_time).getTime() : Date.now(), cutoff);
+      return a + Math.max(0, Math.round((end - start) / 1000));
+    }, 0);
+    return { tz, today, sun, rows, byDay, weekTotal, weekBillable, clientRows, uninvoiced, prevBillable, weekPhase };
   }
 
   const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -284,7 +296,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       the aside and once per carousel strip inside a <template>, so the pane
       swaps instantly (no fetch) when a pan settles on a pre-rendered week. */
   function paneInner(wd: CalWeekData): string {
-    const { sun, today, weekTotal, weekBillable, clientRows, uninvoiced, prevBillable } = wd;
+    const { sun, today, weekTotal, weekBillable, clientRows, uninvoiced, prevBillable, weekPhase } = wd;
     const prev = addDays(sun, -7), next = addDays(sun, 7);
     const isThisWeek = sun === sundayOfYmd(today);
     const weekLabel = new Date(sun + "T12:00:00").toLocaleDateString([], { month: "short", day: "numeric" });
@@ -314,7 +326,8 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     const deltaHtml = (() => {
       /* #524: no previous-week data → omit the delta AND its separator. A
          dangling "· —" reads like a half-loaded widget. */
-      if (prevBillable <= 0) return "";
+      if (prevBillable <= 0 || weekPhase === "future") return "";
+      const vs = weekPhase === "current" ? "vs this time last week" : "vs prev week";
       const pct = Math.round(((weekBillable - prevBillable) / prevBillable) * 100);
       /* #542: trend icon comes from the icon system, not a text glyph (↑/↓/→)
          — house rule, see #448. The svg is aria-hidden; the direction word
@@ -325,7 +338,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       /* #590: the direction word belongs in the VISIBLE text, not just the
          icon and the aria-label — "100% vs prev week" reads ambiguous at a
          glance (100% of what, which direction?). */
-      return ` · <span class="muted cal-delta" aria-label="${abs}% ${dirWord} vs prev week">${icon(trend)} ${abs}% ${dirWord} vs prev week</span>`;
+      return ` · <span class="muted cal-delta" aria-label="${abs}% ${dirWord} ${vs}">${icon(trend)} ${abs}% ${dirWord} ${vs}</span>`;
     })();
     /* The intermediate stacked layout (840–1279px) moves the zinvoice
        action up beside the week arrows so the summary stays one compact
