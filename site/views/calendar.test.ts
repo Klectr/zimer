@@ -1283,3 +1283,18 @@ describe("calendar live duration format (#1219)", () => {
     for (let m = 1; m < 1440; m++) expect(fmtD(m)).toBe(fmtDur(m * 60));
   });
 });
+
+/** #1219: the pan flags the track while it slides (phones collapse the
+ *  neighbour strips at rest) and clears it once the track is back at rest. */
+describe("carousel pan marks the track while sliding (#1219)", () => {
+  test("pan adds is-panning; settlePan removes it after the no-anim reset", async () => {
+    const src = await Bun.file("site/views/calendar.ts").text();
+    const pan = src.indexOf("function pan(dir){");
+    expect(src.indexOf("trackEl.classList.add('is-panning');", pan)).toBeGreaterThan(pan);
+    const settle = src.indexOf("function settlePan(dir){");
+    const reset = src.indexOf("trackEl.classList.remove('no-anim');", settle);
+    const clear = src.indexOf("trackEl.classList.remove('is-panning');", settle);
+    expect(reset).toBeGreaterThan(settle);
+    expect(clear).toBeGreaterThan(reset);
+  });
+});
