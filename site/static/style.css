@@ -157,7 +157,7 @@
 .inv-badge-sent { background: var(--color-info-bg); color: #93c5fd; }
 .inv-badge-overdue { background: var(--color-error-bg); color: #fca5a5; }
 .inv-badge-draft { background: var(--color-fill-secondary); color: var(--color-text-secondary); }
-.inv-cell-main { display: flex; align-items: center; gap: 8px; color: var(--color-text); font-weight: 550; }
+.inv-cell-main { display: flex; align-items: center; gap: 8px; color: var(--color-text); font-weight: 600; }
 .inv-cell-sub { display: block; font-size: var(--font-size-sm); color: var(--color-text-tertiary); margin-top: 2px; }
 .inv-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--color-fill); flex: none; }
 .inv-amt { font-weight: 600; color: var(--color-text); }
@@ -169,7 +169,7 @@
 .inv-wrow:last-child { border-bottom: 0; }
 .inv-wmain { display: inline-flex; align-items: center; gap: 10px; min-width: 0; }
 .inv-wtext { display: grid; }
-.inv-wname { font-weight: 550; color: var(--color-text); }
+.inv-wname { font-weight: 600; color: var(--color-text); }
 .inv-wamt { text-align: right; flex: none; }
 .inv-wval { font-weight: 600; color: var(--color-text); font-variant-numeric: tabular-nums; }
 .inv-bar { height: 4px; border-radius: 99px; background: var(--color-fill-tertiary); margin: -2px 0 6px; }
@@ -462,7 +462,7 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .ui-target { margin-bottom: var(--spacing-sm); }
 .ui-target-label { font-size: var(--font-size-sm); line-height: var(--line-height-sm); color: var(--color-text-tertiary); margin-top: var(--spacing-xxs); }
 .ui-card .ui-row:last-child { border-bottom: none; }
-.ui-inv-mark { display: inline-flex; align-items: center; height: 18px; padding: 0 var(--spacing-xs); border-radius: var(--radius-xs); font-size: 10px; font-weight: 600; letter-spacing: 0.4px; white-space: nowrap; flex: none; background: var(--color-fill-secondary); color: var(--color-text-secondary); margin-right: var(--spacing-xs); }
+.ui-inv-mark { display: inline-flex; align-items: center; height: 18px; padding: 0 var(--spacing-xs); border-radius: var(--radius-xs); font-size: var(--font-size-sm); line-height: 1; font-weight: 600; letter-spacing: 0.4px; white-space: nowrap; flex: none; background: var(--color-fill-secondary); color: var(--color-text-secondary); margin-right: var(--spacing-xs); }
 .ui-inv-mark.draft { opacity: 0.7; }
 .ui-inv-mark[data-tip] { position: relative; overflow: visible; }
 .ui-inv-mark[data-tip]::after { content: attr(data-tip); position: absolute; left: 50%; top: calc(100% + var(--spacing-xs)); transform: translateX(-50%) translateY(-2px); background: var(--color-bg-spotlight); color: var(--color-text); border-radius: var(--radius-sm); padding: var(--spacing-xs) var(--spacing-sm); white-space: nowrap; max-width: 0; overflow: hidden; font-size: var(--font-size-sm); line-height: var(--line-height-sm); font-weight: 400; letter-spacing: 0; opacity: 0; pointer-events: none; z-index: 30; transition: opacity 0.15s ease, transform 0.15s ease; }
