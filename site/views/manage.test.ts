@@ -334,13 +334,18 @@ describe("manage suite-mock composition (#1203)", () => {
     expect(html.indexOf('id="mc-email"')).toBeLessThan(html.indexOf('id="client-table-card"'));
   });
 
-  test("client table carries rate, project names, and the Edit action", () => {
+  /* #1344: one value per cell; project names and rate live in the row's
+     hover card, not a Projects column. */
+  test("client table shows month, unbilled, outstanding, last tracked; details move to the hover card", () => {
     const html = pageHtml();
     expect(html).toContain("<th>Client</th>");
-    expect(html).toContain("<th>Default rate</th>");
-    expect(html).toContain('<th class="col-projects">Projects</th>');
-    expect(html).toContain('<th class="num col-unbilled">Unbilled</th>');
-    expect(html).toContain("Website");
+    expect(html).toContain('<th class="col-month">This month</th>');
+    expect(html).toContain('<th class="num">Unbilled</th>');
+    expect(html).toContain('<th class="num">Outstanding</th>');
+    expect(html).toContain('<th class="col-last">Last tracked</th>');
+    expect(html).not.toContain("<th>Default rate</th>");
+    expect(html).not.toContain('class="col-projects"');
+    expect(html).toContain('<div class="mg-card" aria-hidden="true">');
     expect(html).toContain("No client");
   });
 
@@ -352,7 +357,7 @@ describe("manage suite-mock composition (#1203)", () => {
     db.query("INSERT INTO time_entries (project_id, start_time, end_time) VALUES (?, '2026-11-03T09:00:00', NULL)").run(project.id);
     const views = createManageViews({ db, layout: (_t: string, b: string) => b, unbilledByClient: () => [] });
     const html = views.managePage();
-    expect(html).toContain('<td class="num col-unbilled">$150</td>');
+    expect(html).toContain('<td class="num">$150</td>');
   });
 
   test("projects card chips every project across clients, with the new-project chip and history note", () => {
@@ -431,5 +436,59 @@ describe("manage inline script syntax", () => {
     const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]!);
     expect(scripts.length).toBeGreaterThan(0);
     for (const script of scripts) expect(() => new Function(script)).not.toThrow();
+  });
+});
+
+
+/* #1344: the client row's insight — hours this month per project, last
+   tracked, outstanding money on sent Zinvoices, overdue via the shared rule. */
+describe("client insights (#1344)", () => {
+  function setup() {
+    const { db, client } = testDb();
+    db.query("UPDATE clients SET rate = 100 WHERE id = ?").run(client.id);
+    const web = db.query("SELECT id FROM projects WHERE client_id = ?").get(client.id) as any;
+    const logo = Number(db.query("INSERT INTO projects (client_id, name) VALUES (?, 'Logo')").run(client.id).lastInsertRowid);
+    db.query("INSERT INTO time_entries (project_id, start_time, end_time) VALUES (?, '2026-11-02T09:00:00', '2026-11-02T12:00:00')").run(web.id);
+    db.query("INSERT INTO time_entries (project_id, start_time, end_time) VALUES (?, '2026-11-20T09:00:00', '2026-11-20T10:00:00')").run(logo);
+    db.query("INSERT INTO time_entries (project_id, start_time, end_time) VALUES (?, '2026-10-28T09:00:00', '2026-10-28T17:00:00')").run(web.id);
+    const inv = Number(db.query("INSERT INTO invoices (number, client_id, issue_date, due_date, status, tax_rate) VALUES ('INV-9', ?, '2026-10-01', '2026-10-31', 'sent', 10)").run(client.id).lastInsertRowid);
+    db.query("INSERT INTO invoice_items (invoice_id, description, hours, rate, amount) VALUES (?, 'x', 10, 100, 1000)").run(inv);
+    return { db, client };
+  }
+  const NOW = new Date(2026, 10, 21, 12, 0, 0);
+
+  test("hours this month exclude last month and split by project, busiest first", () => {
+    const { db } = setup();
+    const views = createManageViews({ db, layout: (_t: string, b: string) => b, unbilledByClient: () => [] });
+    const html = views.clientTableCard(NOW);
+    expect(html).toContain('<span class="">4h</span>');
+    expect(html.indexOf("Website</span><span>3h</span>")).toBeGreaterThan(-1);
+    expect(html.indexOf("Website</span><span>3h</span>")).toBeLessThan(html.indexOf("Logo</span><span>1h</span>"));
+  });
+
+  test("outstanding sums sent Zinvoices with tax and flags overdue via the shared rule", () => {
+    const { db } = setup();
+    const views = createManageViews({ db, layout: (_t: string, b: string) => b, unbilledByClient: () => [], isOverdue: () => true });
+    const html = views.clientTableCard(NOW);
+    expect(html).toContain('<span class="ui-tag ui-tag-error mg-overdue">Overdue</span>$1,100');
+    expect(html).toContain("INV-9 · overdue</span><span>$1,100</span>");
+    const calm = createManageViews({ db, layout: (_t: string, b: string) => b, unbilledByClient: () => [], isOverdue: () => false }).clientTableCard(NOW);
+    expect(calm).not.toContain("mg-overdue");
+    expect(calm).toContain("INV-9 · due Oct 31");
+  });
+
+  test("last tracked reads as a relative day and turns quiet after 30 days", () => {
+    const { db } = setup();
+    const views = createManageViews({ db, layout: (_t: string, b: string) => b, unbilledByClient: () => [] });
+    expect(views.clientTableCard(NOW)).toContain('<td class="col-last">Yesterday</td>');
+    expect(views.clientTableCard(new Date(2026, 11, 25))).toContain('<td class="col-last is-quiet">5 weeks ago</td>');
+  });
+
+  test("rows are focusable dialog openers; No client is a footnote that still opens its dialog", () => {
+    const { db } = setup();
+    const html = createManageViews({ db, layout: (_t: string, b: string) => b, unbilledByClient: () => [] }).clientTableCard(NOW);
+    expect(html).toMatch(/<tr class="mg-row" tabindex="0" data-client-edit="\d+" aria-haspopup="dialog" aria-label="Edit client Acme">/);
+    expect(html).toContain('data-client-edit="none"');
+    expect(html).toContain("No client · 0h this month");
   });
 });

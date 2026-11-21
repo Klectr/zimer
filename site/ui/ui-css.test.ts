@@ -525,3 +525,19 @@ describe("button icon size (#1340)", () => {
     expect(css).not.toContain(".ui-settings-grid .ui-btn svg");
   });
 });
+
+/** #1344: on phones the quiet client table keeps Client, Unbilled and
+ *  Outstanding only — no month bar, last tracked or chevron — and client
+ *  names may wrap, so the table fits a 375px screen. */
+describe("clients table on phones (#1344)", () => {
+  test("compact rules hide the wide columns and let names wrap", () => {
+    expect(css).toContain(".manage-table-card .col-month, .manage-table-card .col-last { display: none; }");
+    expect(css).toContain(".manage-table-card .mg-chev, .manage-table-card .mg-table th:last-child { display: none; }");
+    expect(css).toContain(".manage-table-card .mg-table td:first-child { white-space: normal; }");
+  });
+
+  test("the hover card only opens on hover-capable devices or keyboard focus", () => {
+    expect(css).toMatch(/@media \(hover: hover\) \{\s*\.mg-row:hover \.mg-card/);
+    expect(css).toContain(".mg-row:focus-visible .mg-card {");
+  });
+});

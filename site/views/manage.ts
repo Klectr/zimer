@@ -4,7 +4,7 @@
  *  projects, and its delete action. */
 
 import type { Database } from "bun:sqlite";
-import { clientColor, durationSeconds, esc, PAYMENT_TERMS, round2, schemeColor, termsDescription, termsKey } from "../lib/format.ts";
+import { clientColor, durationSeconds, esc, fmtDur, PAYMENT_TERMS, round2, schemeColor, termsDescription, termsKey } from "../lib/format.ts";
 import type { PaymentTermsKey } from "../lib/format.ts";
 import { icon } from "../lib/icons.ts";
 import { THEMES, themeKey } from "../lib/theme.ts"; /* #884 */
@@ -27,7 +27,14 @@ export interface ManageViewDeps {
   db: Database;
   layout: (title: string, body: string, active?: "timer" | "calendar" | "manage" | "invoices", fixed?: boolean) => string;
   unbilledByClient: () => { id: number; name: string; secs: number }[];
+  /* #1344: the shared terms-aware overdue rule (lib/revenue.ts). Optional so
+     view-only callers fall back to "sent and past its due date". */
+  isOverdue?: (row: { status: string; due_date: string | null; client_payment_terms?: string | null }) => boolean;
 }
+
+type ProjectHours = { name: string; secs: number };
+type OpenZinvoice = { number: string; status: string; due: string | null; total: number; overdue: boolean };
+export type ClientInsight = { monthSecs: number; projects: ProjectHours[]; last: string | null; outstanding: number; overdue: boolean; open: OpenZinvoice[] };
 
 export function createManageViews(deps: ManageViewDeps) {
   const { db, layout } = deps;
@@ -99,6 +106,69 @@ export function createManageViews(deps: ManageViewDeps) {
     return totals;
   }
 
+  /* #1344: what a client row surfaces — hours this month (per project),
+     last tracked, and money on sent Zinvoices. Month and "today" follow the
+     server's local clock, like the rest of the manage page. */
+  function clientInsights(now: Date = new Date()): { byClient: Map<number, ClientInsight>; noClientSecs: number } {
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+    const since = new Date(monthStart - 2 * 86_400_000).toISOString().slice(0, 10);
+    const { clients, byClient: projectsByClient } = manageData();
+    const known = new Set(clients.map(c => c.id));
+    const byClient = new Map<number, ClientInsight>();
+    for (const c of clients) {
+      const projects = (projectsByClient.get(c.id) || []).map(p => ({ name: String(p.name), secs: 0 }));
+      byClient.set(c.id, { monthSecs: 0, projects, last: null, outstanding: 0, overdue: false, open: [] });
+    }
+    let noClientSecs = 0;
+    const entries = db.query(
+      `SELECT e.start_time, e.end_time, p.name AS project_name, p.client_id AS client_id
+       FROM time_entries e LEFT JOIN projects p ON p.id = e.project_id
+       WHERE e.start_time >= ?`).all(since) as any[];
+    for (const e of entries) {
+      if (new Date(e.start_time).getTime() < monthStart) continue;
+      const secs = durationSeconds(e.start_time, e.end_time);
+      const ins = e.client_id != null && known.has(e.client_id) ? byClient.get(e.client_id) : undefined;
+      if (!ins) { noClientSecs += secs; continue; }
+      ins.monthSecs += secs;
+      const proj = ins.projects.find(p => p.name === e.project_name);
+      if (proj) proj.secs += secs;
+    }
+    const lasts = db.query(
+      `SELECT p.client_id AS client_id, MAX(e.start_time) AS last
+       FROM time_entries e JOIN projects p ON p.id = e.project_id
+       WHERE p.client_id IS NOT NULL GROUP BY p.client_id`).all() as any[];
+    for (const r of lasts) { const ins = byClient.get(r.client_id); if (ins) ins.last = r.last; }
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    const overdueRule = deps.isOverdue ?? ((r: { status: string; due_date: string | null }) => r.status === "sent" && !!r.due_date && r.due_date < today);
+    const invoices = db.query(
+      `SELECT i.number, i.status, i.due_date, i.tax_rate, i.client_id, c.payment_terms AS client_payment_terms,
+              (SELECT COALESCE(SUM(amount), 0) FROM invoice_items WHERE invoice_id = i.id) AS subtotal
+       FROM invoices i JOIN clients c ON c.id = i.client_id
+       WHERE i.status IN ('sent', 'draft') ORDER BY i.due_date`).all() as any[];
+    for (const r of invoices) {
+      const ins = byClient.get(r.client_id);
+      if (!ins) continue;
+      const total = round2(Number(r.subtotal) * (1 + (Number(r.tax_rate) || 0) / 100));
+      const overdue = r.status === "sent" && overdueRule(r);
+      ins.open.push({ number: String(r.number), status: r.status, due: r.due_date, total, overdue });
+      if (r.status === "sent") { ins.outstanding = round2(ins.outstanding + total); if (overdue) ins.overdue = true; }
+    }
+    for (const ins of byClient.values()) ins.projects.sort((a, b) => b.secs - a.secs || a.name.localeCompare(b.name));
+    return { byClient, noClientSecs };
+  }
+
+  /* Today / Yesterday / N days, weeks or months ago — the "last tracked"
+     column. Day math on local calendar dates, not 24h windows. */
+  function lastTrackedLabel(iso: string | null, now: Date = new Date()): { text: string; quiet: boolean } {
+    if (!iso) return { text: "—", quiet: false };
+    const d = new Date(iso);
+    const day = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+    const days = Math.max(0, Math.round((day(now) - day(d)) / 86_400_000));
+    const text = days === 0 ? "Today" : days === 1 ? "Yesterday" : days < 14 ? `${days} days ago`
+      : days < 60 ? `${Math.round(days / 7)} weeks ago` : `${Math.round(days / 30)} months ago`;
+    return { text, quiet: days >= 30 };
+  }
+
   const moneyCell = (n: number): string =>
     "$" + n.toLocaleString("en-US", { minimumFractionDigits: Number.isInteger(n) ? 0 : 2, maximumFractionDigits: 2 });
 
@@ -116,32 +186,62 @@ export function createManageViews(deps: ManageViewDeps) {
     });
   }
 
-  function clientTableCard(): string {
-    const { clients, byClient, unassigned } = manageData();
+  function clientTableCard(now: Date = new Date()): string {
+    const { clients } = manageData();
     const unbilled = unbilledMoneyByClient();
-    const editBtn = (key: number | "none", label: string) =>
-      button({ label: "Edit", size: "sm", attrs: `data-client-edit="${key}" aria-haspopup="dialog" aria-label="${esc(label)}"` });
-    const projectNames = (list: any[]) => list.map(p => esc(p.name)).join(" · ") || "—";
-    const rows = clients.map(c => `<tr>
-        <td><span class="manage-client-name"><span class="ui-row-lead-dot" style="background:${esc(schemeColor(c.color) || "var(--color-primary)")}" aria-hidden="true"></span>${esc(c.name)}</span></td>
-        <td>${c.rate ? `$${c.rate}/hr` : "—"}</td>
-        <td class="col-projects">${projectNames(byClient.get(c.id) || [])}</td>
-        <td class="num col-unbilled">${moneyCell(unbilled.get(c.id) || 0)}</td>
-        <td class="manage-edit-cell">${editBtn(c.id, `Edit client ${c.name}`)}</td>
-      </tr>`).join("");
-    const noneRow = `<tr>
-        <td><span class="manage-client-name"><span class="ui-row-lead-icon" aria-hidden="true">${icon("group")}</span>No client</span></td>
-        <td>—</td>
-        <td class="col-projects">${projectNames(unassigned)}</td>
-        <td class="num col-unbilled">—</td>
-        <td class="manage-edit-cell">${editBtn("none", "Edit projects with no client")}</td>
+    const { byClient, noClientSecs } = clientInsights(now);
+    const maxSecs = Math.max(1, ...[...byClient.values()].map(i => i.monthSecs));
+    const shades = [100, 70, 45, 30];
+    const rows = clients.map(c => {
+      const ins = byClient.get(c.id)!;
+      const color = schemeColor(c.color) || "var(--color-primary)";
+      const active = ins.projects.filter(p => p.secs > 0);
+      const segs = [...active.slice(0, 3), ...(active.length > 3 ? [{ name: "Other projects", secs: active.slice(3).reduce((a, p) => a + p.secs, 0) }] : [])];
+      const bar = ins.monthSecs > 0
+        ? `<span class="mg-bar" aria-hidden="true"><span class="mg-bar-fill" style="width:${round2(ins.monthSecs / maxSecs * 100)}%">` +
+          segs.map((p, i) => `<i style="flex:${p.secs};background:color-mix(in srgb, ${esc(color)} ${shades[i]}%, transparent)"></i>`).join("") +
+          `</span></span>`
+        : `<span class="mg-bar" aria-hidden="true"></span>`;
+      const last = lastTrackedLabel(ins.last, now);
+      const terms = PAYMENT_TERMS[termsKey(c.payment_terms, globalTerms()) as PaymentTermsKey]?.label ?? "";
+      const meta = [c.rate ? `$${c.rate}/hr` : "", terms, `${ins.projects.length} project${ins.projects.length === 1 ? "" : "s"}`].filter(Boolean).join(" · ");
+      const idle = ins.projects.length - active.length;
+      const projLines = active.slice(0, 4).map((p, i) =>
+          `<div class="mg-card-row"><span><i class="mg-card-dot" style="background:color-mix(in srgb, ${esc(color)} ${shades[Math.min(i, 3)]}%, transparent)"></i>${esc(p.name)}</span><span>${fmtDur(p.secs)}</span></div>`).join("") +
+        (active.length > 4 ? `<div class="mg-card-row is-muted"><span>${active.length - 4} more active</span><span></span></div>` : "") +
+        (idle ? `<div class="mg-card-row is-muted"><span>${active.length ? `${idle} more project${idle === 1 ? "" : "s"}` : "No time this month"}</span><span>0h</span></div>` : "");
+      const zinvoices = ins.open.map(z => {
+        const when = z.status === "draft" ? "draft" : z.overdue ? "overdue" : z.due ? `due ${shortDate(z.due)}` : "sent";
+        return `<div class="mg-card-row${z.overdue ? " is-error" : z.status === "draft" ? " is-muted" : ""}"><span>${esc(z.number)} · ${when}</span><span>${moneyCell(z.total)}</span></div>`;
+      }).join("");
+      const hoverCard = `<div class="mg-card" aria-hidden="true"><div class="mg-card-title">${esc(c.name)}</div><div class="mg-card-meta">${esc(meta)}</div>` +
+        projLines + (zinvoices ? `<div class="mg-card-sep"></div>${zinvoices}` : "") +
+        `<div class="mg-card-hint">Click to open</div></div>`;
+      const outstanding = ins.outstanding > 0
+        ? `${ins.overdue ? `<span class="ui-tag ui-tag-error mg-overdue">Overdue</span>` : ""}${moneyCell(ins.outstanding)}`
+        : `<span class="mg-muted">—</span>`;
+      const unbilledAmt = unbilled.get(c.id) || 0;
+      return `<tr class="mg-row" tabindex="0" data-client-edit="${c.id}" aria-haspopup="dialog" aria-label="${esc(`Edit client ${c.name}`)}">
+        <td><span class="manage-client-name"><span class="ui-row-lead-dot" style="background:${esc(color)}" aria-hidden="true"></span>${esc(c.name)}</span>${hoverCard}</td>
+        <td class="col-month"><span class="mg-hours"><span class="${ins.monthSecs ? "" : "mg-muted"}">${ins.monthSecs ? fmtDur(ins.monthSecs) : "0h"}</span>${bar}</span></td>
+        <td class="num">${unbilledAmt ? moneyCell(unbilledAmt) : `<span class="mg-muted">—</span>`}</td>
+        <td class="num">${outstanding}</td>
+        <td class="col-last${last.quiet ? " is-quiet" : ""}">${esc(last.text)}</td>
+        <td class="mg-chev" aria-hidden="true">${icon("chevron_right")}</td>
       </tr>`;
+    }).join("");
+    const empty = clients.length ? "" : `<tr><td colspan="6" class="mg-muted">No clients yet. Add one above.</td></tr>`;
     return card({
       id: "client-table-card",
       className: "manage-table-card",
-      content: `<table class="ui-table"><thead><tr><th>Client</th><th>Default rate</th><th class="col-projects">Projects</th><th class="num col-unbilled">Unbilled</th><th><span class="ui-sr-only">Actions</span></th></tr></thead><tbody>${rows}${noneRow}</tbody></table>`,
+      content: `<table class="ui-table mg-table"><thead><tr><th>Client</th><th class="col-month">This month</th><th class="num">Unbilled</th><th class="num">Outstanding</th><th class="col-last">Last tracked</th><th><span class="ui-sr-only">Open</span></th></tr></thead><tbody>${rows}${empty}</tbody></table>` +
+        `<p class="mg-foot"><span>No client · ${noClientSecs ? fmtDur(noClientSecs) : "0h"} this month</span>` +
+        button({ label: "View projects", size: "sm", variant: "ghost", attrs: `data-client-edit="none" aria-haspopup="dialog" aria-label="View projects with no client"` }) + `</p>`,
     });
   }
+
+  const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const shortDate = (ymd: string): string => { const [, m, d] = ymd.split("-").map(Number); return m && d ? `${MONTHS[m - 1]} ${d}` : ymd; };
 
   function projectsCard(): string {
     const { clients, byClient, unassigned } = manageData();
@@ -391,6 +491,14 @@ export function createManageViews(deps: ManageViewDeps) {
             if(e.detail.successful){ if(window.tkSnackbar) window.tkSnackbar("Project added"); npForm.reset(); closeNewProject(false); }
           });
         }
+        /* #1344: client rows are focusable; Enter or Space opens them like a button. */
+        document.addEventListener("keydown", function(ev){
+          if(ev.key !== "Enter" && ev.key !== " ") return;
+          var row = ev.target && ev.target.closest ? ev.target.closest("tr[data-client-edit]") : null;
+          if(!row || ev.target !== row) return;
+          ev.preventDefault();
+          openClientDialog(row.getAttribute("data-client-edit"));
+        });
         /* Delegate on the document: the table can be swapped by htmx
            without losing the handler, and the dialog works even if htmx
            finished loading after this inline script ran. */
@@ -499,5 +607,5 @@ export function createManageViews(deps: ManageViewDeps) {
       </div>`, "settings");
   }
 
-  return { managePage, clientSelection, clientDialogBody, clientDialogProjects, manageListsOob, bizProfileSection, dailyTargetSection, dailyTargetControl, preferencesSection, clientSettingsForm, settingsPage, themeSectionHtml, themeDotsHtml };
+  return { managePage, clientTableCard, clientSelection, clientDialogBody, clientDialogProjects, manageListsOob, bizProfileSection, dailyTargetSection, dailyTargetControl, preferencesSection, clientSettingsForm, settingsPage, themeSectionHtml, themeDotsHtml };
 }
