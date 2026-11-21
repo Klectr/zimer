@@ -514,3 +514,14 @@ describe("phones scroll the page, not an inner region (#1211, #1219)", () => {
     expect(compact()!).toMatch(/body\.app-fixed \.cal-strip > \.ui-week \{[^}]*overflow: visible/);
   });
 });
+
+/** #1340: labelled buttons size their leading icon to 16px app-wide (it
+ *  rendered at the SVG's intrinsic 24px); icon-only buttons stay 20px. */
+describe("button icon size (#1340)", () => {
+  test("one base rule sizes .ui-btn icons; no local patches remain", () => {
+    expect(css).toContain(".ui-btn > svg, .nudge-chip .nudge-go > svg { width: 16px; height: 16px; flex: none; }");
+    expect(css).toContain(".ui-icon-btn svg { width: 20px; height: 20px; }");
+    expect(css).not.toContain(".demo-banner .ui-btn svg");
+    expect(css).not.toContain(".ui-settings-grid .ui-btn svg");
+  });
+});

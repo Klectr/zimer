@@ -136,6 +136,7 @@
 .ui-btn-primary.ui-btn-danger { background: var(--color-error); color: var(--color-text-on-filled); }
 .ui-btn-primary.ui-btn-danger:hover { background: var(--color-error-hover); }
 .ui-btn-primary.ui-btn-danger:active { background: var(--color-error-active); }
+.ui-btn > svg, .nudge-chip .nudge-go > svg { width: 16px; height: 16px; flex: none; }
 .ui-btn-sm { height: var(--control-height-sm); padding: 0 var(--spacing-xs); font-size: var(--font-size-sm); }
 .ui-btn-lg { height: var(--control-height-lg); padding: 0 var(--spacing-md); }
 .ui-btn:disabled { color: var(--color-text-quaternary); cursor: not-allowed; }
@@ -385,7 +386,6 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .ui-data-row-title { font-weight: 500; }
 .ui-data-row-desc { font-size: var(--font-size-sm); line-height: var(--line-height-sm); color: var(--color-text-secondary); }
 .ui-data-row .ui-btn { flex: none; }
-.ui-settings-grid .ui-btn svg { width: 16px; height: 16px; flex: none; }
 .settings-pref-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--spacing-md); padding: var(--spacing-sm) 0; border-top: 1px solid var(--color-border-secondary); }
 .settings-pref-row:first-child { border-top: 0; padding-top: 0; }
 .settings-pref-row:last-child { padding-bottom: 0; }
@@ -1364,7 +1364,6 @@ button.ui-tag { border: 0; font: inherit; cursor: pointer; }
   border: 1px solid var(--color-border-secondary); border-radius: var(--radius-lg);
 }
 .demo-banner > svg { flex: none; width: 24px; height: 24px; color: var(--color-text-secondary); }
-.demo-banner .ui-btn svg { width: 16px; height: 16px; }
 .demo-banner > span { flex: 1 1 16rem; } /* #562: basis floor so CTAs wrap below instead of squeezing the text */
 @media (prefers-reduced-motion: no-preference) {
   .demo-banner { animation: banner-in .45s cubic-bezier(0.05, 0.7, 0.1, 1); }
