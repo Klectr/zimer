@@ -675,7 +675,7 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .ui-agenda-day { margin-bottom: var(--spacing-md); }
 .ui-week.ui-week-agenda-only > .ui-week-agenda { display: block; }
 
-.ui-viz { display: grid; grid-template-columns: 52px repeat(7, 1fr); gap: 0 var(--spacing-xs); padding-block: calc(var(--font-size-sm) * var(--line-height) / 2); }
+.ui-viz { display: grid; grid-template-columns: 52px repeat(7, 1fr); gap: 0 var(--spacing-xs); padding-block: calc(var(--font-size-sm) * var(--line-height-sm) / 2); }
 .ui-viz-heads { display: grid; grid-template-columns: subgrid; grid-column: 1 / -1; margin-bottom: var(--spacing-xs); }
 .ui-viz-day-head { display: flex; align-items: baseline; gap: var(--spacing-xs); min-width: 0; overflow: visible; }
 .ui-viz-day-head > .ui-tooltip { flex: 1; min-width: 0; width: 100%; }
@@ -684,7 +684,7 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .ui-viz-day-head.is-today .ui-viz-day-name { color: var(--color-text); font-weight: var(--font-weight-strong); }
 .ui-viz-day-total { flex: none; margin-left: auto; font-family: var(--font-family-code); font-size: var(--font-size-sm); color: var(--color-text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .ui-viz-hours { position: relative; }
-.ui-viz-hour { position: absolute; right: var(--spacing-xs); transform: translateY(-50%); font-family: var(--font-family-code); font-size: var(--font-size-sm); color: var(--color-text-tertiary); white-space: nowrap; }
+.ui-viz-hour { position: absolute; right: var(--spacing-xs); transform: translateY(-50%); font-family: var(--font-family-code); font-size: var(--font-size-sm); line-height: var(--line-height-sm); color: var(--color-text-tertiary); white-space: nowrap; }
 .ui-viz-col { position: relative; overflow: hidden; touch-action: none; border: 1px solid var(--color-border-secondary); border-radius: var(--radius-lg); background-color: var(--color-fill-quaternary); background-image: linear-gradient(to bottom, var(--color-border-secondary) 1px, transparent 1px); background-size: 100% var(--viz-hour, 48px); }
 .ui-viz-block { position: absolute; left: var(--spacing-xxs); right: var(--spacing-xxs); background: color-mix(in srgb, var(--entry, var(--color-text-tertiary)) 16%, transparent); border: 1px solid color-mix(in srgb, var(--entry, var(--color-text-tertiary)) 45%, transparent); border-radius: var(--radius-sm); padding: var(--spacing-xxs) var(--spacing-xs); font-size: var(--font-size-sm); overflow: hidden; cursor: grab; box-sizing: border-box; touch-action: none; }
 .ui-viz-block:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }

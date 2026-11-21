@@ -96,12 +96,15 @@ describe("viz day header gutter (#1219)", () => {
 });
 
 describe("viz hour labels never clip (#1302)", () => {
-  test("the viz carries half a label height of block padding, so the first and last hour labels clear the scroll edges", () => {
+  test("the viz carries half a label height of block padding, so the last hour label clears the bottom scroll edge", () => {
     const viz = css.match(/\.ui-viz \{[^}]*\}/);
     expect(viz).not.toBeNull();
     expect(viz![0]).toContain(
-      "padding-block: calc(var(--font-size-sm) * var(--line-height) / 2)",
+      "padding-block: calc(var(--font-size-sm) * var(--line-height-sm) / 2)",
     );
+    const hour = css.match(/\.ui-viz-hour \{[^}]*\}/);
+    expect(hour).not.toBeNull();
+    expect(hour![0]).toContain("line-height: var(--line-height-sm)");
   });
 
   test("the hour gutter fits the widest label (5 code-font glyphs at 12px plus the right offset)", () => {
