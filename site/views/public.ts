@@ -56,9 +56,9 @@ export function createPublicViews(deps: PublicViewDeps) {
     if (!y || !m || !d || m < 1 || m > 12) return ymd;
     return `${MONTHS[m - 1]} ${d}, ${y}`;
   }
-  function hoursLabel(hours: number): string {
-    if (!hours) return "";
-    return ` — ${(Math.round(hours * 100) / 100).toFixed(2)} h`;
+  function hoursDetail(hours: number, rate: number): string | undefined {
+    if (!hours) return undefined;
+    return `${(Math.round(hours * 100) / 100).toFixed(2)} h × ${money(rate)}`;
   }
 
   /** Public client invoice page: no auth, read-only. #1136: the mocked
@@ -68,7 +68,8 @@ export function createPublicViews(deps: PublicViewDeps) {
     const t = invoiceTotals(inv.items, inv.tax_rate);
     const business = deps.businessName?.() || "";
     const lines: PublicInvoiceOptions["lines"] = inv.items.map((it) => ({
-      label: `${it.description}${hoursLabel(it.hours)}`,
+      label: it.description,
+      detail: hoursDetail(it.hours, it.rate),
       amount: money(it.amount),
     }));
     if (inv.tax_rate !== 0) {
@@ -103,7 +104,7 @@ export function createPublicViews(deps: PublicViewDeps) {
       download: { label: "Download PDF", href: `${tokenPath}.pdf` }, /* #1291 */
       note: inv.stripe_payment_link ? "Secure payment by card. Questions? Reply to the email this link came in." : undefined,
       notes: inv.notes || undefined,
-      footer: "Powered by Zimer · This page never asks for your Zimer password — you don't have one.",
+      footer: "Sent with Zimer. We'll never ask you to log in or enter a password here.",
     });
     return `<!DOCTYPE html>
   <html lang="en">
