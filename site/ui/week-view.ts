@@ -1,4 +1,5 @@
 import { esc, safeCssColor } from "../lib/format";
+import { icon } from "../lib/icons";
 import { entryRow } from "./rows";
 
 export interface WeekEntry {
@@ -76,12 +77,39 @@ function agendaDay(day: WeekDay): string {
   return `<section class="ui-agenda-day"${day.date ? ` data-date="${esc(day.date)}"` : ""}>${dayHead(day)}${entries}</section>`;
 }
 
+function emptyRun(run: WeekDay[]): string {
+  if (run.length < 2) return run.map(agendaDay).join("");
+  const first = run[0];
+  const last = run[run.length - 1];
+  return (
+    `<details class="ui-agenda-gap"><summary class="ui-agenda-gap-head">` +
+    `<span class="ui-day-name">${esc(first.weekday)} ${esc(first.dateLabel)} – ${esc(last.weekday)} ${esc(last.dateLabel)}</span>` +
+    `<span class="ui-agenda-gap-note">No entries</span>${icon("chevron_right")}</summary>` +
+    run.map(agendaDay).join("") +
+    `</details>`
+  );
+}
+
+function agendaHtml(days: WeekDay[]): string {
+  let out = "";
+  let run: WeekDay[] = [];
+  for (const day of days) {
+    if (day.entries.length === 0 && !day.isToday) {
+      run.push(day);
+      continue;
+    }
+    out += emptyRun(run) + agendaDay(day);
+    run = [];
+  }
+  return out + emptyRun(run);
+}
+
 export function weekView(opts: WeekViewOptions): string {
   if (opts.agendaOnly) {
-    return `<div class="ui-week ui-week-agenda-only"><div class="ui-week-agenda">${opts.days.map(agendaDay).join("")}</div></div>`;
+    return `<div class="ui-week ui-week-agenda-only"><div class="ui-week-agenda">${agendaHtml(opts.days)}</div></div>`;
   }
   return (
     `<div class="ui-week"><div class="ui-week-grid">${opts.days.map(gridDay).join("")}</div>` +
-    `<div class="ui-week-agenda">${opts.days.map(agendaDay).join("")}</div></div>`
+    `<div class="ui-week-agenda">${agendaHtml(opts.days)}</div></div>`
   );
 }
