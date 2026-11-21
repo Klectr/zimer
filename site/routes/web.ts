@@ -745,7 +745,7 @@ export function createWebRouter(deps: WebDeps) {
           const gterms = String(form.get("business_payment_terms") || "").trim();
           if (!isPaymentTermsKey(gterms)) return new Response("Unknown payment terms.", { status: 400 });
           setMeta(db, "business_payment_terms", gterms);
-          if (isHtmx(req)) return html(bizProfileSection());
+          if (isHtmx(req)) return html(bizProfileSection(), 200, { "HX-Trigger": JSON.stringify({ "tk-toast": "Business profile saved" }) });
           return new Response(null, { status: 302, headers: { Location: "/manage" } });
         }
         /* #908: daily hours target — pacing bars + calendar short-day tint.
@@ -757,7 +757,7 @@ export function createWebRouter(deps: WebDeps) {
           if (!Number.isFinite(hours) || hours < 1 || hours > 24)
             return new Response("Enter a daily target between 1 and 24 hours.", { status: 400 });
           setMeta(db, "day_target_hours", String(hours));
-          if (isHtmx(req)) return html(dailyTargetControl());
+          if (isHtmx(req)) return html(dailyTargetControl(), 200, { "HX-Trigger": JSON.stringify({ "tk-toast": "Daily target saved" }) });
           return new Response(null, { status: 302, headers: { Location: "/settings" } });
         }
         /* #883: settings modal body — business profile, theme, Updates

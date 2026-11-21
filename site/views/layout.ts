@@ -160,7 +160,7 @@ export function createLayoutViews(qRunning: Statement, themeCss?: () => string, 
   ${/* #355: the settings scrim is a direct body child — inside the app bar it
        would be trapped in the header's stacking context and paint below the
        bottom navigation bar. The entry edit scrim rides along for the same
-       reason (#903), and so does the #949 navigation drawer. */ navDrawer(demoRow ? demoRow() : "")}${settingsToasts()}${entryDialog()}
+       reason (#903), and so does the #949 navigation drawer. */ navDrawer(demoRow ? demoRow() : "")}${toastTrigger()}${entryDialog()}
   </body>
   </html>`;
   }
@@ -331,16 +331,15 @@ function navDrawer(demoRowHtml: string = ""): string {
   })();</script>`;
 }
 
-/** #247: visible save confirmation on the Settings page — the forms
-    re-render silently, so announce success with the shared ui toast.
-    Delegated on body so it survives the #biz-profile outerHTML swap. */
-function settingsToasts(): string {
+/** #247, #1335: routes confirm an outcome by name with an HX-Trigger
+    {"tk-toast": "…"} header; this one listener shows it with the shared ui
+    toast. htmx dispatches the event before the swap, on the requesting
+    element, so it bubbles here even when the form is replaced. */
+function toastTrigger(): string {
   return `<script>(function(){
-    document.body.addEventListener('htmx:afterRequest',function(e){
-      var elt=e.detail.elt;
-      if(!elt||!e.detail.successful||!window.tkSnackbar) return;
-      if(elt.id==='biz-profile-form') window.tkSnackbar('Business profile saved');
-      else if(elt.id==='daily-target-form') window.tkSnackbar('Daily target saved'); /* #908 */
+    document.body.addEventListener('tk-toast',function(e){
+      var msg=e.detail&&e.detail.value;
+      if(typeof msg==='string'&&msg&&window.tkSnackbar) window.tkSnackbar(msg);
     });
   })();</script>`;
 }

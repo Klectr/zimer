@@ -324,8 +324,10 @@ describe("layout navigation drawer (#949)", () => {
     const { layout } = createLayoutViews(noRunning);
     const body = layout("T", "body");
     expect(body).not.toContain('id="settings-scrim"');
-    expect(body).toContain("tkSnackbar('Business profile saved')");
-    expect(body).toContain("tkSnackbar('Daily target saved')");
+    /* #1335: toasts come from the server's HX-Trigger tk-toast event. */
+    expect(body).toContain("document.body.addEventListener('tk-toast',function(e){");
+    expect(body).toContain("window.tkSnackbar(msg);");
+    expect(body).not.toContain("elt.id==='daily-target-form'");
   });
 
   test("drawer header is the spec headline — no close button", () => {
