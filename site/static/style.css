@@ -1346,7 +1346,7 @@ button.ui-tag { border: 0; font: inherit; cursor: pointer; }
 .update-cmd { display: block; font-family: ui-monospace, monospace; font-size: var(--font-size-sm);
   background: var(--color-bg-elevated);
   color: var(--color-text);
-  border-radius: 8px; padding: 10px 12px; overflow-wrap: anywhere; }
+  border-radius: var(--radius); padding: 10px 12px; overflow-wrap: anywhere; }
 /* #300: first-run empty states — centered icon, headline, copy, actions. */
 /* #300: first-run hint inside the calendar supporting pane. */
 .cal-first-run { margin-top: 12px; padding: 12px 14px; border-radius: var(--radius-lg);
@@ -1387,8 +1387,8 @@ button.ui-tag { border: 0; font: inherit; cursor: pointer; }
    the ui tokens like everything else) so frozen documents keep their
    shape. Do not merge
    the fork back, and do not drop the .md-table rules. */
-.inv-table,
-  .md-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+.inv-table { width: 100%; border-collapse: collapse; font-size: var(--font-size); }
+.md-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
 .inv-table th, .inv-table td,
   .md-table th,
   .md-table td { text-align: left; }
@@ -1398,7 +1398,7 @@ button.ui-tag { border: 0; font: inherit; cursor: pointer; }
 .inv-table th.num, .inv-table td.num,
   .md-table th.num,
   .md-table td.num { text-align: right; white-space: nowrap; }
-.inv-table thead th { color: var(--color-text-secondary); font-weight: 500; font-size: 0.75rem;
+.inv-table thead th { color: var(--color-text-secondary); font-weight: 500; font-size: var(--font-size-sm);
   border-bottom: 1px solid var(--color-border); }
 .md-table thead th { color: var(--color-text-secondary); font-weight: 500; font-size: 0.75rem;
   letter-spacing: 0.4px; text-transform: uppercase; }
@@ -1410,7 +1410,7 @@ button.ui-tag { border: 0; font: inherit; cursor: pointer; }
 .inv-table tfoot td { padding: 6px 8px; color: var(--color-text-secondary); }
 .inv-table tfoot tr:first-child td { border-top: 1px solid var(--color-border); }
 .md-table tfoot td { padding: 6px 8px; color: var(--color-text-secondary); }
-.inv-table tfoot tr.grand td { color: var(--color-text); font-weight: 700; font-size: 1rem;
+.inv-table tfoot tr.grand td { color: var(--color-text); font-weight: var(--font-weight-strong); font-size: var(--font-size-lg);
   padding-top: 10px; }
 .md-table tfoot tr.grand td { color: var(--color-text); font-weight: 700; font-size: 1rem;
   padding-top: 10px; }
@@ -1419,12 +1419,12 @@ button.ui-tag { border: 0; font: inherit; cursor: pointer; }
    below 480px; the .table-wrap inner scroll stays as the fallback for
    unusually wide data. Print is untouched. */
 @media (max-width: 480px) {
-  .inv-table,
+  .inv-table { font-size: var(--font-size-sm); }
   .md-table { font-size: 0.8125rem; }
   .inv-table th, .inv-table td,
   .md-table th,
   .md-table td { padding: 8px 6px; }
-  .inv-table thead th,
+  .inv-table thead th { font-size: var(--font-size-sm); letter-spacing: 0; }
   .md-table thead th { font-size: 0.6875rem; letter-spacing: 0; }
   .inv-table tfoot td,
   .md-table tfoot td { padding: 6px; }
@@ -1479,15 +1479,16 @@ button.ui-tag { border: 0; font: inherit; cursor: pointer; }
   .invoice-sheet .inv-table tbody td:last-child,
   .invoice-sheet .md-table tbody td:first-child,
   .invoice-sheet .md-table tbody td:last-child { border-radius: 0; }
-  .invoice-sheet .inv-table td.desc,
+  .invoice-sheet .inv-table td.desc { flex: 1 1 100%; order: -1; font-size: var(--font-size-lg); font-weight: var(--font-weight-strong); margin-bottom: var(--spacing-xs); }
   .invoice-sheet .md-table td.desc { flex: 1 1 100%; order: -1; font-size: 0.9375rem; font-weight: 600; margin-bottom: 8px; }
   .invoice-sheet .inv-table td.inv-date:empty,
   .invoice-sheet .md-table td.inv-date:empty { display: none; }
   /* #656: the date range gets its own row instead of crowding into the
      hours × rate meta line. */
-  .invoice-sheet .inv-table td.inv-date,
-  /* #656: the date range gets its own row instead of crowding into the
-     hours × rate meta line. */
+  .invoice-sheet .inv-table td.inv-date {
+    flex: 1 1 100%; display: block; font-size: var(--font-size-sm);
+    color: var(--color-text-secondary); margin-bottom: 6px;
+  }
   .invoice-sheet .md-table td.inv-date {
     flex: 1 1 100%; display: block; font-size: 0.8125rem;
     color: var(--color-text-secondary); margin-bottom: 6px;
@@ -1495,7 +1496,9 @@ button.ui-tag { border: 0; font: inherit; cursor: pointer; }
   .invoice-sheet .inv-table td.inv-date::after,
   .invoice-sheet .md-table td.inv-date::after { content: none; }
   .invoice-sheet .inv-table td.inv-hours,
-  .invoice-sheet .inv-table td.inv-rate,
+  .invoice-sheet .inv-table td.inv-rate {
+    display: inline; font-size: var(--font-size-sm); color: var(--color-text-secondary);
+  }
   .invoice-sheet .md-table td.inv-hours,
   .invoice-sheet .md-table td.inv-rate {
     display: inline; font-size: 0.8125rem; color: var(--color-text-secondary);
@@ -1504,9 +1507,10 @@ button.ui-tag { border: 0; font: inherit; cursor: pointer; }
   .invoice-sheet .md-table td.inv-hours::after { content: " hrs\00a0×\00a0"; }
   /* #679: the singular hour reads "1 hr × …", not "1 hrs × …". */
   .invoice-sheet .inv-table td.inv-hours.inv-hours-1::after,
-  not "1 hrs × …". */
   .invoice-sheet .md-table td.inv-hours.inv-hours-1::after { content: " hr\00a0×\00a0"; }
-  .invoice-sheet .inv-table td.inv-amount,
+  .invoice-sheet .inv-table td.inv-amount {
+    margin-left: auto; font-size: var(--font-size-lg); font-weight: var(--font-weight-strong); white-space: nowrap;
+  }
   .invoice-sheet .md-table td.inv-amount {
     margin-left: auto; font-size: 0.9375rem; font-weight: 700; white-space: nowrap;
   }
@@ -1530,7 +1534,7 @@ button.ui-tag { border: 0; font: inherit; cursor: pointer; }
   .invoice-sheet.template-modern .md-table tfoot tr.grand td { background: none; border-radius: 0; }
 }
 .cell-input { width: 100%; background: var(--color-bg-elevated); color: inherit;
-  border: none; border-radius: 8px; padding: 8px 10px; font: inherit; }
+  border: none; border-radius: var(--radius); padding: 8px 10px; font: inherit; }
 .cell-input.num { text-align: right; max-width: 110px; }
 .cell-input:focus { outline: 2px solid var(--color-primary); }
 
@@ -1569,7 +1573,7 @@ button.ui-tag { border: 0; font: inherit; cursor: pointer; }
 /* #867: inline code spans in release notes — tonal, monospace, 4px radius. */
 /* #873: nowrap — a hyphen-minus is a legal break point, so a --var name
    could wrap mid-identifier (e.g. "--" then "primary,"). */
-.page-changelog code { font-family: ui-monospace, monospace; font-size: 0.875em;
+.page-changelog code { font-family: ui-monospace, monospace; font-size: var(--font-size-sm);
   background: var(--color-bg-elevated);
   color: var(--color-text);
   border-radius: var(--radius-xs); padding: 1px 6px; white-space: nowrap; }
@@ -1701,7 +1705,7 @@ button.ui-tag { border: 0; font: inherit; cursor: pointer; }
 .template-modern .inv-table thead th:first-child { border-radius: 0; }
 .template-modern .inv-table thead th:last-child { border-radius: 0; }
 .template-modern .inv-table tbody tr:nth-child(even) { background: transparent; }
-.template-modern .inv-table tfoot tr.grand td { background: transparent; color: var(--color-text); font-size: 1rem; }
+.template-modern .inv-table tfoot tr.grand td { background: transparent; color: var(--color-text); font-size: var(--font-size-lg); }
 .template-modern .inv-table tfoot tr.grand td:first-child { border-radius: 0; }
 .template-modern .inv-table tfoot tr.grand td:last-child { border-radius: 0; }
 
@@ -1748,7 +1752,7 @@ button.ui-tag { border: 0; font: inherit; cursor: pointer; }
 .share-icons { display: flex; align-items: center; gap: 2px; margin-left: auto; flex-shrink: 0; }
 .share-icons form { display: inline; margin: 0; }
 .stripe-paid-chip { display: inline-block; margin-left: 8px; background: rgba(99,91,255,.18); color: #b3aeff;
-  padding: 4px 12px; border-radius: var(--radius-xs); font-size: 0.75rem; font-weight: 500; vertical-align: middle; }
+  padding: 4px 12px; border-radius: var(--radius-xs); font-size: var(--font-size-sm); font-weight: 500; vertical-align: middle; }
 /* #448: the bolt is an inline SVG from the icon system — size it to the chip's text. */
 .stripe-paid-chip svg { width: 14px; height: 14px; vertical-align: -2px; margin-right: 4px; }
 
@@ -1852,7 +1856,7 @@ button.ui-tag { border: 0; font: inherit; cursor: pointer; }
    transform. Each strip is a container: wide strips show the 24h grid, narrow
    ones the week agenda. */
 .cal-carousel { grid-area: grid; overflow: hidden; min-width: 0; min-height: 0;
-  border-radius: 16px; }
+  border-radius: var(--radius-lg); }
 .cal-track { display: flex; height: 100%; width: 100%; transform: translateX(-100%);
   transition: transform 260ms cubic-bezier(.2,0,0,1); }
 .cal-track.no-anim { transition: none; }

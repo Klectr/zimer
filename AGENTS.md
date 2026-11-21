@@ -35,7 +35,7 @@ This is the most violated thing by new agents, so it's up front, not linked:
 - **Accent:** pumpkin `#fb923c` (primary). Use sparingly: the single most
   important action per view, the running-timer state, and links.
 - **Scales, no exceptions.** Type 12/14/16 with headings 38/30/24/20 (no
-  off-scale sizes), radius 4/6/8/12, spacing on the 4px scale, control
+  off-scale sizes), radius 4/6/8/14/20, spacing on the 4px scale, control
   heights 28/36/40. Components read semantic tokens, never hard-code hex.
 - **Icons, never emoji/glyphs.** Actions use the `icon(name)` system in
   `site/lib/icons.ts` (inline SVG, no icon font). Never use emoji or text
