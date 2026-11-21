@@ -490,7 +490,7 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .ui-rev-chart .ui-rev-bar-out { fill: var(--color-fill); }
 .ui-rev-chart .ui-rev-bar-paid { fill: var(--color-primary); }
 .ui-rev-chart .ui-rev-bar-out, .ui-rev-chart .ui-rev-bar-paid { transform-box: fill-box; transform-origin: 50% 100%; animation: bar-grow var(--motion-duration-medium2) var(--motion-easing-emphasized-decelerate) backwards; }
-.ui-rev-chart text { fill: var(--color-text-tertiary); font-size: 0.625rem; }
+.ui-rev-chart text { fill: var(--color-text-tertiary); font-size: var(--font-size-sm); }
 .ui-rev-legend { display: flex; align-items: center; gap: var(--spacing-xs); margin-top: var(--spacing-xs); color: var(--color-text-tertiary); font-size: var(--font-size-sm); }
 .ui-rev-swatch { width: 12px; height: 12px; border-radius: var(--radius-xs); display: inline-block; }
 .ui-rev-swatch.paid { background: var(--color-primary); }
