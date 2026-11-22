@@ -4,18 +4,18 @@ import { linkButton } from "../site/ui/button";
 
 /* Fictional data only. */
 const rows: ZinvoiceTableRow[] = [
-  { number: "INV-1046", href: "#", client: "Harbor Dental", status: "draft", total: "$1,240.00" },
-  { number: "INV-1045", href: "#", client: "Quill & Ledger", status: "sent", issued: "Nov 12", due: "Dec 12", total: "$2,087.50" },
-  { number: "INV-1041", href: "#", client: "Fernwood Bakery", status: "sent", issued: "Oct 2", due: "Nov 1", overdue: true, overdueDays: 20, total: "$1,757.50" },
-  { number: "INV-1038", href: "#", client: "Harbor Dental", status: "paid", issued: "Oct 1", due: "Oct 31", paid: "Oct 18", total: "$3,600.00" },
-  { number: "INV-1032", href: "#", status: "paid", issued: "Sep 3", due: "Oct 3", paid: "Sep 30", total: "$480.00" },
-];
+  { number: "INV-1046", href: "#", client: "Harbor Dental", status: "draft", history: "Not sent yet", total: "$1,240.00" },
+  { number: "INV-1045", href: "#", client: "Quill & Ledger", status: "sent", due: "Dec 12", history: "Sent Nov 12", total: "$2,087.50" },
+  { number: "INV-1041", href: "#", client: "Fernwood Bakery", status: "sent", overdue: true, overdueDays: 20, history: "Sent Oct 2 · was due Nov 1", total: "$1,757.50" },
+  { number: "INV-1038", href: "#", client: "Harbor Dental", status: "paid", history: "Paid Oct 18", total: "$3,600.00" },
+  { number: "INV-1032", href: "#", status: "paid", history: "Paid Sep 30", total: "$480.00" },
+]
 
 export const zinvoicesStories: Story[] = [
   {
     id: "zinvoices-table",
     group: "Zinvoices",
-    title: "List table — every status",
+    title: "List table — every status (hover a chip for its date)",
     render: () => `<div style="max-width:960px">${zinvoiceTable({ rows })}</div>`,
   },
   {

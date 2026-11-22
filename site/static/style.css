@@ -1094,10 +1094,16 @@ body.app-fixed .ui-shell-main { min-height: 0; }
    scrolls sideways wherever the content column lands: Due drops first, then
    rows stack into two-line cards. */
 .inv-table-card { container-type: inline-size; }
-/* Narrower: Issued goes first — Due is the date that matters in a list
-   (the compact rows below agree: "Due …" / "Paid …"). */
-@container (max-width: 679px) {
-  .inv-table-card .col-issued { display: none; }
+/* Status chips carry the dates (#1399 follow-up): the tooltip must not be
+   clipped by the table's scroll box — four columns always fit. */
+.inv-table-card .table-wrap { overflow: visible; }
+.inv-status-cell { white-space: nowrap; }
+.inv-status-chip { display: inline-flex; border-radius: 999px; outline: none; }
+.inv-status-chip:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.inv-status-note { display: none; }
+/* No hover on touch screens: show the tooltip's text as a quiet line. */
+@media (hover: none) {
+  .inv-status-note { display: block; margin-top: var(--spacing-xxs); font-size: var(--font-size-sm); line-height: var(--line-height-sm); color: var(--color-text-tertiary); }
 }
 @container (max-width: 559px) {
   .inv-table-card .table-wrap { overflow-x: visible; margin: 0; padding: 0; }
@@ -1109,18 +1115,7 @@ body.app-fixed .ui-shell-main { min-height: 0; }
   .inv-table-card .inv-num-link { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; }
   .inv-table-card td.num { order: 2; flex: 0 0 auto; }
   .inv-table-card td:nth-child(2) { order: 3; color: var(--color-text-secondary); font-size: var(--font-size-sm); overflow-wrap: anywhere; }
-  /* One date per compact row, the one that matters: "Due Dec 14" while
-     sent, "Paid Oct 18" once paid, none on a draft. Issued stays on the
-     wide table and the Zinvoice itself. */
-  .inv-table-card tr.is-draft td.col-due { display: none; }
-  .inv-table-card tr.is-paid td.col-due::before { content: none; }
-  .inv-table-card tr.is-paid .inv-cell-main { display: none; }
-  .inv-table-card tr.is-paid .inv-cell-sub { margin: 0; }
-  .inv-table-card td.col-due { order: 5; display: block; color: var(--color-text-secondary); font-size: var(--font-size-sm); }
-  .inv-table-card td.col-due::before { content: "Due "; color: var(--color-text-tertiary); }
-  .inv-table-card td:nth-child(5) { order: 6; margin-left: auto; }
-  .inv-table-card .inv-cell-main { display: inline; font-weight: 400; color: inherit; }
-  .inv-table-card .inv-cell-sub { display: inline; margin: 0 0 0 var(--spacing-xxs); }
+  .inv-table-card td.inv-status-cell { order: 4; margin-left: auto; text-align: right; }
 }
 .inv-status-line { color: var(--color-text-secondary); margin: var(--spacing-xs) 0 0; }
 .inv-activity { border-top: 1px solid var(--color-border-secondary); margin-top: var(--spacing-sm); padding-top: var(--spacing-xs); }

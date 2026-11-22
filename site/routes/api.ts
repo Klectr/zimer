@@ -388,7 +388,7 @@ export function createApiRouter(deps: ApiDeps) {
                   if (want === "paid")
                     db.query("UPDATE invoices SET status = 'paid', paid_at = date('now') WHERE id = ?").run(id);
                   else
-                    db.query("UPDATE invoices SET status = ? WHERE id = ?").run(want, id);
+                    db.query("UPDATE invoices SET status = 'sent', sent_at = date('now') WHERE id = ?").run(id);
                   /* #301: freeze at send, re-freeze at paid for the status badge. */
                   freezeInvoiceSnapshots(id, shareOrigin(req));
                 }

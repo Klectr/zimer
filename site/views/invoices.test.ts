@@ -152,24 +152,38 @@ describe("paid-on date", () => {
     expect(html).not.toContain("Paid ");
   });
 
-  test("table rows use the mock's one-line columns: number, client, issued, due, status, total", () => {
+  /* Columns are Number, Client, Status, Total: the chip says what's next and
+     its tooltip says when the status happened. */
+  test("paid rows: Paid chip, tooltip with the paid date", () => {
     const html = views([{ ...baseRow, status: "paid", paid_at: "2026-09-21" }]).invoiceListOob(7);
     expect(html).toContain('<a class="inv-num-link" href="/invoices?invoice=7">INV-0007</a>');
     expect(html).toContain("<td>Acme</td>");
-    expect(html).toContain('<td class="col-issued">Sep 1</td>');
-    expect(html).toContain('<span class="inv-cell-main">Sep 30</span>');
-    expect(html).toContain("Paid Sep 21");
-    const html2 = views([{ ...baseRow, status: "sent", paid_at: null }]).invoiceListOob(0);
-    expect(html2).toContain('<td class="col-issued">Sep 1</td>');
-    expect(html2).toContain('<span class="inv-cell-main">Sep 30</span>');
-    expect(html2).toContain("ui-chip-sent");
+    expect(html).toContain("ui-chip-paid");
+    expect(html).toContain('role="tooltip" id="inv-tip-INV-0007">Paid Sep 21</span>');
+    expect(html).not.toContain("col-issued");
   });
 
-  test("draft rows dash both dates; the number links to the detail", () => {
+  test("sent rows: the chip reads Due …, the tooltip says when it was sent (Issued before sent_at existed)", () => {
+    const withSent = views([{ ...baseRow, status: "sent", paid_at: null, sent_at: "2026-09-02" }]).invoiceListOob(0);
+    expect(withSent).toContain(">Due Sep 30</span>");
+    expect(withSent).toContain(">Sent Sep 2</span>");
+    const legacy = views([{ ...baseRow, status: "sent", paid_at: null, sent_at: null }]).invoiceListOob(0);
+    expect(legacy).toContain(">Issued Sep 1</span>");
+    expect(legacy).not.toContain(">Sent Sep");
+  });
+
+  test("overdue rows: Overdue chip with its age, tooltip adds the missed due date", () => {
+    const html = views([{ ...baseRow, status: "sent", paid_at: null, sent_at: "2026-09-02" }], { isOverdue: () => true }).invoiceListOob(0);
+    expect(html).toContain("ui-chip-overdue");
+    expect(html).toContain(">Sent Sep 2 · was due Sep 30</span>");
+  });
+
+  test("draft rows: Draft chip, 'Not sent yet'; the number links to the detail", () => {
     const html = views([{ ...baseRow, status: "draft", paid_at: null }]).invoiceListOob(0);
     expect(html).toContain('href="/invoices?invoice=7"');
     expect(html).not.toContain(">View</a>");
-    expect(html).toContain('<td class="col-due">—</td>');
+    expect(html).toContain("ui-chip-draft");
+    expect(html).toContain(">Not sent yet</span>");
   });
 
   test("#448: stripe-paid chip uses the icon system, not an emoji", () => {
@@ -623,7 +637,9 @@ describe("list vs detail selection", () => {
     expect(html).toContain('hx-get="/invoices?status=paid" hx-target="#inv-list-region" hx-swap="innerHTML" hx-push-url="true"');
     expect(html).toContain('<th scope="col">Number</th>');
     expect(html).toContain('<th scope="col">Client</th>');
-    expect(html).toContain('<th scope="col" class="col-issued">Issued</th>');
+    expect(html).toContain('<th scope="col">Status</th>');
+    expect(html).not.toContain(">Issued</th>");
+    expect(html).not.toContain(">Due</th>");
     expect(html).not.toContain('id="invoice-detail"');
   });
   test("the htmx list region returns stats, chips, and rows without the shell", () => {
@@ -1119,5 +1135,13 @@ describe("no-sender warning", () => {
     const v = views([], { db: metaDb("") });
     expect(v.invoiceDetailBody(detailInv("draft", null) as any, "http://x")).toContain('id="no-sender-alert"');
     expect(v.invoiceDetailBody(detailInv("sent", null) as any, "http://x")).not.toContain("no-sender-alert");
+  });
+});
+
+describe("detail timeline records the send", () => {
+  test("a Sent event appears when sent_at is recorded, and never otherwise", () => {
+    const sent = { ...detailInv("sent", null), sent_at: "2026-09-02" };
+    expect(views([]).invoiceDetailBody(sent as any, "http://x")).toContain("Sep 2 — Sent");
+    expect(views([]).invoiceDetailBody(detailInv("sent", null) as any, "http://x")).not.toContain("— Sent");
   });
 });

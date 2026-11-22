@@ -27,6 +27,7 @@ export type Invoice = {
   client_email: string | null; client_phone: string | null; /* #627 */
   client_website: string | null; client_address: string | null; /* #627 */
   internal_notes: string; /* #302: internal-only, never on client surfaces */
+  sent_at?: string | null; /* day it was sent; NULL before it was recorded */
   period_from?: string | null; /* #1350: the wizard's billing period (inclusive) */
   period_to?: string | null;
   pdf_snapshot: Uint8Array | null; /* #609: legacy, no longer written; downloads render fresh */

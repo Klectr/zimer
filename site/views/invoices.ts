@@ -132,16 +132,23 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
      formatting and the overdue rule live here, the markup lives there. */
   function tableRow(r: any): ZinvoiceTableRow {
     const overdue = isOverdue(r);
+    const status: ZinvoiceTableRow["status"] = r.status === "paid" ? "paid" : r.status === "sent" ? "sent" : "draft";
+    /* The tooltip says when the status happened. A send before sent_at was
+       recorded falls back to the issue date — labelled Issued, not Sent. */
+    const day = (v: unknown) => shortYmd(String(v).slice(0, 10));
+    const sent = r.sent_at ? `Sent ${day(r.sent_at)}` : r.issue_date ? `Issued ${day(r.issue_date)}` : "Sent";
+    const history = status === "paid" ? (r.paid_at ? `Paid ${day(r.paid_at)}` : "Paid")
+      : status === "sent" ? (overdue && r.due_date ? `${sent} · was due ${day(r.due_date)}` : sent)
+      : "Not sent yet";
     return {
       number: String(r.number),
       href: `/invoices?invoice=${r.id}`,
       client: r.client_name || undefined,
-      status: r.status === "paid" ? "paid" : r.status === "sent" ? "sent" : "draft",
-      issued: r.issue_date ? shortYmd(r.issue_date) : undefined,
-      due: r.due_date ? shortYmd(r.due_date) : undefined,
-      paid: r.paid_at ? shortYmd(r.paid_at) : undefined,
+      status,
       overdue,
       overdueDays: overdue && r.due_date ? Math.max(0, daysBetween(r.due_date as string, todayStr())) : undefined,
+      due: status === "sent" && r.due_date ? shortYmd(r.due_date) : undefined,
+      history,
       total: money(rowTotal(r)),
     };
   }
@@ -672,8 +679,8 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       : "";
     const publicLinkCard = zinvoiceShareCard({ canPay, linesHtml: clientLine + stripeWarn + noPayPathWarn });
     /* The timeline carries only events the data records: creation
-       (created_at) and payment (paid_at). There is no sent-at or
-       viewed-at column, so the timeline never invents them. */
+       (created_at), the send (sent_at, recorded from now on) and payment
+       (paid_at). There is no viewed-at column, so it never invents one. */
     const createdYmd = String(inv.created_at || "").slice(0, 10);
     const statusChipHtml = invBadge(inv);
     const stripeChip = inv.paid_via_stripe ? stripePaidChip() : "";
@@ -690,6 +697,8 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     } else statusLine = "Sent · No due date";
     const activity: string[] = [];
     if (inv.paid_at) activity.push(`${shortYmd(inv.paid_at)} — Paid${inv.paid_via_stripe ? " via Stripe" : ""}`);
+    /* Recorded since sent_at exists; older sends have no event — never invented. */
+    if (inv.sent_at) activity.push(`${shortYmd(inv.sent_at)} — Sent`);
     if (createdYmd) activity.push(`${shortYmd(createdYmd)} — Created${trackedHours > 0 ? ` from ${fmtTrackedHours(trackedHours)} of tracked time` : ""}`);
     const statusCard = zinvoiceStatusCard({ chipHtml: statusChipHtml, extraChipHtml: stripeChip, progress, tone: progressTone, line: statusLine, activity });
     const totals = [
