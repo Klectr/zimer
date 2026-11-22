@@ -299,15 +299,15 @@ describe("new-zinvoice layout (#1202 parity)", () => {
 });
 
 describe("settings layout (#1202 parity)", () => {
-  test("the page is two balanced columns (the settings modal is gone, #1223)", () => {
-    expect(css).toContain(".ui-settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));");
-    expect(css).not.toContain(".settings-dialog .ui-settings-grid");
-    expect(css).toContain(".ui-settings-col { display: flex; flex-direction: column;");
+  test("the page is one column of full-width sections (the settings modal is gone, #1223)", () => {
+    expect(css).toContain(".ui-settings-stack { display: flex; flex-direction: column; gap: var(--spacing-sm); max-width: 760px;");
+    expect(css).not.toContain(".ui-settings-grid");
+    expect(css).not.toContain(".ui-settings-col");
     /* #1338: tracks can shrink (minmax(0, 1fr)), inputs fill their field,
        and the form drops to one column by its CARD's width, not the
        viewport's — a half-width card at 1024 overflowed by 26px. */
     expect(css).toContain(".ui-settings-form-2col { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));");
-    expect(css).toContain(".ui-settings-grid .ui-card { container-type: inline-size; min-width: 0; }");
+    expect(css).toContain(".ui-settings-stack .ui-card { container-type: inline-size; min-width: 0; }");
     expect(css).toContain(".ui-settings-form .ui-input { width: 100%; min-width: 0; box-sizing: border-box; }");
     expect(css).toContain("@container (max-width: 459px) { .ui-settings-form-2col { grid-template-columns: minmax(0, 1fr); } }");
     expect(css).toContain(".ui-settings-form textarea.ui-input { resize: vertical; }");

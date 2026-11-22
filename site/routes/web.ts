@@ -790,13 +790,12 @@ export function createWebRouter(deps: WebDeps) {
               dataRow("receipt", "Zinvoices CSV", "Every Zinvoice with its totals.", "/export/invoices.csv", "Download Zinvoices CSV") +
               `</div>`,
           });
-          const plan = billingHtml || updates;
+          /* One column, in order of use: what prints on Zinvoices, the
+             hosted plan, everyday preferences, exports, then about/updates. */
           const body =
-            `<div class="ui-settings-grid">` +
-            `<div class="ui-settings-col">${bizProfileSection()}</div>` +
-            `<div class="ui-settings-col">${plan}${dataSection}${billingHtml ? updates : ""}</div>` +
-            `<div class="ui-settings-wide">${preferencesSection()}</div>` +
-            `</div>${support}`;
+            `<div class="ui-settings-stack">` +
+            bizProfileSection() + billingHtml + preferencesSection() + dataSection + updates +
+            support + `</div>`;
           if (isHtmx(req)) return html(body);
           /* #693: direct visits get the full app layout — the bare fragment
              renders unstyled. */
