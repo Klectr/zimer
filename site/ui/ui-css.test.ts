@@ -560,3 +560,15 @@ describe("clients table on phones (#1344)", () => {
     expect(css).toContain(".mg-row:focus-visible .mg-card {");
   });
 });
+
+/** Small-display sweep: two tablet-width overflows. */
+describe("tablet-width overflow fixes", () => {
+  test("stat strip notes wrap under the number instead of running into the next cell", () => {
+    expect(css).toMatch(/\.ui-stat-cell-value \{ display: flex; flex-wrap: wrap;/);
+  });
+  test("the folded empty-days row bleeds its hover with a shadow, not negative margins", () => {
+    const rule = css.match(/\.ui-agenda-gap-head \{[^}]*\}/)![0];
+    expect(rule).not.toContain("margin: 0 calc(-1");
+    expect(css).toContain(".ui-agenda-gap-head:hover { background: var(--color-fill-tertiary); box-shadow: 0 0 0 var(--spacing-xs) var(--color-fill-tertiary); }");
+  });
+});
