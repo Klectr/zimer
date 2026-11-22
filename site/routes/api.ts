@@ -309,6 +309,7 @@ export function createApiRouter(deps: ApiDeps) {
                 status: r.status,
                 tax_rate: r.tax_rate,
                 paid_at: r.paid_at,
+                sent_at: r.sent_at ?? null,
                 client_name: r.client_name,
                 client_color: r.client_color,
                 client_payment_terms: r.client_payment_terms,
