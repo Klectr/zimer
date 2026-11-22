@@ -336,10 +336,13 @@ const OVERDUE_RED: [number, number, number] = [0.86, 0.25, 0.25];
 function statusBadge(doc: PdfDoc, rightX: number, yy: number, inv: PdfInvoice) {
   const paid = inv.status === "paid";
   const draft = inv.status === "draft";
-  /* A sent invoice that isn't late says when it's due ("DUE DEC 21") —
-     "UNPAID" before the due date reads like a demand. OVERDUE once late. */
-  const due = !paid && !draft && inv.dueDate && !inv.hideDue ? fmtDateShort(inv.dueDate).toUpperCase() : "";
-  const label = paid ? "PAID" : draft ? "DRAFT" : inv.overdue ? "OVERDUE" : due ? `DUE ${due}` : "UNPAID";
+  /* The badge only says something the page doesn't: PAID, DRAFT, OVERDUE.
+     A sent invoice that isn't late gets none — its due date is stated once,
+     under the total ("UNPAID" before the due date read like a demand). A
+     sent invoice with no due date (pay-when-paid) keeps UNPAID. */
+  const hasDue = !!inv.dueDate && !inv.hideDue;
+  if (!paid && !draft && !inv.overdue && hasDue) return;
+  const label = paid ? "PAID" : draft ? "DRAFT" : inv.overdue ? "OVERDUE" : "UNPAID";
   const pw = textWidth(label, 9, true) + 20, ph = 20;
   const x = rightX - pw;
   const fill = paid ? [0.16, 0.55, 0.28] as [number, number, number] : draft ? DRAFT_GRAY : inv.overdue ? OVERDUE_RED : PUMPKIN;
@@ -396,7 +399,10 @@ function drawModern(inv: PdfInvoice, doc: PdfDoc) {
      #624: no Billing period summary line — the table's per-line Date
      column already states it. */
   let datesStr = `Issued ${fmtDate(inv.issueDate)}`;
-  if (inv.dueDate && !inv.hideDue) datesStr += `   |   Due ${fmtDate(inv.dueDate)}`;
+  /* A sent invoice states its due date once — "Due by …" under the total,
+     next to the amount it applies to. Drafts and paid invoices have no such
+     line, so theirs stays here. */
+  if (inv.dueDate && !inv.hideDue && inv.status !== "sent") datesStr += `   |   Due ${fmtDate(inv.dueDate)}`;
   /* #1350: a stored billing period can start before the first worked day,
      which the per-line dates can't show — print it. */
   if (inv.period) datesStr += `   |   Billing period ${inv.period}`;
