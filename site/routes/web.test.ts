@@ -455,6 +455,50 @@ describe("invoice preview and hours hardening (#1444)", () => {
     expect(db.query("SELECT COUNT(*) AS n FROM invoice_items").get()).toEqual({ n: 0 });
   });
 
+  test("an HTMX preview with a negative rate gets a visible error fragment", async () => {
+    const { handleWeb } = setup();
+    const form = new FormData();
+    for (const [k, v] of Object.entries({ ...basePreviewFields, rate: "-5" })) form.append(k, v);
+    const req = new Request("http://x/invoices/preview", { method: "POST", body: form, headers: { "HX-Request": "true" } });
+    const res = await handleWeb(req, new URL(req.url), "/invoices/preview", "POST");
+    expect(res!.status).toBe(400);
+    expect(await res!.text()).toContain("at or above 0");
+  });
+
+  test("infinite hours drop the row and leave no orphan invoice", async () => {
+    const { db, handleWeb } = setup();
+    const res = await postInvoice(handleWeb, {
+      ...baseInvoiceFields, groups: "1",
+      g0_desc: "Work", g0_hours: "Infinity", g0_rate: "50",
+      g0_ids: "", g0_date_from: "", g0_date_to: "",
+    });
+    expect(res!.status).toBe(400);
+    expect(db.query("SELECT COUNT(*) AS n FROM invoices").get()).toEqual({ n: 0 });
+  });
+
+  test("finite hours and rate that multiply to Infinity are rejected, nothing stored", async () => {
+    const { db, handleWeb } = setup();
+    const res = await postInvoice(handleWeb, {
+      ...baseInvoiceFields, groups: "1",
+      g0_desc: "Work", g0_hours: "1e200", g0_rate: "1e200",
+      g0_ids: "", g0_date_from: "", g0_date_to: "",
+    });
+    expect(res!.status).toBe(400);
+    expect(db.query("SELECT COUNT(*) AS n FROM invoices").get()).toEqual({ n: 0 });
+    expect(db.query("SELECT COUNT(*) AS n FROM invoice_items").get()).toEqual({ n: 0 });
+  });
+
+  test("a tax rate whose rounded value overflows is rejected on create", async () => {
+    const { db, handleWeb } = setup();
+    const res = await postInvoice(handleWeb, {
+      ...baseInvoiceFields, tax_rate: "1e308", groups: "1",
+      g0_desc: "Work", g0_hours: "1", g0_rate: "50",
+      g0_ids: "", g0_date_from: "", g0_date_to: "",
+    });
+    expect(res!.status).toBe(400);
+    expect(db.query("SELECT COUNT(*) AS n FROM invoices").get()).toEqual({ n: 0 });
+  });
+
   test("a non-numeric-hours row is dropped when a valid row remains", async () => {
     const { db, handleWeb } = setup();
     const res = await postInvoice(handleWeb, {
