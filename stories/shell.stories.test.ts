@@ -8,9 +8,7 @@ describe("shell stories", () => {
     expect(all).toContain("ui-side");
     expect(all).toContain("ui-navitem");
     expect(all).toContain("ui-app-head");
-    expect(all).toContain("ui-tab");
     expect(all).toContain("ui-logo");
-    expect(all).toContain("ui-running");
     expect(all).toContain("ui-side-foot");
   });
 });

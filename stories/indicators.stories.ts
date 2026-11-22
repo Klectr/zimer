@@ -36,7 +36,7 @@ export const indicatorStories: Story[] = [
     title: "Invoice mark — on an entry's meta line",
     render: () => col(
       `<div class="ui-row-meta">${invoiceMark({ label: "Sent", tip: "On INV-1045 (sent)" })}<span>7:30 AM – 8:45 AM</span></div>` +
-      `<div class="ui-row-meta">${invoiceMark({ label: "Draft", tip: "In draft INV-1046", cls: "is-draft" })}<span>9:00 AM – 12:30 PM</span></div>`,
+      `<div class="ui-row-meta">${invoiceMark({ label: "Draft", tip: "In draft INV-1046", cls: "draft" })}<span>9:00 AM – 12:30 PM</span></div>`,
     ),
   },
   {

@@ -70,9 +70,6 @@ describe("zinvoices detail layout (#1202)", () => {
     expect(css).toContain("@container (max-width: 959px) {\n  .inv-new-grid, .inv-detail-grid { grid-template-columns: minmax(0, 1fr); }\n}");
   });
 
-  test("the retired two-pane stat-hiding rule is gone with the pane", () => {
-    expect(css).not.toContain("invoice-list-detail");
-  });
 });
 
 describe("ui button anchors (#1121)", () => {

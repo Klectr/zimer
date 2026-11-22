@@ -1,3 +1,6 @@
+/** Reference component: no server view imports it. The snackbar is built at
+ *  runtime by site/static/shortcut.js (tkSnackbar); this mirrors that markup
+ *  so the Zandbox stories can design and test it. Keep the two in step. */
 import { esc } from "../lib/format";
 import { icon } from "../lib/icons";
 

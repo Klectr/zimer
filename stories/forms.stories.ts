@@ -1,9 +1,9 @@
 import type { Story } from "../.zandbox/story";
-import { checkboxField, switchField, settingList, settingRow } from "../site/ui/choice";
+import { checkboxField, settingList, settingRow } from "../site/ui/choice";
 import { authCard } from "../site/ui/auth-card";
 import { settingsDataList, settingsDataRow, settingsSection } from "../site/ui/settings-section";
 import { planCard } from "../site/ui/plan-card";
-import { formSection, unbilledTable, invoiceSummary } from "../site/ui/zinvoice-form";
+import { formSection, invoiceSummary } from "../site/ui/zinvoice-form";
 import { textField, selectField } from "../site/ui/field";
 import { button } from "../site/ui/button";
 import { statusChip } from "../site/ui/status-chip";
@@ -33,8 +33,7 @@ export const formsStories: Story[] = [
         checkboxField({ id: "cb-billable", label: "Billable by default", hint: "New entries start billable.", checked: true }) +
           checkboxField({ id: "cb-round", label: "Round to the nearest 15 minutes" }) +
           checkboxField({ id: "cb-locked", label: "Locked after sending", hint: "Sent Zinvoices freeze their entries.", checked: true, disabled: true }) +
-          switchField({ id: "sw-weekend", label: "Show weekends on the calendar", checked: true }) +
-          switchField({ id: "sw-colors", label: "Show project colors on the calendar" }),
+          checkboxField({ id: "cb-weekend", label: "Show weekends on the calendar", checked: true }),
       ),
   },
   {
@@ -46,7 +45,7 @@ export const formsStories: Story[] = [
         settingsSection({
           title: "Preferences",
           bodyHtml: settingList([
-            settingRow({ title: "Weekend days", hint: "Shown faded on the week grid.", controlHtml: switchField({ id: "set-weekends", label: "Weekend days", checked: true, bare: true }) }),
+            settingRow({ title: "Weekend days", hint: "Shown faded on the week grid.", controlHtml: checkboxField({ id: "set-weekends", label: "Weekend days", checked: true, bare: true }) }),
             settingRow({ title: "Round up entries", hint: "Bills each entry up to the next 15 minutes.", controlHtml: checkboxField({ id: "set-round", label: "Round up entries", checked: true, bare: true }) }),
             settingRow({ title: "Daily hours target", hint: "Drives the pacing bars on the timer and calendar; the week target is five days at this rate.", controlHtml: `<div class="settings-inline-form"><div class="ui-input-wrap settings-hours"><input class="ui-input" type="number" value="8" aria-label="Daily hours target"><span class="ui-affix ui-affix-suffix">hr</span></div>${button({ label: "Save target", icon: "save" })}</div>` }),
             settingRow({ title: "Billing email", hint: "billing@studio.example", controlHtml: button({ label: "Change email", size: "sm" }) }),
@@ -155,48 +154,32 @@ export const formsStories: Story[] = [
       `</div>`,
   },
   {
-    id: "forms-zinvoice",
+    id: "forms-form-section",
     group: "Forms",
-    title: "New Zinvoice — form pieces",
+    title: "Form section — numbered wizard step",
     render: () =>
-      `<div style="display:grid;grid-template-columns:1.15fr .85fr;gap:12px;max-width:880px;align-items:start">` +
       wrap(
-        formSection({
-          step: 1,
-          title: "Client & period",
-          bodyHtml:
-            `<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">` +
-            selectField({ id: "zi-client", label: "Client", options: [{ value: "acme", label: "Acme Studio" }, { value: "northwind", label: "Northwind Legal" }], value: "acme" }) +
-            textField({ id: "zi-period", label: "Period", value: "Oct 26 — Nov 8" }) +
-            `</div>`,
-        }) +
-          formSection({
-            step: 2,
-            title: "Unbilled time — uncheck to exclude",
-            bodyHtml: unbilledTable([
-              { id: "e1", label: "Design — homepage pass", hours: "12.5h", amount: "$1,062.50", included: true },
-              { id: "e2", label: "Development — build", hours: "8.0h", amount: "$680.00", included: true },
-              { id: "e3", label: "Review call", hours: "1.0h", amount: "$85.00", included: true },
-              { id: "e4", label: "Internal planning (non-billable)", hours: "0.7h", amount: "$0.00", included: false },
-            ]),
-          }),
-      ) +
+        formSection({ step: 1, title: "Client & period", bodyHtml:
+          selectField({ id: "fs-client", label: "Client", options: [{ value: "acme", label: "Acme Studio" }, { value: "northwind", label: "Northwind Legal" }], value: "acme" }) }) +
+        formSection({ step: 2, title: "Unbilled time — uncheck to exclude", bodyHtml: `<p class="ui-note">Pick a client to load unbilled time.</p>` }),
+      ),
+  },
+  {
+    id: "forms-invoice-summary",
+    group: "Forms",
+    title: "Invoice summary — lines, total, body slot",
+    render: () =>
+      `<div style="max-width:360px">` +
       invoiceSummary({
         title: "Live preview — #1042",
         chipHtml: statusChip("draft"),
         lines: [
           { label: "Design — 12.50 h", amount: "$1,062.50" },
-          { label: "Development — 8.00 h", amount: "$680.00" },
-          { label: "Review call — 1.00 h", amount: "$85.00" },
+          { label: "Development — 8.00 h", amount: "$680.00", detail: "8.00 h × $85.00" },
         ],
         totalLabel: "Total due",
-        total: "$1,827.50",
-        bodyHtml:
-          textField({ id: "zi-due", label: "Due date", value: "Nov 22, 2026" }) +
-          `<div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">` +
-          button({ label: "Save draft", variant: "primary", block: true }) +
-          button({ label: "Send Zinvoice", block: true }) +
-          `</div>`,
+        total: "$1,742.50",
+        bodyHtml: `<div style="margin-top:12px">` + button({ label: "Save draft", variant: "primary", block: true }) + `</div>`,
       }) +
       `</div>`,
   },

@@ -6,7 +6,6 @@ describe("feedback stories", () => {
     const all = feedbackStories.map((s) => s.render()).join("");
     expect(all).toContain("ui-dialog");
     expect(all).toContain("ui-toast");
-    expect(all).toContain("ui-menu");
     expect(all).toContain("ui-empty");
   });
 

@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { checkboxField, switchField, settingRow } from "./choice";
+import { checkboxField, settingRow } from "./choice";
 import { authCard } from "./auth-card";
 import { settingsSection } from "./settings-section";
 import { planCard } from "./plan-card";
-import { formSection, unbilledTable, invoiceSummary } from "./zinvoice-form";
+import { formSection, invoiceSummary } from "./zinvoice-form";
 import { button } from "./button";
 
 describe("choice fields", () => {
@@ -22,12 +22,6 @@ describe("choice fields", () => {
     expect(html).not.toContain("ui-choice-label");
   });
 
-  test("switch carries role=switch and checked state", () => {
-    const html = switchField({ id: "s1", label: "Weekends", checked: true });
-    expect(html).toContain('role="switch"');
-    expect(html).toContain(" checked");
-    expect(html).toContain("ui-switch");
-  });
 
   test("labels are escaped", () => {
     expect(checkboxField({ id: "c3", label: "<img src=x>" })).not.toContain("<img src=x>");
@@ -131,22 +125,7 @@ describe("zinvoice form pieces", () => {
     expect(formSection({ step: 2, title: "Unbilled time", bodyHtml: "<p>x</p>" })).toContain("2 · Unbilled time");
   });
 
-  test("unbilled table checks included entries and escapes labels", () => {
-    const html = unbilledTable([
-      { id: "e1", label: "Design <b>pass</b>", hours: "12.5h", amount: "$1,062.50", included: true },
-      { id: "e2", label: "Planning", hours: "0.7h", amount: "$0.00", included: false },
-    ]);
-    expect(html).toContain('id="ub-e1"');
-    expect(html).toContain('aria-label="Design &lt;b&gt;pass&lt;/b&gt;"');
-    expect(html).toContain("<td>Design &lt;b&gt;pass&lt;/b&gt;</td>");
-    expect(html).toContain(" checked");
-    expect(html).not.toContain("<b>pass</b>");
-    expect(html).toContain("$1,062.50");
-  });
 
-  test("empty unbilled table says so", () => {
-    expect(unbilledTable([])).toContain("No unbilled time");
-  });
 
   test("summary renders lines, total, and the body slot", () => {
     const html = invoiceSummary({

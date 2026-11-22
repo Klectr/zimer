@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { dialog, confirmDialog } from "./dialog";
 import { toast } from "./toast";
-import { menu } from "./menu";
 import { emptyState } from "./empty-state";
 
 describe("dialog", () => {
@@ -48,22 +47,6 @@ describe("toast", () => {
   });
 });
 
-describe("menu", () => {
-  test("items render as links, buttons, or disabled spans with roles", () => {
-    const html = menu({
-      label: "Actions",
-      items: [
-        { label: "View", href: "/x" },
-        { label: "Delete", danger: true },
-        { label: "Send", disabled: true },
-      ],
-    });
-    expect(html).toContain('role="menu"');
-    expect(html).toContain('<a class="ui-menu-item" role="menuitem" href="/x">');
-    expect(html).toContain("is-danger");
-    expect(html).toContain('aria-disabled="true"');
-  });
-});
 
 describe("emptyState", () => {
   test("renders icon, title, body, and the action slot", () => {

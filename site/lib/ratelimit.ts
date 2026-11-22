@@ -35,4 +35,3 @@ export function createRateLimiter(opts: { windowMs: number; max: number }) {
   };
 }
 
-export type RateLimiter = ReturnType<typeof createRateLimiter>;

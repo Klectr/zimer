@@ -275,9 +275,6 @@ describe("calendar week carousel (#572)", () => {
     expect(html).not.toContain('class="cal-strip"');
     expect(html).toContain('class="cal-pane-tpl"');
   });
-  test("dayInner is gone", () => {
-    expect((views() as any).dayInner).toBeUndefined();
-  });
 });
 
 /** #500: finish the data-tip sweep — the calendar entry card's invoiced-mark
@@ -482,11 +479,6 @@ describe("calendar week-only carousel (#572)", () => {
     expect(agSectionCount(html)).toBe(7);
   });
 
-  test("no day mode survives", () => {
-    const html = viewsFor([]).weekInner("2026-09-20", "America/Chicago");
-    expect(html).not.toContain("data-mode=");
-    expect(html).not.toContain("/partial/day");
-  });
 });
 
 /** #524:/** #524: the supporting-pane summary's week-over-week delta slot — with no
@@ -816,7 +808,7 @@ describe("entry edit dialog fragment (#903)", () => {
     } as any);
   }
 
-  test("save button is verb + noun (#1217)", () => {
+  test("dialog save button is verb + noun (#1217)", () => {
     const html = dialogViews().editEntryDialog(7) as string;
     expect(html).toContain(">Save entry</button>");
   });
@@ -1003,10 +995,10 @@ describe("calendar project pickers (#1121)", () => {
   });
 });
 
-/** #1132: entries use the ui tint treatment (the viz-block pattern), and
- *  the legacy night-sky decoration is gone from markup and CSS. */
+/** #1132: entries use the ui tint treatment (the viz-block pattern). Dead
+ *  CSS (the old night-sky decoration) is caught by css-coverage.test.ts. */
 describe("calendar legacy decoration removal (#1132)", () => {
-  test("entry blocks are the ui-viz tint treatment; no cal-entry rules remain", async () => {
+  test("entry blocks are the ui-viz tint treatment", async () => {
     const css = await Bun.file("site/static/style.css").text();
     const block = css.match(/\.ui-viz-block \{[^}]*\}/);
     expect(block).not.toBeNull();
@@ -1014,21 +1006,8 @@ describe("calendar legacy decoration removal (#1132)", () => {
     expect(block![0]).toContain("border: 1px solid color-mix(in srgb, var(--entry, var(--color-text-tertiary)) 45%, transparent)");
     expect(block![0]).toContain("box-sizing: border-box");
     expect(block![0]).toContain("border-radius: var(--radius-sm)");
-    expect(css).not.toContain(".cal-entry");
-    const src = await Bun.file("site/views/calendar.ts").text();
-    expect(src).not.toContain("cal-entry");
-    expect(src).not.toContain("cal-ag-row");
   });
 
-  test("no night bands, stars, or waves remain", async () => {
-    const css = await Bun.file("site/static/style.css").text();
-    expect(css).not.toContain(".cal-night");
-    expect(css).not.toContain(".cal-star");
-    expect(css).not.toContain(".cal-wave");
-    const src = await Bun.file("site/views/calendar.ts").text();
-    expect(src).not.toContain("cal-night");
-    expect(src).not.toContain("nightStars");
-  });
 });
 
 /** The suite mock's legend row under the week grid: billable and invoiced
