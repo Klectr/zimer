@@ -3,6 +3,7 @@
  *  ensurePublicToken) stay owned by server.ts until the invoices view slice
  *  (#171) and are injected here, so these pages render unchanged. */
 
+import { docSections, publicFoot } from "../ui/doc-sections.ts";
 import { daysBetween, esc, money, shortYmd, termsDays, termsKey, todayStr } from "../lib/format.ts";
 import { icon, logo } from "../lib/icons.ts";
 import type { ChangelogEntry } from "../lib/changelog.ts"; /* #303 */
@@ -150,11 +151,7 @@ export function createPublicViews(deps: PublicViewDeps) {
         body: "Email support@klectr.dev from your account address and we'll delete your account and all of its data.",
       },
     ];
-    const body = sections.map(s => `
-      <section class="changelog-release">
-        <h2 class="ui-app-title">${esc(s.heading)}</h2>
-        <p>${s.html ? s.body : esc(s.body)}</p>
-      </section>`).join("");
+    const body = docSections(sections);
     return `<!DOCTYPE html>
   <html lang="en">
   <head>
@@ -170,7 +167,7 @@ export function createPublicViews(deps: PublicViewDeps) {
   <main class="page-public page-changelog">
   <h1 class="ui-page-title changelog-title">${logo(28)}<span>Zimer privacy policy</span></h1>
   ${body}
-  <p class="muted tiny no-print public-foot">Shared securely via Zimer · <a href="/changelog">Changelog</a> · <a href="/terms">Terms</a></p>
+  ${publicFoot([{ label: "Changelog", href: "/changelog" }, { label: "Terms", href: "/terms" }])}
   </main>
   </html>`;
   }
@@ -197,7 +194,7 @@ export function createPublicViews(deps: PublicViewDeps) {
   <h1 class="ui-page-title">What&rsquo;s new in Zimer</h1>
   <p class="ui-app-sub">Small, finished changes. Shipped means live, not announced.</p>
   ${body}
-  <p class="muted tiny no-print public-foot">Shared securely via Zimer</p>
+  ${publicFoot()}
   </main>
   </html>`;
   }
@@ -205,11 +202,7 @@ export function createPublicViews(deps: PublicViewDeps) {
   /* #341: public license terms — same minimal public chrome as the
      changelog: no auth, no app nav. */
   function termsPage(sections: TermsSection[], origin: string): string {
-    const body = sections.map(s => `
-      <section class="changelog-release">
-        <h2 class="ui-app-title">${esc(s.heading)}</h2>
-        <p>${s.html ? s.body : esc(s.body)}</p>
-      </section>`).join("");
+    const body = docSections(sections);
     return `<!DOCTYPE html>
   <html lang="en">
   <head>
@@ -225,7 +218,7 @@ export function createPublicViews(deps: PublicViewDeps) {
   <main class="page-public page-changelog">
   <h1 class="ui-page-title changelog-title">${logo(28)}<span>Zimer terms of service</span></h1>
   ${body}
-  <p class="muted tiny no-print public-foot">Shared securely via Zimer · <a href="/changelog">Changelog</a> · <a href="/privacy">Privacy</a></p>
+  ${publicFoot([{ label: "Changelog", href: "/changelog" }, { label: "Privacy", href: "/privacy" }])}
   </main>
   </html>`;
   }
