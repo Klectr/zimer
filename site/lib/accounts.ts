@@ -158,6 +158,37 @@ CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
     db.query("DELETE FROM sessions WHERE token = ?").run(hashSessionToken(token));
   }
 
+  /** #987: change a live user's password. Verifies the current password,
+   *  applies the signup length rule to the new one, and revokes every
+   *  session except keepToken's, so the caller stays signed in while any
+   *  other device (including a suspected attacker's) is signed out. */
+  async function changePassword(
+    userId: number,
+    currentPassword: string,
+    newPassword: string,
+    keepToken?: string
+  ): Promise<{ error?: string }> {
+    if (newPassword.length < 8)
+      return { error: "New password must be at least 8 characters." };
+    if (newPassword === currentPassword)
+      return { error: "New password must be different from your current password." };
+    const row = db
+      .query("SELECT password_hash FROM users WHERE id = ? AND deleted_at IS NULL")
+      .get(userId) as { password_hash: string } | null;
+    if (!row) return { error: "Account not found." };
+    const ok = await Bun.password.verify(currentPassword, row.password_hash);
+    if (!ok) return { error: "Current password is wrong." };
+    const password_hash = await Bun.password.hash(newPassword);
+    db.query("UPDATE users SET password_hash = ? WHERE id = ?").run(password_hash, userId);
+    if (keepToken) {
+      db.query("DELETE FROM sessions WHERE user_id = ? AND token != ?")
+        .run(userId, hashSessionToken(keepToken));
+    } else {
+      db.query("DELETE FROM sessions WHERE user_id = ?").run(userId);
+    }
+    return {};
+  }
+
   /** Extract the session token from a request's cookies. */
   function sessionTokenFromRequest(req: Request): string | null {
     const m = (req.headers.get("cookie") || "").match(new RegExp(`(?:^|;\\s*)${SESSION_COOKIE}=([^;]+)`));
@@ -190,6 +221,7 @@ CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
     createSession,
     sessionUser,
     destroySession,
+    changePassword,
     sessionTokenFromRequest,
     sessionUserFromRequest,
     sessionCookie,
