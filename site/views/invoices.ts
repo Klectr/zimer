@@ -20,8 +20,8 @@ import { emptyState } from "../ui/empty-state.ts";
 import { statBlock } from "../ui/stat.ts";
 import { statusChip } from "../ui/status-chip.ts";
 import { zinvoiceFilterBar, zinvoiceTable, zinvoiceTableRows, type ZinvoiceTableRow } from "../ui/zinvoice-table.ts";
+import { internalNotes, paymentProofSection, shareLine, stripePaidChip, timeBreakdownChart, zinvoiceDetailHead, zinvoiceShareCard, zinvoiceStatusCard, ZINVOICE_COPY_SCRIPT } from "../ui/zinvoice-detail.ts";
 import { lineItemsTable } from "../ui/line-items.ts";
-import { progressBar } from "../ui/progress.ts";
 import { formSection, invoiceSummary } from "../ui/zinvoice-form.ts";
 import { steps } from "../ui/steps.ts";
 import { PAYMENT_TERMS } from "../lib/format.ts";
@@ -603,23 +603,12 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       buckets = days.map(d => ({ label: shortYmd(d.date), hours: d.hours }));
       per = "day";
     }
-    const max = Math.max(1, ...buckets.map(b => b.hours));
-    const W = 600, baseline = 150, areaH = 120, n = buckets.length;
-    const slot = W / n, bw = Math.min(34, slot * 0.62);
-    const bars = buckets.map((b, i) => {
-      const h = Math.max(3, Math.round(b.hours / max * areaH));
-      const x = (i * slot + (slot - bw) / 2).toFixed(1);
-      const cx = (i * slot + slot / 2).toFixed(1);
-      return `<g><title>${esc(`${b.label}: ${fmtTrackedHours(b.hours)} tracked`)}</title>` +
-        `<rect x="${x}" y="${baseline - h}" width="${bw.toFixed(1)}" height="${h}" rx="4" class="tb-bar"/>` +
-        `<text x="${cx}" y="${baseline + 18}" text-anchor="middle">${esc(b.label)}</text></g>`;
-    }).join("");
     const total = totalOverride ?? round2(buckets.reduce((a, b) => a + b.hours, 0));
-    return `<section class="inv-breakdown" aria-label="Time breakdown">` +
-      `<div class="ui-block-title">Time breakdown</div>` +
-      `<p class="muted inv-breakdown-sub">Tracked time per ${per} — ${fmtTrackedHours(total)} total</p>` +
-      `<svg class="tb-chart" viewBox="0 0 ${W} 180" role="img" aria-label="Tracked time per ${per}">${bars}</svg>` +
-      `</section>`;
+    return timeBreakdownChart({
+      per: per as "day" | "week",
+      totalLabel: fmtTrackedHours(total),
+      bars: buckets.map(b => ({ label: b.label, hours: b.hours, tip: `${b.label}: ${fmtTrackedHours(b.hours)} tracked` })),
+    });
   }
 
   /** /invoices/:id — printable detail with status actions. */
@@ -773,61 +762,23 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
      App surface only (never on the public invoice page or print). Upload is
      optional; a nudge encourages attaching proof when a paid invoice has
      none. */
-  function paymentProofSection(inv: Invoice): string {
+  function proofSection(inv: Invoice): string {
     if (inv.status !== "sent" && inv.status !== "paid") return "";
     const proofs = listProofs(db, inv.id);
     const fmtSize = (n: number) => n < 1024 ? `${n} B` : `${(n / 1024).toFixed(0)} KB`;
-    const rows = proofs.map(p => `
-      <div class="proof-row">
-        <a class="proof-name" href="/invoices/${inv.id}/payment-proof/${p.id}" target="_blank" rel="noopener">${esc(p.filename)}</a>
-        <span class="proof-meta muted">${fmtSize(p.size)} · ${esc(shortYmd(p.created_at.slice(0, 10)))}</span>
-        <span class="proof-icons">
-          <a class="ui-icon-btn" href="/invoices/${inv.id}/payment-proof/${p.id}" download="${esc(p.filename)}" data-tip="Download" aria-label="Download proof">${icon("download")}</a>
-          <form method="post" action="/invoices/${inv.id}/payment-proof/${p.id}/delete" class="inline">
+    return paymentProofSection({
+      invoiceId: inv.id,
+      uploadAction: `/invoices/${inv.id}/payment-proof`,
+      nudge: inv.status === "paid" && proofs.length === 0,
+      proofs: proofs.map(p => ({
+        filename: p.filename,
+        href: `/invoices/${inv.id}/payment-proof/${p.id}`,
+        meta: `${fmtSize(p.size)} · ${shortYmd(p.created_at.slice(0, 10))}`,
+        deleteHtml: `<form method="post" action="/invoices/${inv.id}/payment-proof/${p.id}/delete" class="inline">
             ${iconButton({ icon: "delete", label: "Delete proof", danger: true, type: "submit", attrs: `data-confirm="Delete this proof of payment?" data-confirm-label="Delete proof"` })}
-          </form>
-        </span>
-      </div>`).join("");
-    const nudge = inv.status === "paid" && proofs.length === 0 ? `
-      <p class="proof-nudge muted">No proof attached — add the bank receipt or payment confirmation so this payment stays verifiable.</p>` : "";
-    return `<section class="payment-proof no-print" id="proof" aria-label="Proof of payment">
-      <div class="ui-block-title">${icon("receipt")} Proof of payment</div>
-      ${rows}
-      ${nudge}
-      <form method="post" action="/invoices/${inv.id}/payment-proof" enctype="multipart/form-data" class="proof-upload" data-invoice-id="${inv.id}">
-        <label class="ui-btn proof-file-label" for="proof-file-${inv.id}">${icon("upload")} Attach proof</label>
-        <input id="proof-file-${inv.id}" class="proof-file-input" type="file" name="proof" accept="image/png,image/jpeg,image/gif,image/webp,application/pdf" required>
-      </form>
-      <p class="proof-hint muted">PNG, JPEG, GIF, WebP or PDF, up to 10 MB. Optional — cash payments have no file.</p>
-      <script>(function(){
-        /* Upload proof without full page refresh. Guarded global so htmx
-           re-renders of the detail pane don't stack listeners. */
-        if (window.__proofPickerWired) return;
-        window.__proofPickerWired = true;
-        document.addEventListener("change", function(ev){
-          var t = ev.target;
-          if (!t || t.type !== "file" || !t.classList || !t.classList.contains("proof-file-input")) return;
-          var form = t.closest("form");
-          if (!t.files || !t.files[0] || !form) return;
-          var fd = new FormData(form);
-          fetch(form.action, { method: "POST", body: fd, headers: { "X-Proof-Upload": "1" } })
-            .then(function(res){ if (!res.ok) throw new Error("upload failed"); return res.text(); })
-            .then(function(){
-              /* Re-fetch the invoice detail and swap just the proof section */
-              var invId = form.getAttribute("data-invoice-id");
-              return fetch("/invoices?invoice=" + invId, { headers: { "X-Proof-Refresh": "1" } });
-            })
-            .then(function(res){ return res.text(); })
-            .then(function(pageHtml){
-              var doc = new DOMParser().parseFromString(pageHtml, "text/html");
-              var fresh = doc.getElementById("proof");
-              var current = document.getElementById("proof");
-              if (fresh && current) current.outerHTML = fresh.outerHTML;
-            })
-            .catch(function(){ form.submit(); });
-        });
-      })();</script>
-    </section>`;
+          </form>`,
+      })),
+    });
   }
 
   /* #71: detail body as a fragment — status/Stripe/link actions swap
@@ -848,107 +799,50 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     const od = isOverdue(inv) ? daysBetween(inv.due_date as string, todayStr()) : 0;
     const bd = timeBreakdown(inv);
     const trackedHours = breakdownTotal(inv, bd);
-    /* #229: the copy handler is delegated and id-free so htmx swaps stay
-       safe; it wires the whole detail root, which covers both the head's
-       Copy pay link button and the public link card's copy button. */
-    const copyScript = `<script>(function(){
-      /* #621: the Clipboard API only exists in secure contexts, but the app
-         is served over plain HTTP on the Tailscale IP — so fall back to the
-         legacy execCommand path there instead of silently doing nothing. */
-      function copyText(text, done){
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(text).then(done, function(){ legacyCopy(text, done); });
-        } else {
-          legacyCopy(text, done);
-        }
-      }
-      function legacyCopy(text, done){
-        var ta = document.createElement(\"textarea\");
-        ta.value = text;
-        ta.setAttribute(\"readonly\", \"\");
-        ta.style.position = \"fixed\";
-        ta.style.opacity = \"0\";
-        document.body.appendChild(ta);
-        ta.select();
-        try { if (document.execCommand(\"copy\")) done(); } catch (e) { /* keep it honest: no fake success */ }
-        document.body.removeChild(ta);
-      }
-      function wire(sec){
-        if (sec.dataset.copyWired) return;
-        sec.dataset.copyWired = \"1\";
-        sec.addEventListener(\"click\", function(ev){
-          var btn = ev.target.closest(\"[data-copy]\");
-          if (!btn || !btn.dataset.url) return;
-          copyText(btn.dataset.url, function(){
-            btn.classList.add(\"copied\");
-            setTimeout(function(){ btn.classList.remove(\"copied\"); }, 1200);
-          });
-        });
-      }
-      document.querySelectorAll(\"#invoice-detail\").forEach(wire);
-    })();</script>`;
+    /* #229: the copy handler (ZINVOICE_COPY_SCRIPT) is delegated and id-free
+       so htmx swaps stay safe; it covers the head's Copy pay link button and
+       the public link card's copy button. */
     const copyBtn = (url: string) => `
       ${iconButton({ icon: "copy", label: "Copy link", attrs: `data-copy data-url="${esc(url)}"` })}`;
     const actBtn = (action: string, ic: string, label: string, cls = "", confirm = "", confirmLabel = label, tip = label) => `
       <form method="post" action="${action}" hx-post="${action}" ${hxDetail}>
         ${iconButton({ icon: ic, label, tip, danger: cls === "ui-icon-btn-danger", type: "submit", attrs: confirm ? `data-confirm="${confirm}" data-confirm-label="${confirmLabel}"` : undefined })}
       </form>`;
-    const clientLine = clientLink ? `
-      <div class="share-line">
-        <span class="share-label">Client link</span>
-        <span class="share-url-wrap" data-tip="${esc(clientLink)}"><span class="share-url">${esc(clientLink)}</span></span>
-        <span class="share-icons">
-          ${copyBtn(clientLink)}
-          ${actBtn(`/invoices/${inv.id}/public-token/regenerate`, "refresh", "Regenerate link (invalidates the old one)", "", "Regenerate the client link? The old URL will stop working.", "Regenerate", "Regenerate link")}
-          ${actBtn(`/invoices/${inv.id}/public-token/revoke`, "delete", "Revoke link", "ui-icon-btn-danger", "Revoke the client link? The current URL will stop working.", "Revoke")}
-        </span>
-      </div>` : `
-      <div class="share-line">
-        <span class="share-label">Client link</span>
-        <span class="share-icons">
-          <form method="post" action="/invoices/${inv.id}/public-token/regenerate" hx-post="/invoices/${inv.id}/public-token/regenerate" ${hxDetail}>
+    const clientLine = clientLink
+      ? shareLine({
+          label: "Client link", url: clientLink,
+          actionsHtml: copyBtn(clientLink) +
+            actBtn(`/invoices/${inv.id}/public-token/regenerate`, "refresh", "Regenerate link (invalidates the old one)", "", "Regenerate the client link? The old URL will stop working.", "Regenerate", "Regenerate link") +
+            actBtn(`/invoices/${inv.id}/public-token/revoke`, "delete", "Revoke link", "ui-icon-btn-danger", "Revoke the client link? The current URL will stop working.", "Revoke"),
+        })
+      : shareLine({
+          label: "Client link",
+          actionsHtml: `<form method="post" action="/invoices/${inv.id}/public-token/regenerate" hx-post="/invoices/${inv.id}/public-token/regenerate" ${hxDetail}>
             ${button({ label: "Create client link", icon: "add", type: "submit" })}
-          </form>
-        </span>
-      </div>`;
+          </form>`,
+        });
     /* #231: the Stripe payment row is gone from our UI — the public invoice
        page is the payment surface (it already renders Pay when a link
        exists). The link is still auto-created server-side on send. If that
        fails we show a one-line warning with a retry, so a missing Pay button
        can never fail silently. */
-    const stripeWarn = (inv.status === "sent" && stripeConfigured() && !inv.stripe_payment_link) ? `
-      <div class="share-line">
-        <span class="share-label warn">Payment link</span>
-        <span class="share-url">Couldn't create it — the client won't see a Pay button</span>
-        <span class="share-icons">
-          ${actBtn(`/invoices/${inv.id}/stripe-link`, "refresh", "Retry payment link")}
-        </span>
-      </div>` : "";
+    const stripeWarn = (inv.status === "sent" && stripeConfigured() && !inv.stripe_payment_link)
+      ? shareLine({ label: "Payment link", warn: true, text: "Couldn't create it — the client won't see a Pay button", actionsHtml: actBtn(`/invoices/${inv.id}/stripe-link`, "refresh", "Retry payment link") })
+      : "";
     const canPay = inv.status === "sent" && (!!inv.stripe_payment_link || !!(getMeta(db, "business_payment_instructions") || "").trim());
     /* #1224: a sent Zinvoice with no card link and no saved instructions
        leaves the client's page without any way to pay — say so here, to the
        user, never on the public page. */
-    const noPayPathWarn = (inv.status === "sent" && !canPay && !stripeWarn) ? `
-      <div class="share-line share-line-wrap">
-        <span class="share-label warn">How to pay</span>
-        <span class="share-note">Your client won't see how to pay.</span>
-        ${linkButton({ label: "Add payment instructions", href: "/settings", size: "sm" })}
-      </div>` : "";
-    const publicLinkCard = `
-      <section class="ui-card share-lines no-print" aria-label="Public link">
-        <div class="ui-card-head"><span class="ui-section-title">Public link</span></div>
-        <p class="muted">Anyone with the link can view${canPay ? " and pay" : ""} — no login for your client.</p>
-        ${clientLine}
-        ${stripeWarn}
-        ${noPayPathWarn}
-      </section>`;
+    const noPayPathWarn = (inv.status === "sent" && !canPay && !stripeWarn)
+      ? shareLine({ label: "How to pay", warn: true, note: "Your client won't see how to pay.", actionsHtml: linkButton({ label: "Add payment instructions", href: "/settings", size: "sm" }) })
+      : "";
+    const publicLinkCard = zinvoiceShareCard({ canPay, linesHtml: clientLine + stripeWarn + noPayPathWarn });
     /* The timeline carries only events the data records: creation
        (created_at) and payment (paid_at). There is no sent-at or
        viewed-at column, so the timeline never invents them. */
     const createdYmd = String(inv.created_at || "").slice(0, 10);
     const statusChipHtml = invBadge(inv);
-    const stripeChip = inv.paid_via_stripe
-      ? ` <span class="stripe-paid-chip">${icon("bolt")}<span>Paid via Stripe</span></span>` : "";
+    const stripeChip = inv.paid_via_stripe ? stripePaidChip() : "";
     const progress = inv.status === "draft" ? 0 : inv.status === "sent" ? 50 : 100;
     const dueInDays = inv.status === "sent" && inv.due_date ? daysBetween(todayStr(), inv.due_date) : null;
     const progressTone = od ? "error" : dueInDays !== null && dueInDays >= 0 && dueInDays <= 7 ? "warning" : "neutral";
@@ -963,11 +857,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     const activity: string[] = [];
     if (inv.paid_at) activity.push(`${shortYmd(inv.paid_at)} — Paid${inv.paid_via_stripe ? " via Stripe" : ""}`);
     if (createdYmd) activity.push(`${shortYmd(createdYmd)} — Created${trackedHours > 0 ? ` from ${fmtTrackedHours(trackedHours)} of tracked time` : ""}`);
-    const statusCard = card({ className: "no-print", content: `
-      <div class="ui-card-head"><span class="ui-section-title">Status</span><span class="ui-card-head-end">${statusChipHtml}${stripeChip}</span></div>
-      ${progressBar({ value: progress, label: "Zinvoice progress", tone: progressTone })}
-      <p class="inv-status-line">${esc(statusLine)}</p>
-      ${activity.length ? `<div class="inv-activity">${activity.map(a => `<div class="inv-activity-row">${esc(a)}</div>`).join("")}</div>` : ""}` });
+    const statusCard = zinvoiceStatusCard({ chipHtml: statusChipHtml, extraChipHtml: stripeChip, progress, tone: progressTone, line: statusLine, activity });
     const totals = [
       ...(inv.tax_rate ? [
         { label: "Subtotal", amount: money(t.subtotal) },
@@ -988,26 +878,17 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
         totals,
       }) + (inv.notes ? `<p class="inv-notes">${esc(inv.notes)}</p>` : ""),
     });
-    /* #302: internal-only notes — app surface only, never printed or shared. */
-    const internalBlock = inv.internal_notes ? `
-      <aside class="internal-notes no-print" aria-label="Internal notes">
-        <div class="internal-notes-label">Internal notes</div>
-        <p>${esc(inv.internal_notes)}</p>
-      </aside>` : "";
+    const internalBlock = inv.internal_notes ? internalNotes(inv.internal_notes) : "";
     /* #424: the paid label stays exactly where it always was — first in the
        detail actions row. Only its styling changes (now the ui paid chip:
        check icon + label). Nothing else in the header moves. */
     const termsLabel = PAYMENT_TERMS[termsKey(inv.client_payment_terms, termsKey(null, getMeta(db, "business_payment_terms")))].label;
     return `<div id="invoice-detail">
-      <div class="invoice-detail-head no-print">
-        ${linkButton({ label: "Zinvoices", href: "/invoices", icon: "arrow_left", variant: "ghost", className: "detail-back" })}
-      </div>
-      <div class="detail-title no-print">
-        <h2 class="ui-section-title">Zinvoice ${esc(inv.number)}${inv.client_name ? ` — ${esc(inv.client_name)}` : ""}</h2>
-        <p class="ui-app-sub">Issued ${esc(shortYmd(inv.issue_date))}${inv.due_date ? ` · Due ${esc(shortYmd(inv.due_date))}` : ""} · ${esc(termsLabel)}</p>
-      </div>
-      <div class="page-head no-print">
-        <div class="row">
+      ${zinvoiceDetailHead({
+        backHref: "/invoices",
+        title: `Zinvoice ${inv.number}${inv.client_name ? ` — ${inv.client_name}` : ""}`,
+        sub: `Issued ${shortYmd(inv.issue_date)}${inv.due_date ? ` · Due ${shortYmd(inv.due_date)}` : ""} · ${termsLabel}`,
+        actionsHtml: `
           ${inv.status === "paid" && inv.paid_at ? statusChip("paid", { icon: "check", suffix: shortYmd(inv.paid_at) }) : ""}
           ${clientLink ? iconButton({ icon: "copy", label: "Copy pay link", className: "tip-right", attrs: `data-copy data-url="${esc(clientLink)}"` }) : ""}
           <a class="ui-icon-btn tip-right" href="/invoices/${inv.id}.pdf" download data-tip="Download PDF" aria-label="Download PDF">${icon("download")}</a>
@@ -1017,22 +898,21 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
           </form>` : ""}
           ${inv.status === "draft" ? `<form method="post" action="/invoices/${inv.id}/delete" class="inline">
             ${iconButton({ icon: "delete", label: "Delete draft", danger: true, className: "tip-right", type: "submit", attrs: `data-confirm="Delete this draft Zinvoice? Its entries become unbilled again." data-confirm-label="Delete draft"` })}
-          </form>` : ""}
-        </div>
-      </div>
+          </form>` : ""}`,
+      })}
       <div class="inv-detail-grid">
         <div class="inv-detail-main">
           ${linesCard}
           ${bd.length ? breakdownChart(bd, trackedHours) : ""}
           ${internalBlock}
-          ${paymentProofSection(inv)}
+          ${proofSection(inv)}
         </div>
         <div class="inv-detail-rail">
           ${statusCard}
           ${publicLinkCard}
         </div>
       </div>
-      ${copyScript}
+      ${ZINVOICE_COPY_SCRIPT}
       </div>`;
   }
 
