@@ -490,3 +490,19 @@ describe("client insights (#1344)", () => {
     expect(html).toContain("No client · 0h this month");
   });
 });
+
+/** The client dialog leads with Projects; the contact form follows under a
+ *  Details heading, and Delete client stays last. */
+describe("client dialog order", () => {
+  test("projects come before the details form, delete stays last", () => {
+    const html = dialogHtml();
+    const projects = html.indexOf('id="client-dialog-projects"');
+    const details = html.indexOf('class="ui-block-title cd-details-title">Details</h3>');
+    const form = html.indexOf('id="client-settings-form"');
+    const del = html.indexOf("Delete client");
+    expect(projects).toBeGreaterThan(-1);
+    expect(details).toBeGreaterThan(projects);
+    expect(form).toBeGreaterThan(details);
+    expect(del).toBeGreaterThan(form);
+  });
+});
