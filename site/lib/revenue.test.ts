@@ -49,7 +49,7 @@ describe("revenue snapshot reads the rows once (#1367)", () => {
     row("sent", 2730),
     row("draft", 1827.5),
     row("paid", 425),
-    row("sent", 200, { id: 2, number: "TEST-002", due_date: pastYmd }),
+    row("sent", 200, { id: 2, number: "TEST-002", due_date: pastYmd, client_payment_terms: "net_30" }),
   ];
 
   test("one row fetch for all four figures", () => {

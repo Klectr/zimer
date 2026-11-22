@@ -31,6 +31,7 @@ export interface ApiTenant {
   revenueMonthly: () => any[];
   revenueByClient: () => any[];
   revenueOverdue: () => any[];
+  revenueSnapshot: () => { totals: any; by_month: any[]; by_client: any[]; overdue: any[] }; /* #1367 */
   freezeInvoiceSnapshots: (id: number, origin: string) => void; /* #301 */
 }
 
@@ -163,7 +164,7 @@ export function createApiRouter(deps: ApiDeps) {
               db, qRunning, qOne, qRange, qInvoice, qInvoices,
               groupToLineItems, unbilledEntries, getInvoice,
               invoiceTotals, nextInvoiceNumber, mintPublicToken, stripeLinkFor,
-              revenueTotals, revenueMonthly, revenueByClient, revenueOverdue,
+              revenueTotals, revenueMonthly, revenueByClient, revenueOverdue, revenueSnapshot,
               freezeInvoiceSnapshots,
             } = tenant;
             const body = (await req.json().catch(() => ({}))) as any;
@@ -413,7 +414,7 @@ export function createApiRouter(deps: ApiDeps) {
             }
             /* ---- revenue API (milestone 1) ---- */
             if (path === "/api/revenue" && method === "GET")
-              return json({ totals: revenueTotals(), by_month: revenueMonthly(), by_client: revenueByClient(), overdue: revenueOverdue() });
+              return json(revenueSnapshot()); /* #1367: one row fetch for all four figures */
             return json({ error: "not found" }, 404);
           } catch (err) {
             console.error(`[zimer] API ${method} ${path} threw:`, err);

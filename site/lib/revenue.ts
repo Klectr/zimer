@@ -14,16 +14,15 @@ export function createRevenue(qRevenueRows: Statement, getGlobalTerms: () => str
    *  invoiced yet, so they count nowhere here: invoiced is sent + paid,
    *  and outstanding is sent only — the same definition the Zinvoices
    *  page uses (#1126). */
-  function revenueTotals() {
-    const rows = (qRevenueRows.all() as RevenueRow[]).filter(r => r.status !== "draft");
+  function totalsFrom(allRows: RevenueRow[]) {
+    const rows = allRows.filter(r => r.status !== "draft");
     const invoiced = round2(rows.reduce((a, r) => a + revenueTotal(r), 0));
     const paid = round2(rows.filter(r => r.status === "paid").reduce((a, r) => a + revenueTotal(r), 0));
     return { invoiced, paid, outstanding: round2(invoiced - paid) };
   }
 
   /** A2: trailing 12-month revenue (tax-inclusive), oldest → newest. */
-  function revenueMonthly() {
-    const rows = qRevenueRows.all() as RevenueRow[];
+  function monthlyFrom(rows: RevenueRow[]) {
     const now = new Date();
     const months: { month: string; label: string; invoiced: number; paid: number }[] = [];
     for (let k = 11; k >= 0; k--) {
@@ -46,8 +45,7 @@ export function createRevenue(qRevenueRows: Statement, getGlobalTerms: () => str
   }
 
   /** A3: per-client revenue (tax-inclusive), sorted by invoiced desc. */
-  function revenueByClient() {
-    const rows = qRevenueRows.all() as RevenueRow[];
+  function byClientFrom(rows: RevenueRow[]) {
     const map = new Map<number, { client_id: number; name: string; color: string | null; invoiced: number; paid: number }>();
     for (const r of rows) {
       if (r.status === "draft" || r.client_id == null) continue;
@@ -75,9 +73,9 @@ export function createRevenue(qRevenueRows: Statement, getGlobalTerms: () => str
   }
 
   /** Milestone 7: overdue invoices — sent, with a past due_date — tax-inclusive, most overdue first. */
-  function revenueOverdue() {
+  function overdueFrom(rows: RevenueRow[]) {
     const today = todayStr();
-    return (qRevenueRows.all() as RevenueRow[])
+    return rows
       .filter(r => isOverdue(r))
       .map(r => {
         const days = daysBetween(r.due_date as string, today);
@@ -91,5 +89,22 @@ export function createRevenue(qRevenueRows: Statement, getGlobalTerms: () => str
       .sort((a, b) => b.days_past_due - a.days_past_due);
   }
 
-  return { revenueTotal, revenueTotals, revenueMonthly, revenueByClient, isOverdue, revenueOverdue };
+  function revenueTotals() { return totalsFrom(qRevenueRows.all() as RevenueRow[]); }
+  function revenueMonthly() { return monthlyFrom(qRevenueRows.all() as RevenueRow[]); }
+  function revenueByClient() { return byClientFrom(qRevenueRows.all() as RevenueRow[]); }
+  function revenueOverdue() { return overdueFrom(qRevenueRows.all() as RevenueRow[]); }
+
+  /* #1367: all four figures from one row fetch — /api/revenue needs every
+     one of them per request, and each used to re-run the full scan. */
+  function revenueSnapshot() {
+    const rows = qRevenueRows.all() as RevenueRow[];
+    return {
+      totals: totalsFrom(rows),
+      by_month: monthlyFrom(rows),
+      by_client: byClientFrom(rows),
+      overdue: overdueFrom(rows),
+    };
+  }
+
+  return { revenueTotal, revenueTotals, revenueMonthly, revenueByClient, isOverdue, revenueOverdue, revenueSnapshot };
 }
