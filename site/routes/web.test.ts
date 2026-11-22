@@ -247,6 +247,32 @@ describe("client create (#1160)", () => {
   });
 });
 
+/** #1442: client create mirrors the settings rate rule. */
+describe("client create rate validation (#1442)", () => {
+  test("a negative rate is rejected and nothing is stored", async () => {
+    const { db, handleWeb } = setup();
+    const res = await postClient(handleWeb, { name: "Neg Co", rate: "-5", color: "", email: "" });
+    expect(res!.status).toBe(400);
+    expect(await res!.text()).toContain("at or above 0");
+    expect(db.query("SELECT COUNT(*) AS n FROM clients WHERE name = 'Neg Co'").get()).toEqual({ n: 0 });
+  });
+
+  test("a non-finite rate is rejected", async () => {
+    const { db, handleWeb } = setup();
+    const res = await postClient(handleWeb, { name: "Inf Co", rate: "Infinity", color: "", email: "" });
+    expect(res!.status).toBe(400);
+    expect(db.query("SELECT COUNT(*) AS n FROM clients WHERE name = 'Inf Co'").get()).toEqual({ n: 0 });
+  });
+
+  test("a valid rate is stored as given", async () => {
+    const { db, handleWeb } = setup();
+    const res = await postClient(handleWeb, { name: "Rate Co", rate: "75", color: "", email: "" });
+    expect(res!.status).toBe(302);
+    const row = db.query("SELECT rate FROM clients WHERE name = 'Rate Co'").get() as any;
+    expect(row.rate).toBe(75);
+  });
+});
+
 /** #668: manual line items — POST /invoices accepts rows with no entry
  *  ids, so one-time work can be invoiced without tracked time. */
 function postInvoice(handleWeb: any, fields: Record<string, string>) {
@@ -325,6 +351,57 @@ describe("manual line items (#668)", () => {
     });
     expect(res!.status).toBe(400);
     expect(db.query("SELECT COUNT(*) AS n FROM invoices").get()).toEqual({ n: 0 });
+  });
+});
+
+/** #1442: the invoice wizard mirrors the settings/API rate rule. */
+describe("invoice rate validation (#1442)", () => {
+  test("a negative line rate is rejected and nothing is stored", async () => {
+    const { db, handleWeb } = setup();
+    const res = await postInvoice(handleWeb, {
+      ...baseInvoiceFields, groups: "1",
+      g0_desc: "Work", g0_hours: "1", g0_rate: "-50",
+      g0_ids: "", g0_date_from: "", g0_date_to: "",
+    });
+    expect(res!.status).toBe(400);
+    expect(await res!.text()).toContain("at or above 0");
+    expect(db.query("SELECT COUNT(*) AS n FROM invoices").get()).toEqual({ n: 0 });
+    expect(db.query("SELECT COUNT(*) AS n FROM invoice_items").get()).toEqual({ n: 0 });
+  });
+
+  test("a negative tax rate is rejected and nothing is stored", async () => {
+    const { db, handleWeb } = setup();
+    const res = await postInvoice(handleWeb, {
+      ...baseInvoiceFields, tax_rate: "-10", groups: "1",
+      g0_desc: "Work", g0_hours: "1", g0_rate: "50",
+      g0_ids: "", g0_date_from: "", g0_date_to: "",
+    });
+    expect(res!.status).toBe(400);
+    expect(db.query("SELECT COUNT(*) AS n FROM invoices").get()).toEqual({ n: 0 });
+  });
+
+  test("a rate whose rounded value overflows is rejected", async () => {
+    const { db, handleWeb } = setup();
+    const res = await postInvoice(handleWeb, {
+      ...baseInvoiceFields, groups: "1",
+      g0_desc: "Work", g0_hours: "1", g0_rate: "1e308",
+      g0_ids: "", g0_date_from: "", g0_date_to: "",
+    });
+    expect(res!.status).toBe(400);
+    expect(db.query("SELECT COUNT(*) AS n FROM invoices").get()).toEqual({ n: 0 });
+  });
+
+  test("a negative rate on a dropped zero-hour row does not block the invoice", async () => {
+    const { db, handleWeb } = setup();
+    const res = await postInvoice(handleWeb, {
+      ...baseInvoiceFields, groups: "2",
+      g0_desc: "Work", g0_hours: "1", g0_rate: "50",
+      g0_ids: "", g0_date_from: "", g0_date_to: "",
+      g1_desc: "Skipped", g1_hours: "0", g1_rate: "-50",
+      g1_ids: "", g1_date_from: "", g1_date_to: "",
+    });
+    expect(res!.status).toBe(302);
+    expect(db.query("SELECT COUNT(*) AS n FROM invoices").get()).toEqual({ n: 1 });
   });
 });
 
