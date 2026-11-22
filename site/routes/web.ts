@@ -20,7 +20,7 @@ import type { AccountsDb } from "../lib/accounts.ts"; /* #732 */
 import { findTenantByPublicToken } from "../lib/tenants.ts"; /* #741 */
 import { countProofs, deleteProof, getProof, insertProof, listProofs, sanitizeFilename, validateProofFile, PROOF_MAX_BYTES, PROOF_MAX_PER_INVOICE } from "../lib/payment_proofs.ts"; /* #956 */
 import { servedVersion, staticUrl } from "../lib/static-assets.ts"; /* #993 */
-import { normalizeEntryTimestamp } from "./api.ts"; /* #1434 */
+import { normalizeEntryTimestamp, nonNegativeRate } from "./api.ts"; /* #1434, #1442 */
 import { textField } from "../ui/field.ts";
 import { card } from "../ui/card.ts";
 import { settingsDataList, settingsDataRow, settingsSection } from "../ui/settings-section.ts";
@@ -885,13 +885,18 @@ export function createWebRouter(deps: WebDeps) {
         }
         if (path === "/clients" && method === "POST") {
           const form = await req.formData();
+          /* #1442: mirror the settings route's rate rule — a provided rate
+             must be finite and at or above 0 (blank/absent → 0). */
+          const rate = nonNegativeRate(form.get("rate"));
+          if (rate === null)
+            return new Response("Hourly rate must be a number at or above 0.", { status: 400 });
           /* #1160: the add form collects email at creation (the page-manage
              mock always had it) — trimmed, blank stored as NULL, same rule
              as the settings route's contact fields. */
           const email = String(form.get("email") || "").trim();
           const r = db.query("INSERT INTO clients (name, color, rate, email) VALUES (?, ?, ?, ?) RETURNING id")
             .get(String(form.get("name")), clientColor(form.get("color")),
-                 Number(form.get("rate") || 0), email || null) as any;
+                 rate, email || null) as any;
           return new Response(null, { status: 302, headers: { Location: "/manage" } });
         }
         m = path.match(/^\/clients\/(\d+|none)\/dialog$/);
@@ -1096,13 +1101,24 @@ export function createWebRouter(deps: WebDeps) {
         }
         if (path === "/invoices" && method === "POST") {
           const form = await req.formData();
+          /* #1442: mirror the settings/API rate rule — a provided tax_rate
+             must be finite and at or above 0 (blank/absent → 0). */
+          const taxRate = nonNegativeRate(form.get("tax_rate"));
+          if (taxRate === null)
+            return new Response("Tax rate must be a number at or above 0.", { status: 400 });
           const groups = Number(form.get("groups") || 0);
           const items: { description: string; hours: number; rate: number; amount: number; entry_ids: number[]; date_from: string | null; date_to: string | null }[] = [];
           for (let i = 0; i < groups; i++) {
             const hours = round2(Number(form.get(`g${i}_hours`) || 0));
-            const rate = round2(Number(form.get(`g${i}_rate`) || 0));
             const ids = String(form.get(`g${i}_ids`) || "").split(",").map(Number).filter(n => n > 0);
             if (hours <= 0) continue;
+            /* #1442: per-group rates follow the same rule, checked on the
+               rows that survive the hours filter (as #1440 does in the API);
+               the rounded value must stay finite too (round2 can overflow). */
+            const rateRaw = nonNegativeRate(form.get(`g${i}_rate`));
+            if (rateRaw === null || !Number.isFinite(round2(rateRaw)))
+              return new Response("Rate must be a number at or above 0.", { status: 400 });
+            const rate = round2(rateRaw);
             items.push({
               /* #668: manual rows carry no entry ids (one-time work with no
                  tracked time) — their description defaults to "Item" while
@@ -1129,7 +1145,7 @@ export function createWebRouter(deps: WebDeps) {
             `INSERT INTO invoices (client_id, number, issue_date, due_date, tax_rate, notes, internal_notes, period_from, period_to)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`)
             .get(clientId, number, String(form.get("issue_date") || todayStr()),
-                 dueRaw || null, Number(form.get("tax_rate") || 0), String(form.get("notes") || ""),
+                 dueRaw || null, taxRate, String(form.get("notes") || ""),
                  String(form.get("internal_notes") || ""), periodFrom, periodTo) as any;
           const insItem = db.query(
             "INSERT INTO invoice_items (invoice_id, description, hours, rate, amount, date_from, date_to) VALUES (?, ?, ?, ?, ?, ?, ?)");
