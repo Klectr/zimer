@@ -414,6 +414,23 @@ describe("GET /invoices filter swap", () => {
   });
 });
 
+describe("GET /export/invoices.csv (#1425)", () => {
+  test("exports sent_date next to paid_date, blank when never sent", async () => {
+    const { db, client, handleWeb } = setup();
+    db.query("INSERT INTO invoices (client_id, number, issue_date, due_date, status, sent_at, paid_at) VALUES (?, 'INV-0002', '2026-11-01', '2026-11-15', 'paid', '2026-11-02', '2026-11-09')").run(client.id);
+    db.query("INSERT INTO invoices (client_id, number, issue_date, status) VALUES (?, 'INV-0001', '2026-10-01', 'draft')").run(client.id);
+    const req = new Request("http://x/export/invoices.csv");
+    const res = await handleWeb(req, new URL(req.url), "/export/invoices.csv", "GET");
+    expect(res!.status).toBe(200);
+    const lines = (await res!.text()).split("\n");
+    expect(lines[0]).toBe("number,client,issue_date,due_date,status,sent_date,paid_date,items,subtotal,tax,total");
+    const paid = lines.find((l) => l.startsWith("INV-0002"))!;
+    expect(paid.split(",").slice(4, 7)).toEqual(["paid", "2026-11-02", "2026-11-09"]);
+    const draft = lines.find((l) => l.startsWith("INV-0001"))!;
+    expect(draft.split(",").slice(4, 7)).toEqual(["draft", "", ""]);
+  });
+});
+
 /** #1048: the invoice-rest range must never invert and must cover
  *  future-dated unbilled entries. */
 describe("GET /partial/invoice-rest (#1048)", () => {
