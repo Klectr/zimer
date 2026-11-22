@@ -423,6 +423,14 @@ export function createApiRouter(deps: ApiDeps) {
                 const r = nonNegativeRate((it as any).rate);
                 if (r === null || !Number.isFinite(round2(r)))
                   return json({ error: "rate must be a number at or above 0" }, 400);
+                /* #1446: hours get the same treatment — round2 of a huge
+                   finite value overflows to Infinity, and finite hours x
+                   rate can overflow the amount the same way. */
+                const h = round2(Number((it as any).hours) || 0);
+                if (!Number.isFinite(h))
+                  return json({ error: "hours must be a finite number above 0" }, 400);
+                if (!Number.isFinite(round2(h * round2(r))))
+                  return json({ error: "line amount (hours x rate) is too large" }, 400);
               }
               const clean = items
                 .map(it => ({
