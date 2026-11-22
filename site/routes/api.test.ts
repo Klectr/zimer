@@ -499,6 +499,27 @@ describe("PATCH /api/entries/:id timestamp normalization (#1432)", () => {
     expect(row().start_time).toBe("2026-10-07T14:00:00.000Z");
   });
 
+  test("non-ISO strings, impossible dates and falsy values are 400 and save nothing", async () => {
+    const { patch, row } = entrySetup();
+    for (const bad of ["October 7, 2026Z", "2026-10-07Z", "2026-02-30T16:00:00Z", "2026-10-07T16:00:00z", "", null, 0, ["2026-10-07T16:00:00Z"]]) {
+      const res = await patch({ start_time: bad });
+      expect(res.status).toBe(400);
+      expect(row().start_time).toBe("2026-10-07T14:00:00.000Z");
+    }
+    for (const bad of ["", 0, false]) {
+      const res = await patch({ end_time: bad });
+      expect(res.status).toBe(400);
+      expect(row().end_time).toBe("2026-10-07T15:00:00.000Z");
+    }
+  });
+
+  test("a colon-less offset is accepted and normalized", async () => {
+    const { patch, row } = entrySetup();
+    const res = await patch({ start_time: "2026-10-07T16:00:00+0200" });
+    expect(res.status).toBe(200);
+    expect(row().start_time).toBe("2026-10-07T14:00:00.000Z");
+  });
+
   test("omitted timestamps keep the stored values; explicit null end_time clears it", async () => {
     const { patch, row } = entrySetup();
     let res = await patch({ description: "Renamed" });
