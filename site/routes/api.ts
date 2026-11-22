@@ -56,6 +56,20 @@ export interface ApiDeps {
   inactiveAuthedUser?: (req: Request) => boolean;
 }
 
+export function normalizeEntryTimestamp(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d+))?)?(Z|[+-]\d{2}:?\d{2})$/);
+  if (!m) return null;
+  const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+  const h = Number(m[4]), mi = Number(m[5]), s = Number(m[6] || 0);
+  const wall = new Date(Date.UTC(y, mo - 1, d, h, mi, s));
+  if (wall.getUTCFullYear() !== y || wall.getUTCMonth() !== mo - 1 || wall.getUTCDate() !== d
+    || wall.getUTCHours() !== h || wall.getUTCMinutes() !== mi || wall.getUTCSeconds() !== s)
+    return null;
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+}
+
 export function createApiRouter(deps: ApiDeps) {
   const {
     getTenant, TOKEN, authedApi, json, entryToJson, verifyWebhookSignature, shareOrigin,
@@ -241,12 +255,30 @@ export function createApiRouter(deps: ApiDeps) {
                 if (!cur) return json({ error: "not found" }, 404);
                 if (entryIsLocked(cur)) /* #334 */
                   return json({ error: "This time is invoiced and can't be edited." }, 403);
+                let startTime = cur.start_time;
+                if (body.start_time !== undefined) {
+                  const normalized = normalizeEntryTimestamp(body.start_time);
+                  if (!normalized)
+                    return json({ error: "start_time/end_time must be a valid timestamp with a timezone offset" }, 400);
+                  startTime = normalized;
+                }
+                let endTime = cur.end_time;
+                if (body.end_time !== undefined) {
+                  if (body.end_time === null) {
+                    endTime = null;
+                  } else {
+                    const normalized = normalizeEntryTimestamp(body.end_time);
+                    if (!normalized)
+                      return json({ error: "start_time/end_time must be a valid timestamp with a timezone offset" }, 400);
+                    endTime = normalized;
+                  }
+                }
                 db.query(`UPDATE time_entries SET description = ?, project_id = ?, start_time = ?, end_time = ? WHERE id = ?`)
                   .run(
                     body.description !== undefined ? String(body.description) : cur.description,
                     body.project_id !== undefined ? (body.project_id ? Number(body.project_id) : null) : cur.project_id,
-                    body.start_time || cur.start_time,
-                    body.end_time !== undefined ? (body.end_time || null) : cur.end_time,
+                    startTime,
+                    endTime,
                     id);
                 return json(entryToJson(qOne.get(id) as Entry));
               }

@@ -142,9 +142,19 @@ describe("demo entries land in the current week (#1225)", () => {
       expect(r.day <= today).toBe(true);
     }
     expect(rows.some((r) => r.day === today)).toBe(true);
-    const todayRows = db.query("SELECT substr(end_time, 12) AS ends FROM time_entries WHERE substr(start_time, 1, 10) = ?").all(today) as any[];
+    const todayRows = db.query("SELECT substr(end_time, 12, 8) AS ends FROM time_entries WHERE substr(start_time, 1, 10) = ?").all(today) as any[];
     expect(todayRows.length).toBe(2);
     for (const r of todayRows) expect(r.ends <= "08:15:00").toBe(true);
+  });
+
+  test("seeded timestamps are canonical Z-suffixed ISO (#1432)", () => {
+    const db = seededDb();
+    const rows = db.query("SELECT start_time, end_time FROM time_entries").all() as any[];
+    expect(rows.length).toBeGreaterThan(0);
+    for (const r of rows) {
+      expect(r.start_time).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+      expect(r.end_time).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+    }
   });
 
   test("today and this week each cover at least two clients", () => {

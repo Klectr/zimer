@@ -67,7 +67,7 @@ export function seedDemoData(db: Database): void {
       const start = day === todayDateStr ? (k === 0 ? "06:00" : "07:15") : st;
       const end = day === todayDateStr ? (k === 0 ? "07:00" : "08:15") : en;
       ids.entries.push(Number(insEntry.run(
-        projectIds[pj], desc, `${day}T${start}:00`, `${day}T${end}:00`
+        projectIds[pj], desc, `${day}T${start}:00.000Z`, `${day}T${end}:00.000Z`
       ).lastInsertRowid));
     }
   }
