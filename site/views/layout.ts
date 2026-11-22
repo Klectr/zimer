@@ -30,9 +30,10 @@ import { TRIAL_NUDGE_DAYS, trialDaysLeft, type Billing } from "../lib/billing.ts
  *  app, where screens hold client names, hours and invoice amounts.
  *  #1438 (#995): surveys, dead-click capture and performance/web-vitals
  *  capture are pinned off in the init config in both modes — the product
- *  uses none of them, and leaving them to the remote config made PostHog
- *  load surveys.js, dead-clicks-autocapture.js and
- *  web-vitals-with-attribution.js on every page. */
+ *  sends none of those events, and leaving them to the remote config let
+ *  PostHog load their remote modules on every page. Accepted trade-off:
+ *  capture_performance: false also drops the network-timing data session
+ *  replay can carry; landing replay itself still records (#1001). */
 export function posthogSnippet(key: string, host: string, userId: number | null, opts?: { landing?: boolean }): string {
   const landing = opts?.landing === true;
   /* JSON.stringify alone doesn't neutralize </script> inside the key — escape
@@ -49,7 +50,7 @@ posthog.init(${jsStr(key)}, {
   capture_exceptions: true, /* #1023: error tracking — unhandled errors + rejections become $exception events */
   disable_surveys: true, /* #1438: no surveys product-side; keep surveys.js from loading */
   capture_dead_clicks: false, /* #1438: dead-click capture unused; keep its module from loading */
-  capture_performance: false, /* #1438: web vitals + network timing unused; keep the module from loading */
+  capture_performance: false, /* #1438: no web-vitals events product-side; see header note on replay network timing */
 ${landing ? `  disable_session_recording: false,
   person_profiles: "identified_only",
 ` : `  disable_session_recording: true,
