@@ -12,17 +12,15 @@ import type { PdfInvoice } from "../pdf.ts";
 import { listProofs } from "../lib/payment_proofs.ts"; /* #956 */
 import { button, linkButton } from "../ui/button.ts";
 import { card } from "../ui/card.ts";
-import { selectField, textField } from "../ui/field.ts";
-import { checkboxField } from "../ui/choice.ts";
 import { appHeader } from "../ui/app-header.ts";
 import { iconButton } from "../ui/icon-button.ts";
 import { emptyState } from "../ui/empty-state.ts";
 import { statBlock } from "../ui/stat.ts";
 import { statusChip } from "../ui/status-chip.ts";
 import { zinvoiceFilterBar, zinvoiceTable, zinvoiceTableRows, type ZinvoiceTableRow } from "../ui/zinvoice-table.ts";
+import { lineItemsHeadRow, wizardLayout, wizardLinesSection, wizardPreviewCard, wizardStep1, ZINVOICE_WIZARD_SCRIPT } from "../ui/zinvoice-wizard.ts";
 import { internalNotes, paymentProofSection, shareLine, stripePaidChip, timeBreakdownChart, zinvoiceDetailHead, zinvoiceShareCard, zinvoiceStatusCard, ZINVOICE_COPY_SCRIPT } from "../ui/zinvoice-detail.ts";
 import { lineItemsTable } from "../ui/line-items.ts";
-import { formSection, invoiceSummary } from "../ui/zinvoice-form.ts";
 import { steps } from "../ui/steps.ts";
 import { PAYMENT_TERMS } from "../lib/format.ts";
 
@@ -48,11 +46,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
   /* #526: both line-item tables (the new-invoice preview and the rendered
      sheet) share one header row — scope="col" lets screen readers announce
      the column ("Hours", "Rate", "Amount") for each numeric cell. */
-  function itemHead(): string {
-    return `<tr><th scope="col">Date</th><th scope="col">Description</th>` +
-      `<th scope="col" class="num">Hours</th><th scope="col" class="num">Rate</th>` +
-      `<th scope="col" class="num">Amount</th></tr>`;
-  }
+  const itemHead = lineItemsHeadRow;
 
   /* #300: first-run empty state — a fresh install gets a one-click path to
      fictional sample data; everyone else gets straight to a new invoice.
@@ -296,30 +290,14 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
        items — leaves both create actions disabled instead of submitting
        to the create route's plain-text 400. */
     const noItems = !preview || preview.items.length === 0;
-    const lines = preview
-      ? preview.items.map(it => ({ label: `${it.description} — ${fmtBillHours(it.hours)} h`, amount: money(it.amount) }))
-      : [];
-    return invoiceSummary({
-      title: `Live preview — ${p.number}`,
+    return wizardPreviewCard({
+      number: p.number,
       chipHtml: invBadge({ status: "draft" }),
-      lines,
-      totalLabel: "Total due",
+      lines: preview ? preview.items.map(it => ({ label: `${it.description} — ${fmtBillHours(it.hours)} h`, amount: money(it.amount) })) : [],
       total: money(t.total),
-      bodyHtml: `
-        ${textField({ id: "inv-due", label: "Due date", name: "due_date", type: "date", value: p.due_date })}
-        <details class="inv-more">
-          <summary>More details</summary>
-          ${textField({ id: "inv-number", label: "Zinvoice number", name: "number", value: p.number, required: true })}
-          ${textField({ id: "inv-issue", label: "Issue date", name: "issue_date", type: "date", value: p.issue_date, required: true })}
-          ${textField({ id: "inv-tax", label: "Tax", name: "tax_rate", type: "number", value: p.tax_rate, min: "0", step: "0.01", suffix: "%" })}
-          ${textField({ id: "inv-notes", label: "Notes (optional)", name: "notes", value: p.notes })}
-          ${textField({ id: "inv-internal", label: "Internal notes (only you see this)", name: "internal_notes", value: p.internal_notes })}
-        </details>
-        <div class="inv-summary-actions">
-          ${button({ label: "Save draft", type: "submit", variant: "primary", block: true, disabled: noItems })}
-          ${button({ label: "Send Zinvoice", type: "submit", block: true, disabled: noItems, attrs: 'name="intent" value="send"' })}
-        </div>
-        <p class="inv-send-note">Sending creates the public pay link.</p>`,
+      dueDate: p.due_date, issueDate: p.issue_date, taxRate: p.tax_rate,
+      notes: p.notes, internalNotes: p.internal_notes,
+      disabled: noItems,
     });
   }
 
@@ -328,172 +306,21 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     const clients = db.query("SELECT id, name, rate, payment_terms FROM clients ORDER BY name").all() as any[];
     const selClient = clients.find(c => String(c.id) === p.client_id);
     const sub = selClient ? `${selClient.name} · unbilled through ${shortYmd(p.to)}` : undefined;
-    const step1 = formSection({ step: 1, title: "Client & period", bodyHtml: `
-        <div class="inv-step1-grid">
-          <div class="inv-step1-client">
-            ${selectField({ id: "inv-client", label: "Client", name: "client_id", required: true, value: p.client_id, options: clientPickerOptions(clients) })}
-          </div>
-          <div class="inv-step1-range" id="inv-range">
-            ${textField({ id: "inv-from", label: "From", name: "from", type: "date", value: p.from, required: true })}
-            ${textField({ id: "inv-to", label: "To", name: "to", type: "date", value: p.to, required: true })}
-          </div>
-          <div class="inv-step1-rate">
-            ${textField({ id: "inv-rate", label: "Hourly rate", name: "rate", type: "number", value: p.rate || (selClient ? String(selClient.rate || "") : ""), min: "0", step: "0.01", prefix: "$", suffix: "/hr" })}
-          </div>
-        </div>
-        <p class="muted tiny">Only finished, unbilled entries on this client's projects are included. Rates come from the client default; edit the rate to override this Zinvoice.</p>` });
-
-
+    const step1 = wizardStep1({
+      clientOptions: clientPickerOptions(clients), clientId: p.client_id,
+      from: p.from, to: p.to,
+      rate: p.rate || (selClient ? String(selClient.rate || "") : ""),
+    });
 
     return layout("New Zinvoice", `
       ${appHeader({ title: "New Zinvoice", sub: sub || "Pick a client and period", subId: "inv-new-sub", actions: linkButton({ label: "Cancel", href: "/invoices", variant: "ghost" }) })}
-      <div id="inv-steps">${steps({ items: STEP_ITEMS, current: preview ? 1 : 0 })}</div>
-      <form method="post" action="/invoices" class="form inv-new-form" id="inv-create-form">
-        <div class="inv-new-grid">
-          <div>${card({ className: "form-card", content: `${step1}<div id="invoice-step2">${preview ? invoiceStep2(p, preview, true) : emptyStep2()}</div>` })}</div>
-          <div id="inv-preview">${previewCardHtml(p, preview)}</div>
-        </div>
-      </form>
-      <script>(function(){
-        var sel=document.getElementById('inv-client'), rate=document.getElementById('inv-rate'),
-            form=document.getElementById('inv-create-form'),
-            rangeEl=document.getElementById('inv-range'), rangeTouched=false;
-        var MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-        function addDaysStr(ymd,n){var p=ymd.split('-').map(Number);var d=new Date(p[0],p[1]-1,p[2]+n);
-          return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
-        function shortYmdStr(ymd){var p=String(ymd||'').split('-').map(Number);
-          return p.length===3&&p[0] ? MONTHS[p[1]-1]+' '+p[2] : '';}
-        function moneyFmt(n){return '$'+n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');}
-        function fmtH(h){return (Math.round(h*100)/100).toFixed(2)+' h';}
-        function dueEl(){return document.getElementById('inv-due');}
-        function issueEl(){return document.getElementById('inv-issue');}
-        /* The create actions mirror the step-2 rows: disabled while the
-           table is empty (the server renders them that way for a zero-item
-           preview), live once a row exists — a manual line added to an
-           empty preview re-enables them without a round-trip. */
-        function syncActions(){
-          var wrap=document.getElementById('inv-preview');
-          if(!wrap||!form) return;
-          var has=form.querySelector('#invoice-step2 tbody tr')!==null;
-          wrap.querySelectorAll('.inv-summary-actions button').forEach(function(b){ b.disabled=!has; });
-        }
-        /* #293: due date follows the selected client's terms (no HTMX
-           round-trip — the days ride on data-terms-days). */
-        function deriveDue(){
-          var opt=sel.options[sel.selectedIndex], due=dueEl(), issue=issueEl();
-          if(opt&&opt.dataset.termsDays&&issue&&issue.value&&due) due.value=addDaysStr(issue.value,parseInt(opt.dataset.termsDays,10));
-        }
-        function updateSub(){
-          var sub=document.getElementById('inv-new-sub');
-          if(!sub) return;
-          var opt=sel.options[sel.selectedIndex];
-          var to=document.getElementById('inv-to');
-          sub.textContent=sel.value&&opt ? opt.text+' · unbilled through '+shortYmdStr(to?to.value:'') : '';
-        }
-        function loadPreview(){
-          if(!window.htmx||!sel.value) return;
-          window.htmx.ajax('POST','/invoices/preview',{source:'#inv-create-form',target:'#invoice-step2',swap:'innerHTML'});
-        }
-        /* The live preview card mirrors the checked rows: amounts and the
-           total (with tax) recompute on every edit, no round-trip. */
-        function recompute(){
-          var wrap=document.getElementById('inv-preview');
-          if(!wrap||!form) return;
-          var taxEl=document.getElementById('inv-tax');
-          var tax=taxEl?parseFloat(taxEl.value)||0:0;
-          var lines=[], subtotal=0;
-          form.querySelectorAll('#invoice-step2 tbody tr').forEach(function(tr){
-            var inc=tr.querySelector('input[type="checkbox"]');
-            var desc=tr.querySelector('input[name$="_desc"]');
-            var hrs=tr.querySelector('input[name$="_hours"]');
-            var rateEl=tr.querySelector('input[name$="_rate"]');
-            if(!desc||!hrs||!rateEl) return;
-            var h=parseFloat(hrs.value)||0, r=parseFloat(rateEl.value)||0;
-            var amt=Math.round(h*r*100)/100;
-            var amtEl=tr.querySelector('.inv-row-amount');
-            if(amtEl) amtEl.textContent=moneyFmt(amt);
-            if(inc&&!inc.checked) return;
-            subtotal+=amt;
-            if(h>0||desc.value) lines.push({label:(desc.value||'Item')+' — '+fmtH(h),amount:amt});
-          });
-          var total=Math.round(subtotal*(1+tax/100)*100)/100;
-          var totalEl=wrap.querySelector('.ui-summary-total .num');
-          wrap.querySelectorAll('.ui-summary-line').forEach(function(el){el.remove();});
-          var totalRow=wrap.querySelector('.ui-summary-total');
-          if(totalRow){
-            lines.forEach(function(l){
-              var div=document.createElement('div');
-              div.className='ui-summary-line';
-              var a=document.createElement('span'); a.textContent=l.label;
-              var b=document.createElement('span'); b.className='num'; b.textContent=moneyFmt(l.amount);
-              div.appendChild(a); div.appendChild(b);
-              totalRow.parentNode.insertBefore(div,totalRow);
-            });
-          }
-          if(totalEl) totalEl.textContent=moneyFmt(total);
-          syncActions();
-        }
-        /* #328: "invoice the rest" — a hand-edited range is never clobbered.
-           Delegated on the wrapper so it survives the HTMX range swap. */
-        if(rangeEl) rangeEl.addEventListener('change',function(){rangeTouched=true; if(sel.value) loadPreview();});
-        sel.addEventListener('change',function(){
-          var opt=sel.options[sel.selectedIndex];
-          if(opt&&opt.dataset.rate&&!rate.value) rate.value=opt.dataset.rate;
-          deriveDue();
-          updateSub();
-          if(!window.htmx) return;
-          if(sel.value&&!rangeTouched){
-            window.htmx.ajax('GET','/partial/invoice-rest?client_id='+encodeURIComponent(sel.value),{target:'#inv-range',swap:'innerHTML'})
-              .then(function(){ loadPreview(); });
-          } else if(sel.value) loadPreview();
-        });
-        document.addEventListener('change',function(ev){
-          var t=ev.target;
-          if(t&&t.id==='inv-issue') deriveDue();
-          /* Unchecking a row excludes it: its inputs leave the submission
-             (the create handler skips groups with no hours) and the total. */
-          if(t&&t.type==='checkbox'&&t.closest&&t.closest('#invoice-step2')){
-            var tr=t.closest('tr');
-            if(tr) tr.querySelectorAll('input').forEach(function(inp){ if(inp!==t) inp.disabled=!t.checked; });
-            recompute();
-          }
-        });
-        form.addEventListener('input',function(ev){
-          var t=ev.target;
-          if(!t||!t.closest) return;
-          if(t.closest('#invoice-step2')||t.id==='inv-tax') recompute();
-        });
-        /* #668: manual line items — the Add button appends an editable row
-           to the step-2 table and bumps the groups count the POST handler
-           reads. Delegated on document so it survives the HTMX step-2 swap;
-           inputs are looked up within the button's own form (never by id —
-           #215), and hidden inputs stay inside the td (#536). */
-        document.addEventListener('click',function(ev){
-          var btn=ev.target.closest('[data-add-item]');
-          if(!btn) return;
-          var f=btn.closest('form');
-          if(!f) return;
-          var groups=f.querySelector('input[name="groups"]');
-          var body=f.querySelector('#invoice-step2 tbody');
-          if(!groups||!body) return;
-          var i=parseInt(groups.value,10)||0;
-          var tr=document.createElement('tr');
-          tr.innerHTML=
-            '<td><label class="ui-choice" for="inc-'+i+'"><input class="ui-checkbox" type="checkbox" id="inc-'+i+'" checked aria-label="Include line item"></label>'+
-            '<input type="hidden" name="g'+i+'_date_from" value="">'+
-            '<input type="hidden" name="g'+i+'_date_to" value=""></td>'+
-            '<td><input type="text" name="g'+i+'_desc" class="cell-input" aria-label="Item description"></td>'+
-            '<td><input type="number" name="g'+i+'_hours" min="0" step="0.01" class="cell-input num" aria-label="Hours"></td>'+
-            '<td><input type="number" name="g'+i+'_rate" min="0" step="0.01" class="cell-input num" aria-label="Rate"></td>'+
-            '<td class="num"><span class="inv-row-amount">$0.00</span>'+
-            '<input type="hidden" name="g'+i+'_ids" value=""></td>';
-          body.appendChild(tr);
-          groups.value=String(i+1);
-          syncActions();
-          var desc=tr.querySelector('input[name="g'+i+'_desc"]');
-          if(desc) desc.focus();
-        });
-      })();</script>`, "invoices");
+      ${wizardLayout({
+        stepItems: STEP_ITEMS, current: preview ? 1 : 0,
+        step1Html: step1,
+        step2Html: preview ? invoiceStep2(p, preview, true) : emptyStep2(),
+        previewHtml: previewCardHtml(p, preview),
+      })}
+      ${ZINVOICE_WIZARD_SCRIPT}`, "invoices");
   }
 
   /* #71: step-2 as a fragment — the preview action swaps #invoice-step2 in
@@ -505,45 +332,20 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
    *  left card should still read as the two-step mock: an empty unbilled
    *  table with the manual-line action, not a dead page with a button. */
   function emptyStep2(): string {
-    return formSection({ step: 2, title: "Unbilled time — uncheck to exclude", bodyHtml: `
-        <p class="ui-note">Pick a client to load unbilled time, or add a manual line.</p>
-        <input type="hidden" name="groups" value="0">
-        <div class="table-wrap"><table class="ui-table">
-          <thead>${itemHead()}</thead>
-          <tbody></tbody>
-        </table></div>
-        <div class="row">${button({ label: "Add manual line", icon: "add", variant: "ghost", attrs: "data-add-item" })}</div>` });
+    return wizardLinesSection({});
   }
 
   function invoiceStep2(p: NewInvParams, preview?: { items: any[]; emptyMsg?: string; rounding?: number | null }, embedded = false): string {
     if (!preview) return "";
-    const roundingNote = preview.rounding
-      ? `<div class="form-info">${icon("info")}<p>Entry durations are rounded up to ${preview.rounding}-minute increments.</p></div>`
-      : "";
-    /* #668: no unbilled entries used to be a dead end — the wizard now
-       offers manual line items instead, so one-time (untracked) work can
-       be invoiced without inventing time entries. */
-    const emptyNote = preview.emptyMsg
-      ? `<div class="form-info">${icon("info")}<p>${esc(preview.emptyMsg)}</p></div>`
-      : "";
-    const rows = preview.items.map((it, i) => `
-        <tr>
-          <td>${checkboxField({ id: `inc-${i}`, label: `Include ${it.description}`, bare: true, checked: true })}<span class="inv-cell-dates">${esc(shortDateRange(it.date_from, it.date_to))}</span><input type="hidden" name="g${i}_date_from" value="${esc(it.date_from || "")}"><input type="hidden" name="g${i}_date_to" value="${esc(it.date_to || "")}"></td>
-          <td><input type="text" name="g${i}_desc" value="${esc(it.description)}" class="cell-input" aria-label="Item description"></td>
-          <td><input type="number" name="g${i}_hours" value="${it.hours}" min="0" step="0.01" class="cell-input num" aria-label="Hours"></td>
-          <td><input type="number" name="g${i}_rate" value="${it.rate}" min="0" step="0.01" class="cell-input num" aria-label="Rate"></td>
-          <td class="num"><span class="inv-row-amount">${money(it.amount)}</span><input type="hidden" name="g${i}_ids" value="${it.entry_ids.join(",")}"></td>
-        </tr>`).join("");
-    const section = formSection({ step: 2, title: "Unbilled time — uncheck to exclude", bodyHtml: `
-        ${emptyNote}
-        ${roundingNote}
-        <input type="hidden" name="groups" value="${preview.items.length}">
-        <div class="table-wrap"><table class="ui-table">
-          <thead>${itemHead()}</thead>
-          <tbody>${rows}</tbody>
-        </table></div>
-        <div class="row">${button({ label: "Add manual line", icon: "add", variant: "ghost", attrs: "data-add-item" })}</div>
-        <p class="muted tiny">Amounts recalculate on save. Entries are marked billed when the Zinvoice is created.</p>` });
+    const section = wizardLinesSection({
+      emptyMsg: preview.emptyMsg,
+      roundingMinutes: preview.rounding,
+      lines: preview.items.map(it => ({
+        description: it.description, hours: it.hours, rate: it.rate, amount: money(it.amount),
+        dateFrom: it.date_from || "", dateTo: it.date_to || "",
+        dateLabel: shortDateRange(it.date_from, it.date_to), entryIds: it.entry_ids,
+      })),
+    });
     if (embedded) return section;
     return `<div id="inv-steps" hx-swap-oob="true">${steps({ items: STEP_ITEMS, current: 1 })}</div>`
       + section
@@ -635,8 +437,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
        otherwise untouched (same spot, same styling, same label).
        #494: no native title — "Paid via Stripe" already says what the
        title="Marked paid automatically by a Stripe payment" restated. */
-    const paidChip = inv.paid_via_stripe
-      ? ` <span class="stripe-paid-chip">${icon("bolt")}<span>Paid via Stripe</span></span>` : "";
+    const paidChip = inv.paid_via_stripe ? stripePaidChip() : "";
     /* #243: billing period derives from the line-item dates.
        #582: year-aware ("Sep 1 – Sep 28, 2026"), matching the PDF, so the
        period is never ambiguous across year boundaries. */
