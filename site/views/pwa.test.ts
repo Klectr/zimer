@@ -73,4 +73,9 @@ describe("pwa service worker (#936)", () => {
     expect(sw).toContain("fetch(event.request)");
     expect(sw).toContain("caches.match(event.request)");
   });
+  test("#1416: versioned (?v=) assets bypass the SW so they cannot accumulate or bind wrong bytes", () => {
+    expect(sw).toContain('url.searchParams.has("v")');
+    expect(sw).toContain('const CACHE = "zimer-static-v2"');
+    expect(sw).not.toContain('const CACHE = "zimer-static-v1"');
+  });
 });
