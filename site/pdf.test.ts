@@ -97,11 +97,25 @@ describe("#831: PDF status badge reads DRAFT for drafts", () => {
     expect(text).not.toContain("UNPAID");
   });
 
-  /* A sent invoice says when it's due; UNPAID only when it has no due date. */
-  test("sent invoice prints its due date, OVERDUE when late, UNPAID with no due date", () => {
-    expect(pdfText({ ...base, status: "sent" })).toContain("(DUE SEP 30) Tj");
+  /* The badge only adds what the page doesn't say: no badge on a sent,
+     not-late invoice (its due date is under the total); OVERDUE when late;
+     UNPAID only with no due date. */
+  test("sent invoice: no badge until late, OVERDUE when late, UNPAID with no due date", () => {
+    const sent = pdfText({ ...base, status: "sent" });
+    expect(sent).not.toMatch(/\((?:DUE [A-Z]{3} \d+|UNPAID|OVERDUE)\) Tj/);
     expect(pdfText({ ...base, status: "sent", overdue: true })).toContain("(OVERDUE) Tj");
     expect(pdfText({ ...base, status: "sent", dueDate: null })).toContain("(UNPAID) Tj");
+  });
+
+  test("a sent invoice states its due date exactly once, under the total", () => {
+    const text = pdfText({ ...base, status: "sent" });
+    expect(text).toContain("(Due by Sep 30, 2026) Tj");
+    expect(text.match(/Sep 30/g)!.length).toBe(1);
+  });
+
+  test("drafts and paid invoices keep Due in the dates line (they have no Due by line)", () => {
+    expect(pdfText({ ...base, status: "draft" })).toContain("Due Sep 30, 2026");
+    expect(pdfText({ ...base, status: "paid" })).toContain("Due Sep 30, 2026");
   });
 
   test("paid invoice still prints PAID", () => {
