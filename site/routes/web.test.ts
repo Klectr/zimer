@@ -405,6 +405,115 @@ describe("invoice rate validation (#1442)", () => {
   });
 });
 
+/** #1444: preview validates rate/tax like the create route, and non-finite
+ *  hours drop the row instead of orphaning the invoice header. */
+function postPreview(handleWeb: any, fields: Record<string, string>) {
+  const form = new FormData();
+  for (const [k, v] of Object.entries(fields)) form.append(k, v);
+  const req = new Request("http://x/invoices/preview", { method: "POST", body: form });
+  return handleWeb(req, new URL(req.url), "/invoices/preview", "POST");
+}
+
+const basePreviewFields = { client_id: "1", from: "2026-09-01", to: "2026-09-20", rate: "40", tax_rate: "0" };
+
+describe("invoice preview and hours hardening (#1444)", () => {
+  test("a negative preview rate is rejected", async () => {
+    const { handleWeb } = setup();
+    const res = await postPreview(handleWeb, { ...basePreviewFields, rate: "-5" });
+    expect(res!.status).toBe(400);
+    expect(await res!.text()).toContain("at or above 0");
+  });
+
+  test("a negative preview tax rate is rejected", async () => {
+    const { handleWeb } = setup();
+    const res = await postPreview(handleWeb, { ...basePreviewFields, tax_rate: "-10" });
+    expect(res!.status).toBe(400);
+    expect(await res!.text()).toContain("at or above 0");
+  });
+
+  test("a non-numeric preview rate is rejected", async () => {
+    const { handleWeb } = setup();
+    const res = await postPreview(handleWeb, { ...basePreviewFields, rate: "abc" });
+    expect(res!.status).toBe(400);
+  });
+
+  test("valid preview rate and tax pass", async () => {
+    const { handleWeb } = setup();
+    const res = await postPreview(handleWeb, { ...basePreviewFields, rate: "40", tax_rate: "8.25" });
+    expect(res!.status).toBe(200);
+  });
+
+  test("non-numeric hours drop the row and leave no orphan invoice", async () => {
+    const { db, handleWeb } = setup();
+    const res = await postInvoice(handleWeb, {
+      ...baseInvoiceFields, groups: "1",
+      g0_desc: "Work", g0_hours: "abc", g0_rate: "50",
+      g0_ids: "", g0_date_from: "", g0_date_to: "",
+    });
+    expect(res!.status).toBe(400);
+    expect(db.query("SELECT COUNT(*) AS n FROM invoices").get()).toEqual({ n: 0 });
+    expect(db.query("SELECT COUNT(*) AS n FROM invoice_items").get()).toEqual({ n: 0 });
+  });
+
+  test("an HTMX preview with a negative rate gets a visible error fragment", async () => {
+    const { handleWeb } = setup();
+    const form = new FormData();
+    for (const [k, v] of Object.entries({ ...basePreviewFields, rate: "-5" })) form.append(k, v);
+    const req = new Request("http://x/invoices/preview", { method: "POST", body: form, headers: { "HX-Request": "true" } });
+    const res = await handleWeb(req, new URL(req.url), "/invoices/preview", "POST");
+    expect(res!.status).toBe(400);
+    expect(await res!.text()).toContain("at or above 0");
+  });
+
+  test("infinite hours drop the row and leave no orphan invoice", async () => {
+    const { db, handleWeb } = setup();
+    const res = await postInvoice(handleWeb, {
+      ...baseInvoiceFields, groups: "1",
+      g0_desc: "Work", g0_hours: "Infinity", g0_rate: "50",
+      g0_ids: "", g0_date_from: "", g0_date_to: "",
+    });
+    expect(res!.status).toBe(400);
+    expect(db.query("SELECT COUNT(*) AS n FROM invoices").get()).toEqual({ n: 0 });
+  });
+
+  test("finite hours and rate that multiply to Infinity are rejected, nothing stored", async () => {
+    const { db, handleWeb } = setup();
+    const res = await postInvoice(handleWeb, {
+      ...baseInvoiceFields, groups: "1",
+      g0_desc: "Work", g0_hours: "1e200", g0_rate: "1e200",
+      g0_ids: "", g0_date_from: "", g0_date_to: "",
+    });
+    expect(res!.status).toBe(400);
+    expect(db.query("SELECT COUNT(*) AS n FROM invoices").get()).toEqual({ n: 0 });
+    expect(db.query("SELECT COUNT(*) AS n FROM invoice_items").get()).toEqual({ n: 0 });
+  });
+
+  test("a tax rate whose rounded value overflows is rejected on create", async () => {
+    const { db, handleWeb } = setup();
+    const res = await postInvoice(handleWeb, {
+      ...baseInvoiceFields, tax_rate: "1e308", groups: "1",
+      g0_desc: "Work", g0_hours: "1", g0_rate: "50",
+      g0_ids: "", g0_date_from: "", g0_date_to: "",
+    });
+    expect(res!.status).toBe(400);
+    expect(db.query("SELECT COUNT(*) AS n FROM invoices").get()).toEqual({ n: 0 });
+  });
+
+  test("a non-numeric-hours row is dropped when a valid row remains", async () => {
+    const { db, handleWeb } = setup();
+    const res = await postInvoice(handleWeb, {
+      ...baseInvoiceFields, groups: "2",
+      g0_desc: "Work", g0_hours: "1", g0_rate: "50",
+      g0_ids: "", g0_date_from: "", g0_date_to: "",
+      g1_desc: "Bad", g1_hours: "abc", g1_rate: "50",
+      g1_ids: "", g1_date_from: "", g1_date_to: "",
+    });
+    expect(res!.status).toBe(302);
+    expect(db.query("SELECT COUNT(*) AS n FROM invoices").get()).toEqual({ n: 1 });
+    expect(db.query("SELECT COUNT(*) AS n FROM invoice_items").get()).toEqual({ n: 1 });
+  });
+});
+
 /** #1202: the wizard's Send Zinvoice posts intent=send to POST /invoices —
  *  create + send in one step. Unlike setup() above, the invoice deps here
  *  are the real domain and views, and freezeInvoiceSnapshots replicates

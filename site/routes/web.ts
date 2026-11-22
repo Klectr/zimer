@@ -1092,10 +1092,25 @@ export function createWebRouter(deps: WebDeps) {
             if (isHtmx(req)) return html(`<div class="ui-card form-card"><p class="error">Pick a client and a date range first.</p></div>`, 400); // #71
             return html(invoiceNewPage(p), 400);
           }
+          /* #1444: validate rate/tax like the create route — a negative or
+             non-finite value must not render into step 2. HTMX gets the
+             error fragment (a bare 400 is never swapped in); other callers
+             get the plain response, as the create route answers. */
+          const previewFail = (msg: string) => isHtmx(req)
+            ? html(`<div class="ui-card form-card"><p class="error">${msg}</p></div>`, 400)
+            : new Response(msg, { status: 400 });
+          const previewRate = nonNegativeRate(form.get("rate"));
+          if (previewRate === null || !Number.isFinite(round2(previewRate)))
+            return previewFail("Rate must be a number at or above 0.");
+          const previewTax = nonNegativeRate(form.get("tax_rate"));
+          if (previewTax === null || !Number.isFinite(round2(previewTax)))
+            return previewFail("Tax rate must be a number at or above 0.");
           const entries = unbilledEntries(Number(p.client_id), p.from + "T00:00:00", p.to + "T00:00:00");
           const preview = !entries.length
             ? { items: [], emptyMsg: "No unbilled, finished entries on this client's projects in that range." }
-            : { items: groupToLineItems(entries, Number(p.rate) || 0), rounding: 5 };
+            : { items: groupToLineItems(entries, previewRate), rounding: 5 };
+          if (preview.items.some(it => !Number.isFinite(it.amount)))
+            return previewFail("Rate must be a number at or above 0.");
           if (isHtmx(req)) return html(invoiceStep2(p, preview)); // #71: swap step 2 in place
           return html(invoiceNewPage(p, preview));
         }
@@ -1104,14 +1119,17 @@ export function createWebRouter(deps: WebDeps) {
           /* #1442: mirror the settings/API rate rule — a provided tax_rate
              must be finite and at or above 0 (blank/absent → 0). */
           const taxRate = nonNegativeRate(form.get("tax_rate"));
-          if (taxRate === null)
+          if (taxRate === null || !Number.isFinite(round2(taxRate)))
             return new Response("Tax rate must be a number at or above 0.", { status: 400 });
           const groups = Number(form.get("groups") || 0);
           const items: { description: string; hours: number; rate: number; amount: number; entry_ids: number[]; date_from: string | null; date_to: string | null }[] = [];
           for (let i = 0; i < groups; i++) {
             const hours = round2(Number(form.get(`g${i}_hours`) || 0));
             const ids = String(form.get(`g${i}_ids`) || "").split(",").map(Number).filter(n => n > 0);
-            if (hours <= 0) continue;
+            /* #1444: non-finite hours (NaN from garbage, Infinity) drop the
+               row, mirroring the API clean step — NaN evades hours <= 0 and
+               would orphan the invoice header on the item insert. */
+            if (!Number.isFinite(hours) || hours <= 0) continue;
             /* #1442: per-group rates follow the same rule, checked on the
                rows that survive the hours filter (as #1440 does in the API);
                the rounded value must stay finite too (round2 can overflow). */
@@ -1119,6 +1137,10 @@ export function createWebRouter(deps: WebDeps) {
             if (rateRaw === null || !Number.isFinite(round2(rateRaw)))
               return new Response("Rate must be a number at or above 0.", { status: 400 });
             const rate = round2(rateRaw);
+            /* #1444: finite hours and rate can still multiply to Infinity —
+               never store a non-finite amount. */
+            if (!Number.isFinite(round2(hours * rate)))
+              return new Response("Rate must be a number at or above 0.", { status: 400 });
             items.push({
               /* #668: manual rows carry no entry ids (one-time work with no
                  tracked time) — their description defaults to "Item" while
