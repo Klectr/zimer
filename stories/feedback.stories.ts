@@ -1,9 +1,10 @@
 import type { Story } from "../.zandbox/story";
+import { inlineAlert } from "../site/ui/alert";
 import { dialog, confirmDialog } from "../site/ui/dialog";
 import { toast } from "../site/ui/toast";
 import { menu } from "../site/ui/menu";
 import { emptyState } from "../site/ui/empty-state";
-import { button } from "../site/ui/button";
+import { button, linkButton } from "../site/ui/button";
 import { iconButton } from "../site/ui/icon-button";
 import { tooltip } from "../site/ui/tooltip";
 
@@ -140,6 +141,17 @@ export const feedbackStories: Story[] = [
         action: button({ label: "Add client" }),
       }) +
       emptyState({ icon: "receipt", title: "Nothing overdue", body: "Every sent Zinvoice is paid or still within terms." }) +
+      `</div>`,
+  },
+  {
+    id: "feedback-inline-alert",
+    group: "Feedback",
+    title: "Inline alert — info, warning with action, error",
+    render: () =>
+      `<div style="max-width:420px;display:flex;flex-direction:column;gap:12px">` +
+      inlineAlert({ tone: "info", text: "Entry durations are rounded up to 5-minute increments." }) +
+      inlineAlert({ tone: "warning", text: "Your business name isn't set, so this Zinvoice won't say who it's from.", actionHtml: linkButton({ label: "Set business name", href: "#", size: "sm" }) }) +
+      inlineAlert({ tone: "error", text: "Couldn't reach the payment provider. Try again in a moment." }) +
       `</div>`,
   },
 ];

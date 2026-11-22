@@ -20,3 +20,14 @@ describe("feedback stories", () => {
     }
   });
 });
+
+describe("inline alert story", () => {
+  test("shows all three tones; warning and error are announced", async () => {
+    const { feedbackStories } = await import("./feedback.stories");
+    const html = feedbackStories.find((s) => s.id === "feedback-inline-alert")!.render();
+    expect(html).toContain('class="ui-alert ui-alert-info" role="status"');
+    expect(html).toContain('class="ui-alert ui-alert-warning" role="alert"');
+    expect(html).toContain('class="ui-alert ui-alert-error" role="alert"');
+    expect(html).toContain("Set business name");
+  });
+});
