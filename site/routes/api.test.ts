@@ -580,6 +580,22 @@ describe("API rate validation (#1440)", () => {
     expect((tenant.db.query("SELECT COUNT(*) AS n FROM invoices").get() as any).n).toBe(0);
     expect((tenant.db.query("SELECT COUNT(*) AS n FROM invoice_items").get() as any).n).toBe(0);
   });
+  test("POST /api/invoices with hours too large to round is a 400 and creates nothing (#1446)", async () => {
+    const tenant = rateTenant();
+    const res = await post(tenant, "/api/invoices", { client_id: 3, items: [{ ...item, hours: 1e308 }] });
+    expect(res.status).toBe(400);
+    expect((await res.json() as any).error).toContain("hours");
+    expect((tenant.db.query("SELECT COUNT(*) AS n FROM invoices").get() as any).n).toBe(0);
+    expect((tenant.db.query("SELECT COUNT(*) AS n FROM invoice_items").get() as any).n).toBe(0);
+  });
+  test("POST /api/invoices with hours x rate overflowing the amount is a 400 and creates nothing (#1446)", async () => {
+    const tenant = rateTenant();
+    const res = await post(tenant, "/api/invoices", { client_id: 3, items: [{ ...item, hours: 1e200, rate: 1e200 }] });
+    expect(res.status).toBe(400);
+    expect((await res.json() as any).error).toContain("hours");
+    expect((tenant.db.query("SELECT COUNT(*) AS n FROM invoices").get() as any).n).toBe(0);
+    expect((tenant.db.query("SELECT COUNT(*) AS n FROM invoice_items").get() as any).n).toBe(0);
+  });
   test("POST /api/invoices from/to path stores grouped items at the validated rate", async () => {
     const tenant = rateTenant();
     (tenant as any).unbilledEntries = () => [{ id: 1 }];
