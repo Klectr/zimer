@@ -162,6 +162,7 @@ describe("GET /api/invoices list projection (#1279)", () => {
     const row = {
       id: 7, client_id: 3, number: "INV-0007", issue_date: "2026-11-01",
       due_date: "2026-11-15", status: "sent", tax_rate: 10, paid_at: null, sent_at: "2026-11-02",
+      period_from: "2026-11-07", period_to: "2026-11-20",
       notes: "client-facing", internal_notes: "do not leak",
       html_snapshot: "<html>frozen</html>", pdf_snapshot: new Uint8Array([1, 2, 3]),
       stripe_payment_link_id: "plink_secret", stripe_payment_link: "https://pay.example/x",
@@ -173,7 +174,7 @@ describe("GET /api/invoices list projection (#1279)", () => {
       db: new BunDatabase(":memory:"),
       qRunning: stubStatement(), qOne: stubStatement(), qRange: stubStatement(),
       qInvoice: stubStatement(),
-      qInvoices: { all: () => [row, { ...row, id: 8, number: "INV-0008", sent_at: undefined }] } as unknown as Statement,
+      qInvoices: { all: () => [row, { ...row, id: 8, number: "INV-0008", sent_at: undefined, period_from: undefined, period_to: undefined }] } as unknown as Statement,
       groupToLineItems: () => [], unbilledEntries: () => [],
       getInvoice: () => null, invoiceTotals: () => ({ subtotal: 0, tax: 0, total: 0 }),
       nextInvoiceNumber: () => "INV-0001", mintPublicToken: () => "tok",
@@ -195,6 +196,10 @@ describe("GET /api/invoices list projection (#1279)", () => {
     expect(res.status).toBe(200);
     const [item, unsent] = await res.json() as any[];
     expect(unsent.sent_at).toBeNull();
+    expect(unsent.period_from).toBeNull();
+    expect(unsent.period_to).toBeNull();
+    expect(item.period_from).toBe("2026-11-07");
+    expect(item.period_to).toBe("2026-11-20");
     expect(item.id).toBe(7);
     expect(item.client_id).toBe(3);
     expect(item.number).toBe("INV-0007");
@@ -259,6 +264,7 @@ describe("invoice detail projection (#1281)", () => {
   const fullRow = () => ({
     id: 7, client_id: 3, number: "INV-0007", issue_date: "2026-11-01",
     due_date: "2026-11-15", status: "sent", tax_rate: 10, paid_at: null, sent_at: "2026-11-02",
+    period_from: "2026-11-07", period_to: "2026-11-20",
     notes: "client-facing", internal_notes: "do not leak",
     html_snapshot: "<html>frozen</html>", pdf_snapshot: new Uint8Array([1, 2, 3]),
     stripe_payment_link_id: "plink_secret", stripe_payment_link: "https://pay.example/x",
@@ -313,6 +319,8 @@ describe("invoice detail projection (#1281)", () => {
     expect(item.client_address).toBe("1 Main St");
     expect(item.items).toHaveLength(1);
     expect(item.sent_at).toBe("2026-11-02");
+    expect(item.period_from).toBe("2026-11-07");
+    expect(item.period_to).toBe("2026-11-20");
     expect(item.template).toBe("classic");
     expect(item.paid_via_stripe).toBe(0);
     expect(item.subtotal).toBe(100);
