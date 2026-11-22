@@ -4,7 +4,7 @@
 #   ./scripts/build-release.sh 1.2.3
 #
 # Verifies the VERSION file matches, then tars the runtime tree:
-# site/, extension/, VERSION, LICENSE, README.md, CHANGELOG.md.
+# site/, extension/, VERSION, the licence file, README.md, CHANGELOG.md.
 # Prints the tarball path and its sha256 for the release feed.
 #
 # Publishing (manual, on the VPS):
@@ -25,8 +25,12 @@ FILE_VERSION="$(tr -d '[:space:]' < "$ROOT/VERSION")"
 OUT="/tmp/zimer-$VERSION.tgz"
 # Never ship site/data: the working copy's dev database and .token live
 # there and must not end up in a public tarball.
+# main renamed LICENSE to license.txt; ship whichever this tree has.
+LICENSE_FILE=""
+for f in license.txt LICENSE; do [ -f "$ROOT/$f" ] && { LICENSE_FILE="$f"; break; }; done
+[ -n "$LICENSE_FILE" ] || { echo "error: no license.txt or LICENSE at $ROOT" >&2; exit 1; }
 tar czf "$OUT" -C "$ROOT" --exclude='site/data' \
-  site extension VERSION LICENSE README.md CHANGELOG.md
+  site extension VERSION "$LICENSE_FILE" README.md CHANGELOG.md
 echo "tarball: $OUT"
 echo -n "sha256:  "
 sha256sum "$OUT" | cut -d' ' -f1
