@@ -3,9 +3,11 @@
  *  statement passed in; createLayoutViews() keeps every existing call site
  *  working unchanged. */
 
+import { errorPage } from "../ui/error-page.ts";
+import { navDrawer } from "../ui/nav-drawer.ts";
 import type { Statement } from "bun:sqlite";
 import { esc } from "../lib/format.ts";
-import { icon, logo } from "../lib/icons.ts";
+import { logo } from "../lib/icons.ts";
 import { appSidebar, navItemsHtml, type NavItem } from "../ui/app-sidebar.ts";
 import { logoLockup } from "../ui/logo-lockup.ts";
 import { iconButton } from "../ui/icon-button.ts";
@@ -160,7 +162,7 @@ export function createLayoutViews(qRunning: Statement, themeCss?: () => string, 
   ${/* #355: the settings scrim is a direct body child — inside the app bar it
        would be trapped in the header's stacking context and paint below the
        bottom navigation bar. The entry edit scrim rides along for the same
-       reason (#903), and so does the #949 navigation drawer. */ navDrawer(demoRow ? demoRow() : "")}${toastTrigger()}${entryDialog()}
+       reason (#903), and so does the #949 navigation drawer. */ appNavDrawer(demoRow ? demoRow() : "")}${toastTrigger()}${entryDialog()}
   </body>
   </html>`;
   }
@@ -190,34 +192,28 @@ export function createLayoutViews(qRunning: Statement, themeCss?: () => string, 
      anonymous requests (bad /i/:token, logged-out misses) get the minimal
      public chrome — no nav, no logout, no app structure leaked. */
   function notFoundPage(authed: boolean): string {
-    const body = `
-      <div class="error-page">
-        <h1 class="ui-page-title">Page not found</h1>
-        <p class="muted">The page you&rsquo;re looking for doesn&rsquo;t exist or was moved.</p>
-        ${authed ? `
-        <div class="error-actions">
-          ${linkButton({ label: "Zimer", href: "/", variant: "primary" })}
-          ${linkButton({ label: "Calendar", href: "/calendar", variant: "ghost" })}
-          ${linkButton({ label: "Zinvoices", href: "/invoices", variant: "ghost" })}
-          ${linkButton({ label: "Clients", href: "/manage", variant: "ghost" })}
-        </div>` : ""}
-      </div>`;
+    const body = errorPage({
+      title: "Page not found",
+      body: "The page you’re looking for doesn’t exist or was moved.",
+      actionsHtml: authed
+        ? linkButton({ label: "Zimer", href: "/", variant: "primary" }) +
+          linkButton({ label: "Calendar", href: "/calendar", variant: "ghost" }) +
+          linkButton({ label: "Zinvoices", href: "/invoices", variant: "ghost" }) +
+          linkButton({ label: "Clients", href: "/manage", variant: "ghost" })
+        : undefined,
+    });
     if (authed) return layout("Page not found", body);
     return publicShell("Page not found", body);
   }
 
   /* Styled 500 page, rendered by the page-route catch-all. Never includes
      error details — those go to the server log only. */
-  function errorPage(authed: boolean): string {
-    const body = `
-      <div class="error-page">
-        <h1 class="ui-page-title">Something went wrong</h1>
-        <p class="muted">An unexpected error occurred. Please try again.</p>
-        <div class="error-actions">
-          ${button({ label: "Go back", attrs: 'onclick="history.back()"' })}
-          ${linkButton({ label: "Zimer", href: "/", variant: "primary" })}
-        </div>
-      </div>`;
+  function serverErrorPage(authed: boolean): string {
+    const body = errorPage({
+      title: "Something went wrong",
+      body: "An unexpected error occurred. Please try again.",
+      actionsHtml: button({ label: "Go back", attrs: 'onclick="history.back()"' }) + linkButton({ label: "Zimer", href: "/", variant: "primary" }),
+    });
     if (authed) return layout("Something went wrong", body);
     return publicShell("Something went wrong", body);
   }
@@ -227,27 +223,21 @@ export function createLayoutViews(qRunning: Statement, themeCss?: () => string, 
      subdomain (#305): same minimal public chrome, but the message names the
      situation instead of the generic 404. */
   function noSuchInvoicePage(): string {
-    const body = `
-      <div class="error-page">
-        <div class="error-mark">${logo(40)}</div>
-        <h1 class="ui-page-title">This Zinvoice doesn&rsquo;t exist.</h1>
-        <p class="muted">The link you followed doesn&rsquo;t match any Zinvoice. Check the address, or ask the sender for a fresh link.</p>
-      </div>`;
+    const body = errorPage({
+      markHtml: logo(40),
+      title: "This Zinvoice doesn’t exist.",
+      body: "The link you followed doesn’t match any Zinvoice. Check the address, or ask the sender for a fresh link.",
+    });
     return publicShell("Zinvoice not found", body);
   }
 
   /* Public 429 page (#308): minimal public chrome, no app nav leaked. */
   function rateLimitPage(): string {
-    const body = `
-      <div class="error-page">
-        <div class="error-mark">${logo(40)}</div>
-        <h1 class="ui-page-title">Too many requests.</h1>
-        <p class="muted">Please slow down and try again in a bit.</p>
-      </div>`;
+    const body = errorPage({ markHtml: logo(40), title: "Too many requests.", body: "Please slow down and try again in a bit." });
     return publicShell("Too many requests", body);
   }
 
-  return { layout, publicShell, notFoundPage, noSuchInvoicePage, rateLimitPage, errorPage };
+  return { layout, publicShell, notFoundPage, noSuchInvoicePage, rateLimitPage, errorPage: serverErrorPage };
 }
 
 /** #1223: the sidebar footer keeps only Log out. Settings is a primary nav
@@ -266,69 +256,14 @@ function shellActions(): string {
     are undiscoverable on touch. Rendered as a direct body child (#355
     stacking context). Desktop never shows the hamburger, so the drawer is
     unreachable there. */
-function navDrawer(demoRowHtml: string = ""): string {
-  return `<div class="nav-drawer-scrim" id="nav-drawer-scrim" hidden>
-    <nav class="nav-drawer" role="dialog" aria-modal="true" aria-label="Menu">
-      <div class="nav-drawer-head">Menu</div>
-      <a class="nav-drawer-row" href="/settings">${icon("settings")}<span>Settings</span></a>
-      <form method="POST" action="/logout" class="nav-drawer-logout">
-        <button class="nav-drawer-row" type="submit">${icon("logout")}<span>Log out</span></button>
-      </form>
-      ${demoRowHtml}
-    </nav>
-  </div>
-  <script>(function(){
-    var scrim=document.getElementById('nav-drawer-scrim');
-    var btn=document.getElementById('appbar-menu-btn');
-    if(!scrim||!btn) return;
-    var open_=false;
-    var drawerGen=0;
-    function open(){
-      open_=true; drawerGen++;
-      scrim.hidden=false; void scrim.offsetWidth; scrim.classList.add('open');
-      document.addEventListener('keydown',onKey,true);
-      var first=scrim.querySelector('.nav-drawer-row'); if(first) first.focus();
-    }
-    function close(refocus){
-      if(!open_) return; open_=false; drawerGen++;
-      scrim.classList.remove('open');
-      document.removeEventListener('keydown',onKey,true);
-      var gen=drawerGen, done=false, finish=function(){ if(done||gen!==drawerGen) return; done=true; scrim.hidden=true; };
-      var onEnd=function(e){ if(e.target===scrim&&e.propertyName==='opacity'){ scrim.removeEventListener('transitionend',onEnd); finish(); } };
-      scrim.addEventListener('transitionend',onEnd); setTimeout(finish,300);
-      if(refocus) btn.focus();
-    }
-    function onKey(e){ if(e.key==='Escape'){ e.preventDefault(); close(true); }
-      else if(e.key==='Tab'&&window.tkTrapTab){ window.tkTrapTab(scrim,e); } }
-    scrim.addEventListener('pointerdown',function(e){ if(e.target===scrim) close(false); });
-    btn.addEventListener('click',open);
-    /* The spec's primary touch dismissal: swipe the panel toward the leading
-       edge. The panel follows the pointer; releasing past a third of its
-       width closes, otherwise it springs back. A plain tap never moves it,
-       so row clicks are unaffected. */
-    var panel=scrim.querySelector('.nav-drawer');
-    var dragX=null, dragDx=0;
-    panel.addEventListener('pointerdown',function(e){
-      dragX=e.clientX; dragDx=0; panel.style.transition='none';
-    });
-    window.addEventListener('pointermove',function(e){
-      if(dragX===null) return;
-      dragDx=Math.min(0,e.clientX-dragX);
-      panel.style.transform='translateX('+dragDx+'px)';
-    });
-    window.addEventListener('pointerup',function(){
-      if(dragX===null) return;
-      var past=dragDx<-(panel.offsetWidth/3);
-      dragX=null; panel.style.transition=''; panel.style.transform='';
-      if(past) close(false);
-    });
-    /* Any row activation closes the drawer: downloads navigate away or stay
-       (download), logout submits, and Settings hands off to its dialog (its
-       own listener, registered later, opens it after this close runs). */
-    scrim.querySelectorAll('.nav-drawer-row').forEach(function(row){
-      row.addEventListener('click',function(){ close(false); });
-    });
-  })();</script>`;
+function appNavDrawer(demoRowHtml: string = ""): string {
+  return navDrawer({
+    rows: [
+      { icon: "settings", label: "Settings", href: "/settings" },
+      { icon: "logout", label: "Log out", postAction: "/logout" },
+    ],
+    extraHtml: demoRowHtml,
+  });
 }
 
 /** #247, #1335: routes confirm an outcome by name with an HX-Trigger
