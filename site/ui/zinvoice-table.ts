@@ -48,8 +48,8 @@ export function zinvoiceTableRows(rows: ZinvoiceTableRow[]): string {
       <tr class="is-${r.status}">
         <td><a class="inv-num-link" href="${esc(r.href)}">${esc(r.number)}</a></td>
         <td>${r.client ? esc(r.client) : "<em>No client</em>"}</td>
-        <td>${issued}</td>
-        <td class="col-opt">${dueCell(r)}</td>
+        <td class="col-issued">${issued}</td>
+        <td class="col-due">${dueCell(r)}</td>
         <td>${rowChip(r)}</td>
         <td class="num inv-amt">${esc(r.total)}</td>
       </tr>`;
@@ -70,7 +70,7 @@ export function zinvoiceTable(o: ZinvoiceTableOptions): string {
   return card({
     className: "inv-table-card",
     content: `<div class="table-wrap"><table class="ui-table">
-        <thead><tr><th scope="col">Number</th><th scope="col">Client</th><th scope="col">Issued</th><th scope="col" class="col-opt">Due</th><th scope="col">Status</th><th scope="col" class="num">Total</th></tr></thead>
+        <thead><tr><th scope="col">Number</th><th scope="col">Client</th><th scope="col" class="col-issued">Issued</th><th scope="col" class="col-due">Due</th><th scope="col">Status</th><th scope="col" class="num">Total</th></tr></thead>
         <tbody id="inv-list">${zinvoiceTableRows(o.rows)}</tbody>
       </table></div>`,
   });

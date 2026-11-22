@@ -1094,8 +1094,10 @@ body.app-fixed .ui-shell-main { min-height: 0; }
    scrolls sideways wherever the content column lands: Due drops first, then
    rows stack into two-line cards. */
 .inv-table-card { container-type: inline-size; }
+/* Narrower: Issued goes first — Due is the date that matters in a list
+   (the compact rows below agree: "Due …" / "Paid …"). */
 @container (max-width: 679px) {
-  .inv-table-card .col-opt { display: none; }
+  .inv-table-card .col-issued { display: none; }
 }
 @container (max-width: 559px) {
   .inv-table-card .table-wrap { overflow-x: visible; margin: 0; padding: 0; }
@@ -1110,13 +1112,12 @@ body.app-fixed .ui-shell-main { min-height: 0; }
   /* One date per compact row, the one that matters: "Due Dec 14" while
      sent, "Paid Oct 18" once paid, none on a draft. Issued stays on the
      wide table and the Zinvoice itself. */
-  .inv-table-card td:nth-child(3) { display: none; }
-  .inv-table-card tr.is-draft td.col-opt { display: none; }
-  .inv-table-card tr.is-paid td.col-opt::before { content: none; }
+  .inv-table-card tr.is-draft td.col-due { display: none; }
+  .inv-table-card tr.is-paid td.col-due::before { content: none; }
   .inv-table-card tr.is-paid .inv-cell-main { display: none; }
   .inv-table-card tr.is-paid .inv-cell-sub { margin: 0; }
-  .inv-table-card td.col-opt { order: 5; display: block; color: var(--color-text-secondary); font-size: var(--font-size-sm); }
-  .inv-table-card td.col-opt::before { content: "Due "; color: var(--color-text-tertiary); }
+  .inv-table-card td.col-due { order: 5; display: block; color: var(--color-text-secondary); font-size: var(--font-size-sm); }
+  .inv-table-card td.col-due::before { content: "Due "; color: var(--color-text-tertiary); }
   .inv-table-card td:nth-child(5) { order: 6; margin-left: auto; }
   .inv-table-card .inv-cell-main { display: inline; font-weight: 400; color: inherit; }
   .inv-table-card .inv-cell-sub { display: inline; margin: 0 0 0 var(--spacing-xxs); }

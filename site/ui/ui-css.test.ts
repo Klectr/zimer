@@ -319,7 +319,7 @@ describe("invoice list compact rows (#1210)", () => {
      a narrow card on a wide window must stack too, never scroll sideways. */
   test("on a narrow card the list rows stack instead of scrolling sideways", () => {
     expect(css).toContain(".inv-table-card { container-type: inline-size; }");
-    expect(css).toMatch(/@container \(max-width: 679px\) \{\s*\.inv-table-card \.col-opt \{ display: none; \}/);
+    expect(css).toMatch(/@container \(max-width: 679px\) \{\s*\.inv-table-card \.col-issued \{ display: none; \}/);
     const block = css.match(/@container \(max-width: 559px\) \{[^]*?\n\}/);
     expect(block).not.toBeNull();
     const b = block![0];
@@ -328,7 +328,7 @@ describe("invoice list compact rows (#1210)", () => {
     expect(b).toContain(".inv-table-card tbody tr");
     expect(b).toContain("display: flex");
     expect(b).toContain("flex-wrap: wrap");
-    const colOpt = b.match(/\.inv-table-card td\.col-opt \{[^}]*\}/);
+    const colOpt = b.match(/\.inv-table-card td\.col-due \{[^}]*\}/);
     expect(colOpt).not.toBeNull();
     expect(colOpt![0]).toContain("display: block");
     expect(colOpt![0]).toContain("order: 5");
@@ -577,12 +577,12 @@ describe("tablet-width overflow fixes", () => {
 describe("compact Zinvoice row dates", () => {
   const block = () => css.match(/@container \(max-width: 559px\) \{[^]*?\n\}/)![0];
   test("Issued is hidden in compact rows; no 'Issued' label remains", () => {
-    expect(block()).toContain(".inv-table-card td:nth-child(3) { display: none; }");
+    expect(css).toMatch(/@container \(max-width: 679px\) \{\s*\.inv-table-card \.col-issued \{ display: none; \}/);
     expect(css).not.toContain('content: "Issued "');
   });
   test("drafts show no date; paid shows only its Paid date", () => {
-    expect(block()).toContain(".inv-table-card tr.is-draft td.col-opt { display: none; }");
+    expect(block()).toContain(".inv-table-card tr.is-draft td.col-due { display: none; }");
     expect(block()).toContain(".inv-table-card tr.is-paid .inv-cell-main { display: none; }");
-    expect(block()).toContain(".inv-table-card tr.is-paid td.col-opt::before { content: none; }");
+    expect(block()).toContain(".inv-table-card tr.is-paid td.col-due::before { content: none; }");
   });
 });
