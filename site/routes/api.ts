@@ -184,6 +184,7 @@ export function createApiRouter(deps: ApiDeps) {
               template: full.template,
               created_at: full.created_at,
               paid_at: full.paid_at,
+              sent_at: full.sent_at ?? null,
               paid_via_stripe: full.paid_via_stripe,
               client_name: full.client_name,
               client_color: full.client_color,
