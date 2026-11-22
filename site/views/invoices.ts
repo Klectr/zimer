@@ -232,7 +232,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     const rows = qInvoices.all() as any[];
     if (selected) {
       return layout(`Zinvoice ${selected.number}`,
-        `<div class="scroll-region" data-enter="3">${invoiceDetailBody(selected, origin)}</div>`, "invoices", true);
+        `<div data-enter="3">${invoiceDetailBody(selected, origin)}</div>`, "invoices");
     }
     const head = appHeader({
       title: "Zinvoices",
@@ -244,12 +244,12 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     });
     if (!rows.length) {
       return layout("Zinvoices", `${head}
-        <div class="scroll-region" data-enter="3">${emptyInvoices()}</div>`, "invoices", true);
+        <div data-enter="3">${emptyInvoices()}</div>`, "invoices");
     }
     const active = FILTERS.some(f => f.key === filters.status) ? String(filters.status) : "all";
     const q = String(filters.q || "").trim();
     return layout("Zinvoices", `${head}
-      <div class="scroll-region" data-enter="3">${invoiceListRegionHtml(rows, active, q)}</div>`, "invoices", true);
+      <div data-enter="3">${invoiceListRegionHtml(rows, active, q)}</div>`, "invoices");
   }
 
   function invoiceListRegionHtml(rows: any[], active: string, q: string): string {

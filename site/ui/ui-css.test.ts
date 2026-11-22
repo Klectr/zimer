@@ -468,7 +468,6 @@ describe("dead pane/form CSS (#1313)", () => {
       expect(css).not.toContain(sel);
     }
     expect(css).toContain(".cal-pane-layout");
-    expect(css).toContain(".scroll-region");
     expect(css).toContain(".ui-form-row");
     expect(css).toContain("--layout-supporting-pane");
   });
@@ -506,7 +505,12 @@ describe("phones scroll the page, not an inner region (#1211, #1219)", () => {
   test("the compact block releases app-fixed on every fixed page", () => {
     expect(compact()).toBeDefined();
     expect(compact()!).toContain("body.app-fixed { height: auto; overflow: visible; display: block; }");
-    expect(compact()!).toMatch(/body\.app-fixed \.scroll-region \{[^}]*overflow: visible/);
+  });
+
+  /* Zimer and Zinvoices no longer pin the viewport at any width: the inner
+     .scroll-region (short area, mid-page scrollbar) is gone with it. */
+  test("no inner scroll region is left to release", () => {
+    expect(css).not.toContain(".scroll-region");
   });
   test("calendar strips size to their week; neighbours collapse at rest, open while panning", () => {
     expect(compact()!).toContain("body.app-fixed .cal-track { height: auto; align-items: flex-start; }");
