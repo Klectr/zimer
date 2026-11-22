@@ -1396,7 +1396,7 @@ body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
 .mg-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-sm); margin: 0; padding: var(--spacing-xs) var(--spacing-sm); border-top: 1px solid var(--color-border-secondary); font-size: var(--font-size-sm); color: var(--color-text-tertiary); }
 @media (prefers-reduced-motion: reduce) { .mg-card { transition: none; } }
 .manage-edit-cell { text-align: right; white-space: nowrap; }
-#client-dialog-projects { margin-top: var(--spacing-md); }
+.cd-details-title { margin-top: var(--spacing-md); padding-top: var(--spacing-md); border-top: 1px solid var(--color-border-secondary); }
 .manage-delete-client { margin-top: var(--spacing-md); }
 .detail-form { margin-bottom: 12px; }
 /* #293: canned payment-terms description under the dropdown (supporting text). */

@@ -277,7 +277,9 @@ export function createManageViews(deps: ManageViewDeps) {
       return `<div data-client-name="No client">${clientDialogProjects(sel)}</div>`;
     }
     const c = sel.client;
-    return clientSettingsForm(c) + clientDialogProjects(sel) + `
+    /* Projects lead: they're what people open a client for most. The
+       contact form follows under its own Details heading. */
+    return clientDialogProjects(sel) + `<h3 class="ui-block-title cd-details-title">Details</h3>` + clientSettingsForm(c) + `
       <form method="post" action="/clients/${c.id}/delete" class="detail-form manage-delete-client">
         ${button({ label: "Delete client", variant: "ghost", danger: true, type: "submit", attrs: 'data-confirm="Delete this client? Its projects move to No client." data-confirm-label="Delete client"' })}
       </form>`;
@@ -320,7 +322,7 @@ export function createManageViews(deps: ManageViewDeps) {
         <div class="settings-dialog-head">
           <div>
             <h2 class="ui-dialog-title" id="client-settings-title">Client</h2>
-            <p class="ui-settings-note" id="client-settings-sub" hidden>Rate, terms, color, contact details, and projects.</p>
+            <p class="ui-settings-note" id="client-settings-sub" hidden>Projects, rate, terms, color, and contact details.</p>
           </div>
           ${iconButton({ icon: "close", label: "Close client dialog", id: "client-settings-close", tip: null })}
         </div>
