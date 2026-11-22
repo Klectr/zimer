@@ -154,10 +154,11 @@ export function createDomain(deps: DomainDeps) {
 
   /** Per-client finished, unbilled time with invoice rounding applied (#328).
       #992: aggregated in SQL instead of loading every unbilled entry into JS.
-      The per-entry math mirrors durationSeconds + roundUpSeconds exactly:
-      whole milliseconds from the stored ISO timestamps, rounded to the
-      nearest second (clamped at 0), then rounded UP to the increment with
-      integer division — a .5s remainder rounds up, an exact multiple stays. */
+      The per-entry math mirrors durationSeconds + roundUpSeconds for the
+      canonical toISOString() timestamps the app stores: whole milliseconds,
+      rounded to the nearest second (clamped at 0), then rounded UP to the
+      increment with integer division — a .5s remainder rounds up, an exact
+      multiple stays. */
   function unbilledByClient(): { id: number; name: string; secs: number }[] {
     const inc = ROUNDING_MINUTES * 60;
     const rows = db.query(
@@ -178,7 +179,7 @@ export function createDomain(deps: DomainDeps) {
        JOIN clients c ON c.id = d.client_id
        GROUP BY c.id, c.name
        HAVING secs > 0
-       ORDER BY c.name`).all() as any[];
+       ORDER BY c.name, c.id`).all() as any[];
     return rows.map(r => ({ id: r.id, name: r.name, secs: r.secs }));
   }
 

@@ -85,6 +85,19 @@ describe("unbilledByClient SQL aggregation (#992)", () => {
     ]);
   });
 
+  test("round-up is per entry, not per client (61s + 61s bills 600, not 300)", () => {
+    const { add, domain } = setupUbc();
+    add(3, "2026-09-14T09:00:00.000Z", "2026-09-14T09:01:01.000Z");
+    add(3, "2026-09-14T10:00:00.000Z", "2026-09-14T10:01:01.000Z");
+    expect(domain.unbilledByClient()).toEqual([{ id: 2, name: "Alpha", secs: 600 }]);
+  });
+
+  test("300.5s rounds to 301s and bills 600 (a floor of the duration would bill 300)", () => {
+    const { add, domain } = setupUbc();
+    add(3, "2026-09-14T09:00:00.000Z", "2026-09-14T09:05:00.500Z");
+    expect(domain.unbilledByClient()).toEqual([{ id: 2, name: "Alpha", secs: 600 }]);
+  });
+
   test("rounds the duration to the nearest second before the round-up (300.4s counts as 300s, not 600s)", () => {
     const { add, domain } = setupUbc();
     add(3, "2026-09-14T09:00:00.000Z", "2026-09-14T09:05:00.400Z");
