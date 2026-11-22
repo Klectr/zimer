@@ -5,16 +5,11 @@
 
 import type { Database, Statement } from "bun:sqlite";
 import { addDays, dayBounds, durationSeconds, entryInvoiceMark, entryIsLocked, esc, fmtDur, greeting, money, schemeColor, sundayOf, todayStr } from "../lib/format.ts";
-import { timerPanel } from "../ui/timer-display.ts";
-import { card } from "../ui/card.ts";
-import { selectField, textField } from "../ui/field.ts";
-import { button } from "../ui/button.ts";
 import { entryRow as uiEntryRow } from "../ui/rows.ts";
-import { progressBar } from "../ui/progress.ts";
 import { appHeader } from "../ui/app-header.ts";
 import { iconButton } from "../ui/icon-button.ts";
 import { statStrip } from "../ui/stat.ts";
-import { tag } from "../ui/tag.ts";
+import { invoiceMark, repeatEntryForm, targetBar, timerRunningCard, timerStartCard, todayEntriesCard } from "../ui/timer-home.ts";
 import type { Entry } from "../lib/types.ts";
 
 export interface TimerViewDeps {
@@ -41,10 +36,8 @@ export function createTimerViews(deps: TimerViewDeps) {
     WHERE description IS NOT NULL AND TRIM(description) != ''
     GROUP BY description ORDER BY MAX(start_time) DESC LIMIT 15`);
 
-  function descDatalist(): string {
-    const rows = qDescSuggest.all() as { description: string }[];
-    if (!rows.length) return "";
-    return `<datalist id="tk-desc-suggest">${rows.map(r => `<option value="${esc(r.description)}">`).join("")}</datalist>`;
+  function descSuggestions(): string[] {
+    return (qDescSuggest.all() as { description: string }[]).map(r => r.description);
   }
 
   /* #473: canRepeat — one-tap restart of a finished entry. Hidden on the
@@ -61,7 +54,7 @@ export function createTimerViews(deps: TimerViewDeps) {
     /* #330: mark time that's already on an invoice (sent/paid) or in a draft. */
     const mark = entryInvoiceMark(e);
     /* #498: house plain tooltip (data-tip) instead of the native title. */
-    const invMark = mark ? `<span class="ui-inv-mark${mark.cls ? ` ${mark.cls}` : ""}" data-tip="${esc(mark.title)}">${esc(mark.label)}</span>` : "";
+    const invMark = mark ? invoiceMark({ label: mark.label, tip: mark.title, cls: mark.cls }) : "";
     const title = e.project_name
       ? (e.client_name ? `${e.client_name} — ${e.project_name}` : e.project_name)
       : (e.client_name || e.description || "No description");
@@ -79,11 +72,7 @@ export function createTimerViews(deps: TimerViewDeps) {
           /* #473: repeat posts the row's description + project to the
              existing /timer/start route (mini-form: hidden inputs survive
              quotes and apostrophes where hx-vals JSON would not). */
-          parts.push(`<form class="ui-repeat-form" hx-post="/timer/start" hx-target="#timer-card" hx-swap="outerHTML swap:200ms">
-          <input type="hidden" name="description" value="${esc(e.description ?? "")}">
-          <input type="hidden" name="project_id" value="${e.project_id ?? ""}">
-          ${iconButton({ icon: "repeat", label: "Repeat entry", tip: "Repeat", type: "submit" })}
-        </form>`);
+          parts.push(repeatEntryForm({ description: e.description ?? "", projectId: e.project_id }));
         }
         parts.push(iconButton({ icon: "delete", label: "Delete entry", tip: "Delete entry", danger: true, attrs: `hx-delete="/entries/${e.id}" hx-target="#entry-${e.id}" hx-swap="outerHTML swap:220ms" data-confirm="Delete this entry? This cannot be undone." data-confirm-label="Delete entry"` }));
       }
@@ -113,55 +102,18 @@ export function createTimerViews(deps: TimerViewDeps) {
         : (running.client_name ?? "");
       const context = [projLine, running.description ?? ""].filter(Boolean).join(" · ") || "No description";
       const rate = running.client_rate ?? 0;
-      const metaHtml = rate > 0
-        ? tag({ label: `${rate % 1 === 0 ? `$${rate}` : money(rate)} / hr`, tone: "primary" }) +
-          `<span class="ui-tag" id="timer-worth" data-rate="${rate}">Worth ${money((durationSeconds(running.start_time, null) * rate) / 3600)} so far</span>`
-        : "";
-      return timerPanel({
-        id: "timer-card",
-        elapsedId: "elapsed",
-        running: true,
-        statusHtml: tag({ label: "Running", tone: "success", dot: true }),
+      return timerRunningCard({
         context,
         startedAt: running.start_time,
-        elapsed: "…",
-        metaHtml: metaHtml || undefined,
-        actionsHtml: button({ label: "Stop", variant: "primary", icon: "stop", attrs: 'hx-post="/timer/stop" hx-target="#timer-card" hx-swap="outerHTML swap:200ms" data-tip="Stop (t)" aria-keyshortcuts="t"' }),
-      }) + `
-      <script>(function(){var el=document.getElementById('elapsed');if(!el)return;
-          if(window.__tkTick){clearInterval(window.__tkTick);window.__tkTick=null;}
-          var s=new Date(el.dataset.start).getTime();
-          var st=document.querySelector('#timer-card time[data-ts]');
-          if(st)st.textContent=new Date(st.getAttribute('data-ts')).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
-          function fmtDurRow(d){var t=Math.floor(d/1000),
-            h=Math.floor(t/3600),m=Math.floor(t%3600/60),sec=t%60;
-            if(h>0)return m>0?h+'h '+String(m).padStart(2,'0')+'m':h+'h';
-            if(m>0)return m+'m'+(sec>0?' '+String(sec).padStart(2,'0')+'s':'');
-            return sec+'s';}
-          function tick(){var d=Math.max(0,Date.now()-s);
-            var h=Math.floor(d/36e5),m=Math.floor(d%36e5/6e4),sec=Math.floor(d%6e4/1e3);
-            el.textContent=(h?h+':':'')+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0');
-            var row=document.querySelector('#today-list [data-live-duration]');
-            if(row)row.textContent=fmtDurRow(d);
-            var w=document.getElementById('timer-worth');
-            if(w){var r=parseFloat(w.getAttribute('data-rate'))||0;w.textContent='Worth $'+(d/3600000*r).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})+' so far';}}
-          tick();window.__tkTick=setInterval(tick,1000);})();</script>`;
+        rate,
+        rateLabel: `${rate % 1 === 0 ? `$${rate}` : money(rate)} / hr`,
+        worth: money((durationSeconds(running.start_time, null) * rate) / 3600),
+      });
     }
     const options = [{ value: "", label: "No project" },
       ...projectOptionRows()
         .map(r => ({ value: String(r.id), label: r.client ? `${r.name} (${r.client})` : r.name }))];
-    return card({ id: "timer-card", content:
-      `<div class="ui-timer-top">${tag({ label: "Not tracking" })}</div>` +
-      `<form hx-post="/timer/start" hx-target="#timer-card" hx-swap="outerHTML swap:200ms" class="ui-timer-form">` +
-      `<div class="ui-timer-form-grow">${textField({ id: "tm-desc", label: "What are you working on?", name: "description", autocomplete: "off", list: "tk-desc-suggest" })}</div>` +
-      descDatalist() +
-      `<div class="ui-timer-form-project">${selectField({ id: "tm-project", label: "Project", name: "project_id", options })}</div>` +
-      button({ label: "Start", type: "submit", variant: "primary", icon: "play", attrs: 'data-tip="Start (t)" aria-keyshortcuts="t"' }) +
-      `</form>` +
-      `<script>(function(){
-        if(window.__tkTick){clearInterval(window.__tkTick);window.__tkTick=null;}
-      })();</script>`,
-    });
+    return timerStartCard({ projectOptions: options, suggestions: descSuggestions() });
   }
 
   /* #255: "today" is a client concept — the server may be in another timezone.
@@ -253,16 +205,7 @@ export function createTimerViews(deps: TimerViewDeps) {
       <div class="timer-home" data-enter="2" aria-label="Zimer and today's entries">
         <div class="timer-home-grid">
         ${timerPartial()}
-        <section class="ui-card">
-          <div class="ui-block-title">Today's entries</div>
-          <div id="today-list" hx-get="/partial/today" hx-trigger="load, timer-updated from:body">
-            <div class="skel-stack" aria-hidden="true">
-              <div class="skel skel-row"></div>
-              <div class="skel skel-row"></div>
-              <div class="skel skel-row"></div>
-            </div>
-          </div>
-        </section>
+        ${todayEntriesCard({ listAttrs: `hx-get="/partial/today" hx-trigger="load, timer-updated from:body"` })}
         </div>
         <script>(function(){/* #255: client day bounds + client-side time formatting.
               Runs at parse time, before htmx's load trigger fires. */
@@ -298,13 +241,12 @@ export function createTimerViews(deps: TimerViewDeps) {
       the user's setting, not the old 8h constant. */
   function todayTargetBar(totalSecs: number): string {
     const target = dayTargetSecs();
-    const pct = Math.min(100, (totalSecs / target) * 100);
     const met = totalSecs >= target;
-    return `
-      <div class="ui-target">
-        ${progressBar({ value: pct, label: `Today's hours target, ${target / 3600} hours` })}
-        <div class="ui-target-label">Today · ${fmtDur(totalSecs)} / ${fmtDur(target)}${met ? " · Target met" : ""}</div>
-      </div>`;
+    return targetBar({
+      pct: (totalSecs / target) * 100,
+      label: `Today · ${fmtDur(totalSecs)} / ${fmtDur(target)}${met ? " · Target met" : ""}`,
+      ariaLabel: `Today's hours target, ${target / 3600} hours`,
+    });
   }
 
   return { entryRow, timerPartial, todayPartial, todayStatsPartial, dashboardPage };
