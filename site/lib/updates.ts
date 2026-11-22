@@ -11,11 +11,10 @@
  *  (the browser never sees the feed URL) and fails soft to "unreachable".
  */
 
+import { commandLine, statusRow } from "../ui/status-row.ts";
 import { appVersion, appMajor } from "./version.ts";
-import { esc } from "./format.ts";
 import { settingsSection } from "../ui/settings-section.ts";
 import { button } from "../ui/button.ts";
-import { icon } from "./icons.ts";
 
 const DEFAULT_FEED_URL = "https://invoices.tristonarmstrong.com/releases/feed.json";
 
@@ -110,34 +109,16 @@ export function updateStatusFromFeed(feed: unknown, current: string, major: numb
 export function updateStatusHtml(s: UpdateStatus): string {
   switch (s.kind) {
     case "up-to-date":
-      return `<div class="status-row">${icon("check")}<div class="status-row-text">
-        <p class="status-row-headline">You're up to date</p>
-        <p class="status-row-supporting">Zimer v${esc(s.version)}</p>
-      </div></div>`;
+      return statusRow({ icon: "check", headline: "You're up to date", supporting: `Zimer v${s.version}` });
     case "no-releases":
-      return `<div class="status-row">${icon("info")}<div class="status-row-text">
-        <p class="status-row-headline">No releases published yet</p>
-        <p class="status-row-supporting">You're running a pre-release build.</p>
-      </div></div>`;
-    case "update-available": {
-      const cmd = `curl -fsSL ${installScriptUrl()} | bash`;
-      return `<div class="status-row status-row-primary">${icon("download")}<div class="status-row-text">
-        <p class="status-row-headline">v${esc(s.latest.version)} is available</p>
-        <p class="status-row-supporting">You're on v${esc(s.current)} — re-run the installer to update.</p>
-      </div></div>
-        <p class="muted">Your data, token, and settings are preserved:</p>
-        <p><code class="update-cmd">${esc(cmd)}</code></p>`;
-    }
+      return statusRow({ icon: "info", headline: "No releases published yet", supporting: "You're running a pre-release build." });
+    case "update-available":
+      return statusRow({ icon: "download", tone: "primary", headline: `v${s.latest.version} is available`, supporting: `You're on v${s.current} — re-run the installer to update.` }) +
+        commandLine({ note: "Your data, token, and settings are preserved:", command: `curl -fsSL ${installScriptUrl()} | bash` });
     case "unreachable":
-      return `<div class="status-row status-row-error" role="alert">${icon("alert")}<div class="status-row-text">
-        <p class="status-row-headline">Couldn't reach the update server</p>
-        <p class="status-row-supporting">Check your connection and try again.</p>
-      </div></div>`;
+      return statusRow({ icon: "alert", tone: "error", headline: "Couldn't reach the update server", supporting: "Check your connection and try again." });
     case "dev":
-      return `<div class="status-row">${icon("info")}<div class="status-row-text">
-        <p class="status-row-headline">Development build</p>
-        <p class="status-row-supporting">Update checks are disabled.</p>
-      </div></div>`;
+      return statusRow({ icon: "info", headline: "Development build", supporting: "Update checks are disabled." });
   }
 }
 
@@ -146,17 +127,14 @@ export function updateStatusHtml(s: UpdateStatus): string {
    links) the section becomes the single "About & updates" card — version,
    links, and the update check in one place, so the version shows once. */
 export function updateSectionHtml(opts?: { aboutActionsHtml?: string }): string {
-  const statusRow =
-    `<div id="update-status"><div class="status-row">${icon("info")}<div class="status-row-text">
-        <p class="status-row-headline">Zimer v${esc(appVersion())}</p>
-        <p class="status-row-supporting">Press the button to check for new releases.</p>
-      </div></div></div>`;
+  const status =
+    `<div id="update-status">${statusRow({ icon: "info", headline: `Zimer v${appVersion()}`, supporting: "Press the button to check for new releases." })}</div>`;
   const checkBtn = button({ label: "Check for updates", icon: "refresh", spinner: true, attrs: 'id="check-updates-btn" hx-post="/check-updates" hx-target="#update-status" hx-swap="innerHTML" hx-disabled-elt="#check-updates-btn"' });
   if (opts?.aboutActionsHtml !== undefined) {
     return settingsSection({
       level: 2, id: "about", title: "About & updates",
       hint: "Free forever on your own server. Updates are manual: check here, then re-run the installer.",
-      bodyHtml: `<div class="ui-about-row">${statusRow}${checkBtn}</div>`,
+      bodyHtml: `<div class="ui-about-row">${status}${checkBtn}</div>`,
       actionsHtml: opts.aboutActionsHtml,
     });
   }
