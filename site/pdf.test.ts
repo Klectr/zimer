@@ -137,7 +137,7 @@ describe("#899: PDF second page shows the time-breakdown chart", () => {
     const text = pdfText({ ...base, timeBreakdown: days });
     expect(text).toContain("/Count 2");
     expect(text).toContain("Page 2 of 2");
-    expect(text).toContain("T I M E   B R E A K D O W N");
+    expect(text).toContain("(TIME BREAKDOWN) Tj");
     expect(text).toContain("Tracked time by day");
     expect(text).toContain("Sep 8");
   });
@@ -164,5 +164,44 @@ describe("#899: PDF second page shows the time-breakdown chart", () => {
     const text = pdfText({ ...base, timeBreakdown: [] });
     expect(text).toContain("/Count 1");
     expect(text).not.toContain("TIME BREAKDOWN");
+  });
+});
+
+/** Client-facing PDF content: the pay link is labelled by what it can do,
+ *  the business's payment instructions are printed, descriptions wrap
+ *  instead of truncating, and caps labels are real words (tracked with Tc). */
+describe("PDF content fixes", () => {
+  const sent = { ...base, payUrl: "https://zimer.example/i/tok", terms: "Payment is due within 30 days of the invoice date." };
+
+  test("no card link: the URL is labelled VIEW ONLINE, never PAY ONLINE", () => {
+    const text = pdfText(sent);
+    expect(text).toContain("(VIEW ONLINE) Tj");
+    expect(text).not.toContain("PAY ONLINE");
+  });
+
+  test("with a card link the label is PAY ONLINE", () => {
+    expect(pdfText({ ...sent, payByCard: true })).toContain("(PAY ONLINE) Tj");
+  });
+
+  test("payment instructions print under HOW TO PAY, line by line, on unpaid invoices only", () => {
+    const withHow = { ...sent, paymentInstructions: "Bank transfer to Northstar Studio, acct ending 4821.\nOr mail a check to 1 Main St." };
+    const text = pdfText(withHow);
+    expect(text).toContain("(HOW TO PAY) Tj");
+    expect(text).toContain("acct ending 4821.");
+    expect(text).toContain("Or mail a check to 1 Main St.");
+    expect(pdfText({ ...withHow, status: "paid" })).not.toContain("HOW TO PAY");
+  });
+
+  test("long descriptions wrap onto more lines — every word survives, no ellipsis", () => {
+    const desc = "Brand refresh — logo exploration, type system, colour palette and usage guidelines";
+    const text = pdfText({ ...base, items: [{ description: desc, hours: 12.25, rate: 120, amount: 1470, dateFrom: null, dateTo: null }] });
+    for (const w of ["exploration,", "palette", "usage", "guidelines"]) expect(text).toContain(w);
+    expect(text).not.toContain("...)");
+  });
+
+  test("caps labels are whole words with character spacing, not letters separated by spaces", () => {
+    const text = pdfText({ ...sent, items: [{ description: "x", hours: 1, rate: 1, amount: 1, dateFrom: null, dateTo: null }], notes: "n", fromName: "Northstar" });
+    for (const l of ["BILL TO", "FROM", "DATE", "DESCRIPTION", "HOURS", "RATE", "AMOUNT", "PAYMENT TERMS", "NOTES"]) expect(text).toContain(`(${l}) Tj 0 Tc`);
+    expect(text).not.toMatch(/\((?:[A-Z] ){3,}/);
   });
 });

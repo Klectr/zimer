@@ -179,6 +179,13 @@ export function termsDescription(terms: string | null | undefined): string {
   return isPaymentTermsKey(t) ? PAYMENT_TERMS[t as PaymentTermsKey].description : PAYMENT_TERMS[DEFAULT_PAYMENT_TERMS].description;
 }
 
+/** The terms sentence as a client reads it (PDF, sheet, public page).
+ *  "Zinvoice" is our product word for the user; a client's document just
+ *  says "invoice". */
+export function clientTermsDescription(terms: string | null | undefined): string {
+  return termsDescription(terms).replace(/Zinvoice/g, "invoice");
+}
+
 /* ---------------- durations ---------------- */
 export function durationSeconds(startIso: string, endIso: string | null): number {
   const end = endIso ? new Date(endIso).getTime() : Date.now();

@@ -56,6 +56,12 @@ export type PdfInvoice = {
   fromAddress?: string;
   terms?: string; // #243: plain-language payment terms near the totals
   payUrl?: string; // #243: public invoice URL — the payment instruction
+  /** The page behind payUrl can take a card payment (a Stripe link exists).
+      Without it the link only shows the invoice: label it VIEW, not PAY. */
+  payByCard?: boolean;
+  /** The business's own "how to pay" text (bank transfer, check…), from
+      Settings. Printed on unpaid invoices — often the only way to pay. */
+  paymentInstructions?: string;
 };
 
 /* Widths (units per 1000) for the only glyphs used in right-aligned numerics. */
@@ -146,6 +152,15 @@ class PdfDoc {
     const fillRgb = Array.isArray(rgb) ? rgb : null;
     const color = fillRgb ? `${fillRgb[0].toFixed(3)} ${fillRgb[1].toFixed(3)} ${fillRgb[2].toFixed(3)} rg ` : gray ? "0.45 0.45 0.45 rg " : "0 0 0 rg ";
     this.cmds.push(`BT ${color}/F${bold ? 2 : 1} ${size} Tf ${x.toFixed(1)} ${yy.toFixed(1)} Td (${escPdf(s)}) Tj ET`);
+  }
+  /** Letter-spaced caps label. The spacing is the PDF's character spacing
+      (Tc), so the text itself stays "BILL TO" — copy, search and screen
+      readers read the word, not one letter per word. */
+  label(x: number, yy: number, size: number, s: string, rgb: [number, number, number] | "gray" = "gray", alignRight = false) {
+    const color = rgb === "gray" ? "0.45 0.45 0.45 rg " : `${rgb[0].toFixed(3)} ${rgb[1].toFixed(3)} ${rgb[2].toFixed(3)} rg `;
+    const tc = trackedTc(size);
+    const xx = alignRight ? x - labelWidth(s, size) : x;
+    this.cmds.push(`BT ${color}/F2 ${size} Tf ${tc.toFixed(2)} Tc ${xx.toFixed(1)} ${yy.toFixed(1)} Td (${escPdf(s)}) Tj 0 Tc ET`);
   }
   rtext(rightX: number, yy: number, size: number, s: string, bold = false, gray: boolean | [number, number, number] = false) {
     this.text(rightX - numWidth(s, size), yy, size, s, bold, gray === true, Array.isArray(gray) ? gray : undefined);
@@ -270,6 +285,32 @@ function capsWidth(s: string, size: number): number {
   return (w * size) / 1000;
 }
 
+/* Tracking for caps labels: ~0.28em between letters — the same rhythm the
+   old space-between-letters labels had. */
+function trackedTc(size: number): number { return size * 0.28; }
+/* Rendered width of a tracked label: glyphs plus Tc after every character
+   but the last (Tc also applies to the word space). */
+function labelWidth(s: string, size: number): number {
+  return capsWidth(s, size) + trackedTc(size) * Math.max(0, [...s].length - 1);
+}
+
+/** Word-wrap to a character budget (Helvetica ~0.5em per char at the cell's
+ *  size); words longer than a line are split. */
+function wrapChars(text: string, max: number): string[] {
+  const out: string[] = [];
+  let line = "";
+  for (let w of text.trim().split(/\s+/)) {
+    while (w.length > max) {
+      if (line) { out.push(line); line = ""; }
+      out.push(w.slice(0, max)); w = w.slice(max);
+    }
+    const trial = line ? `${line} ${w}` : w;
+    if (trial.length > max && line) { out.push(line); line = w; } else line = trial;
+  }
+  if (line) out.push(line);
+  return out.length ? out : [""];
+}
+
 /* #831: the PDF badge agrees with the list's status pill — a draft was never
    sent, so it reads DRAFT on a neutral gray instead of the amber UNPAID
    reserved for sent invoices awaiting payment. */
@@ -300,7 +341,7 @@ function drawModern(inv: PdfInvoice, doc: PdfDoc) {
 
   /* ---- bill-to (left) / from (right) ---- */
   const colsY = doc.y;
-  doc.text(M, colsY, 8.5, "B I L L   T O", true, true);
+  doc.label(M, colsY, 8.5, "BILL TO");
   doc.text(M, colsY - 17, 13, inv.clientName || "-", true);
   /* #627: client address (multi-line) + email under the name. */
   let billY = colsY - 17 - 16;
@@ -313,7 +354,7 @@ function drawModern(inv: PdfInvoice, doc: PdfDoc) {
   const hasFrom = inv.fromName || inv.fromEmail || inv.fromAddress;
   if (hasFrom) {
     let fy = colsY;
-    doc.rtext(RIGHT, fy, 8.5, "F R O M", true, true); fy -= 17;
+    doc.label(RIGHT, fy, 8.5, "FROM", "gray", true); fy -= 17;
     /* #637: From block mirrors the Bill-to order — name, address lines,
        then email last. */
     if (inv.fromName) { doc.rtext(RIGHT, fy, 12, inv.fromName, true); fy -= 16; }
@@ -345,11 +386,11 @@ function drawModern(inv: PdfInvoice, doc: PdfDoc) {
   const RH = 24;
   const tableHead = () => {
     doc.fill(M, doc.y - 8, RIGHT - M, 24, INK);
-    doc.text(C_DATE + 10, doc.y, 9, "D A T E", true, false, WHITE);
-    doc.text(C_DESC + 10, doc.y, 9, "D E S C R I P T I O N", true, false, WHITE);
-    doc.text(C_HOURS - capsWidth("H O U R S", 9), doc.y, 9, "H O U R S", true, false, WHITE);
-    doc.text(C_RATE - capsWidth("R A T E", 9), doc.y, 9, "R A T E", true, false, WHITE);
-    doc.text(C_AMT - 10 - capsWidth("A M O U N T", 9), doc.y, 9, "A M O U N T", true, false, WHITE);
+    doc.label(C_DATE + 10, doc.y, 9, "DATE", WHITE);
+    doc.label(C_DESC + 10, doc.y, 9, "DESCRIPTION", WHITE);
+    doc.label(C_HOURS, doc.y, 9, "HOURS", WHITE, true);
+    doc.label(C_RATE, doc.y, 9, "RATE", WHITE, true);
+    doc.label(C_AMT - 10, doc.y, 9, "AMOUNT", WHITE, true);
     doc.y -= 8 + 24;
   };
   tableHead();
@@ -358,20 +399,24 @@ function drawModern(inv: PdfInvoice, doc: PdfDoc) {
     doc.text(M + 10, doc.y - 4, 10, "No line items.", false, true);
     doc.y -= RH;
   }
+  /* Descriptions wrap (never truncate — the client must see what they're
+     paying for). Extra lines grow the row; the figures sit on line one. */
+  const LINE_H = 13;
   inv.items.forEach((it, i) => {
-    if (doc.y < 150) {
+    const descLines = wrapChars(it.description, 44);
+    const extra = (descLines.length - 1) * LINE_H;
+    if (doc.y - extra < 150) {
       doc.newPage();
       tableHead();
     }
-    if (i % 2 === 1) doc.fill(M, doc.y - 8, RIGHT - M, RH, PAPER);
-    const desc = it.description.length > 44 ? it.description.slice(0, 41) + "..." : it.description;
+    if (i % 2 === 1) doc.fill(M, doc.y - 8 - extra, RIGHT - M, RH + extra, PAPER);
     doc.text(C_DATE + 10, doc.y - 2, 10, lineDate(it));
-    doc.text(C_DESC + 10, doc.y - 2, 10, desc);
+    descLines.forEach((l, k) => doc.text(C_DESC + 10, doc.y - 2 - k * LINE_H, 10, l));
     const hours = (Math.round(it.hours * 100) / 100).toFixed(2);
     doc.rtext(C_HOURS, doc.y - 2, 10, hours);
     doc.rtext(C_RATE, doc.y - 2, 10, money(it.rate));
     doc.rtext(C_AMT - 10, doc.y - 2, 10, money(it.amount));
-    doc.y -= RH;
+    doc.y -= RH + extra;
   });
   doc.y -= 10;
 
@@ -395,16 +440,30 @@ function drawModern(inv: PdfInvoice, doc: PdfDoc) {
   /* ---- payment (#243): online payment link + plain-language terms ---- */
   if (inv.payUrl) {
     doc.y -= 8;
-    doc.text(M, doc.y, 8.5, "P A Y   O N L I N E", true, true);
+    /* Only a card payment link makes the page payable — otherwise the link
+       just shows the invoice, and "PAY ONLINE" would send the client to a
+       page with no Pay button. */
+    doc.label(M, doc.y, 8.5, inv.payByCard ? "PAY ONLINE" : "VIEW ONLINE");
     doc.y -= 15;
     doc.text(M, doc.y, 10, inv.payUrl);
     doc.y -= 14;
+  }
+  /* The business's own payment instructions (bank transfer, check…). On an
+     emailed PDF this is often the client's only way to pay. */
+  if (inv.status !== "paid" && inv.paymentInstructions?.trim()) {
+    doc.y -= 8;
+    doc.label(M, doc.y, 8.5, "HOW TO PAY");
+    doc.y -= 15;
+    for (const l of inv.paymentInstructions.trim().split("\n")) {
+      if (l.trim()) para(doc, l.trim(), 10); else doc.y -= 6;
+    }
+    doc.y -= 4;
   }
   /* #875: paid invoices have nothing due — drop the terms block, like the
      pay-online link (#639). */
   if (inv.status !== "paid" && inv.terms?.trim()) {
     doc.y -= 8;
-    doc.text(M, doc.y, 8.5, "P A Y M E N T   T E R M S", true, true);
+    doc.label(M, doc.y, 8.5, "PAYMENT TERMS");
     doc.y -= 15;
     para(doc, inv.terms.trim(), 10);
     doc.y -= 8;
@@ -413,7 +472,7 @@ function drawModern(inv: PdfInvoice, doc: PdfDoc) {
   /* ---- notes ---- */
   if (inv.notes.trim()) {
     doc.y -= 14;
-    doc.text(M, doc.y, 8.5, "N O T E S", true, true);
+    doc.label(M, doc.y, 8.5, "NOTES");
     doc.y -= 16;
     const words = inv.notes.split(/\s+/);
     let lineText = "";
@@ -458,7 +517,7 @@ function drawTimeBreakdown(inv: PdfInvoice, doc: PdfDoc) {
   const days = (inv.timeBreakdown ?? []).filter(d => d.hours > 0);
   if (!days.length) return;
   doc.newPage();
-  doc.text(M, doc.y, 8.5, "T I M E   B R E A K D O W N", true, true);
+  doc.label(M, doc.y, 8.5, "TIME BREAKDOWN");
   doc.y -= 24;
   const total = inv.timeBreakdownTotal ?? days.reduce((a, d) => a + d.hours, 0);
   doc.text(M, doc.y, 13, `Tracked time by day  -  ${fmtHrs(total)} total`, true);
