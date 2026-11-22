@@ -572,3 +572,17 @@ describe("tablet-width overflow fixes", () => {
     expect(css).toContain(".ui-agenda-gap-head:hover { background: var(--color-fill-tertiary); box-shadow: 0 0 0 var(--spacing-xs) var(--color-fill-tertiary); }");
   });
 });
+
+/** Compact Zinvoice rows show one labelled date, chosen by status. */
+describe("compact Zinvoice row dates", () => {
+  const block = () => css.match(/@container \(max-width: 559px\) \{[^]*?\n\}/)![0];
+  test("Issued is hidden in compact rows; no 'Issued' label remains", () => {
+    expect(block()).toContain(".inv-table-card td:nth-child(3) { display: none; }");
+    expect(css).not.toContain('content: "Issued "');
+  });
+  test("drafts show no date; paid shows only its Paid date", () => {
+    expect(block()).toContain(".inv-table-card tr.is-draft td.col-opt { display: none; }");
+    expect(block()).toContain(".inv-table-card tr.is-paid .inv-cell-main { display: none; }");
+    expect(block()).toContain(".inv-table-card tr.is-paid td.col-opt::before { content: none; }");
+  });
+});

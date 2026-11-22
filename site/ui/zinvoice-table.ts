@@ -42,8 +42,10 @@ function dueCell(r: ZinvoiceTableRow): string {
 export function zinvoiceTableRows(rows: ZinvoiceTableRow[]): string {
   return rows.map((r) => {
     const issued = r.status !== "draft" && r.issued ? esc(r.issued) : "—";
+    /* The status class lets the compact (stacked) row show the one date
+       that matters for that status. */
     return `
-      <tr>
+      <tr class="is-${r.status}">
         <td><a class="inv-num-link" href="${esc(r.href)}">${esc(r.number)}</a></td>
         <td>${r.client ? esc(r.client) : "<em>No client</em>"}</td>
         <td>${issued}</td>

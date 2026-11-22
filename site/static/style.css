@@ -1107,8 +1107,14 @@ body.app-fixed .ui-shell-main { min-height: 0; }
   .inv-table-card .inv-num-link { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; }
   .inv-table-card td.num { order: 2; flex: 0 0 auto; }
   .inv-table-card td:nth-child(2) { order: 3; color: var(--color-text-secondary); font-size: var(--font-size-sm); overflow-wrap: anywhere; }
-  .inv-table-card td:nth-child(3) { order: 4; color: var(--color-text-secondary); font-size: var(--font-size-sm); white-space: nowrap; }
-  .inv-table-card td:nth-child(3)::before { content: "Issued "; color: var(--color-text-tertiary); }
+  /* One date per compact row, the one that matters: "Due Dec 14" while
+     sent, "Paid Oct 18" once paid, none on a draft. Issued stays on the
+     wide table and the Zinvoice itself. */
+  .inv-table-card td:nth-child(3) { display: none; }
+  .inv-table-card tr.is-draft td.col-opt { display: none; }
+  .inv-table-card tr.is-paid td.col-opt::before { content: none; }
+  .inv-table-card tr.is-paid .inv-cell-main { display: none; }
+  .inv-table-card tr.is-paid .inv-cell-sub { margin: 0; }
   .inv-table-card td.col-opt { order: 5; display: block; color: var(--color-text-secondary); font-size: var(--font-size-sm); }
   .inv-table-card td.col-opt::before { content: "Due "; color: var(--color-text-tertiary); }
   .inv-table-card td:nth-child(5) { order: 6; margin-left: auto; }
