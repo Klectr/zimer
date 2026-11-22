@@ -7,7 +7,7 @@
 import { describe, expect, test } from "bun:test";
 import type { Database, Statement } from "bun:sqlite";
 import { Database as BunDatabase } from "bun:sqlite";
-import { createApiRouter } from "./api.ts";
+import { createApiRouter, nonNegativeRate } from "./api.ts";
 import { todayStr } from "../lib/format.ts";
 
 const stubStatement = () =>
@@ -506,6 +506,137 @@ describe("POST /api/invoices date validation (#1436)", () => {
     const res = await post(tenant, { client_id: 3, items: [{ description: "Placeholder", hours: 0, rate: 100, date_from: "2026-02-30" }, item] });
     expect(res.status).toBe(201);
     expect((tenant.db.query("SELECT COUNT(*) AS n FROM invoice_items").get() as any).n).toBe(1);
+  });
+});
+
+describe("API rate validation (#1440)", () => {
+  function rateTenant() {
+    const db = new BunDatabase(":memory:");
+    db.exec(`CREATE TABLE clients (id INTEGER PRIMARY KEY, name TEXT, color TEXT, rate REAL)`);
+    db.exec(`CREATE TABLE invoices (id INTEGER PRIMARY KEY, status TEXT NOT NULL DEFAULT 'draft', paid_at TEXT)`);
+    db.exec(`CREATE TABLE invoice_items (id INTEGER PRIMARY KEY, invoice_id INTEGER, description TEXT, hours REAL, rate REAL, amount REAL, date_from TEXT, date_to TEXT)`);
+    db.exec(`CREATE TABLE time_entries (id INTEGER PRIMARY KEY, invoice_id INTEGER)`);
+    for (const col of ["client_id INTEGER", "number TEXT", "issue_date TEXT", "due_date TEXT",
+      "tax_rate REAL DEFAULT 0", "notes TEXT DEFAULT ''", "internal_notes TEXT DEFAULT ''",
+      "period_from TEXT", "period_to TEXT"])
+      db.exec(`ALTER TABLE invoices ADD COLUMN ${col}`);
+    return {
+      db,
+      qRunning: stubStatement(), qOne: stubStatement(), qRange: stubStatement(),
+      qInvoice: { get: (id: number) => db.query("SELECT id, status FROM invoices WHERE id = ?").get(id) } as unknown as Statement,
+      qInvoices: stubStatement(),
+      groupToLineItems: () => [], unbilledEntries: () => [],
+      getInvoice: (id: number) => db.query("SELECT * FROM invoices WHERE id = ?").get(id) as any,
+      invoiceTotals: () => ({ subtotal: 0, tax: 0, total: 0 }),
+      nextInvoiceNumber: () => "INV-0001", mintPublicToken: () => "tok",
+      stripeLinkFor: async () => ({}),
+      revenueTotals: () => null, revenueMonthly: () => [], revenueByClient: () => [],
+      revenueOverdue: () => [], revenueSnapshot: () => ({ totals: null, by_month: [], by_client: [], overdue: [] }), freezeInvoiceSnapshots: () => {},
+    };
+  }
+  function routerFor(tenant: any) {
+    return createApiRouter({
+      getTenant: () => tenant as any,
+      TOKEN: "test-token",
+      authedApi: () => true,
+      json: (data: unknown, status = 200) => Response.json(data, { status }),
+      entryToJson: (e: any) => e,
+      verifyWebhookSignature: () => false,
+      shareOrigin: () => "",
+    }).handleApi;
+  }
+  async function post(tenant: any, path: string, body: unknown) {
+    const handleApi = routerFor(tenant);
+    const req = new Request(`http://localhost${path}`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    return (await handleApi(req, new URL(req.url), path, "POST"))!;
+  }
+  const item = { description: "Work", hours: 1, rate: 100 };
+  test("nonNegativeRate: absent and blank mean 0, valid values pass, negative and garbage fail", () => {
+    expect(nonNegativeRate(undefined)).toBe(0);
+    expect(nonNegativeRate(null)).toBe(0);
+    expect(nonNegativeRate("")).toBe(0);
+    expect(nonNegativeRate(40)).toBe(40);
+    expect(nonNegativeRate("12.5")).toBe(12.5);
+    expect(nonNegativeRate(-1)).toBeNull();
+    expect(nonNegativeRate("abc")).toBeNull();
+    expect(nonNegativeRate(true)).toBeNull();
+    expect(nonNegativeRate([50])).toBeNull();
+    expect(nonNegativeRate({})).toBeNull();
+  });
+  test("POST /api/clients with a boolean rate is a 400 and creates nothing", async () => {
+    const tenant = rateTenant();
+    const res = await post(tenant, "/api/clients", { name: "Acme", rate: true });
+    expect(res.status).toBe(400);
+    expect((tenant.db.query("SELECT COUNT(*) AS n FROM clients").get() as any).n).toBe(0);
+  });
+  test("POST /api/invoices with a rate too large to round is a 400 and creates nothing", async () => {
+    const tenant = rateTenant();
+    const res = await post(tenant, "/api/invoices", { client_id: 3, items: [{ ...item, rate: 1e307 }] });
+    expect(res.status).toBe(400);
+    expect((await res.json() as any).error).toContain("rate");
+    expect((tenant.db.query("SELECT COUNT(*) AS n FROM invoices").get() as any).n).toBe(0);
+    expect((tenant.db.query("SELECT COUNT(*) AS n FROM invoice_items").get() as any).n).toBe(0);
+  });
+  test("POST /api/invoices from/to path stores grouped items at the validated rate", async () => {
+    const tenant = rateTenant();
+    (tenant as any).unbilledEntries = () => [{ id: 1 }];
+    (tenant as any).groupToLineItems = (_groups: any[], rate: number) => [{ description: "Work", hours: 2, rate, entry_ids: [1] }];
+    const res = await post(tenant, "/api/invoices", { client_id: 3, from: "2026-11-07", to: "2026-11-20", rate: 50 });
+    expect(res.status).toBe(201);
+    const row = tenant.db.query("SELECT rate, amount FROM invoice_items").get() as any;
+    expect(row).toEqual({ rate: 50, amount: 100 });
+  });
+  test("POST /api/clients with a negative rate is a 400 and creates nothing", async () => {
+    const tenant = rateTenant();
+    const res = await post(tenant, "/api/clients", { name: "Acme", rate: -50 });
+    expect(res.status).toBe(400);
+    expect((await res.json() as any).error).toContain("rate");
+    expect((tenant.db.query("SELECT COUNT(*) AS n FROM clients").get() as any).n).toBe(0);
+  });
+  test("POST /api/clients stores a valid rate and defaults an absent one to 0", async () => {
+    const tenant = rateTenant();
+    const ok = await post(tenant, "/api/clients", { name: "Acme", rate: 40 });
+    expect(ok.status).toBe(201);
+    expect((await ok.json() as any).rate).toBe(40);
+    const bare = await post(tenant, "/api/clients", { name: "Beta" });
+    expect(bare.status).toBe(201);
+    expect((await bare.json() as any).rate).toBe(0);
+  });
+  test("POST /api/invoices with a negative tax_rate is a 400 and creates nothing", async () => {
+    const tenant = rateTenant();
+    const res = await post(tenant, "/api/invoices", { client_id: 3, items: [item], tax_rate: -5 });
+    expect(res.status).toBe(400);
+    expect((await res.json() as any).error).toContain("tax_rate");
+    expect((tenant.db.query("SELECT COUNT(*) AS n FROM invoices").get() as any).n).toBe(0);
+  });
+  test("POST /api/invoices stores a valid tax_rate", async () => {
+    const tenant = rateTenant();
+    const res = await post(tenant, "/api/invoices", { client_id: 3, items: [item], tax_rate: 10 });
+    expect(res.status).toBe(201);
+    expect((tenant.db.query("SELECT tax_rate FROM invoices").get() as any).tax_rate).toBe(10);
+  });
+  test("POST /api/invoices with a negative item rate is a 400 and creates nothing", async () => {
+    const tenant = rateTenant();
+    const res = await post(tenant, "/api/invoices", { client_id: 3, items: [{ ...item, rate: -100 }] });
+    expect(res.status).toBe(400);
+    expect((await res.json() as any).error).toContain("rate");
+    expect((tenant.db.query("SELECT COUNT(*) AS n FROM invoices").get() as any).n).toBe(0);
+  });
+  test("a dropped zero-hour row's negative rate is not validated", async () => {
+    const tenant = rateTenant();
+    const res = await post(tenant, "/api/invoices", { client_id: 3, items: [{ description: "Placeholder", hours: 0, rate: -100 }, item] });
+    expect(res.status).toBe(201);
+    expect((tenant.db.query("SELECT COUNT(*) AS n FROM invoice_items").get() as any).n).toBe(1);
+  });
+  test("POST /api/invoices with a negative from/to rate is a 400 and creates nothing", async () => {
+    const tenant = rateTenant();
+    const res = await post(tenant, "/api/invoices", { client_id: 3, from: "2026-11-07", to: "2026-11-20", rate: -50 });
+    expect(res.status).toBe(400);
+    expect((await res.json() as any).error).toContain("rate");
+    expect((tenant.db.query("SELECT COUNT(*) AS n FROM invoices").get() as any).n).toBe(0);
   });
 });
 
