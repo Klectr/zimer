@@ -156,11 +156,11 @@ describe("paid-on date", () => {
     const html = views([{ ...baseRow, status: "paid", paid_at: "2026-09-21" }]).invoiceListOob(7);
     expect(html).toContain('<a class="inv-num-link" href="/invoices?invoice=7">INV-0007</a>');
     expect(html).toContain("<td>Acme</td>");
-    expect(html).toContain("<td>Sep 1</td>");
+    expect(html).toContain('<td class="col-issued">Sep 1</td>');
     expect(html).toContain('<span class="inv-cell-main">Sep 30</span>');
     expect(html).toContain("Paid Sep 21");
     const html2 = views([{ ...baseRow, status: "sent", paid_at: null }]).invoiceListOob(0);
-    expect(html2).toContain("<td>Sep 1</td>");
+    expect(html2).toContain('<td class="col-issued">Sep 1</td>');
     expect(html2).toContain('<span class="inv-cell-main">Sep 30</span>');
     expect(html2).toContain("ui-chip-sent");
   });
@@ -169,7 +169,7 @@ describe("paid-on date", () => {
     const html = views([{ ...baseRow, status: "draft", paid_at: null }]).invoiceListOob(0);
     expect(html).toContain('href="/invoices?invoice=7"');
     expect(html).not.toContain(">View</a>");
-    expect(html).toContain('<td class="col-opt">—</td>');
+    expect(html).toContain('<td class="col-due">—</td>');
   });
 
   test("#448: stripe-paid chip uses the icon system, not an emoji", () => {
@@ -623,7 +623,7 @@ describe("list vs detail selection", () => {
     expect(html).toContain('hx-get="/invoices?status=paid" hx-target="#inv-list-region" hx-swap="innerHTML" hx-push-url="true"');
     expect(html).toContain('<th scope="col">Number</th>');
     expect(html).toContain('<th scope="col">Client</th>');
-    expect(html).toContain('<th scope="col">Issued</th>');
+    expect(html).toContain('<th scope="col" class="col-issued">Issued</th>');
     expect(html).not.toContain('id="invoice-detail"');
   });
   test("the htmx list region returns stats, chips, and rows without the shell", () => {
