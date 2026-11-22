@@ -2,21 +2,23 @@
 
 What's new in Zimer, newest first.
 
-## 2026-11-09
+## 2026-11-21
 
-- **The suite mock's surface style is live across the app.** Cards are translucent glass on a 14px radius, auth and public sheets sit on 20px surfaces, inputs are 8px, and chips, tags, and tabs are pills. The token scale in `DESIGN.md` matches.
-- **Settings carries your data and the self-hosted offer.** Two new cards give one-click backup and CSV exports, plus the version, changelog, and install guide. The retired license-key form is not back.
-- **Settings is two balanced columns.** Profile and a new Preferences card (daily target, accent) sit on the left; plan, data, and updates on the right. Profile fields go 2-up, and the modal stays single-column.
-- **The Zinvoices list reads like the mock.** One line per column: Number, Client, Issued, Due, Status, Total. Drafts dash their dates, overdue shows its age, and the number opens the detail.
-- **New Zinvoice is the mock's two-column page.** The 480px form cap is gone, client/period/rate sit on one row, the unbilled table renders before a client is picked, and the preview card stays beside the form instead of the page collapsing to a narrow strip.
-- **Zinvoices filters swap in place.** Status chips and the search field update the stats, chips, and table through HTMX instead of reloading the page; the URL still carries the filter for back/forward.
-- **Clients table Edit works again.** Escaped path regexes inside the page script survived the template literal, so the Edit dialog opens instead of the script dying before wiring its click handler.
-- **The hosted landing is the mock's page.** A centered promise, a working timer and Zinvoice preview, the three-card bento, and the two-plan price grid.
-- **The timer home is one column again.** Today's entries follow the timer card directly; the revenue rail is gone.
-- **The timer home's stats are one compact strip.** Today, this week, and unbilled share a single card with their goals inline, so three numbers stop eating a third of the screen.
-- **Calendar day columns are cards.** The week grid keeps drag and resize, and each week gains the Billable/Invoiced legend and a week-scoped CSV export.
-- **The stacked calendar summary is one compact band.** Between 840 and 1279px the week total and billable share a line, the Zinvoice action moves beside the week arrows, and the grid gets the reclaimed height.
-- **Calendar day headers stay on one line.** Each day is its weekday initial plus the day number; hovering it opens the day tooltip with the full date, tracked total, entry count, and invoiced count.
+- **Zimer has a new look, everywhere.** Every page follows one design system: calmer surfaces, one type and spacing scale, and a single pumpkin accent for the action that matters most. Icons replace text symbols, and buttons say what they do.
+- **The Zimer page puts your timer and today side by side.** On wide screens the timer card and Today's entries share a row, today, this week, and unbilled sit in one compact strip, and the whole page scrolls as one.
+- **The calendar reads better.** Weeks open on your earliest entry, blocks use your client colors and keep their times visible, runs of empty days fold away in the agenda, this week compares to the same point last week, and phones scroll the page instead of a small box.
+- **Clients is one quiet table.** One row per client: hours this month, unbilled, outstanding, and when you last tracked. Hover a row for its projects and open Zinvoices; click it to manage projects, which now come first in the dialog.
+- **Settings is one ordered column.** Business profile, preferences, your data (backup and CSV exports), and About & updates, centered on wide screens. Saving confirms with a toast.
+- **The Zinvoices list puts dates on the status.** The list is number, client, status, and total. The chip says what's next (Due Dec 14, Overdue 12d) and its tooltip says when it was sent or paid. On phones each row stacks into a clean card.
+- **New Zinvoices keep the billing period you pick.** The From and To dates are saved and printed as the billing period, even when the period starts before your first worked day, and the next Zinvoice picks up the day after it ends. The live total shows thousands separators again.
+- **Zimer remembers when you sent a Zinvoice.** Sending records the date, and it shows in the Zinvoice's timeline and the list.
+- **Zinvoice PDFs are cleaner.** Your logo is back in the header, long descriptions wrap instead of being cut off, dates and dashes print properly, and the due date appears once, right under the total. The badge only appears for Overdue, Paid, or Draft.
+- **PDFs tell your client how to pay.** Your payment instructions print under How to pay, and the link only says Pay online when a card payment is set up.
+- **Your clients see "invoice", not "Zinvoice".** The PDF and the public page use the plain word; Zinvoice stays the name inside Zimer.
+- **The public Zinvoice page is complete.** It shows who it's from and who it's for, hours × rate on each line, your payment instructions when there's no card link, and a PDF download.
+- **Zimer warns before a Zinvoice goes out incomplete.** You'll see a note when your business name isn't set (the Zinvoice wouldn't say who it's from), and when a sent Zinvoice gives your client no way to pay.
+- **Faster and lighter.** Responses are compressed, images are smaller, the Zinvoices list loads less, and the calendar does less work per week.
+- **Privacy and accessibility.** Session recording is off inside the app, secondary text meets WCAG AA contrast, selected rows announce themselves to screen readers, and status chips can be reached with the keyboard.
 
 ## 2026-10-27
 
