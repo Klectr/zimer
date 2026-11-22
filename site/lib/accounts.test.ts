@@ -211,28 +211,31 @@ describe("change password (#987)", () => {
       .toBe("New password must be different from your current password.");
   });
 
-  test("success rotates the password and revokes other sessions only", async () => {
+  test("success rotates the password and every old session, returning a fresh one", async () => {
     const a = accountsDb();
     const { user } = await a.signup("ada@example.com", "correct-horse-8");
     const keep = a.createSession(user!.id);
     const other = a.createSession(user!.id);
-    const r = await a.changePassword(user!.id, "correct-horse-8", "brand-new-pass-1", keep);
+    const r = await a.changePassword(user!.id, "correct-horse-8", "brand-new-pass-1");
     expect(r.error).toBeUndefined();
-    /* kept session survives; the other device is signed out */
-    expect(a.sessionUser(keep)).not.toBeNull();
+    expect(r.token).toBeDefined();
+    expect(r.token).not.toBe(keep);
+    expect(a.sessionUser(keep)).toBeNull();
     expect(a.sessionUser(other)).toBeNull();
-    /* old password is dead, the new one logs in */
+    expect(a.sessionUser(r.token!)).not.toBeNull();
+    expect(a.sessionUser(r.token!)!.id).toBe(user!.id);
     expect((await a.login("ada@example.com", "correct-horse-8")).error).toBe("Wrong email or password.");
     expect((await a.login("ada@example.com", "brand-new-pass-1")).token).toBeDefined();
   });
 
-  test("without a kept token every session is revoked", async () => {
+  test("every prior session is revoked on success", async () => {
     const a = accountsDb();
     const { user } = await a.signup("ada@example.com", "correct-horse-8");
     const t = a.createSession(user!.id);
     const r = await a.changePassword(user!.id, "correct-horse-8", "brand-new-pass-1");
     expect(r.error).toBeUndefined();
     expect(a.sessionUser(t)).toBeNull();
+    expect(a.sessionUser(r.token!)).not.toBeNull();
   });
 
   test("revocation is scoped to the user — another user's sessions survive", async () => {

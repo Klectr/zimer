@@ -158,16 +158,15 @@ CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
     db.query("DELETE FROM sessions WHERE token = ?").run(hashSessionToken(token));
   }
 
-  /** #987: change a live user's password. Verifies the current password,
-   *  applies the signup length rule to the new one, and revokes every
-   *  session except keepToken's, so the caller stays signed in while any
-   *  other device (including a suspected attacker's) is signed out. */
+  /** #987/#1421: change a live user's password. Verifies the current
+   *  password, applies the signup length rule to the new one, revokes
+   *  every session, and mints a fresh one returned to the caller — so a
+   *  copied copy of the old token cannot survive the change. */
   async function changePassword(
     userId: number,
     currentPassword: string,
-    newPassword: string,
-    keepToken?: string
-  ): Promise<{ error?: string }> {
+    newPassword: string
+  ): Promise<{ token?: string; error?: string }> {
     if (newPassword.length < 8)
       return { error: "New password must be at least 8 characters." };
     if (newPassword.length > 4096)
@@ -185,18 +184,18 @@ CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
     const ok = await Bun.password.verify(currentPassword, row.password_hash);
     if (!ok) return { error: "Current password is wrong." };
     const password_hash = await Bun.password.hash(newPassword);
-    /* Rotate + revoke atomically: a crash between the two writes must not
-       leave the new password live with the old sessions still valid. */
+    const token = randomBytes(32).toString("hex");
+    const expires_at = new Date(Date.now() + SESSION_MAX_AGE_SEC * 1000).toISOString();
     db.transaction(() => {
       db.query("UPDATE users SET password_hash = ? WHERE id = ? AND deleted_at IS NULL").run(password_hash, userId);
-      if (keepToken) {
-        db.query("DELETE FROM sessions WHERE user_id = ? AND token != ?")
-          .run(userId, hashSessionToken(keepToken));
-      } else {
-        db.query("DELETE FROM sessions WHERE user_id = ?").run(userId);
-      }
+      db.query("DELETE FROM sessions WHERE user_id = ?").run(userId);
+      db.query("INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)").run(
+        hashSessionToken(token),
+        userId,
+        expires_at
+      );
     })();
-    return {};
+    return { token };
   }
 
   /** Extract the session token from a request's cookies. */

@@ -49,7 +49,7 @@ function setup(billingSectionHtml?: (req: Request) => string, opts?: { hosted?: 
     STATIC_DIR: "", TOKEN: "t",
     authedPage: () => true,
     tokensEqual: (a: string, b: string) => a === b,
-    html: (body: string, status = 200) => new Response(body, { status }),
+    html: (body: string, status = 200, extra: Record<string, string> = {}) => new Response(body, { status, headers: extra }),
     json: (data: unknown, status = 200) => Response.json(data, { status }),
     isHtmx: (req: Request) => req.headers.get("HX-Request") === "true",
     csvResponse: (f: string) => new Response(f),
@@ -253,15 +253,20 @@ describe("account section + change password (#987)", () => {
     expect((await accounts.login("ada@example.com", "correct-horse-8")).token).toBeDefined();
   });
 
-  test("success keeps the current session, revokes the other, rotates the password", async () => {
+  test("success revokes every old session and sets a fresh session cookie", async () => {
     const { authed, accounts, keep, other } = await hostedSetup();
     const form = new FormData();
     form.set("current_password", "correct-horse-8");
     form.set("new_password", "brand-new-pass-1");
     const res = await authed("/settings/password", { method: "POST", body: form });
     expect(res!.status).toBe(200);
-    expect(accounts.sessionUser(keep)).not.toBeNull();
+    expect(accounts.sessionUser(keep)).toBeNull();
     expect(accounts.sessionUser(other)).toBeNull();
+    const cookie = res!.headers.get("Set-Cookie") || "";
+    expect(cookie).toContain(`${SESSION_COOKIE}=`);
+    const fresh = decodeURIComponent(cookie.match(new RegExp(`${SESSION_COOKIE}=([^;]+)`))![1]);
+    expect(fresh).not.toBe(keep);
+    expect(accounts.sessionUser(fresh)).not.toBeNull();
     expect((await accounts.login("ada@example.com", "brand-new-pass-1")).token).toBeDefined();
   });
 
@@ -279,6 +284,7 @@ describe("account section + change password (#987)", () => {
     const okRes = await authed("/settings/password", { method: "POST", body: good }, false);
     expect(okRes!.status).toBe(302);
     expect(okRes!.headers.get("Location")).toBe("/settings");
+    expect(okRes!.headers.get("Set-Cookie") || "").toContain(`${SESSION_COOKIE}=`);
     expect((await accounts.login("ada@example.com", "brand-new-pass-1")).token).toBeDefined();
   });
 
