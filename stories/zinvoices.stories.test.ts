@@ -18,3 +18,10 @@ describe("zinvoices stories", () => {
     for (const s of zinvoicesStories) expect(ids).toContain(s.id);
   });
 });
+
+describe("zinvoice rows carry their status", () => {
+  test("each row is tagged is-draft / is-sent / is-paid for the compact layout", () => {
+    const all = zinvoicesStories.map((s) => s.render()).join("");
+    for (const c of ['<tr class="is-draft">', '<tr class="is-sent">', '<tr class="is-paid">']) expect(all).toContain(c);
+  });
+});
