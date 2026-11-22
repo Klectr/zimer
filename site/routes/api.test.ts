@@ -431,3 +431,81 @@ describe("PATCH /api/invoices/:id honours client_day", () => {
     expect((db.query("SELECT paid_at FROM invoices WHERE id = 1").get() as any).paid_at).toBe(utc());
   });
 });
+
+describe("PATCH /api/entries/:id timestamp normalization (#1432)", () => {
+  function entrySetup() {
+    const db = new BunDatabase(":memory:");
+    db.exec(`CREATE TABLE time_entries (
+      id INTEGER PRIMARY KEY, project_id INTEGER, description TEXT NOT NULL DEFAULT '',
+      start_time TEXT NOT NULL, end_time TEXT, invoice_id INTEGER)`);
+    db.query("INSERT INTO time_entries (id, project_id, description, start_time, end_time) VALUES (1, NULL, 'Work', '2026-10-07T14:00:00.000Z', '2026-10-07T15:00:00.000Z')").run();
+    const qOne = {
+      get: (id: number) => {
+        const r = db.query("SELECT * FROM time_entries WHERE id = ?").get(id) as any;
+        return r ? { ...r, invoice_status: null } : null;
+      },
+    } as unknown as Statement;
+    const tenant = {
+      db, qRunning: stubStatement(), qOne, qRange: stubStatement(),
+      qInvoice: stubStatement(), qInvoices: stubStatement(),
+      groupToLineItems: () => [], unbilledEntries: () => [],
+      getInvoice: () => null, invoiceTotals: () => ({ subtotal: 0, tax: 0, total: 0 }),
+      nextInvoiceNumber: () => "INV-0001", mintPublicToken: () => "tok",
+      stripeLinkFor: async () => ({}),
+      revenueTotals: () => null, revenueMonthly: () => [], revenueByClient: () => [], revenueOverdue: () => [],
+      revenueSnapshot: () => ({ totals: null, by_month: [], by_client: [], overdue: [] }),
+      freezeInvoiceSnapshots: () => {},
+    };
+    const { handleApi } = createApiRouter({
+      getTenant: () => tenant as any, TOKEN: "test-token", authedApi: () => true,
+      json: (data: unknown, status = 200) => Response.json(data, { status }),
+      entryToJson: (e: any) => e, verifyWebhookSignature: () => false, shareOrigin: () => "",
+    });
+    async function patch(body: Record<string, unknown>) {
+      const req = new Request("http://localhost/api/entries/1", {
+        method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify(body),
+      });
+      return (await handleApi(req, new URL(req.url), "/api/entries/1", "PATCH"))!;
+    }
+    const row = () => db.query("SELECT start_time, end_time FROM time_entries WHERE id = 1").get() as any;
+    return { patch, row };
+  }
+
+  test("offset and microsecond timestamps are stored as canonical toISOString()", async () => {
+    const { patch, row } = entrySetup();
+    const res = await patch({ start_time: "2026-10-07T16:00:00.123456+02:00", end_time: "2026-10-07T17:00:00+02:00" });
+    expect(res.status).toBe(200);
+    expect(row()).toEqual({ start_time: "2026-10-07T14:00:00.123Z", end_time: "2026-10-07T15:00:00.000Z" });
+  });
+
+  test("a naive start_time is 400 and saves nothing", async () => {
+    const { patch, row } = entrySetup();
+    const res = await patch({ start_time: "2026-10-07T16:00" });
+    expect(res.status).toBe(400);
+    expect(row().start_time).toBe("2026-10-07T14:00:00.000Z");
+  });
+
+  test("a naive end_time is 400 and saves nothing", async () => {
+    const { patch, row } = entrySetup();
+    const res = await patch({ end_time: "2026-10-07T17:00:00" });
+    expect(res.status).toBe(400);
+    expect(row().end_time).toBe("2026-10-07T15:00:00.000Z");
+  });
+
+  test("an unparseable timestamp is 400 and saves nothing", async () => {
+    const { patch, row } = entrySetup();
+    const res = await patch({ start_time: "2026-13-40T16:00:00Z" });
+    expect(res.status).toBe(400);
+    expect(row().start_time).toBe("2026-10-07T14:00:00.000Z");
+  });
+
+  test("omitted timestamps keep the stored values; explicit null end_time clears it", async () => {
+    const { patch, row } = entrySetup();
+    let res = await patch({ description: "Renamed" });
+    expect(res.status).toBe(200);
+    expect(row()).toEqual({ start_time: "2026-10-07T14:00:00.000Z", end_time: "2026-10-07T15:00:00.000Z" });
+    res = await patch({ end_time: null });
+    expect(res.status).toBe(200);
+    expect(row().end_time).toBeNull();
+  });
+});

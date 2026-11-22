@@ -241,12 +241,30 @@ export function createApiRouter(deps: ApiDeps) {
                 if (!cur) return json({ error: "not found" }, 404);
                 if (entryIsLocked(cur)) /* #334 */
                   return json({ error: "This time is invoiced and can't be edited." }, 403);
+                let startTime = cur.start_time;
+                if (body.start_time) {
+                  const raw = String(body.start_time);
+                  if (!/(Z|[+-]\d{2}:?\d{2})$/.test(raw) || Number.isNaN(Date.parse(raw)))
+                    return json({ error: "start_time/end_time must include a timezone offset" }, 400);
+                  startTime = new Date(raw).toISOString();
+                }
+                let endTime = cur.end_time;
+                if (body.end_time !== undefined) {
+                  if (!body.end_time) {
+                    endTime = null;
+                  } else {
+                    const raw = String(body.end_time);
+                    if (!/(Z|[+-]\d{2}:?\d{2})$/.test(raw) || Number.isNaN(Date.parse(raw)))
+                      return json({ error: "start_time/end_time must include a timezone offset" }, 400);
+                    endTime = new Date(raw).toISOString();
+                  }
+                }
                 db.query(`UPDATE time_entries SET description = ?, project_id = ?, start_time = ?, end_time = ? WHERE id = ?`)
                   .run(
                     body.description !== undefined ? String(body.description) : cur.description,
                     body.project_id !== undefined ? (body.project_id ? Number(body.project_id) : null) : cur.project_id,
-                    body.start_time || cur.start_time,
-                    body.end_time !== undefined ? (body.end_time || null) : cur.end_time,
+                    startTime,
+                    endTime,
                     id);
                 return json(entryToJson(qOne.get(id) as Entry));
               }
