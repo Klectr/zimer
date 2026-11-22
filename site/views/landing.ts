@@ -10,42 +10,33 @@
  *  $12/month flat + 14-day trial, self-host free forever. */
 
 import { button, linkButton } from "../ui/button.ts";
-import { featureCard, heroSection } from "../ui/landing.ts";
+import { featureCard, heroSection, landingSection, productPreview } from "../ui/landing.ts";
 import { logoLockup } from "../ui/logo-lockup.ts";
 import { planCard } from "../ui/plan-card.ts";
 import { tag } from "../ui/tag.ts";
 
-const MINI_PRODUCT =
-  `<div class="ui-landing-mini">` +
-  `<div class="ui-landing-mini-main">` +
-  `<div class="ui-stat-label">Running now</div>` +
-  `<div class="ui-landing-mini-title">Acme Studio · Website rebuild</div>` +
-  `<div class="ui-landing-mini-sub">Homepage design pass</div>` +
-  `<div class="ui-timer ui-timer-sm ui-landing-mini-timer">01:24:08</div>` +
-  `<div class="ui-landing-mini-chips">` +
-  tag({ label: "$85 / hr", tone: "primary" }) +
-  tag({ label: "Billable" }) +
-  tag({ label: "Today 5h 12m" }) +
-  `</div>` +
-  `<div class="ui-landing-mini-actions">` +
-  button({ label: "Stop & add to Zinvoice", variant: "primary" }) +
-  button({ label: "Pause" }) +
-  `</div>` +
-  `</div>` +
-  `<div class="ui-landing-mini-side">` +
-  `<div class="ui-card-head"><span class="ui-section-title">Zinvoice #1042</span>` +
-  `<span class="ui-card-head-end">${tag({ label: "Ready", tone: "success" })}</span></div>` +
-  `<div class="ui-landing-mini-row"><span>Design · 12.5h</span><span>$1,062.50</span></div>` +
-  `<div class="ui-landing-mini-row"><span>Development · 8h</span><span>$680.00</span></div>` +
-  `<div class="ui-landing-mini-total"><span>Total due</span><span class="ui-landing-mini-amount">$1,827.50</span></div>` +
-  button({ label: "Send Zinvoice", block: true }) +
-  `</div>` +
-  `</div>`;
+const MINI_PRODUCT = productPreview({
+  running: {
+    title: "Acme Studio · Website rebuild",
+    sub: "Homepage design pass",
+    elapsed: "01:24:08",
+    chipsHtml: tag({ label: "$85 / hr", tone: "primary" }) + tag({ label: "Billable" }) + tag({ label: "Today 5h 12m" }),
+    actionsHtml: button({ label: "Stop & add to Zinvoice", variant: "primary" }) + button({ label: "Pause" }),
+  },
+  zinvoice: {
+    title: "Zinvoice #1042",
+    chipHtml: tag({ label: "Ready", tone: "success" }),
+    lines: [{ label: "Design · 12.5h", amount: "$1,062.50" }, { label: "Development · 8h", amount: "$680.00" }],
+    total: "$1,827.50",
+    actionHtml: button({ label: "Send Zinvoice", block: true }),
+  },
+});
 
-const BENTO =
-  `<section class="ui-landing-section" id="features">` +
-  `<h2 class="ui-landing-title">Everything from first tap to paid</h2>` +
-  `<p class="ui-landing-sub">One job, done well: track the time, send the Zinvoice, keep the file.</p>` +
+const BENTO = landingSection({
+  id: "features",
+  title: "Everything from first tap to paid",
+  sub: "One job, done well: track the time, send the Zinvoice, keep the file.",
+  bodyHtml:
   `<div class="ui-landing-cards">` +
   featureCard({
     icon: "timer",
@@ -62,12 +53,16 @@ const BENTO =
     title: "No surveillance",
     body: "No screenshots, no keystrokes, no passive tracking. A Zimer you start, nothing else.",
   }) +
-  `</div></section>`;
+  `</div>`,
+});
 
-const PRICING =
-  `<section class="ui-landing-pricing" id="pricing">` +
-  `<h2 class="ui-landing-title">Start with your next job</h2>` +
-  `<p class="ui-landing-sub">Two ways to run it: self-hosted free forever, or hosted at $12/month flat. No seats, no meters, no per-client pricing.</p>` +
+const PRICING = landingSection({
+  id: "pricing",
+  variant: "pricing",
+  title: "Start with your next job",
+  sub: "Two ways to run it: self-hosted free forever, or hosted at $12/month flat. No seats, no meters, no per-client pricing.",
+  note: "14-day free trial, no card. Cancel keeps your data. $12/month flat.",
+  bodyHtml:
   `<div class="ui-landing-plans">` +
   planCard({
     name: "Self-hosted",
@@ -103,9 +98,8 @@ const PRICING =
       block: true,
     }),
   }) +
-  `</div>` +
-  `<p class="ui-landing-offer">14-day free trial, no card. Cancel keeps your data. $12/month flat.</p>` +
-  `</section>`;
+  `</div>`,
+});
 
 export function createLandingViews(posthogHead?: () => string) {
   function landingPage(origin: string): string {
