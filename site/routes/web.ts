@@ -831,9 +831,9 @@ export function createWebRouter(deps: WebDeps) {
              renders unstyled. */
           return html(settingsPage(body));
         }
-        /* #987: change password — hosted accounts only (self-host uses the
-           token, there is no password to change). The current session is
-           kept; every other session is revoked by accounts.changePassword. */
+        /* #987/#1421: change password — hosted accounts only (self-host
+           uses the token, there is no password to change). Every session
+           is revoked and a fresh one is set on the response. */
         if (path === "/settings/password" && method === "POST") {
           if (!HOSTED || !accounts) return new Response("Not found.", { status: 404 });
           const user = accounts.sessionUserFromRequest(req);
@@ -848,15 +848,15 @@ export function createWebRouter(deps: WebDeps) {
           const r = await accounts.changePassword(
             user.id,
             String(form.get("current_password") || ""),
-            String(form.get("new_password") || ""),
-            accounts.sessionTokenFromRequest(req) ?? undefined
+            String(form.get("new_password") || "")
           );
           if (r.error) {
             if (isHtmx(req)) return html(accountSectionHtml(user, r.error), 422);
             return new Response(r.error, { status: 400 });
           }
-          if (isHtmx(req)) return html(accountSectionHtml(user), 200, { "HX-Trigger": JSON.stringify({ "tk-toast": "Password changed" }) });
-          return new Response(null, { status: 302, headers: { Location: "/settings" } });
+          const cookie = accounts.sessionCookie(req, r.token!);
+          if (isHtmx(req)) return html(accountSectionHtml(user), 200, { "HX-Trigger": JSON.stringify({ "tk-toast": "Password changed" }), "Set-Cookie": cookie });
+          return new Response(null, { status: 302, headers: { Location: "/settings", "Set-Cookie": cookie } });
         }
         /* #884: accent theme. Unknown keys are rejected — the dots only ever
            post known keys, so this guards hand-built requests. The OOB

@@ -49,7 +49,7 @@ function setup(billingSectionHtml?: (req: Request) => string, opts?: { hosted?: 
     STATIC_DIR: "", TOKEN: "t",
     authedPage: () => true,
     tokensEqual: (a: string, b: string) => a === b,
-    html: (body: string, status = 200) => new Response(body, { status }),
+    html: (body: string, status = 200, extra: Record<string, string> = {}) => new Response(body, { status, headers: extra }),
     json: (data: unknown, status = 200) => Response.json(data, { status }),
     isHtmx: (req: Request) => req.headers.get("HX-Request") === "true",
     csvResponse: (f: string) => new Response(f),
@@ -241,32 +241,40 @@ describe("account section + change password (#987)", () => {
   });
 
   test("wrong current password answers 422 with the error in the section", async () => {
-    const { authed, accounts } = await hostedSetup();
+    const { authed, accounts, keep, other } = await hostedSetup();
     const form = new FormData();
     form.set("current_password", "not-the-password");
     form.set("new_password", "brand-new-pass-1");
     const res = await authed("/settings/password", { method: "POST", body: form });
     expect(res!.status).toBe(422);
+    expect(res!.headers.get("Set-Cookie")).toBeNull();
+    expect(accounts.sessionUser(keep)).not.toBeNull();
+    expect(accounts.sessionUser(other)).not.toBeNull();
     const body = await res!.text();
     expect(body).toContain("Current password is wrong.");
     /* nothing changed: the old password still logs in */
     expect((await accounts.login("ada@example.com", "correct-horse-8")).token).toBeDefined();
   });
 
-  test("success keeps the current session, revokes the other, rotates the password", async () => {
+  test("success revokes every old session and sets a fresh session cookie", async () => {
     const { authed, accounts, keep, other } = await hostedSetup();
     const form = new FormData();
     form.set("current_password", "correct-horse-8");
     form.set("new_password", "brand-new-pass-1");
     const res = await authed("/settings/password", { method: "POST", body: form });
     expect(res!.status).toBe(200);
-    expect(accounts.sessionUser(keep)).not.toBeNull();
+    expect(accounts.sessionUser(keep)).toBeNull();
     expect(accounts.sessionUser(other)).toBeNull();
+    const cookie = res!.headers.get("Set-Cookie") || "";
+    expect(cookie).toContain(`${SESSION_COOKIE}=`);
+    const fresh = decodeURIComponent(cookie.match(new RegExp(`${SESSION_COOKIE}=([^;]+)`))![1]);
+    expect(fresh).not.toBe(keep);
+    expect(accounts.sessionUser(fresh)).not.toBeNull();
     expect((await accounts.login("ada@example.com", "brand-new-pass-1")).token).toBeDefined();
   });
 
   test("non-htmx success redirects to /settings, failure is a plain 400", async () => {
-    const { authed, accounts } = await hostedSetup();
+    const { authed, accounts, keep, other } = await hostedSetup();
     const bad = new FormData();
     bad.set("current_password", "not-the-password");
     bad.set("new_password", "brand-new-pass-1");
@@ -279,6 +287,13 @@ describe("account section + change password (#987)", () => {
     const okRes = await authed("/settings/password", { method: "POST", body: good }, false);
     expect(okRes!.status).toBe(302);
     expect(okRes!.headers.get("Location")).toBe("/settings");
+    const cookie302 = okRes!.headers.get("Set-Cookie") || "";
+    expect(cookie302).toContain(`${SESSION_COOKIE}=`);
+    const fresh302 = decodeURIComponent(cookie302.match(new RegExp(`${SESSION_COOKIE}=([^;]+)`))![1]);
+    expect(fresh302).not.toBe(keep);
+    expect(accounts.sessionUser(fresh302)).not.toBeNull();
+    expect(accounts.sessionUser(keep)).toBeNull();
+    expect(accounts.sessionUser(other)).toBeNull();
     expect((await accounts.login("ada@example.com", "brand-new-pass-1")).token).toBeDefined();
   });
 
