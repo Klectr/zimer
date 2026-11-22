@@ -82,7 +82,7 @@ describe("settings page (#693)", () => {
     const body = await res!.text();
     expect(body).toContain('id="biz-profile"');
     expect(body).not.toContain("<!DOCTYPE html>");
-    expect(body).toContain('class="ui-settings-grid"');
+    expect(body).toContain('class="ui-settings-stack"');
   });
 
   /* #1121: the hosted Billing section joins the body when the dep is
@@ -139,7 +139,7 @@ describe("settings page (#693)", () => {
     const body = await res!.text();
     expect(body).toContain("<!DOCTYPE html>");
     expect(body).toContain("<title>Settings</title>");
-    expect(body).toContain('class="ui-settings-grid"');
+    expect(body).toContain('class="ui-settings-stack"');
     expect(body).toContain('id="biz-profile"');
   });
 });
@@ -151,6 +151,27 @@ async function settingsBodyHtml(): Promise<string> {
   const { handleWeb } = setup();
   return await (await getSettings(handleWeb, true))!.text();
 }
+
+describe("settings order", () => {
+  test("self-hosted: profile, preferences, data, about, then support", async () => {
+    const body = await settingsBodyHtml();
+    const at = (n: string) => body.indexOf(n);
+    expect(at('id="biz-profile"')).toBeGreaterThan(-1);
+    expect(at('id="preferences"')).toBeGreaterThan(at('id="biz-profile"'));
+    expect(at('id="your-data"')).toBeGreaterThan(at('id="preferences"'));
+    expect(at('id="about"')).toBeGreaterThan(at('id="your-data"'));
+    expect(at("ui-settings-support")).toBeGreaterThan(at('id="about"'));
+  });
+
+  test("hosted: billing sits right after the profile", async () => {
+    const { handleWeb } = setup(() => `<section id="billing-marker">BILLING</section>`);
+    const body = await (await getSettings(handleWeb, true))!.text();
+    const at = (n: string) => body.indexOf(n);
+    expect(at('id="billing-marker"')).toBeGreaterThan(at('id="biz-profile"'));
+    expect(at('id="preferences"')).toBeGreaterThan(at('id="billing-marker"'));
+    expect(at('id="update-section"')).toBeGreaterThan(at('id="your-data"'));
+  });
+});
 
 describe("settings cleanup (#1338)", () => {
   test("the terms description sits inside the payment-terms field group", async () => {
