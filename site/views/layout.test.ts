@@ -280,6 +280,17 @@ describe("PostHog snippet (#928)", () => {
     expect(html).not.toContain("zimer_utm");
   });
 
+  test("#1438: both modes pin surveys, dead clicks and web vitals off in init", () => {
+    for (const html of [
+      posthogSnippet("phc_test123", "https://us.i.posthog.com", 42),
+      posthogSnippet("phc_test123", "https://us.i.posthog.com", null, { landing: true }),
+    ]) {
+      expect(html).toContain("disable_surveys: true");
+      expect(html).toContain("capture_dead_clicks: false");
+      expect(html).toContain("capture_performance: false");
+    }
+  });
+
   test("#1239: app snippet disables session recording in init and keeps capture off", () => {
     const html = posthogSnippet("phc_test123", "https://us.i.posthog.com", 42);
     expect(html).toContain("disable_session_recording: true");
