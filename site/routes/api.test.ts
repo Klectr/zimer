@@ -354,6 +354,8 @@ describe("invoice detail projection (#1281)", () => {
     tenant.db.exec(`ALTER TABLE invoices ADD COLUMN tax_rate REAL DEFAULT 0`);
     tenant.db.exec(`ALTER TABLE invoices ADD COLUMN notes TEXT DEFAULT ''`);
     tenant.db.exec(`ALTER TABLE invoices ADD COLUMN internal_notes TEXT DEFAULT ''`);
+    tenant.db.exec(`ALTER TABLE invoices ADD COLUMN period_from TEXT`);
+    tenant.db.exec(`ALTER TABLE invoices ADD COLUMN period_to TEXT`);
     const handleApi = routerFor(tenant);
     const req = new Request("http://localhost/api/invoices", {
       method: "POST", headers: { "content-type": "application/json" },
@@ -366,6 +368,46 @@ describe("invoice detail projection (#1281)", () => {
     for (const key of ["internal_notes", "html_snapshot", "pdf_snapshot", "stripe_payment_link_id", "stripe_payment_link", "public_token"])
       expect(item).not.toHaveProperty(key);
     expect(JSON.stringify(item)).not.toContain("tok_secret");
+  });
+  function periodTenant() {
+    const tenant = detailTenant();
+    tenant.db.exec(`CREATE TABLE invoice_items (id INTEGER PRIMARY KEY, invoice_id INTEGER, description TEXT, hours REAL, rate REAL, amount REAL, date_from TEXT, date_to TEXT)`);
+    tenant.db.exec(`CREATE TABLE time_entries (id INTEGER PRIMARY KEY, invoice_id INTEGER)`);
+    for (const col of ["client_id INTEGER", "number TEXT", "issue_date TEXT", "due_date TEXT",
+      "tax_rate REAL DEFAULT 0", "notes TEXT DEFAULT ''", "internal_notes TEXT DEFAULT ''",
+      "period_from TEXT", "period_to TEXT"])
+      tenant.db.exec(`ALTER TABLE invoices ADD COLUMN ${col}`);
+    (tenant as any).unbilledEntries = () => [{ id: 1 }];
+    (tenant as any).groupToLineItems = () => [{ description: "Work", hours: 2, rate: 50, entry_ids: [1] }];
+    return tenant;
+  }
+  async function postPeriod(tenant: any, body: unknown) {
+    const handleApi = routerFor(tenant);
+    const req = new Request("http://localhost/api/invoices", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const res = (await handleApi(req, new URL(req.url), "/api/invoices", "POST"))!;
+    expect(res.status).toBe(201);
+    return tenant.db.query("SELECT period_from, period_to FROM invoices WHERE id != 7").get() as any;
+  }
+  test("POST stores a valid ordered from/to as the billing period (#1429)", async () => {
+    const row = await postPeriod(periodTenant(), { client_id: 3, from: "2026-11-07", to: "2026-11-20" });
+    expect(row).toEqual({ period_from: "2026-11-07", period_to: "2026-11-20" });
+  });
+  test("POST stores NULL period for a reversed from/to (#1429)", async () => {
+    const row = await postPeriod(periodTenant(), { client_id: 3, items: [{ description: "Work", hours: 1, rate: 100 }], from: "2026-11-20", to: "2026-11-07" });
+    expect(row).toEqual({ period_from: null, period_to: null });
+  });
+  test("POST stores NULL period for a malformed or impossible from/to (#1429)", async () => {
+    const malformed = await postPeriod(periodTenant(), { client_id: 3, items: [{ description: "Work", hours: 1, rate: 100 }], from: "11/07/2026", to: "2026-11-20" });
+    expect(malformed).toEqual({ period_from: null, period_to: null });
+    const impossible = await postPeriod(periodTenant(), { client_id: 3, items: [{ description: "Work", hours: 1, rate: 100 }], from: "2026-02-30", to: "2026-13-01" });
+    expect(impossible).toEqual({ period_from: null, period_to: null });
+  });
+  test("POST with items[] stores a valid from/to as the period too (#1429)", async () => {
+    const row = await postPeriod(periodTenant(), { client_id: 3, items: [{ description: "Work", hours: 1, rate: 100 }], from: "2026-11-07", to: "2026-11-20" });
+    expect(row).toEqual({ period_from: "2026-11-07", period_to: "2026-11-20" });
   });
 });
 

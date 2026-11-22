@@ -253,3 +253,14 @@ export function clientDay(value: unknown, now: Date = new Date()): string | null
   const utc = Date.parse(`${now.toISOString().slice(0, 10)}T00:00:00Z`);
   return Math.abs(t - utc) <= 86_400_000 ? v : null;
 }
+
+/** A real calendar day in YYYY-MM-DD form, else null. Like clientDay but
+ *  with no proximity window — for stored dates such as a billing period,
+ *  where any genuine day is acceptable and impossible ones (2026-02-30,
+ *  month 13) must not slip through on shape alone. */
+export function validYmd(value: unknown): string | null {
+  const v = typeof value === "string" ? value.trim() : "";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return null;
+  const t = Date.parse(`${v}T00:00:00Z`);
+  return Number.isNaN(t) || new Date(t).toISOString().slice(0, 10) !== v ? null : v;
+}
