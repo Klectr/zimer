@@ -10,9 +10,9 @@ function seededBundle() {
   db.query("INSERT INTO clients (id, name, payment_terms) VALUES (1, 'Acme', 'net_15')").run();
   db.query(
     `INSERT INTO invoices (id, client_id, number, issue_date, due_date, status, tax_rate, notes,
-       internal_notes, html_snapshot, pdf_snapshot, public_token, stripe_payment_link, paid_at)
+       internal_notes, html_snapshot, pdf_snapshot, public_token, stripe_payment_link, paid_at, period_from, period_to)
      VALUES (1, 1, 'INV-0001', '2026-11-01', '2026-11-16', 'paid', 10, 'client note',
-       'internal secret', '<html>frozen</html>', X'25504446', 'tok_secret', 'https://pay.example/x', '2026-11-10')`
+       'internal secret', '<html>frozen</html>', X'25504446', 'tok_secret', 'https://pay.example/x', '2026-11-10', '2026-10-19', '2026-10-30')`
   ).run();
   db.query("INSERT INTO invoice_items (invoice_id, description, hours, rate, amount) VALUES (1, 'Work', 2, 50, 100)").run();
   return bundle;
@@ -32,6 +32,8 @@ describe("invoice list query (#1293, slice of #992)", () => {
     expect(r.status).toBe("paid");
     expect(r.tax_rate).toBe(10);
     expect(r.paid_at).toBe("2026-11-10");
+    expect(r.period_from).toBe("2026-10-19");
+    expect(r.period_to).toBe("2026-10-30");
     expect(r.client_name).toBe("Acme");
     expect(r.client_payment_terms).toBe("net_15");
     expect("client_color" in r).toBe(true);

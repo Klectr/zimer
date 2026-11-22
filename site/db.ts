@@ -195,7 +195,7 @@ db.exec(`DROP TABLE IF EXISTS recurring_schedules;`);
   const qInvoiceItems = db.query("SELECT * FROM invoice_items WHERE invoice_id = ? ORDER BY id");
   const qInvoices = db.query(
     `SELECT i.id, i.client_id, i.number, i.issue_date, i.due_date, i.status,
-          i.tax_rate, i.paid_at, i.sent_at,
+          i.tax_rate, i.paid_at, i.sent_at, i.period_from, i.period_to,
           c.name AS client_name, c.color AS client_color,
           c.payment_terms AS client_payment_terms,
           (SELECT p.name FROM time_entries e JOIN projects p ON p.id = e.project_id
