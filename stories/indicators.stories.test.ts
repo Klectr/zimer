@@ -28,9 +28,11 @@ describe("small component stories", () => {
     expect(all).toContain("Tracked time per week");
     expect((all.match(/class="tb-bar"/g) || []).length).toBe(11);
   });
-  test("every story file here is registered, and no page-section stories remain", () => {
+  test("every story file here is registered, and no page or page-section stories remain", () => {
     const ids = config.stories.map((s) => s.id);
     for (const s of [...indicatorStories, ...shareLineStories, ...timeBreakdownStories]) expect(ids).toContain(s.id);
     for (const gone of ["zinvoice-wizard-lines", "calendar-pane-this-week", "timer-home-today", "zinvoice-detail-status", "zinvoices-filter-bar", "public-product-preview"]) expect(ids).not.toContain(gone);
+    /* Zandbox is for small reusable components (AGENTS.md): no whole-page stories. */
+    expect(config.stories.filter((s) => s.group === "Pages" || s.id.startsWith("page-"))).toEqual([]);
   });
 });
