@@ -1058,12 +1058,18 @@ body.app-fixed .ui-shell-main { min-height: 0; }
 .ui-filter-chip.is-active { background: var(--color-primary-bg); color: var(--color-primary); border-color: var(--color-primary-border); }
 .inv-num-link { color: var(--color-primary); font-weight: 600; text-decoration: none; white-space: nowrap; }
 .inv-num-link:hover { text-decoration: underline; }
-@media (max-width: 719px) {
-  .inv-table-card .col-opt { display: none; }
-}
 @media screen and (max-width: 640px) {
   .inv-search { flex: 1 1 100%; margin-left: 0; }
   .inv-search .ui-field { min-width: 0; }
+}
+/* The table steps down by its card's width, not the viewport's, so it never
+   scrolls sideways wherever the content column lands: Due drops first, then
+   rows stack into two-line cards. */
+.inv-table-card { container-type: inline-size; }
+@container (max-width: 679px) {
+  .inv-table-card .col-opt { display: none; }
+}
+@container (max-width: 559px) {
   .inv-table-card .table-wrap { overflow-x: visible; margin: 0; padding: 0; }
   .inv-table-card .ui-table, .inv-table-card tbody { display: block; }
   .inv-table-card thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
