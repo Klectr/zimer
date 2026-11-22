@@ -1234,6 +1234,54 @@ describe("impossible datetime rejection (#1434)", () => {
   });
 });
 
+describe("entry end at or before start rejection (#1450)", () => {
+  test("POST /entries with end before start is 400 and creates nothing", async () => {
+    const { db, handleWeb } = setup();
+    const r = await postEntry(handleWeb, { project_id: "", description: "", start_time: "2026-10-08T10:00:00.000Z", end_time: "2026-10-08T09:00:00.000Z" });
+    expect(r!.status).toBe(400);
+    const rows = db.query("SELECT COUNT(*) c FROM time_entries").get() as any;
+    expect(rows.c).toBe(0);
+  });
+
+  test("POST /entries with end equal to start is 400 and creates nothing", async () => {
+    const { db, handleWeb } = setup();
+    const r = await postEntry(handleWeb, { project_id: "", description: "", start_time: "2026-10-08T09:00:00.000Z", end_time: "2026-10-08T09:00:00.000Z" });
+    expect(r!.status).toBe(400);
+    const rows = db.query("SELECT COUNT(*) c FROM time_entries").get() as any;
+    expect(rows.c).toBe(0);
+  });
+
+  test("POST /entries/:id with end before start is 400 and leaves the entry untouched", async () => {
+    const { db, handleWeb } = setup();
+    const ins = db.query("INSERT INTO time_entries (description, start_time, end_time) VALUES ('x', '2026-10-08T09:00:00.000Z', '2026-10-08T10:00:00.000Z')").run();
+    const id = Number(ins.lastInsertRowid);
+    const form = new FormData();
+    form.append("description", "x");
+    form.append("start_time", "2026-10-08T09:00:00Z");
+    form.append("end_time", "2026-10-08T08:00:00Z");
+    const req = new Request(`http://x/entries/${id}`, { method: "POST", body: form });
+    const r = await handleWeb(req, new URL(req.url), `/entries/${id}`, "POST");
+    expect(r!.status).toBe(400);
+    const row = db.query("SELECT start_time, end_time FROM time_entries WHERE id = ?").get(id) as any;
+    expect(row).toEqual({ start_time: "2026-10-08T09:00:00.000Z", end_time: "2026-10-08T10:00:00.000Z" });
+  });
+
+  test("POST /entries/:id moving start after end is 400 and leaves the entry untouched", async () => {
+    const { db, handleWeb } = setup();
+    const ins = db.query("INSERT INTO time_entries (description, start_time, end_time) VALUES ('x', '2026-10-08T09:00:00.000Z', '2026-10-08T10:00:00.000Z')").run();
+    const id = Number(ins.lastInsertRowid);
+    const form = new FormData();
+    form.append("description", "x");
+    form.append("start_time", "2026-10-08T11:00:00Z");
+    form.append("end_time", "2026-10-08T10:00:00Z");
+    const req = new Request(`http://x/entries/${id}`, { method: "POST", body: form });
+    const r = await handleWeb(req, new URL(req.url), `/entries/${id}`, "POST");
+    expect(r!.status).toBe(400);
+    const row = db.query("SELECT start_time, end_time FROM time_entries WHERE id = ?").get(id) as any;
+    expect(row).toEqual({ start_time: "2026-10-08T09:00:00.000Z", end_time: "2026-10-08T10:00:00.000Z" });
+  });
+});
+
 /** #1291: GET /i/:token.pdf — the client's PDF download. Same token lookup
  * as the public page; a fresh PDF from the invoice, 404 for bad tokens. */
 describe("public invoice PDF download (#1291)", () => {
