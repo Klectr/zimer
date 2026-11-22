@@ -11,7 +11,8 @@ import { selectField, textField } from "../ui/field.ts";
 import { weekView, type WeekDay, type WeekEntry } from "../ui/week-view.ts";
 import { iconButton } from "../ui/icon-button.ts";
 import { visualizer, type VizDay, type VizEntry } from "../ui/visualizer.ts";
-import { calFirstRun, calHint, calLegend, weekClients, weekDelta, weekNav, weekSummary, zinvoiceNudge } from "../ui/calendar-pane.ts";
+import { calFirstRun, calHint, calLegend, weekClients, weekNav, weekSummary, zinvoiceNudge } from "./calendar-pane.ts";
+import { trendDelta } from "../ui/trend-delta.ts";
 import type { Entry } from "../lib/types.ts";
 
 export interface CalendarViewDeps {
@@ -329,7 +330,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       nav,
     }) : "";
     /* #524: no previous-week data → no delta and no dangling separator. */
-    const deltaHtml = prevBillable <= 0 || weekPhase === "future" ? undefined : weekDelta({
+    const deltaHtml = prevBillable <= 0 || weekPhase === "future" ? undefined : trendDelta({
       pct: Math.round(((weekBillable - prevBillable) / prevBillable) * 100),
       vs: weekPhase === "current" ? "vs this time last week" : "vs prev week",
     });

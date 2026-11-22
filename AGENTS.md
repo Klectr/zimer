@@ -44,12 +44,17 @@ This is the most violated thing by new agents, so it's up front, not linked:
   (`$` … `/hr`), never crammed into the label.
 - **Selects are custom.** Native `<select>` keeps its OS arrow, which ignores
   our radius — always `appearance: none` + the custom chevron.
-- **Components first, in Zandbox.** New UI is a presentational component in
-  `site/ui/*.ts` with a story in `stories/<name>.stories.ts` (registered in
-  `zandbox.config.ts`, fictional data, every state), built and checked in
-  Zandbox (`bun run zandbox`, port 8935), then used by the view. Don't
-  hand-roll markup in `site/views/*` or `site/routes/*`; reuse an existing
-  component before adding one (check `site/ui/` first).
+- **Zandbox is for small, reusable components — not pages.** A new
+  reusable piece (a chip, row, bar, field, card, table, dialog…) is a
+  presentational component in `site/ui/*.ts` with a story in
+  `stories/<name>.stories.ts`: one component per story, shown alone in its
+  states, fictional data, registered in `zandbox.config.ts`. Build and check
+  it in Zandbox (`bun run zandbox`, port 8935) before the view uses it.
+  Reuse an existing component before adding one (check `site/ui/` first).
+  **Page sections stay in views:** a single-use composition (a wizard step,
+  a page header, a pane) is a plain function in `site/views/` built from
+  `site/ui` components — no story, and never a "component" just to move
+  markup out of a view.
 - **No horizontal scrolling, ever.** Layouts fit their container or change
   pattern (see the calendar rule in DESIGN.md).
 - **Calendar conventions:** single-lane days showing tracked time only;

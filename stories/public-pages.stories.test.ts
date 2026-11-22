@@ -3,12 +3,8 @@ import { publicPagesStories } from "./public-pages.stories";
 import config from "../zandbox.config";
 
 describe("public pages stories", () => {
-  test("cover the product preview, both section variants, and the doc sections + footer", () => {
+  test("cover the doc sections (plain and trusted-HTML) and the footer", () => {
     const all = publicPagesStories.map((s) => s.render()).join("");
-    expect(all).toContain('class="ui-landing-mini"');
-    expect(all).toContain('class="ui-landing-section" id="story-features"');
-    expect(all).toContain('class="ui-landing-pricing" id="story-pricing"');
-    expect(all).toContain("ui-landing-offer");
     expect(all).toContain('class="changelog-release"');
     expect(all).toContain('<a href="#">a product analytics tool</a>');
     expect(all).toContain("Shared securely via Zimer · <a href=\"#\">Changelog</a>");

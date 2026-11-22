@@ -598,7 +598,7 @@ describe("timer mock parity (#1121)", () => {
 /** #1342: the Zimer card and Today's entries share a grid wrapper so wide
  *  content can lay them side by side (container query on .timer-home). */
 describe("timer home side-by-side grid (#1342)", () => {
-  /* Checked on the rendered page (the cards are site/ui/timer-home.ts
+  /* Checked on the rendered page (the cards are site/views/timer-home.ts
      components now, not literal markup in the view). */
   test("both cards sit inside .timer-home-grid; the inline script stays outside", () => {
     const deps = { ...baseDeps, qRunning: { get: () => null } as unknown as Statement };

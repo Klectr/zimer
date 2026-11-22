@@ -1,11 +1,13 @@
+/** Page sections for the new-Zinvoice wizard — single-use view helpers, not Zandbox
+ *  components (Zandbox is for small reusable pieces; see AGENTS.md). */
 import { esc } from "../lib/format";
 import { icon } from "../lib/icons";
-import { button } from "./button";
-import { card } from "./card";
-import { steps } from "./steps";
-import { checkboxField } from "./choice";
-import { selectField, textField, type SelectOption } from "./field";
-import { formSection, invoiceSummary, type SummaryLine } from "./zinvoice-form";
+import { button } from "../ui/button";
+import { card } from "../ui/card";
+import { steps } from "../ui/steps";
+import { checkboxField } from "../ui/choice";
+import { selectField, textField, type SelectOption } from "../ui/field";
+import { formSection, invoiceSummary, type SummaryLine } from "../ui/zinvoice-form";
 
 /** The new-Zinvoice wizard (suite mock, #1121): step 1 Client & period,
  *  step 2 editable unbilled-time lines, and the live preview card with the

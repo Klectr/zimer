@@ -1,11 +1,13 @@
+/** Page sections for the Zimer (timer) page — single-use view helpers, not Zandbox
+ *  components (Zandbox is for small reusable pieces; see AGENTS.md). */
 import { esc } from "../lib/format";
-import { button } from "./button";
-import { card } from "./card";
-import { selectField, textField, type SelectOption } from "./field";
-import { iconButton } from "./icon-button";
-import { progressBar } from "./progress";
-import { tag } from "./tag";
-import { timerPanel } from "./timer-display";
+import { button } from "../ui/button";
+import { card } from "../ui/card";
+import { selectField, textField, type SelectOption } from "../ui/field";
+import { iconButton } from "../ui/icon-button";
+import { skeletonRows } from "../ui/skeleton";
+import { tag } from "../ui/tag";
+import { timerPanel } from "../ui/timer-display";
 
 /** The Zimer home (timer page): the Zimer card (running or idle), the
  *  Today's entries card with its target bar, and the small pieces of an
@@ -90,29 +92,6 @@ export function timerRunningCard(o: TimerRunningCardOptions): string {
           tick();window.__tkTick=setInterval(tick,1000);})();</script>`;
 }
 
-export interface TargetBarOptions {
-  /** 0–100 */
-  pct: number;
-  /** e.g. "Today · 1h 02m / 8h" */
-  label: string;
-  /** Accessible name for the bar. */
-  ariaLabel: string;
-}
-
-/** Today vs the daily target (#908), above the Today list. */
-export function targetBar(o: TargetBarOptions): string {
-  return `
-      <div class="ui-target">
-        ${progressBar({ value: Math.min(100, Math.max(0, o.pct)), label: o.ariaLabel })}
-        <div class="ui-target-label">${esc(o.label)}</div>
-      </div>`;
-}
-
-/** Loading placeholder rows, shown until the list's first fetch lands. */
-export function skeletonRows(n = 3): string {
-  return `<div class="skel-stack" aria-hidden="true">${`<div class="skel skel-row"></div>`.repeat(n)}</div>`;
-}
-
 /** Today's entries: the card the today list (and its target bar) loads into. */
 export function todayEntriesCard(o: { bodyHtml?: string; listAttrs?: string }): string {
   return `
@@ -120,11 +99,6 @@ export function todayEntriesCard(o: { bodyHtml?: string; listAttrs?: string }): 
           <div class="ui-block-title">Today's entries</div>
           <div id="today-list"${o.listAttrs ? ` ${o.listAttrs}` : ""}>${o.bodyHtml ?? skeletonRows()}</div>
         </section>`;
-}
-
-/** #330: an entry's Zinvoice state (sent/paid, or in a draft), with a plain tooltip. */
-export function invoiceMark(o: { label: string; tip: string; cls?: string }): string {
-  return `<span class="ui-inv-mark${o.cls ? ` ${o.cls}` : ""}" data-tip="${esc(o.tip)}">${esc(o.label)}</span>`;
 }
 
 /** #473: one-tap restart of a finished entry. Hidden inputs survive quotes

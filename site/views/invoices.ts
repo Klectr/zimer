@@ -16,10 +16,14 @@ import { appHeader } from "../ui/app-header.ts";
 import { iconButton } from "../ui/icon-button.ts";
 import { emptyState } from "../ui/empty-state.ts";
 import { statBlock } from "../ui/stat.ts";
-import { statusChip } from "../ui/status-chip.ts";
-import { zinvoiceFilterBar, zinvoiceTable, zinvoiceTableRows, type ZinvoiceTableRow } from "../ui/zinvoice-table.ts";
-import { lineItemsHeadRow, wizardLayout, wizardLinesSection, wizardPreviewCard, wizardStep1, ZINVOICE_WIZARD_SCRIPT } from "../ui/zinvoice-wizard.ts";
-import { internalNotes, paymentProofSection, shareLine, stripePaidChip, timeBreakdownChart, zinvoiceDetailHead, zinvoiceShareCard, zinvoiceStatusCard, ZINVOICE_COPY_SCRIPT } from "../ui/zinvoice-detail.ts";
+import { statusChip, stripePaidChip } from "../ui/status-chip.ts";
+import { zinvoiceTable, zinvoiceTableRows, type ZinvoiceTableRow } from "../ui/zinvoice-table.ts";
+import { filterChips } from "../ui/filter-chips.ts";
+import { textField } from "../ui/field.ts";
+import { lineItemsHeadRow, wizardLayout, wizardLinesSection, wizardPreviewCard, wizardStep1, ZINVOICE_WIZARD_SCRIPT } from "./zinvoice-wizard.ts";
+import { internalNotes, paymentProofSection, zinvoiceDetailHead, zinvoiceShareCard, zinvoiceStatusCard, ZINVOICE_COPY_SCRIPT } from "./zinvoice-detail.ts";
+import { shareLine } from "../ui/share-line.ts";
+import { timeBreakdownChart } from "../ui/time-breakdown.ts";
 import { lineItemsTable } from "../ui/line-items.ts";
 import { steps } from "../ui/steps.ts";
 import { PAYMENT_TERMS } from "../lib/format.ts";
@@ -169,17 +173,20 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       const qs = params.toString();
       return qs ? `/invoices?${qs}` : "/invoices";
     };
-    return zinvoiceFilterBar({
-      chips: FILTERS.map(f => ({
-        key: f.key, label: f.label, href: hrefFor(f.key),
-        /* The chips swap the list region in place, so switching a status
-           never reloads the page or re-runs the layout. */
-        attrs: `hx-get="${esc(hrefFor(f.key))}" hx-target="#inv-list-region" hx-swap="innerHTML" hx-push-url="true"`,
-      })),
-      active, q,
-      searchAttrs: `hx-get="/invoices" hx-target="#inv-list-region" hx-swap="innerHTML" hx-push-url="true"`,
-      hiddenHtml: active !== "all" ? `<input type="hidden" name="status" value="${esc(active)}">` : "",
-    });
+    const chips = FILTERS.map(f => ({
+      key: f.key, label: f.label, href: hrefFor(f.key),
+      /* The chips swap the list region in place, so switching a status
+         never reloads the page or re-runs the layout. */
+      attrs: `hx-get="${esc(hrefFor(f.key))}" hx-target="#inv-list-region" hx-swap="innerHTML" hx-push-url="true"`,
+    }));
+    return `<div class="inv-filter-row">
+      ${filterChips({ items: chips, active, label: "Filter Zinvoices by status" })}
+      <form method="get" action="/invoices" class="inv-search"
+        hx-get="/invoices" hx-target="#inv-list-region" hx-swap="innerHTML" hx-push-url="true">
+        ${active !== "all" ? `<input type="hidden" name="status" value="${esc(active)}">` : ""}
+        ${textField({ id: "inv-q", label: "Search Zinvoices", labelHidden: true, icon: "search", name: "q", type: "search", value: q, placeholder: "Search client or number" })}
+      </form>
+    </div>`;
   }
 
   /* Out-of-band refresh after a detail action changes an invoice — the

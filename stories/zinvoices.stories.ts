@@ -1,5 +1,5 @@
 import type { Story } from "../.zandbox/story";
-import { zinvoiceFilterBar, zinvoiceTable, type ZinvoiceTableRow } from "../site/ui/zinvoice-table";
+import { zinvoiceTable, type ZinvoiceTableRow } from "../site/ui/zinvoice-table";
 import { linkButton } from "../site/ui/button";
 
 /* Fictional data only. */
@@ -10,10 +10,6 @@ const rows: ZinvoiceTableRow[] = [
   { number: "INV-1038", href: "#", client: "Harbor Dental", status: "paid", issued: "Oct 1", due: "Oct 31", paid: "Oct 18", total: "$3,600.00" },
   { number: "INV-1032", href: "#", status: "paid", issued: "Sep 3", due: "Oct 3", paid: "Sep 30", total: "$480.00" },
 ];
-
-const chips = ["all", "draft", "sent", "paid", "overdue"].map((key) => ({
-  key, label: key === "all" ? "All" : key[0].toUpperCase() + key.slice(1), href: "#",
-}));
 
 export const zinvoicesStories: Story[] = [
   {
@@ -35,16 +31,6 @@ export const zinvoicesStories: Story[] = [
     render: () =>
       `<div style="max-width:960px">` +
       zinvoiceTable({ rows: [], emptyBody: "No Zinvoices match this filter.", emptyActionHtml: linkButton({ label: "Clear filter", href: "#", variant: "ghost" }) }) +
-      `</div>`,
-  },
-  {
-    id: "zinvoices-filter-bar",
-    group: "Zinvoices",
-    title: "Filter chips + search",
-    render: () =>
-      `<div style="max-width:960px;display:flex;flex-direction:column;gap:16px">` +
-      zinvoiceFilterBar({ chips, active: "all", q: "" }) +
-      zinvoiceFilterBar({ chips, active: "overdue", q: "harbor" }) +
       `</div>`,
   },
 ];

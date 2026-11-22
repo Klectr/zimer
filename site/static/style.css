@@ -1155,7 +1155,7 @@ body.app-fixed .ui-shell-main { min-height: 0; }
   grid-template-rows: auto minmax(0, 1fr); }
 .cal-supporting { grid-area: summary; display: flex; flex-direction: column; gap: 14px; margin: 10px 0 12px; min-width: 0; }
 .cal-supporting .week-nav { margin: 0; }
-.cal-supporting .week-target, .cal-supporting .week-clients, .cal-supporting .cal-hint { margin: 0; }
+.cal-supporting .ui-target, .cal-supporting .week-clients, .cal-supporting .cal-hint { margin: 0; }
 /* #945: on narrow viewports the week summary ("forehead") eats the scroll
    area — compact it so the day list gets substantially more room. Desktop
    is untouched. */
@@ -1164,7 +1164,7 @@ body.app-fixed .ui-shell-main { min-height: 0; }
   .cal-supporting .week-nav h1 { font-size: var(--font-size-xl); line-height: 28px; }
   .cal-supporting .cal-summary .cal-summary-total { font-size: var(--font-size-xl); line-height: 28px; }
   .cal-supporting .nudge-chip { padding: 4px 10px; }
-  .cal-supporting .week-target { gap: 8px; }
+  .cal-supporting .ui-target-inline { gap: 8px; }
   .cal-supporting .week-clients { gap: 4px 12px; font-size: var(--font-size-sm); }
   .cal-supporting .cal-hint { font-size: 0.6875rem; line-height: 16px; }
 }
@@ -1700,9 +1700,10 @@ body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
   padding: 0 var(--layout-body-margin); }
 
 /* Instance spacing: the calendar's 40h week bar and the timer page's 8h today bar. */
-.week-target { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 2px 0 14px; }
-.week-target .ui-progress { flex: 1; min-width: 120px; }
-.week-target .ui-row-meta { margin-top: 0; white-space: nowrap; }
+/* targetBar({ inline: true }) — the label sits beside the bar (calendar week). */
+.ui-target-inline { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 2px 0 14px; }
+.ui-target-inline .ui-progress { flex: 1; min-width: 120px; }
+.ui-target-inline .ui-target-label { margin-top: 0; white-space: nowrap; }
 
 /* Per-client week breakdown strip on the calendar. */
 .week-clients { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 0 0 14px; }
