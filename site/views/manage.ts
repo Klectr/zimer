@@ -10,9 +10,11 @@ import { icon } from "../lib/icons.ts";
 import { THEMES, themeKey } from "../lib/theme.ts"; /* #884 */
 import { getMeta } from "../db.ts";
 import { settingsSection } from "../ui/settings-section.ts";
+import { settingControl, settingList, settingRow } from "../ui/choice.ts";
 import { selectField, textAreaField, textField } from "../ui/field.ts";
 import { button } from "../ui/button.ts";
 import { card } from "../ui/card.ts";
+import { clientTable, type ClientTableRow } from "../ui/client-table.ts";
 import { clientRow } from "../ui/rows.ts";
 import { dayTargetSecs } from "../lib/domain.ts"; /* #908: daily target setting */
 import { appHeader } from "../ui/app-header.ts";
@@ -190,52 +192,43 @@ export function createManageViews(deps: ManageViewDeps) {
     const unbilled = unbilledMoneyByClient();
     const { byClient, noClientSecs } = clientInsights(now);
     const maxSecs = Math.max(1, ...[...byClient.values()].map(i => i.monthSecs));
-    const shades = [100, 70, 45, 30];
-    const rows = clients.map(c => {
+    const rows: ClientTableRow[] = clients.map(c => {
       const ins = byClient.get(c.id)!;
-      const color = schemeColor(c.color) || "var(--color-primary)";
       const active = ins.projects.filter(p => p.secs > 0);
-      const segs = [...active.slice(0, 3), ...(active.length > 3 ? [{ name: "Other projects", secs: active.slice(3).reduce((a, p) => a + p.secs, 0) }] : [])];
-      const bar = ins.monthSecs > 0
-        ? `<span class="mg-bar" aria-hidden="true"><span class="mg-bar-fill" style="width:${round2(ins.monthSecs / maxSecs * 100)}%">` +
-          segs.map((p, i) => `<i style="flex:${p.secs};background:color-mix(in srgb, ${esc(color)} ${shades[i]}%, transparent)"></i>`).join("") +
-          `</span></span>`
-        : `<span class="mg-bar" aria-hidden="true"></span>`;
-      const last = lastTrackedLabel(ins.last, now);
+      const segs = [...active.slice(0, 3).map(p => p.secs), ...(active.length > 3 ? [active.slice(3).reduce((a, p) => a + p.secs, 0)] : [])];
       const terms = PAYMENT_TERMS[termsKey(c.payment_terms, globalTerms()) as PaymentTermsKey]?.label ?? "";
-      const meta = [c.rate ? `$${c.rate}/hr` : "", terms, `${ins.projects.length} project${ins.projects.length === 1 ? "" : "s"}`].filter(Boolean).join(" · ");
       const idle = ins.projects.length - active.length;
-      const projLines = active.slice(0, 4).map((p, i) =>
-          `<div class="mg-card-row"><span><i class="mg-card-dot" style="background:color-mix(in srgb, ${esc(color)} ${shades[Math.min(i, 3)]}%, transparent)"></i>${esc(p.name)}</span><span>${fmtDur(p.secs)}</span></div>`).join("") +
-        (active.length > 4 ? `<div class="mg-card-row is-muted"><span>${active.length - 4} more active</span><span></span></div>` : "") +
-        (idle ? `<div class="mg-card-row is-muted"><span>${active.length ? `${idle} more project${idle === 1 ? "" : "s"}` : "No time this month"}</span><span>0h</span></div>` : "");
-      const zinvoices = ins.open.map(z => {
+      const extra = [
+        ...(active.length > 4 ? [{ label: `${active.length - 4} more active`, value: "" }] : []),
+        ...(idle ? [{ label: active.length ? `${idle} more project${idle === 1 ? "" : "s"}` : "No time this month", value: "0h" }] : []),
+      ];
+      const invoices = ins.open.map(z => {
         const when = z.status === "draft" ? "draft" : z.overdue ? "overdue" : z.due ? `due ${shortDate(z.due)}` : "sent";
-        return `<div class="mg-card-row${z.overdue ? " is-error" : z.status === "draft" ? " is-muted" : ""}"><span>${esc(z.number)} · ${when}</span><span>${moneyCell(z.total)}</span></div>`;
-      }).join("");
-      const hoverCard = `<div class="mg-card" aria-hidden="true"><div class="mg-card-title">${esc(c.name)}</div><div class="mg-card-meta">${esc(meta)}</div>` +
-        projLines + (zinvoices ? `<div class="mg-card-sep"></div>${zinvoices}` : "") +
-        `<div class="mg-card-hint">Click to open</div></div>`;
-      const outstanding = ins.outstanding > 0
-        ? `${ins.overdue ? `<span class="ui-tag ui-tag-error mg-overdue">Overdue</span>` : ""}${moneyCell(ins.outstanding)}`
-        : `<span class="mg-muted">—</span>`;
+        return { label: `${z.number} · ${when}`, value: moneyCell(z.total), tone: z.overdue ? "error" as const : z.status === "draft" ? "muted" as const : undefined };
+      });
       const unbilledAmt = unbilled.get(c.id) || 0;
-      return `<tr class="mg-row" tabindex="0" data-client-edit="${c.id}" aria-haspopup="dialog" aria-label="${esc(`Edit client ${c.name}`)}">
-        <td><span class="manage-client-name"><span class="ui-row-lead-dot" style="background:${esc(color)}" aria-hidden="true"></span>${esc(c.name)}</span>${hoverCard}</td>
-        <td class="col-month"><span class="mg-hours"><span class="${ins.monthSecs ? "" : "mg-muted"}">${ins.monthSecs ? fmtDur(ins.monthSecs) : "0h"}</span>${bar}</span></td>
-        <td class="num">${unbilledAmt ? moneyCell(unbilledAmt) : `<span class="mg-muted">—</span>`}</td>
-        <td class="num">${outstanding}</td>
-        <td class="col-last${last.quiet ? " is-quiet" : ""}">${esc(last.text)}</td>
-        <td class="mg-chev" aria-hidden="true">${icon("chevron_right")}</td>
-      </tr>`;
-    }).join("");
-    const empty = clients.length ? "" : `<tr><td colspan="6" class="mg-muted">No clients yet. Add one above.</td></tr>`;
-    return card({
+      return {
+        key: String(c.id),
+        name: c.name,
+        color: schemeColor(c.color) || "var(--color-primary)",
+        month: { label: ins.monthSecs ? fmtDur(ins.monthSecs) : "0h", muted: !ins.monthSecs, widthPct: round2(ins.monthSecs / maxSecs * 100), segments: segs },
+        unbilled: unbilledAmt ? moneyCell(unbilledAmt) : undefined,
+        outstanding: ins.outstanding > 0 ? moneyCell(ins.outstanding) : undefined,
+        overdue: ins.overdue,
+        last: lastTrackedLabel(ins.last, now),
+        card: {
+          meta: [c.rate ? `$${c.rate}/hr` : "", terms, `${ins.projects.length} project${ins.projects.length === 1 ? "" : "s"}`].filter(Boolean).join(" · "),
+          projects: active.slice(0, 4).map(p => ({ name: p.name, dur: fmtDur(p.secs) })),
+          extra,
+          invoices,
+        },
+      };
+    });
+    return clientTable({
       id: "client-table-card",
-      className: "manage-table-card",
-      content: `<table class="ui-table mg-table"><thead><tr><th>Client</th><th class="col-month">This month</th><th class="num">Unbilled</th><th class="num">Outstanding</th><th class="col-last">Last tracked</th><th><span class="ui-sr-only">Open</span></th></tr></thead><tbody>${rows}${empty}</tbody></table>` +
-        `<p class="mg-foot"><span>No client · ${noClientSecs ? fmtDur(noClientSecs) : "0h"} this month</span>` +
-        button({ label: "View projects", size: "sm", variant: "ghost", attrs: `data-client-edit="none" aria-haspopup="dialog" aria-label="View projects with no client"` }) + `</p>`,
+      rows,
+      emptyText: "No clients yet. Add one above.",
+      noClientLabel: `No client · ${noClientSecs ? fmtDur(noClientSecs) : "0h"} this month`,
     });
   }
 
@@ -416,36 +409,6 @@ export function createManageViews(deps: ManageViewDeps) {
             closeClientDialog(false);
           }
         });
-        /* The hover card follows the mouse: it sits 16px below-right of the
-           pointer, flips left/up when it would leave the table card or the
-           viewport, and drops back to its anchored spot (for keyboard focus)
-           once the pointer leaves the row. */
-        var mgFollowRow = null;
-        function mgUnfollow(){
-          if(!mgFollowRow) return;
-          var c = mgFollowRow.querySelector(".mg-card");
-          if(c){ c.style.left = ""; c.style.top = ""; }
-          mgFollowRow = null;
-        }
-        document.addEventListener("pointermove", function(ev){
-          if(ev.pointerType !== "mouse") return;
-          var row = ev.target && ev.target.closest ? ev.target.closest("tr.mg-row") : null;
-          if(row !== mgFollowRow) mgUnfollow();
-          if(!row) return;
-          var c = row.querySelector(".mg-card");
-          var box = row.closest(".manage-table-card");
-          if(!c || !box) return;
-          mgFollowRow = row;
-          var r = row.getBoundingClientRect(), b = box.getBoundingClientRect();
-          var w = c.offsetWidth, h = c.offsetHeight, gap = 16;
-          var x = ev.clientX + gap, y = ev.clientY + gap;
-          if(x + w > b.right - 8) x = ev.clientX - gap - w;
-          if(x < b.left + 8) x = b.left + 8;
-          if(y + h > window.innerHeight - 8) y = ev.clientY - gap - h;
-          c.style.left = (x - r.left) + "px";
-          c.style.top = (y - r.top) + "px";
-        });
-        document.addEventListener("pointerleave", mgUnfollow);
         /* #1344: client rows are focusable; Enter or Space opens them like a button. */
         document.addEventListener("keydown", function(ev){
           if(ev.key !== "Enter" && ev.key !== " ") return;
@@ -499,13 +462,17 @@ export function createManageViews(deps: ManageViewDeps) {
      and calendar (week = five days at this rate), plus the calendar's
      short-day tint, all follow this instead of the old 8h constant. Stored
      in meta; no migration. */
-  function dailyTargetControl(): string {
+  function dailyTargetForm(): string {
     const hours = dayTargetSecs(db) / 3600;
-    return `<div class="settings-pref-control" id="daily-target">` +
-      `<form method="post" action="/daily-target" id="daily-target-form" class="settings-inline-form" hx-post="/daily-target" hx-target="#daily-target" hx-swap="outerHTML">` +
+    return `<form method="post" action="/daily-target" id="daily-target-form" class="settings-inline-form" hx-post="/daily-target" hx-target="#daily-target" hx-swap="outerHTML">` +
       `<div class="ui-input-wrap settings-hours"><input class="ui-input" type="number" id="dt-hours" name="day_target_hours" value="${esc(String(hours))}" min="1" max="24" step="0.5" inputmode="decimal" aria-label="Daily hours target"><span class="ui-affix ui-affix-suffix">hr</span></div>` +
       button({ label: "Save target", type: "submit", icon: "save" }) +
-      `</form></div>`;
+      `</form>`;
+  }
+
+  /* The save swaps #daily-target (the row's control slot) with this. */
+  function dailyTargetControl(): string {
+    return settingControl(dailyTargetForm(), "daily-target");
   }
 
   function dailyTargetSection(): string {
@@ -539,17 +506,10 @@ export function createManageViews(deps: ManageViewDeps) {
     return settingsSection({
       level: 2, id: "preferences", title: "Preferences",
       hint: "Defaults for the timer and calendar.",
-      bodyHtml:
-        `<div class="settings-pref-list">` +
-        `<div class="settings-pref-row">` +
-        `<div class="settings-pref-text"><div class="settings-pref-title">Daily hours target</div><div class="settings-pref-hint">Drives the pacing bars on the timer and calendar; the week target is five days at this rate.</div></div>` +
-        dailyTargetControl() +
-        `</div>` +
-        `<div class="settings-pref-row">` +
-        `<div class="settings-pref-text"><div class="settings-pref-title">Accent color</div><div class="settings-pref-hint">Pumpkin is the default. Changes your app only; Zinvoices keep your brand.</div></div>` +
-        `<div class="settings-pref-control">${themeDotsHtml()}</div>` +
-        `</div>` +
-        `</div>`,
+      bodyHtml: settingList([
+        settingRow({ title: "Daily hours target", hint: "Drives the pacing bars on the timer and calendar; the week target is five days at this rate.", controlHtml: dailyTargetForm(), controlId: "daily-target" }),
+        settingRow({ title: "Accent color", hint: "Pumpkin is the default. Changes your app only; Zinvoices keep your brand.", controlHtml: themeDotsHtml() }),
+      ]),
     });
   }
 

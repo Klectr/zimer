@@ -58,6 +58,8 @@ export interface SettingRowOptions {
   title: string;
   hint?: string;
   controlHtml: string;
+  /** id on the control slot, for htmx forms that swap the slot in place. */
+  controlId?: string;
 }
 
 export function settingRow(opts: SettingRowOptions): string {
@@ -65,6 +67,14 @@ export function settingRow(opts: SettingRowOptions): string {
   return (
     `<div class="ui-setting-row"><div class="ui-setting-text">` +
     `<div class="ui-setting-title">${esc(opts.title)}</div>${hint}</div>` +
-    `<div class="ui-setting-control">${opts.controlHtml}</div></div>`
+    settingControl(opts.controlHtml, opts.controlId) + `</div>`
   );
 }
+
+/** The control slot on its own — what an htmx swap of a setting returns. */
+export function settingControl(controlHtml: string, id?: string): string {
+  return `<div class="ui-setting-control"${id ? ` id="${esc(id)}"` : ""}>${controlHtml}</div>`;
+}
+
+/** Setting rows stacked with dividers between them (none above the first). */
+export const settingList = (rows: string[]): string => `<div class="ui-setting-list">${rows.join("")}</div>`;

@@ -44,6 +44,12 @@ This is the most violated thing by new agents, so it's up front, not linked:
   (`$` … `/hr`), never crammed into the label.
 - **Selects are custom.** Native `<select>` keeps its OS arrow, which ignores
   our radius — always `appearance: none` + the custom chevron.
+- **Components first, in Zandbox.** New UI is a presentational component in
+  `site/ui/*.ts` with a story in `stories/<name>.stories.ts` (registered in
+  `zandbox.config.ts`, fictional data, every state), built and checked in
+  Zandbox (`bun run zandbox`, port 8935), then used by the view. Don't
+  hand-roll markup in `site/views/*` or `site/routes/*`; reuse an existing
+  component before adding one (check `site/ui/` first).
 - **No horizontal scrolling, ever.** Layouts fit their container or change
   pattern (see the calendar rule in DESIGN.md).
 - **Calendar conventions:** single-lane days showing tracked time only;
