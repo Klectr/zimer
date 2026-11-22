@@ -1079,7 +1079,7 @@ export function createWebRouter(deps: WebDeps) {
              one step, with the same side effects as the status route's
              draft → sent transition (freeze, then the Stripe link). */
           if (String(form.get("intent") || "") === "send") {
-            db.query("UPDATE invoices SET status = 'sent' WHERE id = ?").run(inv.id);
+            db.query("UPDATE invoices SET status = 'sent', sent_at = date('now') WHERE id = ?").run(inv.id);
             freezeInvoiceSnapshots(inv.id, shareOrigin(req));
             if (stripeConfigured()) { await stripeLinkFor(inv.id); }
           }
@@ -1119,7 +1119,7 @@ export function createWebRouter(deps: WebDeps) {
           if (!ok) return new Response("Invalid status transition.", { status: 400 });
           db.query(want === "paid"
             ? "UPDATE invoices SET status = 'paid', paid_at = date('now') WHERE id = ?"
-            : "UPDATE invoices SET status = ? WHERE id = ?").run(...(want === "paid" ? [inv!.id] : [want, inv!.id]));
+            : "UPDATE invoices SET status = 'sent', sent_at = date('now') WHERE id = ?").run(inv!.id);
           /* #301: freeze the rendered document at send (re-frozen at paid for
              the status badge) — served verbatim from here on. */
           freezeInvoiceSnapshots(inv!.id, shareOrigin(req));

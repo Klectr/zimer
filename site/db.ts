@@ -138,6 +138,10 @@ db.exec(`DROP TABLE IF EXISTS recurring_schedules;`);
        NULL on older Zinvoices: surfaces fall back to the line-item dates. */
     ["invoices", "period_from", "TEXT"],
     ["invoices", "period_to", "TEXT"],
+    /* The day the Zinvoice was sent (YYYY-MM-DD, like paid_at). NULL on
+       drafts and on Zinvoices sent before it was recorded — surfaces fall
+       back to the issue date and say "Issued", never inventing a send. */
+    ["invoices", "sent_at", "TEXT"],
   ] as const) {
     try { db.exec(`ALTER TABLE ${tbl} ADD COLUMN ${col} ${def}`); }
     catch { /* column already exists */ }
@@ -191,7 +195,7 @@ db.exec(`DROP TABLE IF EXISTS recurring_schedules;`);
   const qInvoiceItems = db.query("SELECT * FROM invoice_items WHERE invoice_id = ? ORDER BY id");
   const qInvoices = db.query(
     `SELECT i.id, i.client_id, i.number, i.issue_date, i.due_date, i.status,
-          i.tax_rate, i.paid_at,
+          i.tax_rate, i.paid_at, i.sent_at,
           c.name AS client_name, c.color AS client_color,
           c.payment_terms AS client_payment_terms,
           (SELECT p.name FROM time_entries e JOIN projects p ON p.id = e.project_id

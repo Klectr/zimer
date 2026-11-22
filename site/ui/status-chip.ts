@@ -7,6 +7,8 @@ const STATUSES: readonly ZinvoiceStatus[] = ["draft", "sent", "paid"];
 
 export interface StatusChipOptions {
   overdue?: boolean;
+  /** Replaces the status word, e.g. "Due Dec 14" on a sent chip. */
+  label?: string;
   suffix?: string;
   icon?: Parameters<typeof icon>[0];
 }
@@ -20,7 +22,8 @@ export function statusChip(status: ZinvoiceStatus, opts: StatusChipOptions = {})
   }
   const tone = opts.overdue ? "overdue" : status;
   const word = opts.overdue ? "Overdue" : status[0].toUpperCase() + status.slice(1);
-  const label = opts.suffix ? `${word} ${opts.suffix}` : word;
+  const base = opts.label ?? word;
+  const label = opts.suffix ? `${base} ${opts.suffix}` : base;
   const lead = opts.icon ? icon(opts.icon) : "";
   return `<span class="ui-chip ui-chip-${tone}">${lead}${esc(label)}</span>`;
 }

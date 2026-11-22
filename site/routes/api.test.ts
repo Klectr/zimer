@@ -17,7 +17,8 @@ function setup() {
   db.exec(`CREATE TABLE invoices (
     id INTEGER PRIMARY KEY,
     status TEXT NOT NULL DEFAULT 'draft',
-    paid_at TEXT
+    paid_at TEXT,
+    sent_at TEXT
   )`);
   db.query("INSERT INTO invoices (id, status) VALUES (1, 'sent'), (2, 'draft')").run();
 
@@ -69,7 +70,7 @@ function setup() {
     (db.query("SELECT paid_at FROM invoices WHERE id = ?").get(id) as any).paid_at;
   const status = (id: number) =>
     (db.query("SELECT status FROM invoices WHERE id = ?").get(id) as any).status;
-  return { patchStatus, paidAt, status };
+  return { db, patchStatus, paidAt, status };
 }
 
 describe("#984: CSRF guard on cookie-authed API mutations", () => {
@@ -146,12 +147,13 @@ describe("PATCH /api/invoices/:id paid_at", () => {
     expect(paidAt(1)).toBe(today);
   });
 
-  test("sent does not stamp paid_at", async () => {
-    const { patchStatus, paidAt, status } = setup();
+  test("sent does not stamp paid_at, and records sent_at", async () => {
+    const { db, patchStatus, paidAt, status } = setup() as any;
     const res = await patchStatus(2, "sent");
     expect(res.status).toBe(200);
     expect(status(2)).toBe("sent");
     expect(paidAt(2)).toBeNull();
+    expect((db.query("SELECT sent_at FROM invoices WHERE id = 2").get() as any).sent_at).toBe(new Date().toISOString().slice(0, 10));
   });
 });
 

@@ -8,7 +8,10 @@ describe("zinvoices stories", () => {
     expect(all).toContain('class="ui-card inv-table-card"');
     for (const chip of ["ui-chip-draft", "ui-chip-sent", "ui-chip-overdue", "ui-chip-paid"]) expect(all).toContain(chip);
     expect(all).toContain("20d");
-    expect(all).toContain("Paid Oct 18");
+    expect(all).toContain("Due Dec 12");
+    expect(all).toContain('role="tooltip" id="inv-tip-INV-1038">Paid Oct 18</span>');
+    expect(all).toContain('tabindex="0" aria-describedby="inv-tip-INV-1045"');
+    expect(all).not.toContain(">Issued<");
     expect(all).toContain("<em>No client</em>");
     expect(all).toContain("No Zinvoices match this filter.");
   });
