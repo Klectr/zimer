@@ -344,9 +344,13 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .ui-switch:checked::after { transform: translateX(16px); }
 .ui-switch:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 .ui-switch:disabled { cursor: not-allowed; }
-.ui-setting-row { display: flex; align-items: center; gap: var(--spacing-md); padding: var(--spacing-sm) 0; border-top: 1px solid var(--color-border-secondary); }
-.ui-setting-text { flex: 1; min-width: 0; }
-.ui-setting-title { font-size: var(--font-size); line-height: var(--line-height); }
+/* A setting: text left, control right; the control wraps under the text
+   only when the card is too narrow for both (#1216). */
+.ui-setting-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--spacing-xs) var(--spacing-md); padding: var(--spacing-sm) 0; border-top: 1px solid var(--color-border-secondary); }
+.ui-setting-list .ui-setting-row:first-child { border-top: 0; padding-top: 0; }
+.ui-setting-list .ui-setting-row:last-child { padding-bottom: 0; }
+.ui-setting-text { flex: 1 1 16rem; min-width: 0; }
+.ui-setting-title { font-size: var(--font-size); line-height: var(--line-height); font-weight: 500; }
 .ui-setting-hint { font-size: var(--font-size-sm); line-height: var(--line-height-sm); color: var(--color-text-secondary); margin-top: var(--spacing-xxs); }
 .ui-setting-control { flex: none; display: flex; align-items: center; gap: var(--spacing-xs); }
 .ui-auth-card { max-width: 400px; margin: 0 auto; background: linear-gradient(180deg, var(--color-fill-tertiary), var(--color-fill-quaternary)); border: 1px solid var(--color-border-secondary); border-radius: var(--radius-xl); padding: var(--spacing-lg); }
@@ -389,13 +393,6 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .ui-data-row-title { font-weight: 500; }
 .ui-data-row-desc { font-size: var(--font-size-sm); line-height: var(--line-height-sm); color: var(--color-text-secondary); }
 .ui-data-row .ui-btn { flex: none; }
-.settings-pref-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--spacing-md); padding: var(--spacing-sm) 0; border-top: 1px solid var(--color-border-secondary); }
-.settings-pref-row:first-child { border-top: 0; padding-top: 0; }
-.settings-pref-row:last-child { padding-bottom: 0; }
-.settings-pref-text { flex: 1 1 16rem; min-width: 0; }
-.settings-pref-title { font-weight: 500; }
-.settings-pref-hint { margin-top: 2px; font-size: var(--font-size-sm); line-height: var(--line-height-sm); color: var(--color-text-secondary); }
-.settings-pref-control { flex: none; display: flex; align-items: center; gap: var(--spacing-xs); }
 .settings-inline-form { display: flex; align-items: center; gap: var(--spacing-xs); }
 .settings-hours { width: 96px; }
 .settings-hours .ui-input { width: 100%; box-sizing: border-box; }
@@ -1347,7 +1344,7 @@ body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
    drops, then the month column and chevron. The hover card is clamped to the
    card (100cqw) so even hidden it never widens the page. */
 .manage-table-card { container-type: inline-size; }
-@container (max-width: 639px) {
+@container (max-width: 759px) {
   .manage-table-card .col-last { display: none; }
   .manage-table-card .mg-table td:first-child { white-space: normal; }
 }
@@ -1355,6 +1352,8 @@ body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
   .manage-table-card .col-month { display: none; }
   .manage-table-card .mg-chev, .manage-table-card .mg-table th:last-child { display: none; }
   .manage-table-card .mg-table th, .manage-table-card .mg-table td { padding-left: var(--spacing-xs); padding-right: var(--spacing-xs); }
+  /* The Overdue chip stacks above its amount instead of widening the cell. */
+  .manage-table-card .mg-overdue { display: table; margin: 0 0 var(--spacing-xxs) auto; }
 }
 .mg-row { position: relative; cursor: pointer; outline: none; }
 .mg-row:hover td, .mg-row:focus-visible td { background: var(--color-fill-quaternary); }

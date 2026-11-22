@@ -155,9 +155,9 @@ describe("style.css token references", () => {
   });
 });
 
-describe("settings pref rows", () => {
-  test("pref row wraps so a wide control stacks instead of overflowing (#1216)", () => {
-    const rule = css.match(/\.settings-pref-row \{[^}]*\}/);
+describe("setting rows", () => {
+  test("setting row wraps so a wide control stacks instead of overflowing (#1216)", () => {
+    const rule = css.match(/\.ui-setting-row \{[^}]*\}/);
     expect(rule).not.toBeNull();
     expect(rule![0]).toContain("flex-wrap: wrap");
   });
@@ -541,7 +541,7 @@ describe("clients table on phones (#1344)", () => {
      because the tiers keyed off the viewport. They key off the card now. */
   test("tiers are container queries on the card, and the bar and hover card can shrink", () => {
     expect(css).toContain(".manage-table-card { container-type: inline-size; }");
-    expect(css).toMatch(/@container \(max-width: 639px\) \{\s*\.manage-table-card \.col-last \{ display: none; \}/);
+    expect(css).toMatch(/@container \(max-width: 759px\) \{\s*\.manage-table-card \.col-last \{ display: none; \}/);
     expect(css).toMatch(/@container \(max-width: 519px\) \{\s*\.manage-table-card \.col-month \{ display: none; \}/);
     expect(css).not.toMatch(/\.mg-bar \{[^}]*\bwidth: 160px/);
     expect(css).toMatch(/\.mg-card \{[^}]*width: min\(280px, calc\(100cqw/);

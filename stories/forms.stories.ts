@@ -1,7 +1,7 @@
 import type { Story } from "../.zandbox/story";
-import { checkboxField, switchField, settingRow } from "../site/ui/choice";
+import { checkboxField, switchField, settingList, settingRow } from "../site/ui/choice";
 import { authCard } from "../site/ui/auth-card";
-import { settingsSection } from "../site/ui/settings-section";
+import { settingsDataList, settingsDataRow, settingsSection } from "../site/ui/settings-section";
 import { planCard } from "../site/ui/plan-card";
 import { formSection, unbilledTable, invoiceSummary } from "../site/ui/zinvoice-form";
 import { textField, selectField } from "../site/ui/field";
@@ -45,10 +45,29 @@ export const formsStories: Story[] = [
       wrap(
         settingsSection({
           title: "Preferences",
-          bodyHtml:
-            settingRow({ title: "Weekend days", hint: "Shown faded on the week grid.", controlHtml: switchField({ id: "set-weekends", label: "Weekend days", checked: true, bare: true }) }) +
-            settingRow({ title: "Round up entries", hint: "Bills each entry up to the next 15 minutes.", controlHtml: checkboxField({ id: "set-round", label: "Round up entries", checked: true, bare: true }) }) +
+          bodyHtml: settingList([
+            settingRow({ title: "Weekend days", hint: "Shown faded on the week grid.", controlHtml: switchField({ id: "set-weekends", label: "Weekend days", checked: true, bare: true }) }),
+            settingRow({ title: "Round up entries", hint: "Bills each entry up to the next 15 minutes.", controlHtml: checkboxField({ id: "set-round", label: "Round up entries", checked: true, bare: true }) }),
+            settingRow({ title: "Daily hours target", hint: "Drives the pacing bars on the timer and calendar; the week target is five days at this rate.", controlHtml: `<div class="settings-inline-form"><div class="ui-input-wrap settings-hours"><input class="ui-input" type="number" value="8" aria-label="Daily hours target"><span class="ui-affix ui-affix-suffix">hr</span></div>${button({ label: "Save target", icon: "save" })}</div>` }),
             settingRow({ title: "Billing email", hint: "billing@studio.example", controlHtml: button({ label: "Change email", size: "sm" }) }),
+          ]),
+        }),
+      ),
+  },
+  {
+    id: "forms-settings-data-rows",
+    group: "Forms",
+    title: "Settings — data rows",
+    render: () =>
+      wrap(
+        settingsSection({
+          title: "Your data",
+          hint: "Leaving is allowed, so the exports actually work.",
+          bodyHtml: settingsDataList([
+            settingsDataRow({ icon: "database", title: "Full backup", desc: "The whole SQLite file. Restore it anywhere.", actionHtml: button({ label: "Download", icon: "download", size: "sm" }) }),
+            settingsDataRow({ icon: "table", title: "Entries CSV", desc: "Every time entry, for spreadsheets.", actionHtml: button({ label: "Download", icon: "download", size: "sm" }) }),
+            settingsDataRow({ icon: "receipt", title: "Zinvoices CSV", desc: "Every Zinvoice with its totals.", actionHtml: button({ label: "Download", icon: "download", size: "sm" }) }),
+          ]),
         }),
       ),
   },

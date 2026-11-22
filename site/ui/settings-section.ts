@@ -1,5 +1,8 @@
 import { esc } from "../lib/format";
 import { card } from "./card";
+import { icon } from "../lib/icons";
+
+type IconName = Parameters<typeof icon>[0];
 
 export interface SettingsSectionOptions {
   title: string;
@@ -20,3 +23,18 @@ export function settingsSection(opts: SettingsSectionOptions): string {
     actions;
   return card({ content: inner, id: opts.id });
 }
+
+/** An export/download row: icon, title and description, one action. */
+export interface SettingsDataRowOptions {
+  icon: IconName;
+  title: string;
+  desc: string;
+  actionHtml: string;
+}
+
+export function settingsDataRow(o: SettingsDataRowOptions): string {
+  return `<div class="ui-data-row">${icon(o.icon)}<div class="ui-data-row-text"><div class="ui-data-row-title">${esc(o.title)}</div>` +
+    `<div class="ui-data-row-desc">${esc(o.desc)}</div></div>${o.actionHtml}</div>`;
+}
+
+export const settingsDataList = (rows: string[]): string => `<div class="ui-data-list">${rows.join("")}</div>`;
