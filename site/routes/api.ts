@@ -77,6 +77,7 @@ export function normalizeEntryTimestamp(raw: unknown): string | null {
    anything provided must be a finite number at or above 0 (null = invalid). */
 export function nonNegativeRate(raw: unknown): number | null {
   if (raw === undefined || raw === null || raw === "") return 0;
+  if (typeof raw !== "number" && typeof raw !== "string") return null;
   const n = Number(raw);
   return Number.isFinite(n) && n >= 0 ? n : null;
 }
@@ -404,16 +405,24 @@ export function createApiRouter(deps: ApiDeps) {
               if (Array.isArray(body.items)) {
                 for (const it of items) {
                   /* Rows the clean step drops (hours <= 0) store nothing —
-                     their dates and rates are not validated. */
+                     their dates are not validated. */
                   if (round2(Number((it as any).hours) || 0) <= 0) continue;
-                  if (nonNegativeRate((it as any).rate) === null)
-                    return json({ error: "rate must be a number at or above 0" }, 400);
                   for (const k of ["date_from", "date_to"] as const) {
                     const v = (it as any)[k];
                     if (v !== undefined && v !== null && v !== "" && !validYmd(v))
                       return json({ error: `${k} must be a valid date (YYYY-MM-DD)` }, 400);
                   }
                 }
+              }
+              /* #1440: every surviving row's rate, whichever path built
+                 it — the clean step rounds with round2, whose product can
+                 overflow to Infinity for huge finite rates, so the rounded
+                 value must stay finite too. */
+              for (const it of items) {
+                if (round2(Number((it as any).hours) || 0) <= 0) continue;
+                const r = nonNegativeRate((it as any).rate);
+                if (r === null || !Number.isFinite(round2(r)))
+                  return json({ error: "rate must be a number at or above 0" }, 400);
               }
               const clean = items
                 .map(it => ({

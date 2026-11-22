@@ -562,6 +562,32 @@ describe("API rate validation (#1440)", () => {
     expect(nonNegativeRate("12.5")).toBe(12.5);
     expect(nonNegativeRate(-1)).toBeNull();
     expect(nonNegativeRate("abc")).toBeNull();
+    expect(nonNegativeRate(true)).toBeNull();
+    expect(nonNegativeRate([50])).toBeNull();
+    expect(nonNegativeRate({})).toBeNull();
+  });
+  test("POST /api/clients with a boolean rate is a 400 and creates nothing", async () => {
+    const tenant = rateTenant();
+    const res = await post(tenant, "/api/clients", { name: "Acme", rate: true });
+    expect(res.status).toBe(400);
+    expect((tenant.db.query("SELECT COUNT(*) AS n FROM clients").get() as any).n).toBe(0);
+  });
+  test("POST /api/invoices with a rate too large to round is a 400 and creates nothing", async () => {
+    const tenant = rateTenant();
+    const res = await post(tenant, "/api/invoices", { client_id: 3, items: [{ ...item, rate: 1e307 }] });
+    expect(res.status).toBe(400);
+    expect((await res.json() as any).error).toContain("rate");
+    expect((tenant.db.query("SELECT COUNT(*) AS n FROM invoices").get() as any).n).toBe(0);
+    expect((tenant.db.query("SELECT COUNT(*) AS n FROM invoice_items").get() as any).n).toBe(0);
+  });
+  test("POST /api/invoices from/to path stores grouped items at the validated rate", async () => {
+    const tenant = rateTenant();
+    (tenant as any).unbilledEntries = () => [{ id: 1 }];
+    (tenant as any).groupToLineItems = (_groups: any[], rate: number) => [{ description: "Work", hours: 2, rate, entry_ids: [1] }];
+    const res = await post(tenant, "/api/invoices", { client_id: 3, from: "2026-11-07", to: "2026-11-20", rate: 50 });
+    expect(res.status).toBe(201);
+    const row = tenant.db.query("SELECT rate, amount FROM invoice_items").get() as any;
+    expect(row).toEqual({ rate: 50, amount: 100 });
   });
   test("POST /api/clients with a negative rate is a 400 and creates nothing", async () => {
     const tenant = rateTenant();
