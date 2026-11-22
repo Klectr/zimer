@@ -35,6 +35,9 @@ export type PdfInvoice = {
   clientEmail?: string; // #627: rendered under the address
   issueDate: string; // YYYY-MM-DD
   dueDate: string | null; // YYYY-MM-DD
+  /** #1350: "Nov 7 – Nov 20, 2026" — only when the Zinvoice stores its own
+      period; otherwise the per-line Date column says it (#624). */
+  period?: string;
   hideDue?: boolean; // #295: pay-when-paid has no fixed due date — suppress the due line
   items: PdfLineItem[];
   subtotal: number;
@@ -331,6 +334,9 @@ function drawModern(inv: PdfInvoice, doc: PdfDoc) {
      column already states it. */
   let datesStr = `Issued ${fmtDate(inv.issueDate)}`;
   if (inv.dueDate && !inv.hideDue) datesStr += `   |   Due ${fmtDate(inv.dueDate)}`;
+  /* #1350: a stored billing period can start before the first worked day,
+     which the per-line dates can't show — print it. */
+  if (inv.period) datesStr += `   |   Billing period ${inv.period}`;
   doc.text(M, doc.y, 10, datesStr, false, SOFT);
   doc.y -= 28;
 

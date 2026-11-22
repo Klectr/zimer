@@ -445,12 +445,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
        #494: no native title — "Paid via Stripe" already says what the
        title="Marked paid automatically by a Stripe payment" restated. */
     const paidChip = inv.paid_via_stripe ? stripePaidChip() : "";
-    /* #243: billing period derives from the line-item dates.
-       #582: year-aware ("Sep 1 – Sep 28, 2026"), matching the PDF, so the
-       period is never ambiguous across year boundaries. */
-    const froms = inv.items.map(it => it.date_from).filter(Boolean).sort() as string[];
-    const tos = inv.items.map(it => it.date_to || it.date_from).filter(Boolean).sort() as string[];
-    const period = froms.length ? shortDateRangeYear(froms[0], tos[tos.length - 1]) : "";
+    const period = billingPeriod(inv);
     /* #233/#239: single invoice design — dark band, badge, from/bill-to.
        Business profile comes from meta; empty profile hides the From block. */
     const bizName = getMeta(db, "business_name");
@@ -530,6 +525,17 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
 
   /* #301: single code path for the PDF input, shared by the download route
      and the send-time freeze. Extracted from the old inline route assembly. */
+  /** #1350: the Zinvoice's billing period. The period stored from the
+      wizard wins (it may start before the first worked day — Saturday vs
+      Monday). Older Zinvoices have none: #243 derives it from the line-item
+      dates. #582: year-aware ("Sep 1 – Sep 28, 2026"). */
+  function billingPeriod(inv: Invoice & { items: InvoiceItem[] }): string {
+    if (inv.period_from && inv.period_to) return shortDateRangeYear(inv.period_from, inv.period_to);
+    const froms = inv.items.map(it => it.date_from).filter(Boolean).sort() as string[];
+    const tos = inv.items.map(it => it.date_to || it.date_from).filter(Boolean).sort() as string[];
+    return froms.length ? shortDateRangeYear(froms[0], tos[tos.length - 1]) : "";
+  }
+
   function invoicePdfInput(inv: Invoice & { items: InvoiceItem[] }, origin: string): PdfInvoice {
     const t = invoiceTotals(inv.items, inv.tax_rate);
     /* #289/#293/#295: effective terms key drives the canned description
@@ -544,6 +550,9 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       clientEmail: inv.client_email || undefined, /* #627 */
       issueDate: inv.issue_date,
       dueDate: inv.due_date,
+      /* #1350: print the stored period; legacy Zinvoices keep #624 (the
+         per-line Date column states the dates). */
+      period: inv.period_from && inv.period_to ? billingPeriod(inv) : undefined,
       items: inv.items.map(it => ({
         description: it.description, hours: it.hours, rate: it.rate, amount: it.amount,
         dateFrom: it.date_from ?? null, dateTo: it.date_to ?? null, /* #243 */

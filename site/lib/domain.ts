@@ -136,12 +136,16 @@ export function createDomain(deps: DomainDeps) {
   }
 
   /** "Invoice the rest" (#328): the from-date for a client's next invoice —
-      the day after its last invoice's through-date (MAX invoice_items.date_to,
+      the day after its last invoice's through-date (its stored period end,
+      #1350, else MAX invoice_items.date_to,
       all statuses — a draft's entries are attached too). First invoice: the
       earliest finished, unbilled entry date. Null when the client has neither. */
   function clientRestFrom(clientId: number): string | null {
+    /* #1350: an invoice's stored period end wins over its last line date —
+       a period ending Friday continues Saturday, not the day after the last
+       worked day. */
     const last = db.query(
-      `SELECT MAX(ii.date_to) AS last_to FROM invoice_items ii
+      `SELECT MAX(COALESCE(i.period_to, ii.date_to)) AS last_to FROM invoice_items ii
        JOIN invoices i ON i.id = ii.invoice_id
        WHERE i.client_id = ?`).get(clientId) as any;
     if (last?.last_to) return addDays(String(last.last_to), 1);

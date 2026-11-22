@@ -132,6 +132,12 @@ db.exec(`DROP TABLE IF EXISTS recurring_schedules;`);
        afterwards, so re-downloads are byte-identical. */
     ["invoices", "pdf_snapshot", "BLOB"],
     ["invoices", "html_snapshot", "TEXT"],
+    /* Issue #1350: the billing period chosen in the wizard (YYYY-MM-DD,
+       inclusive). Billing periods don't start on the first worked day (e.g.
+       Saturday → second Friday), so it can't be derived from the entries.
+       NULL on older Zinvoices: surfaces fall back to the line-item dates. */
+    ["invoices", "period_from", "TEXT"],
+    ["invoices", "period_to", "TEXT"],
   ] as const) {
     try { db.exec(`ALTER TABLE ${tbl} ADD COLUMN ${col} ${def}`); }
     catch { /* column already exists */ }
