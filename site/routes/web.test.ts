@@ -1065,3 +1065,28 @@ describe("billing period from the wizard (#1350)", () => {
     expect(domain.clientRestFrom(1)).toBe("2026-11-21");
   });
 });
+
+/** Marking sent / paid from the browser stamps the user's local day. */
+describe("status route honours client_day", () => {
+  const yesterdayUtc = () => new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+  const post = (handleWeb: any, id: number, fields: Record<string, string>) => {
+    const form = new FormData();
+    for (const [k, v] of Object.entries(fields)) form.append(k, v);
+    const req = new Request(`http://x/invoices/${id}/status`, { method: "POST", body: form });
+    return handleWeb(req, new URL(req.url), `/invoices/${id}/status`, "POST");
+  };
+  test("sent_at and paid_at take the client's day; a bad value falls back to UTC", async () => {
+    const { db, handleWeb } = setupSend();
+    await postInvoice(handleWeb, { ...baseInvoiceFields, groups: "1", g0_desc: "x", g0_hours: "1", g0_rate: "10", g0_ids: "", g0_date_from: "", g0_date_to: "" });
+    const id = (db.query("SELECT id FROM invoices").get() as any).id;
+    await post(handleWeb, id, { status: "sent", client_day: yesterdayUtc() });
+    expect((db.query("SELECT sent_at FROM invoices WHERE id = ?").get(id) as any).sent_at).toBe(yesterdayUtc());
+    await post(handleWeb, id, { status: "paid", client_day: "garbage" });
+    expect((db.query("SELECT paid_at FROM invoices WHERE id = ?").get(id) as any).paid_at).toBe(new Date().toISOString().slice(0, 10));
+  });
+  test("the wizard's Send stores the client's day too", async () => {
+    const { db, handleWeb } = setupSend();
+    await postInvoice(handleWeb, { ...baseInvoiceFields, intent: "send", client_day: yesterdayUtc(), groups: "1", g0_desc: "x", g0_hours: "1", g0_rate: "10", g0_ids: "", g0_date_from: "", g0_date_to: "" });
+    expect((db.query("SELECT sent_at FROM invoices").get() as any).sent_at).toBe(yesterdayUtc());
+  });
+});

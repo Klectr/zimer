@@ -162,7 +162,7 @@ export function createLayoutViews(qRunning: Statement, themeCss?: () => string, 
   ${/* #355: the settings scrim is a direct body child — inside the app bar it
        would be trapped in the header's stacking context and paint below the
        bottom navigation bar. The entry edit scrim rides along for the same
-       reason (#903), and so does the #949 navigation drawer. */ appNavDrawer(demoRow ? demoRow() : "")}${toastTrigger()}${entryDialog()}
+       reason (#903), and so does the #949 navigation drawer. */ appNavDrawer(demoRow ? demoRow() : "")}${toastTrigger()}${clientDayScript()}${entryDialog()}
   </body>
   </html>`;
   }
@@ -276,6 +276,26 @@ function toastTrigger(): string {
       var msg=e.detail&&e.detail.value;
       if(typeof msg==='string'&&msg&&window.tkSnackbar) window.tkSnackbar(msg);
     });
+  })();</script>`;
+}
+
+/** Every POST carries the browser's local day as client_day, so dates the
+    server stamps on an action (sent_at, paid_at) are the user's day, not
+    the UTC one. htmx requests get it as a parameter; plain form posts get a
+    hidden input added at submit. The server validates it (clientDay). */
+function clientDayScript(): string {
+  return `<script>(function(){
+    function day(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+    document.body.addEventListener('htmx:configRequest',function(e){
+      if(String(e.detail.verb||'').toLowerCase()==='post') e.detail.parameters['client_day']=day();
+    });
+    document.addEventListener('submit',function(e){
+      var f=e.target;
+      if(!f||String(f.method||'').toLowerCase()!=='post'||f.hasAttribute('hx-post')) return;
+      var i=f.querySelector('input[name="client_day"]');
+      if(!i){ i=document.createElement('input'); i.type='hidden'; i.name='client_day'; f.appendChild(i); }
+      i.value=day();
+    },true);
   })();</script>`;
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { clientColor, clientTermsDescription, termsDescription, csvCell, fmtDur, greeting, safeCssColor, schemeColor, shortDateRange, shortDateRangeYear, shortYmd } from "./format.ts";
+import { clientColor, clientDay, clientTermsDescription, termsDescription, csvCell, fmtDur, greeting, safeCssColor, schemeColor, shortDateRange, shortDateRangeYear, shortYmd } from "./format.ts";
 
 /* #914: CSV formula injection — cells starting with =, +, - or @ (after
    leading whitespace) get a single-quote prefix so Excel/Sheets open them
@@ -135,5 +135,17 @@ describe("client-facing terms wording", () => {
     expect(clientTermsDescription("net_30")).toBe("Payment is due within 30 days of the invoice date.");
     expect(clientTermsDescription("due_on_receipt")).toBe("Payment is due upon receipt of this invoice.");
     expect(termsDescription("net_30")).toContain("Zinvoice"); // in-app text keeps the product word
+  });
+});
+
+describe("clientDay", () => {
+  const now = new Date("2026-11-22T02:30:00Z"); // 8:30pm Nov 21 in Chicago
+  test("accepts the user's day within one day of UTC", () => {
+    expect(clientDay("2026-11-21", now)).toBe("2026-11-21");
+    expect(clientDay("2026-11-22", now)).toBe("2026-11-22");
+    expect(clientDay("2026-11-23", now)).toBe("2026-11-23");
+  });
+  test("rejects malformed, impossible, or far-off days", () => {
+    for (const v of ["", "11/21/2026", "2026-11-2", "2026-02-30", "2026-11-19", "2026-11-25", null, 20261121]) expect(clientDay(v as any, now)).toBeNull();
   });
 });

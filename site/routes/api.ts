@@ -3,7 +3,7 @@
  *  path is not an API path so the caller falls through to web routes. */
 
 import type { Database, Statement } from "bun:sqlite";
-import { clientColor, dayBounds, durationSeconds, entryIsLocked, round2, todayStr } from "../lib/format.ts";
+import { clientColor, clientDay, dayBounds, durationSeconds, entryIsLocked, round2, todayStr } from "../lib/format.ts";
 import type { Entry, Invoice, InvoiceItem } from "../lib/types.ts";
 import { findTenantByPaymentLinkId } from "../lib/tenants.ts"; /* #741 */
 import { authedApi as bearerAuthedApi } from "../lib/auth.ts"; /* #984 */
@@ -386,9 +386,9 @@ export function createApiRouter(deps: ApiDeps) {
                   /* Marking paid stamps the paid date, like the web route and the
                      Stripe webhook do (#552) — the list/detail/CSV all read it. */
                   if (want === "paid")
-                    db.query("UPDATE invoices SET status = 'paid', paid_at = date('now') WHERE id = ?").run(id);
+                    db.query("UPDATE invoices SET status = 'paid', paid_at = COALESCE(?, date('now')) WHERE id = ?").run(clientDay(body.client_day), id);
                   else
-                    db.query("UPDATE invoices SET status = 'sent', sent_at = date('now') WHERE id = ?").run(id);
+                    db.query("UPDATE invoices SET status = 'sent', sent_at = COALESCE(?, date('now')) WHERE id = ?").run(clientDay(body.client_day), id);
                   /* #301: freeze at send, re-freeze at paid for the status badge. */
                   freezeInvoiceSnapshots(id, shareOrigin(req));
                 }
