@@ -68,7 +68,7 @@ function buildTenantTree(bundle: DbBundle, dbPath: string): WebTenant & ApiTenan
     db, ENTRY_SELECT,
     qRunning, qOne, qRange, qInvoice, qInvoiceItems, qInvoices, qRevenueRows,
   } = bundle;
-  const { revenueTotals, revenueMonthly, revenueByClient, isOverdue, revenueOverdue } =
+  const { revenueTotals, revenueMonthly, revenueByClient, isOverdue, revenueOverdue, revenueSnapshot } =
     createRevenue(qRevenueRows, () => getMeta(db, "business_payment_terms"));
   const { layout, notFoundPage, errorPage } = createLayoutViews(qRunning,
     /* #884: per-database accent theme; the tenant db owns the meta table. */
@@ -165,7 +165,7 @@ function buildTenantTree(bundle: DbBundle, dbPath: string): WebTenant & ApiTenan
     nextInvoiceNumber, stripeLinkFor, unbilledEntries,
     groupToLineItems, clientRestFrom, ensurePublicToken, getPublicToken, mintPublicToken,
     invoicePdfInput, freezeInvoiceSnapshots, /* #301 */
-    revenueTotals, revenueMonthly, revenueByClient, revenueOverdue,
+    revenueTotals, revenueMonthly, revenueByClient, revenueOverdue, revenueSnapshot,
   };
 }
 
