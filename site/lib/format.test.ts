@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { clientColor, clientDay, clientTermsDescription, termsDescription, csvCell, fmtDur, greeting, safeCssColor, schemeColor, shortDateRange, shortDateRangeYear, shortYmd } from "./format.ts";
+import { clientColor, clientDay, clientTermsDescription, termsDescription, csvCell, fmtDur, greeting, safeCssColor, schemeColor, shortDateRange, shortDateRangeYear, shortYmd, validYmd } from "./format.ts";
 
 /* #914: CSV formula injection — cells starting with =, +, - or @ (after
    leading whitespace) get a single-quote prefix so Excel/Sheets open them
@@ -147,5 +147,16 @@ describe("clientDay", () => {
   });
   test("rejects malformed, impossible, or far-off days", () => {
     for (const v of ["", "11/21/2026", "2026-11-2", "2026-02-30", "2026-11-19", "2026-11-25", null, 20261121]) expect(clientDay(v as any, now)).toBeNull();
+  });
+});
+
+describe("validYmd", () => {
+  test("accepts any real calendar day, however far off", () => {
+    expect(validYmd("2026-11-07")).toBe("2026-11-07");
+    expect(validYmd("1999-01-31")).toBe("1999-01-31");
+    expect(validYmd(" 2026-02-28 ")).toBe("2026-02-28");
+  });
+  test("rejects malformed and impossible days", () => {
+    for (const v of ["", "11/07/2026", "2026-11-7", "2026-02-30", "2026-13-01", "2026-00-10", null, undefined, 20261107]) expect(validYmd(v as any)).toBeNull();
   });
 });

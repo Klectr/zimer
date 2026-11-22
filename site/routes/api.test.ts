@@ -395,11 +395,19 @@ describe("invoice detail projection (#1281)", () => {
     const row = await postPeriod(periodTenant(), { client_id: 3, from: "2026-11-07", to: "2026-11-20" });
     expect(row).toEqual({ period_from: "2026-11-07", period_to: "2026-11-20" });
   });
-  test("POST stores NULL period for a reversed or malformed from/to (#1429)", async () => {
-    const reversed = await postPeriod(periodTenant(), { client_id: 3, from: "2026-11-20", to: "2026-11-07" });
-    expect(reversed).toEqual({ period_from: null, period_to: null });
-    const malformed = await postPeriod(periodTenant(), { client_id: 3, from: "11/07/2026", to: "2026-11-20" });
+  test("POST stores NULL period for a reversed from/to (#1429)", async () => {
+    const row = await postPeriod(periodTenant(), { client_id: 3, items: [{ description: "Work", hours: 1, rate: 100 }], from: "2026-11-20", to: "2026-11-07" });
+    expect(row).toEqual({ period_from: null, period_to: null });
+  });
+  test("POST stores NULL period for a malformed or impossible from/to (#1429)", async () => {
+    const malformed = await postPeriod(periodTenant(), { client_id: 3, items: [{ description: "Work", hours: 1, rate: 100 }], from: "11/07/2026", to: "2026-11-20" });
     expect(malformed).toEqual({ period_from: null, period_to: null });
+    const impossible = await postPeriod(periodTenant(), { client_id: 3, items: [{ description: "Work", hours: 1, rate: 100 }], from: "2026-02-30", to: "2026-13-01" });
+    expect(impossible).toEqual({ period_from: null, period_to: null });
+  });
+  test("POST with items[] stores a valid from/to as the period too (#1429)", async () => {
+    const row = await postPeriod(periodTenant(), { client_id: 3, items: [{ description: "Work", hours: 1, rate: 100 }], from: "2026-11-07", to: "2026-11-20" });
+    expect(row).toEqual({ period_from: "2026-11-07", period_to: "2026-11-20" });
   });
 });
 

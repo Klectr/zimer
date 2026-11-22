@@ -3,7 +3,7 @@
  *  path is not an API path so the caller falls through to web routes. */
 
 import type { Database, Statement } from "bun:sqlite";
-import { clientColor, clientDay, dayBounds, durationSeconds, entryIsLocked, round2, todayStr } from "../lib/format.ts";
+import { clientColor, clientDay, dayBounds, durationSeconds, entryIsLocked, round2, todayStr, validYmd } from "../lib/format.ts";
 import type { Entry, Invoice, InvoiceItem } from "../lib/types.ts";
 import { findTenantByPaymentLinkId } from "../lib/tenants.ts"; /* #741 */
 import { authedApi as bearerAuthedApi } from "../lib/auth.ts"; /* #984 */
@@ -352,8 +352,7 @@ export function createApiRouter(deps: ApiDeps) {
               /* #1429: keep from/to as the billing period, like the web
                  wizard (#1350). Only a well-formed, ordered pair is stored;
                  anything else stays NULL and surfaces fall back to line dates. */
-              const ymd = (v: unknown) => { const t = typeof v === "string" ? v.trim() : ""; return /^\d{4}-\d{2}-\d{2}$/.test(t) ? t : null; };
-              const pFrom = ymd(body.from), pTo = ymd(body.to);
+              const pFrom = validYmd(body.from), pTo = validYmd(body.to);
               const [periodFrom, periodTo] = pFrom && pTo && pFrom <= pTo ? [pFrom, pTo] : [null, null];
               const inv = db.query(
                 `INSERT INTO invoices (client_id, number, issue_date, due_date, tax_rate, notes, internal_notes, period_from, period_to)

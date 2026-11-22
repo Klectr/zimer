@@ -5,7 +5,7 @@
 
 import { join, normalize, sep } from "node:path";
 import type { Database, Statement } from "bun:sqlite";
-import { addDays, clientColor, clientDay, csvCell, entryIsLocked, isPaymentTermsKey, round2, termsDays, termsKey, todayStr } from "../lib/format.ts";
+import { addDays, clientColor, clientDay, csvCell, entryIsLocked, isPaymentTermsKey, round2, termsDays, termsKey, todayStr, validYmd } from "../lib/format.ts";
 import type { Entry, Invoice, InvoiceItem } from "../lib/types.ts";
 import type { ClientSel } from "../views/manage.ts"; /* #367 */
 import type { PdfInvoice } from "../pdf.ts";
@@ -1116,8 +1116,7 @@ export function createWebRouter(deps: WebDeps) {
           /* #1350: keep the wizard's From/To as the Zinvoice's billing period.
              Only a well-formed, ordered pair is stored; anything else stays
              NULL and the surfaces fall back to the line-item dates. */
-          const ymd = (v: FormDataEntryValue | null) => { const t = String(v || "").trim(); return /^\d{4}-\d{2}-\d{2}$/.test(t) ? t : null; };
-          const pFrom = ymd(form.get("from")), pTo = ymd(form.get("to"));
+          const pFrom = validYmd(form.get("from")), pTo = validYmd(form.get("to"));
           const [periodFrom, periodTo] = pFrom && pTo && pFrom <= pTo ? [pFrom, pTo] : [null, null];
           const inv = db.query(
             `INSERT INTO invoices (client_id, number, issue_date, due_date, tax_rate, notes, internal_notes, period_from, period_to)
