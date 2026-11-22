@@ -68,6 +68,7 @@ function setupHosted() {
     revenueMonthly: () => [],
     revenueByClient: () => [],
     revenueOverdue: () => [],
+    revenueSnapshot: () => ({ totals: null, by_month: [], by_client: [], overdue: [] }),
   }));
   const getTenant = (req: Request) => {
     const user = accounts.sessionUserFromRequest(req);

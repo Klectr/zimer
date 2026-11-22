@@ -164,7 +164,7 @@ export function createApiRouter(deps: ApiDeps) {
               db, qRunning, qOne, qRange, qInvoice, qInvoices,
               groupToLineItems, unbilledEntries, getInvoice,
               invoiceTotals, nextInvoiceNumber, mintPublicToken, stripeLinkFor,
-              revenueTotals, revenueMonthly, revenueByClient, revenueOverdue, revenueSnapshot,
+              revenueSnapshot,
               freezeInvoiceSnapshots,
             } = tenant;
             const body = (await req.json().catch(() => ({}))) as any;

@@ -43,6 +43,7 @@ function setup() {
     revenueMonthly: () => [],
     revenueByClient: () => [],
     revenueOverdue: () => [],
+    revenueSnapshot: () => ({ totals: null, by_month: [], by_client: [], overdue: [] }),
     freezeInvoiceSnapshots: () => {},
   };
 
@@ -104,6 +105,7 @@ describe("#984: CSRF guard on cookie-authed API mutations", () => {
       nextInvoiceNumber: () => "INV-0001", mintPublicToken: () => "tok",
       stripeLinkFor: async () => ({}),
       revenueTotals: () => null, revenueMonthly: () => [], revenueByClient: () => [], revenueOverdue: () => [],
+      revenueSnapshot: () => ({ totals: null, by_month: [], by_client: [], overdue: [] }),
       freezeInvoiceSnapshots: () => {},
     } as any;
   }
@@ -175,7 +177,7 @@ describe("GET /api/invoices list projection (#1279)", () => {
       nextInvoiceNumber: () => "INV-0001", mintPublicToken: () => "tok",
       stripeLinkFor: async () => ({}),
       revenueTotals: () => null, revenueMonthly: () => [], revenueByClient: () => [],
-      revenueOverdue: () => [], freezeInvoiceSnapshots: () => {},
+      revenueOverdue: () => [], revenueSnapshot: () => ({ totals: null, by_month: [], by_client: [], overdue: [] }), freezeInvoiceSnapshots: () => {},
     };
     const { handleApi } = createApiRouter({
       getTenant: () => tenant as any,
@@ -207,6 +209,45 @@ describe("GET /api/invoices list projection (#1279)", () => {
     for (const key of ["internal_notes", "html_snapshot", "pdf_snapshot", "stripe_payment_link_id", "stripe_payment_link", "public_token", "notes", "template"])
       expect(item).not.toHaveProperty(key);
     expect(JSON.stringify(item)).not.toContain("do not leak");
+  });
+});
+
+describe("GET /api/revenue uses the one-pass snapshot (#1367)", () => {
+  test("200 with the snapshot body; the four per-figure functions are never called", async () => {
+    const snapshot = {
+      totals: { invoiced: 12, paid: 5, outstanding: 7 },
+      by_month: [{ month: "2026-11", label: "Nov", invoiced: 12, paid: 5 }],
+      by_client: [{ client_id: 7, name: "Acme", color: null, invoiced: 12, paid: 5, outstanding: 7 }],
+      overdue: [{ id: 1, number: "INV-0001", client_name: "Acme", total: 7, due_date: "2026-11-01", days_past_due: 3, bucket: "1-15" }],
+    };
+    let snapshotCalls = 0;
+    const boom = () => { throw new Error("per-figure function called"); };
+    const tenant = {
+      db: new BunDatabase(":memory:"),
+      qRunning: stubStatement(), qOne: stubStatement(), qRange: stubStatement(),
+      qInvoice: stubStatement(), qInvoices: stubStatement(),
+      groupToLineItems: () => [], unbilledEntries: () => [],
+      getInvoice: () => null, invoiceTotals: () => ({ subtotal: 0, tax: 0, total: 0 }),
+      nextInvoiceNumber: () => "INV-0001", mintPublicToken: () => "tok",
+      stripeLinkFor: async () => ({}),
+      revenueTotals: boom, revenueMonthly: boom, revenueByClient: boom, revenueOverdue: boom,
+      revenueSnapshot: () => { snapshotCalls++; return snapshot; },
+      freezeInvoiceSnapshots: () => {},
+    };
+    const { handleApi } = createApiRouter({
+      getTenant: () => tenant as any,
+      TOKEN: "test-token",
+      authedApi: () => true,
+      json: (data: unknown, status = 200) => Response.json(data, { status }),
+      entryToJson: (e: any) => e,
+      verifyWebhookSignature: () => false,
+      shareOrigin: () => "",
+    });
+    const req = new Request("http://localhost/api/revenue");
+    const res = (await handleApi(req, new URL(req.url), "/api/revenue", "GET"))!;
+    expect(res.status).toBe(200);
+    expect(snapshotCalls).toBe(1);
+    expect(await res.json()).toEqual(snapshot);
   });
 });
 
@@ -242,7 +283,7 @@ describe("invoice detail projection (#1281)", () => {
       nextInvoiceNumber: () => "INV-0001", mintPublicToken: () => "tok",
       stripeLinkFor: async () => ({}),
       revenueTotals: () => null, revenueMonthly: () => [], revenueByClient: () => [],
-      revenueOverdue: () => [], freezeInvoiceSnapshots: () => {},
+      revenueOverdue: () => [], revenueSnapshot: () => ({ totals: null, by_month: [], by_client: [], overdue: [] }), freezeInvoiceSnapshots: () => {},
     };
   }
   function routerFor(tenant: any) {

@@ -112,7 +112,7 @@ function apiSetup(accounts: ReturnType<typeof createAccountsDb>, gate: any) {
     nextInvoiceNumber: () => "INV-0001",
     mintPublicToken: () => "", stripeLinkFor: async () => ({}),
     revenueTotals: () => null, revenueMonthly: () => [], revenueByClient: () => [],
-    revenueOverdue: () => [], freezeInvoiceSnapshots: () => {},
+    revenueOverdue: () => [], revenueSnapshot: () => ({ totals: null, by_month: [], by_client: [], overdue: [] }), freezeInvoiceSnapshots: () => {},
   };
   const { handleApi } = createApiRouter({
     getTenant: (req: Request) =>

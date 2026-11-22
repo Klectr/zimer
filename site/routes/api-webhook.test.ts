@@ -49,6 +49,7 @@ function setup(sigOk: boolean) {
     revenueMonthly: () => [],
     revenueByClient: () => [],
     revenueOverdue: () => [],
+    revenueSnapshot: () => ({ totals: null, by_month: [], by_client: [], overdue: [] }),
     freezeInvoiceSnapshots: () => {},
   };
 
