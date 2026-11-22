@@ -598,16 +598,20 @@ describe("timer mock parity (#1121)", () => {
 /** #1342: the Zimer card and Today's entries share a grid wrapper so wide
  *  content can lay them side by side (container query on .timer-home). */
 describe("timer home side-by-side grid (#1342)", () => {
-  test("both cards sit inside .timer-home-grid; the inline script stays outside", async () => {
-    const src = await Bun.file("site/views/timer.ts").text();
-    const grid = src.indexOf('<div class="timer-home-grid">');
-    const timer = src.indexOf("${timerPartial()}", grid);
-    const entries = src.indexOf("Today's entries</div>", grid);
-    const close = src.indexOf("</section>\n        </div>", grid);
-    const script = src.indexOf("<script>(function(){/* #255", grid);
+  /* Checked on the rendered page (the cards are site/ui/timer-home.ts
+     components now, not literal markup in the view). */
+  test("both cards sit inside .timer-home-grid; the inline script stays outside", () => {
+    const deps = { ...baseDeps, qRunning: { get: () => null } as unknown as Statement };
+    const html = createTimerViews(deps as any).dashboardPage();
+    const grid = html.indexOf('<div class="timer-home-grid">');
+    const timer = html.indexOf('id="timer-card"', grid);
+    const entries = html.indexOf("Today's entries</div>", grid);
+    const close = html.indexOf("</section>\n        </div>", grid);
+    const script = html.indexOf("<script>(function(){/* #255", grid);
     expect(grid).toBeGreaterThan(-1);
     expect(timer).toBeGreaterThan(grid);
     expect(entries).toBeGreaterThan(timer);
+    expect(close).toBeGreaterThan(entries);
     expect(script).toBeGreaterThan(close);
   });
 
