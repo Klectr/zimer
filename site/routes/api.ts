@@ -73,6 +73,14 @@ export function normalizeEntryTimestamp(raw: unknown): string | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
 }
 
+/* #1440: a money rate as the web UI accepts it — absent or blank means 0,
+   anything provided must be a finite number at or above 0 (null = invalid). */
+export function nonNegativeRate(raw: unknown): number | null {
+  if (raw === undefined || raw === null || raw === "") return 0;
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
 export function createApiRouter(deps: ApiDeps) {
   const {
     getTenant, TOKEN, authedApi, json, entryToJson, verifyWebhookSignature, shareOrigin,
@@ -297,8 +305,10 @@ export function createApiRouter(deps: ApiDeps) {
               return json(db.query("SELECT * FROM clients ORDER BY name").all());
             if (path === "/api/clients" && method === "POST") {
               if (!body.name) return json({ error: "name required" }, 400);
+              const rate = nonNegativeRate(body.rate);
+              if (rate === null) return json({ error: "rate must be a number at or above 0" }, 400);
               const r = db.query("INSERT INTO clients (name, color, rate) VALUES (?, ?, ?) RETURNING *")
-                .get(String(body.name), clientColor(body.color), Number(body.rate) || 0) as any;
+                .get(String(body.name), clientColor(body.color), rate) as any;
               return json(r, 201);
             }
             m = path.match(/^\/api\/clients\/(\d+)$/);
@@ -373,23 +383,31 @@ export function createApiRouter(deps: ApiDeps) {
               const dueDate = body.due_date ? validYmd(body.due_date) : null;
               if (body.due_date && !dueDate)
                 return json({ error: "due_date must be a valid date (YYYY-MM-DD)" }, 400);
+              const taxRate = nonNegativeRate(body.tax_rate);
+              if (taxRate === null)
+                return json({ error: "tax_rate must be a number at or above 0" }, 400);
               let items: { description: string; hours: number; rate: number; entry_ids?: number[] }[];
               if (Array.isArray(body.items)) {
                 items = body.items;
               } else {
                 if (!body.client_id || !body.from || !body.to)
                   return json({ error: "client_id, from, to required (or items[])" }, 400);
+                const rate = nonNegativeRate(body.rate);
+                if (rate === null)
+                  return json({ error: "rate must be a number at or above 0" }, 400);
                 items = groupToLineItems(
                   unbilledEntries(Number(body.client_id), String(body.from), String(body.to)),
-                  Number(body.rate) || 0);
+                  rate);
               }
               /* #1436: per-line billing dates are stored dates too —
                  validate caller-supplied ones the same way. */
               if (Array.isArray(body.items)) {
                 for (const it of items) {
                   /* Rows the clean step drops (hours <= 0) store nothing —
-                     their dates are not validated. */
+                     their dates and rates are not validated. */
                   if (round2(Number((it as any).hours) || 0) <= 0) continue;
+                  if (nonNegativeRate((it as any).rate) === null)
+                    return json({ error: "rate must be a number at or above 0" }, 400);
                   for (const k of ["date_from", "date_to"] as const) {
                     const v = (it as any)[k];
                     if (v !== undefined && v !== null && v !== "" && !validYmd(v))
@@ -422,7 +440,7 @@ export function createApiRouter(deps: ApiDeps) {
                   number,
                   issueDate,
                   dueDate,
-                  Number(body.tax_rate) || 0,
+                  taxRate,
                   String(body.notes || ""),
                   String(body.internal_notes || ""),
                   periodFrom, periodTo) as any; /* #302 */
