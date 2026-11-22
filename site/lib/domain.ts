@@ -3,13 +3,13 @@
  *  options and progress bars. Wired once in
  *  server.ts and injected into the route and view factories that need them. */
 
+import { weekTargetBar as weekTargetBarUi } from "../ui/calendar-pane.ts";
 import { randomBytes } from "node:crypto";
 import type { Database, Statement } from "bun:sqlite";
 import { addDays, durationSeconds, esc, fmtDur, round2 } from "./format.ts";
 import type { Entry, Invoice, InvoiceItem } from "./types.ts";
 import { createPaymentLink, stripeConfigured } from "../stripe.ts";
 import { getMeta } from "../db.ts";
-import { progressBar } from "../ui/progress.ts";
 
 export interface DomainDeps {
   db: Database;
@@ -226,13 +226,12 @@ export function createDomain(deps: DomainDeps) {
       (five days at the user's daily target, #908). */
   function weekTargetBar(weekTotalSecs: number): string {
     const target = 5 * dayTargetSecs(db);
-    const pct = Math.min(100, (weekTotalSecs / target) * 100);
-    const over = weekTotalSecs >= target;
-    return `
-      <div class="week-target">
-        ${progressBar({ value: pct, label: `Weekly hours target, ${target / 3600} hours` })}
-        <div class="ui-row-meta">${fmtDur(weekTotalSecs)} / ${fmtDur(target)}${over ? ` · <span class="tiny">over target</span>` : ""}</div>
-      </div>`;
+    return weekTargetBarUi({
+      pct: (weekTotalSecs / target) * 100,
+      label: `${fmtDur(weekTotalSecs)} / ${fmtDur(target)}`,
+      over: weekTotalSecs >= target,
+      ariaLabel: `Weekly hours target, ${target / 3600} hours`,
+    });
   }
 
 

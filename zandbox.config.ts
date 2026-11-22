@@ -13,6 +13,7 @@ import { zinvoiceDetailStories } from "./stories/zinvoice-detail.stories";
 import { zinvoiceWizardStories } from "./stories/zinvoice-wizard.stories";
 import { timerHomeStories } from "./stories/timer-home.stories";
 import { systemStories } from "./stories/system.stories";
+import { calendarPaneStories } from "./stories/calendar-pane.stories";
 import { calendarStories } from "./stories/calendar.stories";
 import { feedbackStories } from "./stories/feedback.stories";
 import { formsStories } from "./stories/forms.stories";
@@ -35,6 +36,7 @@ const config: ZandboxConfig = {
     ...zinvoiceWizardStories,
     ...timerHomeStories,
     ...systemStories,
+    ...calendarPaneStories,
     ...calendarStories,
     ...feedbackStories,
     ...formsStories,
