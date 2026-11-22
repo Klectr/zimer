@@ -416,6 +416,36 @@ export function createManageViews(deps: ManageViewDeps) {
             closeClientDialog(false);
           }
         });
+        /* The hover card follows the mouse: it sits 16px below-right of the
+           pointer, flips left/up when it would leave the table card or the
+           viewport, and drops back to its anchored spot (for keyboard focus)
+           once the pointer leaves the row. */
+        var mgFollowRow = null;
+        function mgUnfollow(){
+          if(!mgFollowRow) return;
+          var c = mgFollowRow.querySelector(".mg-card");
+          if(c){ c.style.left = ""; c.style.top = ""; }
+          mgFollowRow = null;
+        }
+        document.addEventListener("pointermove", function(ev){
+          if(ev.pointerType !== "mouse") return;
+          var row = ev.target && ev.target.closest ? ev.target.closest("tr.mg-row") : null;
+          if(row !== mgFollowRow) mgUnfollow();
+          if(!row) return;
+          var c = row.querySelector(".mg-card");
+          var box = row.closest(".manage-table-card");
+          if(!c || !box) return;
+          mgFollowRow = row;
+          var r = row.getBoundingClientRect(), b = box.getBoundingClientRect();
+          var w = c.offsetWidth, h = c.offsetHeight, gap = 16;
+          var x = ev.clientX + gap, y = ev.clientY + gap;
+          if(x + w > b.right - 8) x = ev.clientX - gap - w;
+          if(x < b.left + 8) x = b.left + 8;
+          if(y + h > window.innerHeight - 8) y = ev.clientY - gap - h;
+          c.style.left = (x - r.left) + "px";
+          c.style.top = (y - r.top) + "px";
+        });
+        document.addEventListener("pointerleave", mgUnfollow);
         /* #1344: client rows are focusable; Enter or Space opens them like a button. */
         document.addEventListener("keydown", function(ev){
           if(ev.key !== "Enter" && ev.key !== " ") return;
