@@ -507,15 +507,21 @@ describe("client dialog order", () => {
   });
 });
 
-/** The client hover card follows the mouse and flips at the edges; keyboard
- *  focus keeps the anchored position (inline offsets are cleared on leave). */
+/** The client hover card follows the mouse and flips at the edges. Leaving
+ *  a row must NOT reset the position (the card would jump mid-fade);
+ *  keyboard focus resets it to the anchored spot. */
 describe("client hover card follows the pointer", () => {
-  test("the page wires a mouse-only pointermove that positions and clears the card", () => {
+  test("the page wires a mouse-only pointermove that positions the card", () => {
     const html = pageHtml();
     expect(html).toContain('document.addEventListener("pointermove"');
     expect(html).toContain('if(ev.pointerType !== "mouse") return;');
     expect(html).toContain("x = ev.clientX - gap - w;");
     expect(html).toContain("y = ev.clientY - gap - h;");
-    expect(html).toContain('c.style.left = ""; c.style.top = "";');
+  });
+
+  test("the position survives the fade-out; only keyboard focus resets it", () => {
+    const html = pageHtml();
+    expect(html).not.toContain('addEventListener("pointerleave"');
+    expect(html).toMatch(/addEventListener\("focusin"[^]*?:focus-visible[^]*?c\.style\.left = ""; c\.style\.top = "";/);
   });
 });

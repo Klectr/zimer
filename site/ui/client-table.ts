@@ -102,22 +102,25 @@ function clientTableRow(r: ClientTableRow): string {
       </tr>`;
 }
 
-/** Mouse-only: the hover card sits 16px below-right of the pointer, flips
- *  left/up at the table card's edge or the viewport bottom, and returns to
- *  its anchored CSS spot (keyboard focus) when the pointer leaves the row.
- *  Guarded so re-swapped tables (htmx OOB) never stack listeners. */
+/** Mouse-only: the hover card sits 16px below-right of the pointer and flips
+ *  left/up at the table card's edge or the viewport bottom. Leaving the row
+ *  keeps the last position so the card fades out where it was (clearing it
+ *  then made it jump to the anchored spot mid-fade); keyboard focus resets
+ *  it to the anchored CSS spot. Guarded so re-swapped tables (htmx OOB)
+ *  never stack listeners. */
 export const CLIENT_TABLE_SCRIPT = `<script>(function(){
   if(window.__tkClientCardFollow) return; window.__tkClientCardFollow = true;
-  var cur = null;
-  function clear(){ if(!cur) return; var c = cur.querySelector(".mg-card"); if(c){ c.style.left = ""; c.style.top = ""; } cur = null; }
+  document.addEventListener("focusin", function(ev){
+    var row = ev.target && ev.target.closest ? ev.target.closest("tr.mg-row") : null;
+    if(!row || !row.matches(":focus-visible")) return;
+    var c = row.querySelector(".mg-card"); if(c){ c.style.left = ""; c.style.top = ""; }
+  });
   document.addEventListener("pointermove", function(ev){
     if(ev.pointerType !== "mouse") return;
     var row = ev.target && ev.target.closest ? ev.target.closest("tr.mg-row") : null;
-    if(row !== cur) clear();
     if(!row) return;
     var c = row.querySelector(".mg-card"), box = row.closest(".manage-table-card");
     if(!c || !box) return;
-    cur = row;
     var r = row.getBoundingClientRect(), b = box.getBoundingClientRect();
     var w = c.offsetWidth, h = c.offsetHeight, gap = 16;
     var x = ev.clientX + gap, y = ev.clientY + gap;
@@ -127,7 +130,6 @@ export const CLIENT_TABLE_SCRIPT = `<script>(function(){
     c.style.left = (x - r.left) + "px";
     c.style.top = (y - r.top) + "px";
   });
-  document.addEventListener("pointerleave", clear);
 })();</script>`;
 
 export function clientTable(o: ClientTableOptions): string {
