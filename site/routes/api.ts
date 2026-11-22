@@ -387,6 +387,9 @@ export function createApiRouter(deps: ApiDeps) {
                  validate caller-supplied ones the same way. */
               if (Array.isArray(body.items)) {
                 for (const it of items) {
+                  /* Rows the clean step drops (hours <= 0) store nothing —
+                     their dates are not validated. */
+                  if (round2(Number((it as any).hours) || 0) <= 0) continue;
                   for (const k of ["date_from", "date_to"] as const) {
                     const v = (it as any)[k];
                     if (v !== undefined && v !== null && v !== "" && !validYmd(v))

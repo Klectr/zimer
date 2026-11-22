@@ -8,6 +8,7 @@ import { describe, expect, test } from "bun:test";
 import type { Database, Statement } from "bun:sqlite";
 import { Database as BunDatabase } from "bun:sqlite";
 import { createApiRouter } from "./api.ts";
+import { todayStr } from "../lib/format.ts";
 
 const stubStatement = () =>
   ({ get: () => null, all: () => [], run: () => {} } as unknown as Statement);
@@ -483,7 +484,7 @@ describe("POST /api/invoices date validation (#1436)", () => {
     const res = await post(tenant, { client_id: 3, items: [item] });
     expect(res.status).toBe(201);
     const row = tenant.db.query("SELECT issue_date, due_date FROM invoices").get() as any;
-    expect(row.issue_date).toBe(new Date().toISOString().slice(0, 10));
+    expect(row.issue_date).toBe(todayStr());
     expect(row.due_date).toBeNull();
   });
   test("valid per-item date_from/date_to are stored", async () => {
@@ -499,6 +500,12 @@ describe("POST /api/invoices date validation (#1436)", () => {
     expect(res.status).toBe(400);
     expect((await res.json() as any).error).toContain("date_from");
     expect((tenant.db.query("SELECT COUNT(*) AS n FROM invoices").get() as any).n).toBe(0);
+  });
+  test("a dropped zero-hour row's bad date is not validated", async () => {
+    const tenant = dateTenant();
+    const res = await post(tenant, { client_id: 3, items: [{ description: "Placeholder", hours: 0, rate: 100, date_from: "2026-02-30" }, item] });
+    expect(res.status).toBe(201);
+    expect((tenant.db.query("SELECT COUNT(*) AS n FROM invoice_items").get() as any).n).toBe(1);
   });
 });
 
