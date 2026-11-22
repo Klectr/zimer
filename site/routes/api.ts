@@ -62,7 +62,10 @@ export function normalizeEntryTimestamp(raw: unknown): string | null {
   if (!m) return null;
   const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
   const h = Number(m[4]), mi = Number(m[5]), s = Number(m[6] || 0);
-  const wall = new Date(Date.UTC(y, mo - 1, d, h, mi, s));
+  /* Base year 2000 (a leap year) + setUTCFullYear: Date.UTC maps years
+     0-99 to 1900-1999, which would reject 0000-0099 outright (#1434). */
+  const wall = new Date(Date.UTC(2000, mo - 1, d, h, mi, s));
+  wall.setUTCFullYear(y);
   if (wall.getUTCFullYear() !== y || wall.getUTCMonth() !== mo - 1 || wall.getUTCDate() !== d
     || wall.getUTCHours() !== h || wall.getUTCMinutes() !== mi || wall.getUTCSeconds() !== s)
     return null;
