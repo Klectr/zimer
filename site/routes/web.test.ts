@@ -937,6 +937,89 @@ describe("bare datetime rejection (#964)", () => {
   });
 });
 
+/** #1434: impossible calendar dates must not silently roll to another day
+ * (Feb 30 -> Mar 2) or throw a 500 (month 13) — the web entry routes use
+ * the same real-date validation as the API (#1432). */
+describe("impossible datetime rejection (#1434)", () => {
+  test("POST /entries with a Feb 30 start_time is 400 and creates nothing", async () => {
+    const { db, handleWeb } = setup();
+    const r = await postEntry(handleWeb, { project_id: "", description: "", start_time: "2026-02-30T09:00:00Z", end_time: "" });
+    expect(r!.status).toBe(400);
+    const rows = db.query("SELECT COUNT(*) c FROM time_entries").get() as any;
+    expect(rows.c).toBe(0);
+  });
+
+  test("POST /entries with a month-13 end_time is 400, not a 500", async () => {
+    const { db, handleWeb } = setup();
+    const r = await postEntry(handleWeb, { project_id: "", description: "", start_time: "2026-10-08T09:00:00Z", end_time: "2026-13-01T10:00:00Z" });
+    expect(r!.status).toBe(400);
+    const rows = db.query("SELECT COUNT(*) c FROM time_entries").get() as any;
+    expect(rows.c).toBe(0);
+  });
+
+  test("POST /entries/:id with an impossible start_time is 400 and leaves the entry untouched", async () => {
+    const { db, handleWeb } = setup();
+    const ins = db.query("INSERT INTO time_entries (description, start_time, end_time) VALUES ('x', '2026-10-08T09:00:00.000Z', '2026-10-08T10:00:00.000Z')").run();
+    const id = Number(ins.lastInsertRowid);
+    const form = new FormData();
+    form.append("description", "x");
+    form.append("start_time", "2026-02-30T09:00:00Z");
+    form.append("end_time", "2026-10-08T10:00:00Z");
+    const req = new Request(`http://x/entries/${id}`, { method: "POST", body: form });
+    const r = await handleWeb(req, new URL(req.url), `/entries/${id}`, "POST");
+    expect(r!.status).toBe(400);
+    const row = db.query("SELECT start_time FROM time_entries WHERE id = ?").get(id) as any;
+    expect(row.start_time).toBe("2026-10-08T09:00:00.000Z");
+  });
+
+  test("POST /entries/:id with an impossible end_time is 400 and leaves the entry untouched", async () => {
+    const { db, handleWeb } = setup();
+    const ins = db.query("INSERT INTO time_entries (description, start_time, end_time) VALUES ('x', '2026-10-08T09:00:00.000Z', '2026-10-08T10:00:00.000Z')").run();
+    const id = Number(ins.lastInsertRowid);
+    const form = new FormData();
+    form.append("description", "x");
+    form.append("start_time", "2026-10-08T09:00:00Z");
+    form.append("end_time", "2026-02-30T10:00:00Z");
+    const req = new Request(`http://x/entries/${id}`, { method: "POST", body: form });
+    const r = await handleWeb(req, new URL(req.url), `/entries/${id}`, "POST");
+    expect(r!.status).toBe(400);
+    const row = db.query("SELECT end_time FROM time_entries WHERE id = ?").get(id) as any;
+    expect(row.end_time).toBe("2026-10-08T10:00:00.000Z");
+  });
+
+  test("POST /entries in the calendar dialog's no-seconds format still works, empty end allowed", async () => {
+    const { db, handleWeb } = setup();
+    const r = await postEntry(handleWeb, { project_id: "", description: "", start_time: "2026-10-08T09:00-05:00", end_time: "" });
+    expect(r!.status).toBe(201);
+    const row = db.query("SELECT start_time, end_time FROM time_entries").get() as any;
+    expect(row.start_time).toBe("2026-10-08T14:00:00.000Z");
+    expect(row.end_time).toBeNull();
+  });
+
+  test("POST /entries with a year below 0100 still saves (validator must not map it to the 1900s)", async () => {
+    const { db, handleWeb } = setup();
+    const r = await postEntry(handleWeb, { project_id: "", description: "", start_time: "0099-06-15T09:00:00Z", end_time: "" });
+    expect(r!.status).toBe(201);
+    const row = db.query("SELECT start_time FROM time_entries").get() as any;
+    expect(row.start_time).toBe("0099-06-15T09:00:00.000Z");
+  });
+
+  test("POST /entries/:id with a valid offset timestamp still saves, normalized to UTC", async () => {
+    const { db, handleWeb } = setup();
+    const ins = db.query("INSERT INTO time_entries (description, start_time, end_time) VALUES ('x', '2026-10-08T09:00:00.000Z', '2026-10-08T10:00:00.000Z')").run();
+    const id = Number(ins.lastInsertRowid);
+    const form = new FormData();
+    form.append("description", "x");
+    form.append("start_time", "2026-10-08T09:00:00-05:00");
+    form.append("end_time", "2026-10-08T10:00:00-05:00");
+    const req = new Request(`http://x/entries/${id}`, { method: "POST", body: form });
+    const r = await handleWeb(req, new URL(req.url), `/entries/${id}`, "POST");
+    expect(r!.status).toBe(302);
+    const row = db.query("SELECT start_time FROM time_entries WHERE id = ?").get(id) as any;
+    expect(row.start_time).toBe("2026-10-08T14:00:00.000Z");
+  });
+});
+
 /** #1291: GET /i/:token.pdf — the client's PDF download. Same token lookup
  * as the public page; a fresh PDF from the invoice, 404 for bad tokens. */
 describe("public invoice PDF download (#1291)", () => {

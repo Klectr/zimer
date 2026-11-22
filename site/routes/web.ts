@@ -20,6 +20,7 @@ import type { AccountsDb } from "../lib/accounts.ts"; /* #732 */
 import { findTenantByPublicToken } from "../lib/tenants.ts"; /* #741 */
 import { countProofs, deleteProof, getProof, insertProof, listProofs, sanitizeFilename, validateProofFile, PROOF_MAX_BYTES, PROOF_MAX_PER_INVOICE } from "../lib/payment_proofs.ts"; /* #956 */
 import { servedVersion, staticUrl } from "../lib/static-assets.ts"; /* #993 */
+import { normalizeEntryTimestamp } from "./api.ts"; /* #1434 */
 import { textField } from "../ui/field.ts";
 import { card } from "../ui/card.ts";
 import { settingsDataList, settingsDataRow, settingsSection } from "../ui/settings-section.ts";
@@ -587,11 +588,13 @@ export function createWebRouter(deps: WebDeps) {
             const desc = String(form.get("description") || "");
             const startRaw = String(form.get("start_time"));
             /* #964: bare datetimes parse as UTC — reject them loudly instead
-               of silently corrupting the entry's times. */
-            if (!/(Z|[+-]\d{2}:?\d{2})$/.test(startRaw) || (endRaw && !/(Z|[+-]\d{2}:?\d{2})$/.test(endRaw)))
-              return new Response("start_time/end_time must include a timezone offset", { status: 400 });
-            const startIso = new Date(startRaw).toISOString();
-            const endIso = endRaw ? new Date(endRaw).toISOString() : null;
+               of silently corrupting the entry's times. #1434: impossible
+               calendar dates are rejected too (Feb 30 rolled to Mar 2;
+               month 13 threw) — same validator as the API (#1432). */
+            const startIso = normalizeEntryTimestamp(startRaw);
+            const endIso = endRaw ? normalizeEntryTimestamp(endRaw) : null;
+            if (!startIso || (endRaw && !endIso))
+              return new Response("start_time/end_time must be a valid timestamp with a timezone offset", { status: 400 });
             /* #930: idempotent against rapid re-submits (double-tap on save) —
                an identical entry created seconds ago is returned, not duplicated. */
             const dupe = db.query(
@@ -630,15 +633,19 @@ export function createWebRouter(deps: WebDeps) {
           const pid = form.get("project_id");
           const startRaw = String(form.get("start_time"));
           /* #964: bare datetimes parse as UTC — reject them loudly instead
-             of silently corrupting the entry's times. */
-          if (!/(Z|[+-]\d{2}:?\d{2})$/.test(startRaw) || (endRaw && !/(Z|[+-]\d{2}:?\d{2})$/.test(endRaw)))
-            return new Response("start_time/end_time must include a timezone offset", { status: 400 });
+             of silently corrupting the entry's times. #1434: impossible
+             calendar dates are rejected too — same validator as the API
+             (#1432). */
+          const startIso = normalizeEntryTimestamp(startRaw);
+          const endIso = endRaw ? normalizeEntryTimestamp(endRaw) : null;
+          if (!startIso || (endRaw && !endIso))
+            return new Response("start_time/end_time must be a valid timestamp with a timezone offset", { status: 400 });
           db.query("UPDATE time_entries SET description = ?, project_id = ?, start_time = ?, end_time = ? WHERE id = ?")
             .run(
               String(form.get("description") || ""),
               pid ? Number(pid) : null,
-              new Date(startRaw).toISOString(),
-              endRaw ? new Date(endRaw).toISOString() : null,
+              startIso,
+              endIso,
               id);
           return isHtmx(req)
             /* #903: the timer edit dialog posts via htmx — answer HX-Trigger
