@@ -163,6 +163,10 @@ export function createWebRouter(deps: WebDeps) {
      A page view pulls ~4 subrequests (html, css, logo). */
   const invoiceLimiter = createRateLimiter({ windowMs: 60_000, max: 60 });
   const loginLimiter = createRateLimiter({ windowMs: 5 * 60_000, max: 10 });
+  /* #987: password-change attempts are throttled per user, like logins
+     are per IP (#308) — a held session must not become an offline-speed
+     guessing oracle for the account password. */
+  const passwordLimiter = createRateLimiter({ windowMs: 5 * 60_000, max: 10 });
 
   /* #732: page auth in hosted mode is a valid account session; self-host
      keeps the single shared token. */
@@ -834,6 +838,12 @@ export function createWebRouter(deps: WebDeps) {
           if (!HOSTED || !accounts) return new Response("Not found.", { status: 404 });
           const user = accounts.sessionUserFromRequest(req);
           if (!user) return new Response(null, { status: 302, headers: { Location: "/login" } });
+          const rl = passwordLimiter.check(`pw:${user.id}`);
+          if (!rl.allowed) {
+            const msg = "Too many attempts. Wait a few minutes and try again.";
+            if (isHtmx(req)) return html(accountSectionHtml(user, msg), 429);
+            return new Response(msg, { status: 429 });
+          }
           const form = await req.formData();
           const r = await accounts.changePassword(
             user.id,

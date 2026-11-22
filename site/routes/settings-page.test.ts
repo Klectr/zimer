@@ -208,10 +208,10 @@ describe("account section + change password (#987)", () => {
     const keep = accounts.createSession(user!.id);
     const other = accounts.createSession(user!.id);
     const { handleWeb } = setup(undefined, { hosted: true, accounts });
-    const authed = (path: string, init: RequestInit = {}) => {
+    const authed = (path: string, init: RequestInit = {}, htmx = true) => {
       const headers = new Headers(init.headers);
       headers.set("Cookie", `${SESSION_COOKIE}=${encodeURIComponent(keep)}`);
-      headers.set("HX-Request", "true");
+      if (htmx) headers.set("HX-Request", "true");
       const req = new Request(`http://x${path}`, { ...init, headers });
       return handleWeb(req, new URL(req.url), path, init.method || "GET");
     };
@@ -263,6 +263,37 @@ describe("account section + change password (#987)", () => {
     expect(accounts.sessionUser(keep)).not.toBeNull();
     expect(accounts.sessionUser(other)).toBeNull();
     expect((await accounts.login("ada@example.com", "brand-new-pass-1")).token).toBeDefined();
+  });
+
+  test("non-htmx success redirects to /settings, failure is a plain 400", async () => {
+    const { authed, accounts } = await hostedSetup();
+    const bad = new FormData();
+    bad.set("current_password", "not-the-password");
+    bad.set("new_password", "brand-new-pass-1");
+    const badRes = await authed("/settings/password", { method: "POST", body: bad }, false);
+    expect(badRes!.status).toBe(400);
+    expect(await badRes!.text()).toContain("Current password is wrong.");
+    const good = new FormData();
+    good.set("current_password", "correct-horse-8");
+    good.set("new_password", "brand-new-pass-1");
+    const okRes = await authed("/settings/password", { method: "POST", body: good }, false);
+    expect(okRes!.status).toBe(302);
+    expect(okRes!.headers.get("Location")).toBe("/settings");
+    expect((await accounts.login("ada@example.com", "brand-new-pass-1")).token).toBeDefined();
+  });
+
+  test("attempts are throttled per user after 10 in five minutes", async () => {
+    const { authed } = await hostedSetup();
+    let last: Response | null = null;
+    for (let i = 0; i < 11; i++) {
+      const form = new FormData();
+      form.set("current_password", "whatever-1");
+      form.set("new_password", "short"); /* length error: no argon2 cost per attempt */
+      last = await authed("/settings/password", { method: "POST", body: form });
+      if (i < 10) expect(last!.status).toBe(422);
+    }
+    expect(last!.status).toBe(429);
+    expect(await last!.text()).toContain("Too many attempts.");
   });
 
   test("self-host POST /settings/password is a 404", async () => {

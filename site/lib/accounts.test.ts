@@ -234,4 +234,23 @@ describe("change password (#987)", () => {
     expect(r.error).toBeUndefined();
     expect(a.sessionUser(t)).toBeNull();
   });
+
+  test("revocation is scoped to the user — another user's sessions survive", async () => {
+    const a = accountsDb();
+    const ada = (await a.signup("ada@example.com", "correct-horse-8")).user!;
+    const bob = (await a.signup("bob@example.com", "correct-horse-8")).user!;
+    const bobSession = a.createSession(bob.id);
+    const r = await a.changePassword(ada.id, "correct-horse-8", "brand-new-pass-1");
+    expect(r.error).toBeUndefined();
+    expect(a.sessionUser(bobSession)).not.toBeNull();
+    expect(a.sessionUser(bobSession)!.email).toBe("bob@example.com");
+  });
+
+  test("soft-deleted users cannot change password", async () => {
+    const a = accountsDb();
+    const { user } = await a.signup("gone@example.com", "correct-horse-8");
+    a.db.query("UPDATE users SET deleted_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?").run(user!.id);
+    const r = await a.changePassword(user!.id, "correct-horse-8", "brand-new-pass-1");
+    expect(r.error).toBe("Account not found.");
+  });
 });

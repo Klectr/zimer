@@ -170,22 +170,32 @@ CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
   ): Promise<{ error?: string }> {
     if (newPassword.length < 8)
       return { error: "New password must be at least 8 characters." };
+    if (newPassword.length > 4096)
+      return { error: "New password is too long." };
     if (newPassword === currentPassword)
       return { error: "New password must be different from your current password." };
     const row = db
       .query("SELECT password_hash FROM users WHERE id = ? AND deleted_at IS NULL")
       .get(userId) as { password_hash: string } | null;
     if (!row) return { error: "Account not found." };
+    /* An over-long candidate can never match a real password; reject it
+       without paying the argon2 verify on megabytes of input. */
+    if (currentPassword.length > 4096)
+      return { error: "Current password is wrong." };
     const ok = await Bun.password.verify(currentPassword, row.password_hash);
     if (!ok) return { error: "Current password is wrong." };
     const password_hash = await Bun.password.hash(newPassword);
-    db.query("UPDATE users SET password_hash = ? WHERE id = ?").run(password_hash, userId);
-    if (keepToken) {
-      db.query("DELETE FROM sessions WHERE user_id = ? AND token != ?")
-        .run(userId, hashSessionToken(keepToken));
-    } else {
-      db.query("DELETE FROM sessions WHERE user_id = ?").run(userId);
-    }
+    /* Rotate + revoke atomically: a crash between the two writes must not
+       leave the new password live with the old sessions still valid. */
+    db.transaction(() => {
+      db.query("UPDATE users SET password_hash = ? WHERE id = ? AND deleted_at IS NULL").run(password_hash, userId);
+      if (keepToken) {
+        db.query("DELETE FROM sessions WHERE user_id = ? AND token != ?")
+          .run(userId, hashSessionToken(keepToken));
+      } else {
+        db.query("DELETE FROM sessions WHERE user_id = ?").run(userId);
+      }
+    })();
     return {};
   }
 
