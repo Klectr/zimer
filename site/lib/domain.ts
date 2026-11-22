@@ -7,7 +7,7 @@ import { targetBar } from "../ui/target-bar.ts";
 import { randomBytes } from "node:crypto";
 import type { Database, Statement } from "bun:sqlite";
 import { addDays, durationSeconds, esc, fmtDur, round2 } from "./format.ts";
-import type { Entry, Invoice, InvoiceItem } from "./types.ts";
+import type { Invoice, InvoiceItem } from "./types.ts";
 import { createPaymentLink, stripeConfigured } from "../stripe.ts";
 import { getMeta } from "../db.ts";
 
@@ -20,11 +20,6 @@ export interface DomainDeps {
 
 /** Pixels per hour in the calendar time grid. */
 export const CAL_HOUR_PX = 80;
-
-/** Weekly hours target: 40h matches the ~80h biweekly invoicing pace.
-    Kept as the default; #908 made the target configurable via Settings —
-    the week bar uses five days at the user's daily target. */
-export const WEEK_TARGET_SECS = 40 * 3600;
 
 /** Daily hours target: 8h, matching the calendar's under-8h-day pacing (#22).
     The default only — #908 reads the user's setting from the meta table. */

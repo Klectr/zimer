@@ -50,7 +50,7 @@ function statusCell(r: ZinvoiceTableRow): string {
 /** Just the <tr>s — the page refreshes #inv-list out of band with these. */
 export function zinvoiceTableRows(rows: ZinvoiceTableRow[]): string {
   return rows.map((r) => `
-      <tr class="is-${r.status}">
+      <tr>
         <td><a class="inv-num-link" href="${esc(r.href)}">${esc(r.number)}</a></td>
         <td>${r.client ? esc(r.client) : "<em>No client</em>"}</td>
         <td class="inv-status-cell">${statusCell(r)}</td>

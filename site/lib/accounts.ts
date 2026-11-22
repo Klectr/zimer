@@ -160,7 +160,7 @@ CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
 
   /** Extract the session token from a request's cookies. */
   function sessionTokenFromRequest(req: Request): string | null {
-    const m = (req.headers.get("cookie") || "").match(/(?:^|;\s*)tksession=([^;]+)/);
+    const m = (req.headers.get("cookie") || "").match(new RegExp(`(?:^|;\\s*)${SESSION_COOKIE}=([^;]+)`));
     if (!m) return null;
     try {
       return decodeURIComponent(m[1]);
@@ -179,9 +179,9 @@ CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
      (hosted site behind the proxy). Omitted on plain-HTTP origins so
      local-dev and Tailscale logins keep working. */
   const sessionCookie = (req: Request, token: string): string =>
-    `tksession=${encodeURIComponent(token)}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${SESSION_MAX_AGE_SEC}${secureCookieAttr(req)}`;
+    `${SESSION_COOKIE}=${encodeURIComponent(token)}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${SESSION_MAX_AGE_SEC}${secureCookieAttr(req)}`;
   const clearSessionCookie = (req: Request): string =>
-    `tksession=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0${secureCookieAttr(req)}`;
+    `${SESSION_COOKIE}=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0${secureCookieAttr(req)}`;
 
   return {
     db,

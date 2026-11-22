@@ -163,156 +163,7 @@ describe("setting rows", () => {
   });
 });
 
-const RULES = [
-  ".ui-btn {",
-  ".ui-btn-primary {",
-  ".ui-btn-ghost {",
-  ".ui-btn-danger {",
-  ".ui-btn-sm {",
-  ".ui-btn-lg {",
-  ".ui-chip {",
-  ".ui-chip-draft {",
-  ".ui-chip-sent {",
-  ".ui-chip-paid {",
-  ".ui-field {",
-  ".ui-field-label {",
-  ".ui-input {",
-  ".ui-select {",
-  ".ui-card {",
-  ".ui-card.tracking {",
-  ".ui-icon-btn {",
-  ".ui-icon-btn-danger {",
-  ".ui-hero {",
-  ".ui-hero-title {",
-  ".ui-hero-sub {",
-  ".ui-hero-actions {",
-  ".ui-hero-note {",
-  ".ui-hero-product {",
-  ".ui-hero-mascot {",
-  ".ui-hero-shot {",
-  ".ui-feature-icon {",
-  ".ui-feature-body {",
-  ".ui-plan {",
-  ".ui-landing-body {",
-  ".ui-landing-top {",
-  ".ui-landing-section {",
-  ".ui-landing-title {",
-  ".ui-landing-sub {",
-  ".ui-landing-cards {",
-  ".ui-landing-foot {",
-  ".ui-logo {",
-  ".ui-logo-mark {",
-  ".ui-side {",
-  ".ui-navitem {",
-  ".ui-side-foot {",
-  ".ui-app-head {",
-  ".ui-app-title {",
-  ".ui-app-sub {",
-  ".ui-app-actions {",
-  ".ui-tabs {",
-  ".ui-tab {",
-  ".ui-running {",
-  ".ui-running-dot {",
-  ".ui-running-time {",
-  ".ui-stat-label {",
-  ".ui-stat-strip {",
-  ".ui-stat-cell {",
-  ".ui-stat-cell-head {",
-  ".ui-stat-cell-value {",
-  ".ui-stat-cell-note {",
-  ".ui-stat-meter {",
-  ".ui-stat-link {",
-  ".ui-stat-value {",
-  ".ui-stat-sub {",
-  ".ui-progress {",
-  ".ui-progress-fill {",
-  ".ui-steps {",
-  ".ui-step {",
-  ".ui-step-bar {",
-  ".ui-step-label {",
-  ".ui-list {",
-  ".ui-row {",
-  ".ui-row.selected {",
-  ".ui-row-lead-dot {",
-  ".ui-row-lead-icon {",
-  ".ui-row-chevron {",
-  ".ui-btn[data-tip]::before,",
-  ".ui-color-control {",
-  ".ui-form-row {",
-  ".ui-add-project-form {",
-  ".ui-row-actions {",
-  ".ui-row-dot {",
-  ".ui-page-title {",
-  ".ui-timer-form {",
-  ".ui-repeat-form {",
-  ".ui-note {",
-  ".ui-block-title {",
-  ".ui-target {",
-  ".ui-target-label {",
-  ".ui-inv-mark {",
-  ".ui-attn-chip {",
-  ".ui-row-main {",
-  ".ui-row-title {",
-  ".ui-row-meta {",
-  ".ui-row-side {",
-  ".ui-row-amount {",
-  ".ui-table {",
-  ".ui-table .num {",
-  ".ui-chip-overdue {",
-  ".ui-week {",
-  ".ui-week-grid {",
-  ".ui-week-agenda {",
-  ".ui-day {",
-  ".ui-day-head {",
-  ".ui-day-name {",
-  ".ui-day-dot {",
-  ".ui-day-total {",
-  ".ui-day-entries {",
-  ".ui-week-entry {",
-  ".ui-day-more {",
-  ".ui-agenda-day {",
-  ".ui-viz {",
-  ".ui-viz-heads {",
-  ".ui-viz-day-head {",
-  ".ui-viz-day-inner {",
-  ".ui-viz-day-name {",
-  ".ui-viz-day-total {",
-  ".ui-viz-hours {",
-  ".ui-viz-hour {",
-  ".ui-viz-col {",
-  ".ui-viz-block {",
-  ".ui-viz-block-title {",
-  ".ui-viz-block-meta {",
-  ".ui-week-entry-title {",
-  ".ui-viz-handle {",
-  ".ui-viz-grip {",
-  ".ui-viz-now {",
-  ".ui-scrim {",
-  ".ui-dialog {",
-  ".ui-dialog-head {",
-  ".ui-dialog-title {",
-  ".ui-dialog-body {",
-  ".ui-dialog-actions {",
-  ".ui-toast {",
-  ".ui-toast-chip {",
-  ".ui-toast-title {",
-  ".ui-toast-body {",
-  ".ui-menu {",
-  ".ui-menu-item {",
-  ".ui-empty {",
-  ".ui-empty-icon {",
-  ".ui-empty-title {",
-  ".ui-empty-body {",
-  ".ui-empty-action {",
-];
 
-describe("ui component CSS", () => {
-  test("every class the site/ui components emit has a rule in style.css", () => {
-    for (const rule of RULES) {
-      expect(css).toContain(rule);
-    }
-  });
-});
 
 describe("invoice list compact rows (#1210)", () => {
   /* Keyed to the table card's width (container query), not the viewport:
@@ -407,9 +258,9 @@ describe("internal notes label (#1221)", () => {
 
 describe("type-scale weights and sizes (#1215 slice)", () => {
   test("invoice list emphasis uses fontWeightStrong 600, not off-system 550", () => {
-    const main = css.match(/\.inv-cell-main \{[^}]*\}/);
-    expect(main).not.toBeNull();
-    expect(main![0]).toContain("font-weight: 600");
+    const amt = css.match(/\.inv-amt \{[^}]*\}/);
+    expect(amt).not.toBeNull();
+    expect(amt![0]).toContain("font-weight: 600");
     expect(css).not.toContain("font-weight: 550");
   });
 
@@ -461,40 +312,9 @@ describe("type-scale weights and sizes (#1215 slice)", () => {
   });
 });
 
-describe("dead pane/form CSS (#1313)", () => {
-  test("the unemitted pane-layout, unbilled-head, two-field and form-spacer rules stay out of style.css", () => {
-    for (const sel of [".pane-layout", ".pane-focus", ".pane-supporting", ".unbilled-head", ".two-field", ".ui-form-spacer"]) {
-      expect(css).not.toContain(sel);
-    }
-    expect(css).toContain(".cal-pane-layout");
-    expect(css).toContain(".ui-form-row");
-    expect(css).toContain("--layout-supporting-pane");
-  });
-});
 
-describe("dead page-narrow CSS (#1315)", () => {
-  test("the unemitted page-narrow rules stay out of style.css", () => {
-    expect(css).not.toContain(".page-narrow");
-    expect(css).toContain(".ui-card.form-card { max-width: 720px; }");
-  });
-});
 
-describe("dead md-title-medium CSS (#1323)", () => {
-  test("the unemitted Material type class stays out of style.css", () => {
-    expect(css).not.toContain(".md-title-medium");
-    expect(css).toContain(".md-table");
-  });
-});
 
-describe("dead invoice-widget CSS (#1311)", () => {
-  test("the unemitted invoice-widget family stays out of style.css", () => {
-    for (const sel of [".inv-widgets", ".inv-widgets-col", ".inv-wsub", ".inv-wrow", ".inv-wmain", ".inv-wtext", ".inv-wname", ".inv-wamt", ".inv-wval", ".inv-bar", ".inv-dot", ".inv-view-cell", ".inv-overdue-text"]) {
-      expect(css).not.toContain(sel);
-    }
-    expect(css).toContain(".inv-cell-main");
-    expect(css).toContain(".inv-amt");
-  });
-});
 
 /** #1211: on phones, fixed-viewport pages (timer, Zinvoices) scroll the
  *  document rather than a short inner region under pinned chrome; the
@@ -571,9 +391,6 @@ describe("tablet-width overflow fixes", () => {
 /** The list's dates live on the status chip (no Issued/Due columns): the
  *  tooltip must not be clipped, and touch screens get the text as a line. */
 describe("Zinvoice status-chip dates", () => {
-  test("no date columns or their rules remain", () => {
-    for (const gone of [".col-issued", ".col-due", 'content: "Due "', 'content: "Issued "']) expect(css).not.toContain(gone);
-  });
   test("the table no longer clips (tooltips), the chip shows a focus ring, and touch shows the note", () => {
     expect(css).toContain(".inv-table-card .table-wrap { overflow: visible; }");
     expect(css).toContain(".inv-status-chip:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }");

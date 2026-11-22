@@ -1,9 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { appSidebar } from "./app-sidebar";
 import { appHeader } from "./app-header";
-import { tabs } from "./tabs";
 import { logoLockup } from "./logo-lockup";
-import { runningIndicator } from "./running-indicator";
 
 const NAV = [
   { key: "timer", href: "/", label: "Zimer", icon: "timer" as const },
@@ -55,29 +53,4 @@ describe("appHeader", () => {
   });
 });
 
-describe("runningIndicator", () => {
-  test("renders a link with dot, label, and mono elapsed time", () => {
-    const html = runningIndicator({ label: "Website redesign", elapsed: "1:24:08", href: "/" });
-    expect(html).toContain('class="ui-running"');
-    expect(html).toContain('class="ui-running-dot"');
-    expect(html).toContain("Website redesign");
-    expect(html).toContain('<span class="ui-running-time">1:24:08</span>');
-    expect(html).toContain('href="/"');
-  });
-});
 
-describe("tabs", () => {
-  test("marks the active tab and labels the nav", () => {
-    const html = tabs({
-      label: "Settings sections",
-      active: "billing",
-      items: [
-        { key: "profile", href: "/settings", label: "Profile" },
-        { key: "billing", href: "/settings/billing", label: "Billing" },
-      ],
-    });
-    expect(html).toContain('aria-label="Settings sections"');
-    expect(html).toContain('class="ui-tab is-active"');
-    expect(html).toContain('aria-current="page"');
-  });
-});

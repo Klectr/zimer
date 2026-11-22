@@ -153,8 +153,6 @@
 .ui-chip-paid { background: var(--color-success-bg); color: var(--color-success); }
 .ui-chip-overdue { background: var(--color-error-bg); color: var(--color-error); }
 
-.inv-cell-main { display: flex; align-items: center; gap: 8px; color: var(--color-text); font-weight: 600; }
-.inv-cell-sub { display: block; font-size: var(--font-size-sm); color: var(--color-text-tertiary); margin-top: 2px; }
 .inv-amt { font-weight: 600; color: var(--color-text); }
 
 .ui-field { display: flex; flex-direction: column; gap: var(--spacing-xxs); }
@@ -266,30 +264,7 @@ textarea.ui-input { height: auto; padding: var(--spacing-xs) var(--spacing-sm); 
 .ui-app-sub { font-size: var(--font-size); color: var(--color-text-secondary); margin: var(--spacing-xxs) 0 0; }
 .ui-app-actions { margin-left: auto; display: flex; gap: var(--spacing-xs); align-items: center; }
 
-.ui-running {
-  display: inline-flex; align-items: center; gap: var(--spacing-xs);
-  height: var(--control-height-sm); padding: 0 var(--spacing-sm);
-  border-radius: var(--radius); text-decoration: none;
-  border: 1px solid color-mix(in srgb, var(--color-success) 40%, transparent);
-  background: color-mix(in srgb, var(--color-success) 10%, transparent);
-  font-size: var(--font-size-sm); color: var(--color-text);
-}
-.ui-running:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
-.ui-running-dot { width: 7px; height: 7px; border-radius: 999px; background: var(--color-success); flex: none; }
-.ui-running-time { font-family: var(--font-family-code); color: var(--color-text-secondary); }
 
-.ui-tabs { display: flex; gap: var(--spacing-xxs); flex-wrap: wrap; }
-.ui-tab {
-  display: inline-flex; align-items: center; height: var(--control-height-sm);
-  font-size: var(--font-size-sm); padding: 0 var(--spacing-sm); border-radius: 999px;
-  border: 1px solid var(--color-border-secondary); color: var(--color-text-secondary);
-  background: var(--color-fill-secondary); text-decoration: none;
-  transition: background-color 0.15s ease, color 0.15s ease;
-}
-.ui-tab:hover { color: var(--color-text); }
-.ui-tab:active { background: var(--color-fill-tertiary); }
-.ui-tab:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
-.ui-tab.is-active { background: var(--color-primary); color: var(--on-primary); border-color: transparent; font-weight: var(--font-weight-strong); }
 
 .ui-stat-label { font-size: var(--font-size-sm); color: var(--color-text-tertiary); }
 .ui-stat-value { font-family: var(--font-family-code); font-size: var(--font-size-heading-3); font-weight: var(--font-weight-strong); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; margin-top: var(--spacing-xxs); }
@@ -340,12 +315,6 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .ui-checkbox:checked::after { content: ""; position: absolute; inset: 0; background-color: var(--on-primary); -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E"); -webkit-mask-size: 12px; mask-size: 12px; -webkit-mask-position: center; mask-position: center; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; }
 .ui-checkbox:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 .ui-checkbox:disabled { cursor: not-allowed; }
-.ui-switch { appearance: none; flex: none; position: relative; width: 36px; height: 20px; margin: 2px 0 0; border: none; border-radius: 9999px; background: var(--color-fill); cursor: pointer; transition: background-color 0.15s ease; }
-.ui-switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--color-text); transition: transform 0.15s ease; }
-.ui-switch:checked { background: var(--color-primary); }
-.ui-switch:checked::after { transform: translateX(16px); }
-.ui-switch:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
-.ui-switch:disabled { cursor: not-allowed; }
 /* A setting: text left, control right; the control wraps under the text
    only when the card is too narrow for both (#1216). */
 .ui-setting-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--spacing-xs) var(--spacing-md); padding: var(--spacing-sm) 0; border-top: 1px solid var(--color-border-secondary); }
@@ -476,8 +445,6 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .ui-row-lead-icon svg { width: 24px; height: 24px; }
 .ui-row-chevron { display: inline-flex; flex: none; color: var(--color-text-tertiary); }
 .ui-row-chevron svg { width: 20px; height: 20px; }
-.ui-rev-paid { color: var(--color-primary); }
-.ui-attn-chip { display: inline-block; flex: none; white-space: nowrap; background: var(--color-error-bg); color: var(--color-error); padding: var(--spacing-xs) var(--spacing-sm); border-radius: var(--radius-xs); font-size: var(--font-size-sm); font-weight: 500; }
 .ui-timer-bottom { display: flex; align-items: center; gap: var(--spacing-sm); }
 .ui-timer-meta { display: flex; gap: var(--spacing-xs); flex-wrap: wrap; }
 .ui-timer-actions { margin-left: auto; display: flex; gap: var(--spacing-xs); }
@@ -512,8 +479,6 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .ui-hero-note { font-size: var(--font-size-sm); color: var(--color-text-tertiary); margin-top: var(--spacing-sm); }
 .ui-hero-product { max-width: 760px; margin: var(--spacing-xl) auto 0; text-align: left; animation: content-enter var(--motion-duration-medium3) var(--motion-easing-emphasized-decelerate) backwards; animation-delay: 120ms; }
 .ui-hero-mascot { position: relative; width: min(320px, 72vw); height: auto; }
-.ui-hero-shot { margin: var(--spacing-xl) auto 0; max-width: 400px; padding: var(--spacing-xs); background: var(--color-bg-container-secondary); border: 1px solid var(--color-border-secondary); border-radius: var(--radius-lg); }
-.ui-hero-shot img { display: block; width: 100%; height: auto; border-radius: var(--radius); }
 .ui-landing-body { background: var(--color-bg-layout); position: relative; overflow-x: clip; }
 .ui-landing-body::before { content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 1020px; z-index: 0; pointer-events: none;
   background: radial-gradient(1250px 720px at 87% 4%, rgba(219, 166, 110, 0.52), rgba(251, 146, 60, 0.27) 34%, rgba(251, 146, 60, 0.1) 58%, rgba(251, 146, 60, 0.03) 72%, transparent 84%),
@@ -655,15 +620,6 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
   .ui-toast-live { transition: none; }
 }
 
-.ui-menu { background: var(--color-bg-elevated); border: 1px solid var(--color-border-secondary); border-radius: var(--radius-lg); box-shadow: var(--box-shadow-secondary); padding: var(--spacing-xxs); min-width: 180px; box-sizing: border-box; }
-.ui-menu-item { display: flex; align-items: center; gap: var(--spacing-xs); width: 100%; padding: var(--spacing-xs) var(--spacing-sm); border-radius: var(--radius-sm); color: var(--color-text); font-size: var(--font-size); text-decoration: none; background: none; border: 0; cursor: pointer; box-sizing: border-box; text-align: left; font-family: inherit; }
-.ui-menu-item svg { width: 16px; height: 16px; color: var(--color-text-tertiary); flex: none; }
-a.ui-menu-item:hover, button.ui-menu-item:hover { background: var(--color-fill-tertiary); }
-a.ui-menu-item:active, button.ui-menu-item:active { background: var(--color-fill-quaternary); }
-.ui-menu-item:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
-.ui-menu-item.is-danger { color: var(--color-error); }
-.ui-menu-item.is-danger svg { color: var(--color-error); }
-.ui-menu-item[aria-disabled="true"] { color: var(--color-text-quaternary); cursor: not-allowed; }
 
 .ui-empty { text-align: center; padding: var(--spacing-xl) var(--spacing-lg); }
 .ui-empty-icon { width: 44px; height: 44px; border-radius: 999px; background: var(--color-fill-secondary); color: var(--color-text-tertiary); display: grid; place-items: center; margin: 0 auto var(--spacing-sm); }
@@ -1131,9 +1087,6 @@ body.app-fixed .ui-shell-main { min-height: 0; }
 /* #442: date phrases in list rows never split mid-date; the supporting line
    wraps at the middot separators instead. */
 .inv-date { white-space: nowrap; }
-/* #588: the list-row date phrases share one nowrap group, so a narrow pane
-   wraps between the client name and the dates — never between segments. */
-.inv-dates { white-space: nowrap; }
 /* ---------------- calendar supporting pane (#67) ----------------
  * The week grid is the primary content, the week summary is supplementary.
  * The summary keeps its position above the grid (its long-standing spot; the
@@ -1417,7 +1370,6 @@ body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
 .mg-card-hint { font-size: var(--font-size-sm); color: var(--color-text-tertiary); margin-top: var(--spacing-xs); }
 .mg-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-sm); margin: 0; padding: var(--spacing-xs) var(--spacing-sm); border-top: 1px solid var(--color-border-secondary); font-size: var(--font-size-sm); color: var(--color-text-tertiary); }
 @media (prefers-reduced-motion: reduce) { .mg-card { transition: none; } }
-.manage-edit-cell { text-align: right; white-space: nowrap; }
 .cd-details-title { margin-top: var(--spacing-md); padding-top: var(--spacing-md); border-top: 1px solid var(--color-border-secondary); }
 .manage-delete-client { margin-top: var(--spacing-md); }
 .detail-form { margin-bottom: 12px; }
@@ -1547,8 +1499,6 @@ body.app-fixed .cal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
   /* the DESCRIPTION header is one long word — let it break too, otherwise
      its min-content alone keeps the column (and the table) too wide. */
   .inv-table th:nth-child(2),
-  otherwise
-     its min-content alone keeps the column (and the table) too wide. */
   .md-table th:nth-child(2) { overflow-wrap: anywhere; }
 }
 /* #366, continued: on phones the invoice document's line items stack instead

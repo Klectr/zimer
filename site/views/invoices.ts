@@ -3,7 +3,7 @@
  *  invoiceSheet is also returned so the public-views factory can reuse it. */
 
 import type { Database, Statement } from "bun:sqlite";
-import { addDays, daysBetween, durationSeconds, esc, fmtDur, money, round2, shortDateRange, shortDateRangeYear, shortYmd, clientTermsDescription, termsDays, termsDescription, termsKey, todayStr } from "../lib/format.ts";
+import { addDays, daysBetween, durationSeconds, esc, fmtDur, money, round2, shortDateRange, shortDateRangeYear, shortYmd, clientTermsDescription, termsDays, termsKey, todayStr } from "../lib/format.ts";
 import { icon } from "../lib/icons.ts";
 import { getMeta } from "../db.ts";
 import { workspaceEmpty } from "../lib/demo.ts"; /* #300: empty-state CTA */

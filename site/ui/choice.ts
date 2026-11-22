@@ -27,33 +27,6 @@ export function checkboxField(opts: CheckboxOptions): string {
   );
 }
 
-export interface SwitchOptions {
-  id: string;
-  label: string;
-  name?: string;
-  value?: string;
-  hint?: string;
-  checked?: boolean;
-  disabled?: boolean;
-  bare?: boolean;
-}
-
-export function switchField(opts: SwitchOptions): string {
-  const name = opts.name ? ` name="${esc(opts.name)}"` : "";
-  const value = opts.value != null ? ` value="${esc(opts.value)}"` : "";
-  const checked = opts.checked ? " checked" : "";
-  const disabled = opts.disabled ? " disabled" : "";
-  const aria = opts.bare ? ` aria-label="${esc(opts.label)}"` : "";
-  const hint = opts.hint ? `<span class="ui-choice-hint">${esc(opts.hint)}</span>` : "";
-  const text = opts.bare ? "" : `<span class="ui-choice-text"><span class="ui-choice-label">${esc(opts.label)}</span>${hint}</span>`;
-  const dis = opts.disabled ? " is-disabled" : "";
-  return (
-    `<label class="ui-choice${dis}" for="${esc(opts.id)}">` +
-    `${text}` +
-    `<input class="ui-switch" type="checkbox" role="switch" id="${esc(opts.id)}"${name}${value}${checked}${disabled}${aria}></label>`
-  );
-}
-
 export interface SettingRowOptions {
   title: string;
   hint?: string;

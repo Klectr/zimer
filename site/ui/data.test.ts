@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { statBlock, statStrip } from "./stat";
 import { progressBar } from "./progress";
 import { steps } from "./steps";
-import { zinvoiceRow, entryRow, clientRow } from "./rows";
+import { entryRow, clientRow } from "./rows";
 import { lineItemsTable } from "./line-items";
 
 describe("statBlock", () => {
@@ -66,36 +66,9 @@ describe("steps", () => {
 });
 
 describe("rows", () => {
-  test("zinvoiceRow composes the status chip and mono amount", () => {
-    const html = zinvoiceRow({ number: "INV-0042", client: "Northwind Legal", status: "sent", amount: "$2,550.00", meta: "Due Nov 12", href: "/invoices?invoice=1042" });
-    expect(html).toContain('<a href="/invoices?invoice=1042" class="ui-row">');
-    expect(html).toContain("ui-chip-sent");
-    expect(html).toContain('<span class="ui-row-amount">$2,550.00</span>');
-    expect(html).not.toContain("ui-chip-overdue");
-    expect(html).not.toContain("aria-current");
-  });
 
-  test("zinvoiceRow renders the overdue chip beside the status chip when overdueDays is set", () => {
-    const html = zinvoiceRow({ number: "INV-0042", client: "Northwind Legal", status: "sent", overdueDays: 12, amount: "$2,550.00", meta: "Due Oct 27", href: "/invoices?invoice=1042" });
-    expect(html).toContain('<span class="ui-chip ui-chip-overdue">12d overdue</span>');
-  });
 
-  test("zinvoiceRow carries the selected state, hit class, aria label, and raw client html", () => {
-    const html = zinvoiceRow({
-      number: "INV-0042", client: "Northwind Legal", clientHtml: "<em>No client</em>", status: "sent",
-      amount: "$2,550.00", meta: "", href: "/invoices?invoice=1042",
-      ariaLabel: "View zinvoice INV-0042", selected: true, className: "inv-row-hit",
-    });
-    expect(html).toContain('<a href="/invoices?invoice=1042" class="ui-row selected inv-row-hit" aria-label="View zinvoice INV-0042" aria-current="true">');
-    expect(html).toContain('<div class="ui-row-meta"><em>No client</em></div>');
-    expect(html).not.toContain("Northwind Legal");
-  });
 
-  test("rows use div wrappers (no div-inside-span nesting)", () => {
-    const html = zinvoiceRow({ number: "INV-1", client: "C", status: "draft", amount: "$1", meta: "m", href: "/x" });
-    expect(html).toContain('<div class="ui-row-main">');
-    expect(html).toContain('<div class="ui-row-side">');
-  });
 
   test("entryRow omits the amount line when not given", () => {
     const html = entryRow({ title: "Pass", meta: "Acme", duration: "1h 24m" });
@@ -122,7 +95,7 @@ describe("rows", () => {
       name: "Acme Studio", meta: "2 projects · $85/hr", href: "/manage?client=1",
       ariaLabel: "Manage client Acme Studio", dot: "#fb923c", selected: true, chevron: true,
     });
-    expect(html).toContain('<a class="ui-row selected client-row-hit" href="/manage?client=1" aria-label="Manage client Acme Studio" aria-current="true">');
+    expect(html).toContain('<a class="ui-row selected" href="/manage?client=1" aria-label="Manage client Acme Studio" aria-current="true">');
     expect(html).toContain('<span class="ui-row-lead-dot" style="background:#fb923c" aria-hidden="true"></span>');
     expect(html).toContain("ui-row-chevron");
   });

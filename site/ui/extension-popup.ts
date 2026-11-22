@@ -1,3 +1,6 @@
+/** Reference component: the browser extension (extension/popup.html) is plain
+ *  HTML and can't import this. It mirrors the popup's markup so the Zandbox
+ *  story can design and test it. Keep the two in step. */
 import { logoLockup } from "./logo-lockup";
 
 export interface ExtensionPopupOptions {

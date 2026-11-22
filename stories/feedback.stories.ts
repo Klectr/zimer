@@ -2,7 +2,6 @@ import type { Story } from "../.zandbox/story";
 import { inlineAlert } from "../site/ui/alert";
 import { dialog, confirmDialog } from "../site/ui/dialog";
 import { toast } from "../site/ui/toast";
-import { menu } from "../site/ui/menu";
 import { emptyState } from "../site/ui/empty-state";
 import { button, linkButton } from "../site/ui/button";
 import { iconButton } from "../site/ui/icon-button";
@@ -86,23 +85,6 @@ export const feedbackStories: Story[] = [
       toast({ tone: "error", title: "Payment failed", body: "Your card was declined. Update billing to keep the hosted plan active." }) +
       toast({ tone: "info", title: "Timer already running", body: "Starting a new one stops the current entry." }) +
       `</div>`,
-  },
-  {
-    id: "feedback-menu",
-    group: "Feedback",
-    title: "Dropdown menu",
-    render: () =>
-      menu({
-        label: "Zinvoice actions",
-        items: [
-          { label: "View", icon: "receipt" },
-          { label: "Download PDF", icon: "download" },
-          { label: "Copy link", icon: "copy" },
-          { label: "Mark as paid", icon: "check" },
-          { label: "Delete draft", icon: "delete", danger: true },
-          { label: "Send (already sent)", icon: "save", disabled: true },
-        ],
-      }),
   },
   {
     id: "feedback-tooltip",

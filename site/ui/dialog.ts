@@ -1,3 +1,7 @@
+/** Reference component: no server view imports it. The app's dialog shells
+ *  share this markup, and site/static/dialog.js builds the confirm dialog at
+ *  runtime; the Zandbox stories keep that markup designed and tested here.
+ *  Keep it in step with dialog.js. */
 import { esc } from "../lib/format";
 import { button } from "./button";
 import { iconButton } from "./icon-button";
