@@ -12,6 +12,7 @@
 import { button, linkButton } from "../ui/button.ts";
 import { featureCard, heroSection } from "../ui/landing.ts";
 import { esc } from "../lib/format.ts";
+import { staticUrl } from "../lib/static-assets.ts";
 import { logoLockup } from "../ui/logo-lockup.ts";
 import { planCard } from "../ui/plan-card.ts";
 import { tag } from "../ui/tag.ts";
@@ -163,9 +164,9 @@ export function createLandingViews(posthogHead?: () => string) {
   <link rel="canonical" href="${origin}/">
   <title>Zimer: the time tracker that turns your hours into an invoice</title>
   <meta name="description" content="Time tracking for freelancers and solo work that turns hours into an invoice. Self-host it free forever, or hosted at $12/month flat with a 14-day free trial.">
-  <link rel="stylesheet" href="/static/style.css">
-  <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32.png">
-  <link rel="apple-touch-icon" href="/static/alien-180.png">
+  <link rel="stylesheet" href="${staticUrl("style.css")}">
+  <link rel="icon" type="image/png" sizes="32x32" href="${staticUrl("favicon-32.png")}">
+  <link rel="apple-touch-icon" href="${staticUrl("alien-180.png")}">
   <meta property="og:title" content="Zimer: the time tracker that turns your hours into an invoice">
   <meta property="og:description" content="Time tracking for freelancers and solo work that turns hours into an invoice. Self-host it free forever, or hosted at $12/month flat with a 14-day free trial.">
   <meta property="og:image" content="${origin}/static/og-image-v3.png">
@@ -181,7 +182,7 @@ export function createLandingViews(posthogHead?: () => string) {
   <script type="application/ld+json">
   {"@context":"https://schema.org","@graph":[{"@type":"Organization","name":"Zimer","url":"${origin}/","logo":"${origin}/static/alien-180.png","sameAs":["https://github.com/Klectr/zimer"]},{"@type":"WebSite","name":"Zimer","url":"${origin}/"}]}
   </script>
-  <script src="/static/utm.js" defer></script>
+  <script src="${staticUrl("utm.js")}" defer></script>
   ${posthogHead ? posthogHead() : ""}
   </head>
   <body class="ui-landing-body">
@@ -189,7 +190,7 @@ export function createLandingViews(posthogHead?: () => string) {
   <div class="ui-landing-top-in">
   <div class="ui-landing-brand">
   ${logoLockup()}
-  <img class="ui-hero-mascot" src="/static/mascot-56.webp" alt="" width="28" height="28" style="width:28px;height:28px;border-radius:50%;object-fit:cover">
+  <img class="ui-hero-mascot" src="${staticUrl("mascot-56.webp")}" alt="" width="28" height="28" style="width:28px;height:28px;border-radius:50%;object-fit:cover">
   </div>
   <div class="ui-landing-top-actions">
   ${linkButton({ label: "View on GitHub", href: "https://github.com/Klectr/zimer", external: true })}
