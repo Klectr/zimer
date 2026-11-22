@@ -365,3 +365,12 @@ describe("layout inline scripts parse", () => {
     for (const script of scripts) expect(() => new Function(script)).not.toThrow();
   });
 });
+
+describe("client_day script", () => {
+  test("the layout ships the script that adds the local day to every POST", () => {
+    const html = createLayoutViews(noRunning).layout("T", "<p>x</p>");
+    expect(html).toContain("htmx:configRequest");
+    expect(html).toContain("e.detail.parameters['client_day']=day()");
+    expect(html).toContain("i.name='client_day'");
+  });
+});

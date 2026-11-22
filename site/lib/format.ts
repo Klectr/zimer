@@ -238,3 +238,18 @@ export function safeCssColor(color: string | null | undefined): string | undefin
   if (c === "var(--color-primary)") return c;
   return /^#[0-9a-f]{6}$/i.test(c) ? c : undefined;
 }
+
+/** The user's local calendar day, as sent by their browser ("client_day"),
+ *  for dates stamped on an action (sent_at, paid_at). SQLite's date('now')
+ *  is the UTC day, which is tomorrow in the evening across the Americas.
+ *  Accepts a well-formed YYYY-MM-DD within one day of the UTC date (the most
+ *  any timezone differs); anything else returns null, and the caller falls
+ *  back to UTC. */
+export function clientDay(value: unknown, now: Date = new Date()): string | null {
+  const v = typeof value === "string" ? value.trim() : "";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return null;
+  const t = Date.parse(`${v}T00:00:00Z`);
+  if (Number.isNaN(t) || new Date(t).toISOString().slice(0, 10) !== v) return null;
+  const utc = Date.parse(`${now.toISOString().slice(0, 10)}T00:00:00Z`);
+  return Math.abs(t - utc) <= 86_400_000 ? v : null;
+}

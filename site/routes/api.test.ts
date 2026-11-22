@@ -58,11 +58,11 @@ function setup() {
     shareOrigin: () => "",
   });
 
-  async function patchStatus(id: number, status: string) {
+  async function patchStatus(id: number, status: string, extra: Record<string, unknown> = {}) {
     const req = new Request(`http://localhost/api/invoices/${id}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status, ...extra }),
     });
     return (await handleApi(req, new URL(req.url), `/api/invoices/${id}`, "PATCH"))!;
   }
@@ -355,5 +355,26 @@ describe("invoice detail projection (#1281)", () => {
     for (const key of ["internal_notes", "html_snapshot", "pdf_snapshot", "stripe_payment_link_id", "stripe_payment_link", "public_token"])
       expect(item).not.toHaveProperty(key);
     expect(JSON.stringify(item)).not.toContain("tok_secret");
+  });
+});
+
+/** Dates stamped on an action are the user's local day when the client
+ *  sends one (client_day), else the UTC day. */
+describe("PATCH /api/invoices/:id honours client_day", () => {
+  const utc = () => new Date().toISOString().slice(0, 10);
+  const yesterdayUtc = () => new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+  test("a valid client_day is stored as sent_at / paid_at", async () => {
+    const { db, patchStatus } = setup() as any;
+    await patchStatus(2, "sent", { client_day: yesterdayUtc() });
+    expect((db.query("SELECT sent_at FROM invoices WHERE id = 2").get() as any).sent_at).toBe(yesterdayUtc());
+    await patchStatus(1, "paid", { client_day: yesterdayUtc() });
+    expect((db.query("SELECT paid_at FROM invoices WHERE id = 1").get() as any).paid_at).toBe(yesterdayUtc());
+  });
+  test("a malformed or far-off client_day falls back to the UTC day", async () => {
+    const { db, patchStatus } = setup() as any;
+    await patchStatus(2, "sent", { client_day: "2020-01-01" });
+    expect((db.query("SELECT sent_at FROM invoices WHERE id = 2").get() as any).sent_at).toBe(utc());
+    await patchStatus(1, "paid", { client_day: "not-a-date" });
+    expect((db.query("SELECT paid_at FROM invoices WHERE id = 1").get() as any).paid_at).toBe(utc());
   });
 });
