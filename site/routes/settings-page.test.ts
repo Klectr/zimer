@@ -9,8 +9,9 @@ import { createDb } from "../db.ts";
 import { createWebRouter } from "./web.ts";
 import { createManageViews } from "../views/manage.ts";
 import { appVersion } from "../lib/version.ts";
+import { createAccountsDb, SESSION_COOKIE, type AccountsDb } from "../lib/accounts.ts";
 
-function setup(billingSectionHtml?: (req: Request) => string) {
+function setup(billingSectionHtml?: (req: Request) => string, opts?: { hosted?: boolean; accounts?: AccountsDb | null }) {
   const db = createDb(mkdtempSync(join(tmpdir(), "tk-settings-"))).db;
   /* Mark the layout so the test can tell the bare fragment from the full page. */
   const views = createManageViews({ db, layout: (t: string, b: string) => `<!DOCTYPE html><title>${t}</title>${b}`, unbilledByClient: () => [] });
@@ -55,7 +56,7 @@ function setup(billingSectionHtml?: (req: Request) => string) {
     shareOrigin: () => "",
     PORT: 3000,
     loginPage: noop, signupPage: noop, hostedLoginPage: noop,
-    HOSTED: false, accounts: null,
+    HOSTED: opts?.hosted ?? false, accounts: opts?.accounts ?? null,
     changelogPage: () => [], termsPage: () => [],
     notFoundPage: noop, noSuchInvoicePage: noop,
     rateLimitPage: noop, errorPage: noop,
@@ -197,5 +198,80 @@ describe("settings cleanup (#1338)", () => {
     for (const [href, name] of [["/backup", "Download backup"], ["/export/entries.csv", "Download entries CSV"], ["/export/invoices.csv", "Download Zinvoices CSV"]]) {
       expect(body).toMatch(new RegExp(`href="${href.replace(/[./]/g, "\\$&")}"[^>]*aria-label="${name}"|aria-label="${name}"[^>]*href="${href.replace(/[./]/g, "\\$&")}"`));
     }
+  });
+});
+
+describe("account section + change password (#987)", () => {
+  async function hostedSetup() {
+    const accounts = createAccountsDb(mkdtempSync(join(tmpdir(), "tk-acct-web-")));
+    const { user } = await accounts.signup("ada@example.com", "correct-horse-8");
+    const keep = accounts.createSession(user!.id);
+    const other = accounts.createSession(user!.id);
+    const { handleWeb } = setup(undefined, { hosted: true, accounts });
+    const authed = (path: string, init: RequestInit = {}) => {
+      const headers = new Headers(init.headers);
+      headers.set("Cookie", `${SESSION_COOKIE}=${encodeURIComponent(keep)}`);
+      headers.set("HX-Request", "true");
+      const req = new Request(`http://x${path}`, { ...init, headers });
+      return handleWeb(req, new URL(req.url), path, init.method || "GET");
+    };
+    return { accounts, user: user!, keep, other, authed };
+  }
+
+  test("self-host settings have no account section (token auth, no password)", async () => {
+    const { handleWeb } = setup();
+    const res = await getSettings(handleWeb, true);
+    const body = await res!.text();
+    expect(body).not.toContain('id="account"');
+    expect(body).not.toContain("/settings/password");
+  });
+
+  test("hosted settings show the account section with the signed-in email", async () => {
+    const { authed } = await hostedSetup();
+    const res = await authed("/settings");
+    expect(res!.status).toBe(200);
+    const body = await res!.text();
+    expect(body).toContain('id="account"');
+    expect(body).toContain("ada@example.com");
+    expect(body).toContain('action="/settings/password"');
+    expect(body).toContain('name="current_password"');
+    expect(body).toContain('name="new_password"');
+    expect(body).toContain('autocomplete="current-password"');
+    expect(body).toContain('autocomplete="new-password"');
+  });
+
+  test("wrong current password answers 422 with the error in the section", async () => {
+    const { authed, accounts } = await hostedSetup();
+    const form = new FormData();
+    form.set("current_password", "not-the-password");
+    form.set("new_password", "brand-new-pass-1");
+    const res = await authed("/settings/password", { method: "POST", body: form });
+    expect(res!.status).toBe(422);
+    const body = await res!.text();
+    expect(body).toContain("Current password is wrong.");
+    /* nothing changed: the old password still logs in */
+    expect((await accounts.login("ada@example.com", "correct-horse-8")).token).toBeDefined();
+  });
+
+  test("success keeps the current session, revokes the other, rotates the password", async () => {
+    const { authed, accounts, keep, other } = await hostedSetup();
+    const form = new FormData();
+    form.set("current_password", "correct-horse-8");
+    form.set("new_password", "brand-new-pass-1");
+    const res = await authed("/settings/password", { method: "POST", body: form });
+    expect(res!.status).toBe(200);
+    expect(accounts.sessionUser(keep)).not.toBeNull();
+    expect(accounts.sessionUser(other)).toBeNull();
+    expect((await accounts.login("ada@example.com", "brand-new-pass-1")).token).toBeDefined();
+  });
+
+  test("self-host POST /settings/password is a 404", async () => {
+    const { handleWeb } = setup();
+    const form = new FormData();
+    form.set("current_password", "x");
+    form.set("new_password", "brand-new-pass-1");
+    const req = new Request("http://x/settings/password", { method: "POST", body: form });
+    const res = await handleWeb(req, new URL(req.url), "/settings/password", "POST");
+    expect(res!.status).toBe(404);
   });
 });

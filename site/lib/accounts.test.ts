@@ -191,3 +191,47 @@ CREATE INDEX idx_sessions_user ON sessions(user_id);`);
     expect(error).toBe("Couldn't create your account. If you already have one, log in instead.");
   });
 });
+
+describe("change password (#987)", () => {
+  test("wrong current password is rejected and the old password still works", async () => {
+    const a = accountsDb();
+    const { user } = await a.signup("ada@example.com", "correct-horse-8");
+    const r = await a.changePassword(user!.id, "not-the-password", "brand-new-pass-1");
+    expect(r.error).toBe("Current password is wrong.");
+    const { token } = await a.login("ada@example.com", "correct-horse-8");
+    expect(token).toBeDefined();
+  });
+
+  test("short or unchanged new passwords are rejected", async () => {
+    const a = accountsDb();
+    const { user } = await a.signup("ada@example.com", "correct-horse-8");
+    expect((await a.changePassword(user!.id, "correct-horse-8", "short")).error)
+      .toBe("New password must be at least 8 characters.");
+    expect((await a.changePassword(user!.id, "correct-horse-8", "correct-horse-8")).error)
+      .toBe("New password must be different from your current password.");
+  });
+
+  test("success rotates the password and revokes other sessions only", async () => {
+    const a = accountsDb();
+    const { user } = await a.signup("ada@example.com", "correct-horse-8");
+    const keep = a.createSession(user!.id);
+    const other = a.createSession(user!.id);
+    const r = await a.changePassword(user!.id, "correct-horse-8", "brand-new-pass-1", keep);
+    expect(r.error).toBeUndefined();
+    /* kept session survives; the other device is signed out */
+    expect(a.sessionUser(keep)).not.toBeNull();
+    expect(a.sessionUser(other)).toBeNull();
+    /* old password is dead, the new one logs in */
+    expect((await a.login("ada@example.com", "correct-horse-8")).error).toBe("Wrong email or password.");
+    expect((await a.login("ada@example.com", "brand-new-pass-1")).token).toBeDefined();
+  });
+
+  test("without a kept token every session is revoked", async () => {
+    const a = accountsDb();
+    const { user } = await a.signup("ada@example.com", "correct-horse-8");
+    const t = a.createSession(user!.id);
+    const r = await a.changePassword(user!.id, "correct-horse-8", "brand-new-pass-1");
+    expect(r.error).toBeUndefined();
+    expect(a.sessionUser(t)).toBeNull();
+  });
+});

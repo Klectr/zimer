@@ -23,7 +23,8 @@ import { servedVersion, staticUrl } from "../lib/static-assets.ts"; /* #993 */
 import { textField } from "../ui/field.ts";
 import { card } from "../ui/card.ts";
 import { settingsDataList, settingsDataRow, settingsSection } from "../ui/settings-section.ts";
-import { linkButton } from "../ui/button.ts";
+import { button, linkButton } from "../ui/button.ts";
+import { inlineAlert } from "../ui/alert.ts";
 
 /* #733: everything derived from one tenant's SQLite bundle. Resolved per
    request from the session (session → user → tenant tree, cached by user
@@ -767,11 +768,32 @@ export function createWebRouter(deps: WebDeps) {
           if (isHtmx(req)) return html(dailyTargetControl(), 200, { "HX-Trigger": JSON.stringify({ "tk-toast": "Daily target saved" }) });
           return new Response(null, { status: 302, headers: { Location: "/settings" } });
         }
+        /* #987: hosted-only Account section — the signed-in email and the
+           change-password form. Self-host has no password (token auth), so
+           the section never renders there. */
+        function accountSectionHtml(user: { email: string }, error?: string): string {
+          const body =
+            (error ? inlineAlert({ tone: "error", text: error }) : "") +
+            `<form method="post" action="/settings/password" class="ui-settings-form" hx-post="/settings/password" hx-target="#account" hx-swap="outerHTML">` +
+            `<div class="ui-settings-form-2col">` +
+            textField({ id: "acct-current-password", label: "Current password", name: "current_password", type: "password", required: true, autocomplete: "current-password" }) +
+            textField({ id: "acct-new-password", label: "New password", name: "new_password", type: "password", required: true, autocomplete: "new-password" }) +
+            `</div>` +
+            `<div class="ui-settings-actions">${button({ label: "Change password", type: "submit" })}</div>` +
+            `</form>`;
+          return settingsSection({
+            level: 2, id: "account", title: "Account",
+            hint: `Signed in as ${user.email}. Changing your password signs out your other devices.`,
+            bodyHtml: body,
+          });
+        }
         /* #883: settings modal body — business profile, theme, Updates
            section, support channel. The License section left with the
            retired $59 key. */
         if (path === "/settings" && method === "GET") {
           const billingHtml = billingSectionHtml ? billingSectionHtml(req) : "";
+          const accountUser = HOSTED && accounts ? accounts.sessionUserFromRequest(req) : null;
+          const accountHtml = accountUser ? accountSectionHtml(accountUser) : "";
           /* #1223: self-hosted gets one merged About & updates card (the
              About card takes the plan slot); hosted keeps the plain
              Updates card under the Billing card. */
@@ -798,12 +820,33 @@ export function createWebRouter(deps: WebDeps) {
              hosted plan, everyday preferences, exports, then about/updates. */
           const body =
             `<div class="ui-settings-stack">` +
-            bizProfileSection() + billingHtml + preferencesSection() + dataSection + updates +
+            bizProfileSection() + billingHtml + accountHtml + preferencesSection() + dataSection + updates +
             support + `</div>`;
           if (isHtmx(req)) return html(body);
           /* #693: direct visits get the full app layout — the bare fragment
              renders unstyled. */
           return html(settingsPage(body));
+        }
+        /* #987: change password — hosted accounts only (self-host uses the
+           token, there is no password to change). The current session is
+           kept; every other session is revoked by accounts.changePassword. */
+        if (path === "/settings/password" && method === "POST") {
+          if (!HOSTED || !accounts) return new Response("Not found.", { status: 404 });
+          const user = accounts.sessionUserFromRequest(req);
+          if (!user) return new Response(null, { status: 302, headers: { Location: "/login" } });
+          const form = await req.formData();
+          const r = await accounts.changePassword(
+            user.id,
+            String(form.get("current_password") || ""),
+            String(form.get("new_password") || ""),
+            accounts.sessionTokenFromRequest(req) ?? undefined
+          );
+          if (r.error) {
+            if (isHtmx(req)) return html(accountSectionHtml(user, r.error), 422);
+            return new Response(r.error, { status: 400 });
+          }
+          if (isHtmx(req)) return html(accountSectionHtml(user), 200, { "HX-Trigger": JSON.stringify({ "tk-toast": "Password changed" }) });
+          return new Response(null, { status: 302, headers: { Location: "/settings" } });
         }
         /* #884: accent theme. Unknown keys are rejected — the dots only ever
            post known keys, so this guards hand-built requests. The OOB
