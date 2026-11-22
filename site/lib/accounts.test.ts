@@ -196,8 +196,11 @@ describe("change password (#987)", () => {
   test("wrong current password is rejected and the old password still works", async () => {
     const a = accountsDb();
     const { user } = await a.signup("ada@example.com", "correct-horse-8");
+    const existing = a.createSession(user!.id);
     const r = await a.changePassword(user!.id, "not-the-password", "brand-new-pass-1");
     expect(r.error).toBe("Current password is wrong.");
+    expect(r.token).toBeUndefined();
+    expect(a.sessionUser(existing)).not.toBeNull();
     const { token } = await a.login("ada@example.com", "correct-horse-8");
     expect(token).toBeDefined();
   });

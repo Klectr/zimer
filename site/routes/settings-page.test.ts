@@ -241,12 +241,15 @@ describe("account section + change password (#987)", () => {
   });
 
   test("wrong current password answers 422 with the error in the section", async () => {
-    const { authed, accounts } = await hostedSetup();
+    const { authed, accounts, keep, other } = await hostedSetup();
     const form = new FormData();
     form.set("current_password", "not-the-password");
     form.set("new_password", "brand-new-pass-1");
     const res = await authed("/settings/password", { method: "POST", body: form });
     expect(res!.status).toBe(422);
+    expect(res!.headers.get("Set-Cookie")).toBeNull();
+    expect(accounts.sessionUser(keep)).not.toBeNull();
+    expect(accounts.sessionUser(other)).not.toBeNull();
     const body = await res!.text();
     expect(body).toContain("Current password is wrong.");
     /* nothing changed: the old password still logs in */
@@ -271,7 +274,7 @@ describe("account section + change password (#987)", () => {
   });
 
   test("non-htmx success redirects to /settings, failure is a plain 400", async () => {
-    const { authed, accounts } = await hostedSetup();
+    const { authed, accounts, keep, other } = await hostedSetup();
     const bad = new FormData();
     bad.set("current_password", "not-the-password");
     bad.set("new_password", "brand-new-pass-1");
@@ -284,7 +287,13 @@ describe("account section + change password (#987)", () => {
     const okRes = await authed("/settings/password", { method: "POST", body: good }, false);
     expect(okRes!.status).toBe(302);
     expect(okRes!.headers.get("Location")).toBe("/settings");
-    expect(okRes!.headers.get("Set-Cookie") || "").toContain(`${SESSION_COOKIE}=`);
+    const cookie302 = okRes!.headers.get("Set-Cookie") || "";
+    expect(cookie302).toContain(`${SESSION_COOKIE}=`);
+    const fresh302 = decodeURIComponent(cookie302.match(new RegExp(`${SESSION_COOKIE}=([^;]+)`))![1]);
+    expect(fresh302).not.toBe(keep);
+    expect(accounts.sessionUser(fresh302)).not.toBeNull();
+    expect(accounts.sessionUser(keep)).toBeNull();
+    expect(accounts.sessionUser(other)).toBeNull();
     expect((await accounts.login("ada@example.com", "brand-new-pass-1")).token).toBeDefined();
   });
 

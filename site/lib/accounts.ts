@@ -186,15 +186,23 @@ CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
     const password_hash = await Bun.password.hash(newPassword);
     const token = randomBytes(32).toString("hex");
     const expires_at = new Date(Date.now() + SESSION_MAX_AGE_SEC * 1000).toISOString();
-    db.transaction(() => {
-      db.query("UPDATE users SET password_hash = ? WHERE id = ? AND deleted_at IS NULL").run(password_hash, userId);
-      db.query("DELETE FROM sessions WHERE user_id = ?").run(userId);
-      db.query("INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)").run(
-        hashSessionToken(token),
-        userId,
-        expires_at
-      );
-    })();
+    const stale = new Error("stale password change");
+    try {
+      db.transaction(() => {
+        const upd = db.query("UPDATE users SET password_hash = ? WHERE id = ? AND deleted_at IS NULL AND password_hash = ?")
+          .run(password_hash, userId, row.password_hash);
+        if (upd.changes !== 1) throw stale;
+        db.query("DELETE FROM sessions WHERE user_id = ?").run(userId);
+        db.query("INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)").run(
+          hashSessionToken(token),
+          userId,
+          expires_at
+        );
+      })();
+    } catch (e) {
+      if (e === stale) return { error: "Current password is wrong." };
+      throw e;
+    }
     return { token };
   }
 
