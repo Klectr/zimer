@@ -239,7 +239,9 @@ textarea.ui-input { height: auto; padding: var(--spacing-xs) var(--spacing-sm); 
 .ui-stat-cell { min-width: 0; padding: var(--spacing-sm) var(--spacing); border-right: 1px solid var(--color-border-secondary); }
 .ui-stat-cell:last-child { border-right: 0; }
 .ui-stat-cell-head { display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-xs); min-height: 18px; }
-.ui-stat-cell-value { display: flex; align-items: baseline; gap: var(--spacing-xs); margin-top: 2px; white-space: nowrap;
+/* The note sits beside the number and wraps under it when the cell is
+   narrow (tablet widths ran it into the next cell). */
+.ui-stat-cell-value { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--spacing-xs); margin-top: 2px; white-space: nowrap;
   font-family: var(--font-family-code); font-size: var(--font-size-heading-3); font-weight: var(--font-weight-strong);
   letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
 .ui-stat-cell-note { font-family: var(--font-family); font-size: var(--font-size-sm); font-weight: 400; letter-spacing: 0; color: var(--color-text-secondary); }
@@ -588,9 +590,12 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .ui-day-more { font-size: var(--font-size-sm); color: var(--color-text-tertiary); padding: var(--spacing-xxs) var(--spacing-xs); }
 .ui-agenda-day { margin-bottom: var(--spacing-md); }
 .ui-agenda-gap { margin-bottom: var(--spacing-md); }
-.ui-agenda-gap-head { display: flex; align-items: center; gap: var(--spacing-xs); min-height: var(--control-height); padding: 0 var(--spacing-xs); margin: 0 calc(-1 * var(--spacing-xs)); border-radius: var(--radius); color: var(--color-text-tertiary); cursor: pointer; list-style: none; }
+/* The hover wash bleeds past the text with a spread shadow, not negative
+   margins: margins made the row 16px wider than the week, so quiet weeks
+   scrolled sideways by 8px. A shadow is ink overflow, never scrollable. */
+.ui-agenda-gap-head { display: flex; align-items: center; gap: var(--spacing-xs); min-height: var(--control-height); padding: 0; border-radius: var(--radius); color: var(--color-text-tertiary); cursor: pointer; list-style: none; }
 .ui-agenda-gap-head::-webkit-details-marker { display: none; }
-.ui-agenda-gap-head:hover { background: var(--color-fill-tertiary); }
+.ui-agenda-gap-head:hover { background: var(--color-fill-tertiary); box-shadow: 0 0 0 var(--spacing-xs) var(--color-fill-tertiary); }
 .ui-agenda-gap-head:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 .ui-agenda-gap-note { margin-left: auto; font-size: var(--font-size-sm); }
 .ui-agenda-gap-head svg { width: 16px; height: 16px; flex: none; transition: transform var(--motion-duration-short4) var(--motion-easing-standard); }
