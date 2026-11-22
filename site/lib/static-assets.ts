@@ -9,11 +9,11 @@ const versions = new Map<string, { key: string; version: string }>();
 export function servedVersion(path: string): string {
   let st;
   try {
-    st = statSync(path);
+    st = statSync(path, { bigint: true });
   } catch {
     return "";
   }
-  const key = `${st.size}:${Math.floor(st.mtimeMs)}:${Math.floor(st.ctimeMs)}`;
+  const key = `${st.size}:${st.mtimeNs}:${st.ctimeNs}`;
   const hit = versions.get(path);
   if (hit && hit.key === key) return hit.version;
   let version = "";
