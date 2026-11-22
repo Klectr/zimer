@@ -557,7 +557,9 @@ describe("timer mock parity (#1121)", () => {
   test("dashboard is the mock's single column: no supporting revenue rail", () => {
     const deps = { ...baseDeps, qRunning: { get: () => null } as unknown as Statement };
     const html = createTimerViews(deps as any).dashboardPage();
-    expect(html).toContain('class="scroll-region timer-home"');
+    expect(html).toContain('class="timer-home"');
+    /* The whole page scrolls; no pinned viewport or inner scroll region. */
+    expect(html).not.toContain("scroll-region");
     expect(html).not.toContain("pane-supporting");
     expect(html).not.toContain(">Revenue</h2>");
   });
@@ -613,5 +615,16 @@ describe("timer home side-by-side grid (#1342)", () => {
     const css = await Bun.file("site/static/style.css").text();
     expect(css).toContain(".timer-home { display: flex; flex-direction: column; gap: var(--spacing); container-type: inline-size; }");
     expect(css).toMatch(/@container \(min-width: 960px\) \{\s*\.timer-home-grid \{ display: grid; grid-template-columns: minmax\(0, 5fr\) minmax\(0, 7fr\); align-items: start; \}/);
+  });
+});
+
+/** The Zimer page scrolls as one page: layout() is not asked for the fixed
+ *  viewport (that left a short inner scroll area under pinned stats). */
+describe("Zimer page scrolls the document", () => {
+  test("dashboardPage does not request the fixed viewport", () => {
+    let fixedArg: unknown = "unset";
+    const deps = { ...baseDeps, qRunning: { get: () => null } as unknown as Statement, layout: (_t: string, b: string, _a?: string, fixed?: boolean) => { fixedArg = fixed; return b; } };
+    createTimerViews(deps as any).dashboardPage();
+    expect(fixedArg).toBeFalsy();
   });
 });

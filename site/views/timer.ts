@@ -250,7 +250,7 @@ export function createTimerViews(deps: TimerViewDeps) {
       ${demoBanner(db)}
       ${appHeader({ title, sub: `${dateSub} — here's your day so far.` })}
       <div id="today-stats" hx-get="/partial/today-stats" hx-trigger="load, timer-updated from:body">${statRow()}</div>
-      <div class="scroll-region timer-home" data-enter="2" aria-label="Zimer and today's entries">
+      <div class="timer-home" data-enter="2" aria-label="Zimer and today's entries">
         <div class="timer-home-grid">
         ${timerPartial()}
         <section class="ui-card">
@@ -288,7 +288,7 @@ export function createTimerViews(deps: TimerViewDeps) {
               document.body.addEventListener('htmx:afterSwap',function(e){
                 if(e.detail&&e.detail.target&&e.detail.target.id==='today-list')window.__tkFmtTimes(e.detail.target);});
           window.__tkFmtTimes(el);})();</script>
-      </div>`, "timer", true);
+      </div>`, "timer");
   }
 
 

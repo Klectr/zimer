@@ -930,19 +930,15 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
 /* ---------------- fixed viewport: regions own the scroll (Google app pattern) ----
  * Pages that opt in via layout(..., fixed=true) never scroll the page itself:
  * body is a 100dvh flex column and exactly one region owns the vertical scroll.
- * Document-like pages (invoice detail/new/edit entry) keep page scroll — the
- * invoice detail must print. */
+ * Only Calendar opts in (its week grid owns the scroll). Zimer and Zinvoices
+ * used to, but a pinned header left a short inner scroll area with a mid-page
+ * scrollbar, so they scroll as one page like every other screen. */
 body.app-fixed { height: 100vh; height: 100dvh; overflow: hidden; display: flex; flex-direction: column; }
 body.app-fixed main {
   flex: 1; min-height: 0; width: 100%;
   display: flex; flex-direction: column;
   padding-bottom: 16px;
 }
-/* the region that owns the scroll on fixed-viewport pages.
- * 4px breathing room: the :focus-visible ring extends 2px + 2px offset beyond a
- * field, and fields sit flush against this region's clip edge (overflow-y: auto
- * clips the ring otherwise). */
-.scroll-region { flex: 1; min-height: 0; overflow-y: auto; padding: 4px; }
 .timer-home { display: flex; flex-direction: column; gap: var(--spacing); container-type: inline-size; }
 .timer-home-grid { display: flex; flex-direction: column; gap: var(--spacing); }
 .timer-home-grid > .ui-card { margin: 0; min-width: 0; }
@@ -1002,7 +998,6 @@ body.app-fixed .ui-shell-main { min-height: 0; }
   body.app-fixed .ui-shell { min-height: 100dvh; }
   body.app-fixed .ui-shell-main { min-height: auto; }
   body.app-fixed main { flex: none; min-height: auto; padding-bottom: calc(96px + var(--nav-bar-height)); }
-  body.app-fixed .scroll-region { flex: none; min-height: auto; overflow: visible; padding: 0; }
   /* Calendar: strips size to their own week; at rest the off-screen
      neighbours collapse so a longer week can't pad the page, and the pan
      lifts that while the incoming week slides in. */
