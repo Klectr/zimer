@@ -391,6 +391,21 @@ describe("invoice rate validation (#1442)", () => {
     expect(db.query("SELECT COUNT(*) AS n FROM invoices").get()).toEqual({ n: 0 });
   });
 
+  test("rows whose amounts sum past the finite range are rejected (#1448)", async () => {
+    const { db, handleWeb } = setup();
+    const res = await postInvoice(handleWeb, {
+      ...baseInvoiceFields, groups: "2",
+      g0_desc: "Work", g0_hours: "1.7e306", g0_rate: "1",
+      g0_ids: "", g0_date_from: "", g0_date_to: "",
+      g1_desc: "More", g1_hours: "1.7e306", g1_rate: "1",
+      g1_ids: "", g1_date_from: "", g1_date_to: "",
+    });
+    expect(res!.status).toBe(400);
+    expect(await res!.text()).toContain("too large");
+    expect(db.query("SELECT COUNT(*) AS n FROM invoices").get()).toEqual({ n: 0 });
+    expect(db.query("SELECT COUNT(*) AS n FROM invoice_items").get()).toEqual({ n: 0 });
+  });
+
   test("a negative rate on a dropped zero-hour row does not block the invoice", async () => {
     const { db, handleWeb } = setup();
     const res = await postInvoice(handleWeb, {

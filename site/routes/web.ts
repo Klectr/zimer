@@ -1153,6 +1153,13 @@ export function createWebRouter(deps: WebDeps) {
             });
           }
           if (!items.length) return new Response("No line items — nothing to Zinvoice.", { status: 400 });
+          /* #1448: per-row amounts are finite, but the derived totals can
+             still overflow when rows sum past the finite range or a finite
+             subtotal meets a huge tax rate — never store those. */
+          const subtotal = round2(items.reduce((a, it) => a + it.amount, 0));
+          const tax = round2(subtotal * taxRate / 100);
+          if (!Number.isFinite(subtotal) || !Number.isFinite(tax) || !Number.isFinite(round2(subtotal + tax)))
+            return new Response("Invoice total is too large.", { status: 400 });
           const number = String(form.get("number") || nextInvoiceNumber());
           if (db.query("SELECT 1 FROM invoices WHERE number = ?").get(number))
             return new Response("Zinvoice number already exists.", { status: 400 });

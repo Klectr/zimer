@@ -596,6 +596,31 @@ describe("API rate validation (#1440)", () => {
     expect((tenant.db.query("SELECT COUNT(*) AS n FROM invoices").get() as any).n).toBe(0);
     expect((tenant.db.query("SELECT COUNT(*) AS n FROM invoice_items").get() as any).n).toBe(0);
   });
+  test("POST /api/invoices with a tax_rate too large to round is a 400 and creates nothing (#1448)", async () => {
+    const tenant = rateTenant();
+    const res = await post(tenant, "/api/invoices", { client_id: 3, tax_rate: 1e308, items: [item] });
+    expect(res.status).toBe(400);
+    expect((await res.json() as any).error).toContain("tax_rate");
+    expect((tenant.db.query("SELECT COUNT(*) AS n FROM invoices").get() as any).n).toBe(0);
+    expect((tenant.db.query("SELECT COUNT(*) AS n FROM invoice_items").get() as any).n).toBe(0);
+  });
+  test("POST /api/invoices whose rows sum past the finite range is a 400 and creates nothing (#1448)", async () => {
+    const tenant = rateTenant();
+    const big = { description: "Work", hours: 1.7e306, rate: 1 };
+    const res = await post(tenant, "/api/invoices", { client_id: 3, items: [big, big] });
+    expect(res.status).toBe(400);
+    expect((await res.json() as any).error).toContain("total");
+    expect((tenant.db.query("SELECT COUNT(*) AS n FROM invoices").get() as any).n).toBe(0);
+    expect((tenant.db.query("SELECT COUNT(*) AS n FROM invoice_items").get() as any).n).toBe(0);
+  });
+  test("POST /api/invoices whose tax overflows the total is a 400 and creates nothing (#1448)", async () => {
+    const tenant = rateTenant();
+    const res = await post(tenant, "/api/invoices", { client_id: 3, tax_rate: 1e305, items: [{ ...item, rate: 1e6 }] });
+    expect(res.status).toBe(400);
+    expect((await res.json() as any).error).toContain("total");
+    expect((tenant.db.query("SELECT COUNT(*) AS n FROM invoices").get() as any).n).toBe(0);
+    expect((tenant.db.query("SELECT COUNT(*) AS n FROM invoice_items").get() as any).n).toBe(0);
+  });
   test("POST /api/invoices from/to path stores grouped items at the validated rate", async () => {
     const tenant = rateTenant();
     (tenant as any).unbilledEntries = () => [{ id: 1 }];

@@ -385,7 +385,7 @@ export function createApiRouter(deps: ApiDeps) {
               if (body.due_date && !dueDate)
                 return json({ error: "due_date must be a valid date (YYYY-MM-DD)" }, 400);
               const taxRate = nonNegativeRate(body.tax_rate);
-              if (taxRate === null)
+              if (taxRate === null || !Number.isFinite(round2(taxRate)))
                 return json({ error: "tax_rate must be a number at or above 0" }, 400);
               let items: { description: string; hours: number; rate: number; entry_ids?: number[] }[];
               if (Array.isArray(body.items)) {
@@ -444,6 +444,14 @@ export function createApiRouter(deps: ApiDeps) {
                 }))
                 .filter(it => it.hours > 0);
               if (!clean.length) return json({ error: "no billable line items" }, 400);
+              /* #1448: per-row checks keep each amount finite, but the
+                 derived totals can still overflow — rows summing past the
+                 finite range, or a finite subtotal x tax_rate. Reject
+                 before insert so detail/list never project null totals. */
+              const subtotal = round2(clean.reduce((a, it) => a + round2(it.hours * it.rate), 0));
+              const tax = round2(subtotal * taxRate / 100);
+              if (!Number.isFinite(subtotal) || !Number.isFinite(tax) || !Number.isFinite(round2(subtotal + tax)))
+                return json({ error: "invoice total is too large" }, 400);
               /* #1429: keep from/to as the billing period, like the web
                  wizard (#1350). Only a well-formed, ordered pair is stored;
                  anything else stays NULL and surfaces fall back to line dates. */
