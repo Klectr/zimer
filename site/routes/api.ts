@@ -362,6 +362,17 @@ export function createApiRouter(deps: ApiDeps) {
               const number = String(body.number || nextInvoiceNumber());
               if (db.query("SELECT 1 FROM invoices WHERE number = ?").get(number))
                 return json({ error: "invoice number already exists" }, 400);
+              /* #1436: issue/due are stored dates — an explicitly provided
+                 one must be a real calendar day (validYmd, as #1429);
+                 verbatim garbage would feed ordering, overdue math, the
+                 PDF and the CSV export. Absent issue_date defaults to
+                 today; absent due_date stays null. */
+              const issueDate = body.issue_date ? validYmd(body.issue_date) : todayStr();
+              if (!issueDate)
+                return json({ error: "issue_date must be a valid date (YYYY-MM-DD)" }, 400);
+              const dueDate = body.due_date ? validYmd(body.due_date) : null;
+              if (body.due_date && !dueDate)
+                return json({ error: "due_date must be a valid date (YYYY-MM-DD)" }, 400);
               let items: { description: string; hours: number; rate: number; entry_ids?: number[] }[];
               if (Array.isArray(body.items)) {
                 items = body.items;
@@ -372,6 +383,20 @@ export function createApiRouter(deps: ApiDeps) {
                   unbilledEntries(Number(body.client_id), String(body.from), String(body.to)),
                   Number(body.rate) || 0);
               }
+              /* #1436: per-line billing dates are stored dates too —
+                 validate caller-supplied ones the same way. */
+              if (Array.isArray(body.items)) {
+                for (const it of items) {
+                  /* Rows the clean step drops (hours <= 0) store nothing —
+                     their dates are not validated. */
+                  if (round2(Number((it as any).hours) || 0) <= 0) continue;
+                  for (const k of ["date_from", "date_to"] as const) {
+                    const v = (it as any)[k];
+                    if (v !== undefined && v !== null && v !== "" && !validYmd(v))
+                      return json({ error: `${k} must be a valid date (YYYY-MM-DD)` }, 400);
+                  }
+                }
+              }
               const clean = items
                 .map(it => ({
                   description: String(it.description || "Time"),
@@ -379,8 +404,8 @@ export function createApiRouter(deps: ApiDeps) {
                   rate: round2(Number(it.rate) || 0),
                   entry_ids: Array.isArray(it.entry_ids) ? it.entry_ids.map(Number).filter(n => n > 0) : [],
                   /* #243: optional per-line billing dates */
-                  date_from: typeof it.date_from === "string" && it.date_from ? it.date_from : null,
-                  date_to: typeof it.date_to === "string" && it.date_to ? it.date_to : null,
+                  date_from: validYmd(it.date_from),
+                  date_to: validYmd(it.date_to),
                 }))
                 .filter(it => it.hours > 0);
               if (!clean.length) return json({ error: "no billable line items" }, 400);
@@ -395,8 +420,8 @@ export function createApiRouter(deps: ApiDeps) {
                 .get(
                   body.client_id ? Number(body.client_id) : null,
                   number,
-                  String(body.issue_date || todayStr()),
-                  body.due_date ? String(body.due_date) : null,
+                  issueDate,
+                  dueDate,
                   Number(body.tax_rate) || 0,
                   String(body.notes || ""),
                   String(body.internal_notes || ""),
