@@ -349,9 +349,15 @@ export function createApiRouter(deps: ApiDeps) {
                 }))
                 .filter(it => it.hours > 0);
               if (!clean.length) return json({ error: "no billable line items" }, 400);
+              /* #1429: keep from/to as the billing period, like the web
+                 wizard (#1350). Only a well-formed, ordered pair is stored;
+                 anything else stays NULL and surfaces fall back to line dates. */
+              const ymd = (v: unknown) => { const t = typeof v === "string" ? v.trim() : ""; return /^\d{4}-\d{2}-\d{2}$/.test(t) ? t : null; };
+              const pFrom = ymd(body.from), pTo = ymd(body.to);
+              const [periodFrom, periodTo] = pFrom && pTo && pFrom <= pTo ? [pFrom, pTo] : [null, null];
               const inv = db.query(
-                `INSERT INTO invoices (client_id, number, issue_date, due_date, tax_rate, notes, internal_notes)
-                 VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id`)
+                `INSERT INTO invoices (client_id, number, issue_date, due_date, tax_rate, notes, internal_notes, period_from, period_to)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`)
                 .get(
                   body.client_id ? Number(body.client_id) : null,
                   number,
@@ -359,7 +365,8 @@ export function createApiRouter(deps: ApiDeps) {
                   body.due_date ? String(body.due_date) : null,
                   Number(body.tax_rate) || 0,
                   String(body.notes || ""),
-                  String(body.internal_notes || "")) as any; /* #302 */
+                  String(body.internal_notes || ""),
+                  periodFrom, periodTo) as any; /* #302 */
               const insItem = db.query(
                 "INSERT INTO invoice_items (invoice_id, description, hours, rate, amount, date_from, date_to) VALUES (?, ?, ?, ?, ?, ?, ?)");
               const linkEntry = db.query("UPDATE time_entries SET invoice_id = ? WHERE id = ?");
