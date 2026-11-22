@@ -73,7 +73,7 @@ describe("demo banner CTAs (#1218)", () => {
   test("empty-workspace banner loads the purpose-sized mascot WebP", () => {
     const db = createDb(mkdtempSync(join(tmpdir(), "tk-demo-"))).db;
     const html = demoBanner(db);
-    expect(html).toContain('src="/static/mascot-88.webp"');
+    expect(html).toContain('src="/static/mascot-88.webp?v=');
     expect(html).not.toContain("mascot.png");
   });
 

@@ -5,6 +5,7 @@
 import type { Database, Statement } from "bun:sqlite";
 import { addDays, daysBetween, durationSeconds, esc, fmtDur, money, round2, shortDateRange, shortDateRangeYear, shortYmd, clientTermsDescription, termsDays, termsKey, todayStr } from "../lib/format.ts";
 import { icon } from "../lib/icons.ts";
+import { staticUrl } from "../lib/static-assets.ts";
 import { getMeta } from "../db.ts";
 import { workspaceEmpty } from "../lib/demo.ts"; /* #300: empty-state CTA */
 import type { Invoice, InvoiceItem, NewInvParams } from "../lib/types.ts";
@@ -63,7 +64,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
         ${button({ label: "Load demo data", icon: "info", variant: "ghost", type: "submit" })}
       </form>` : "";
     return emptyState({
-      image: { src: "/static/mascot-empty.webp", width: 132, height: 132 },
+      image: { src: staticUrl("mascot-empty.webp"), width: 132, height: 132 },
       title: "No Zinvoices yet",
       body: "Turn tracked time into a Zinvoice — or explore first with fictional sample data.",
       action: demoCta || undefined,

@@ -7,6 +7,7 @@ import { errorPage } from "../ui/error-page.ts";
 import { navDrawer } from "../ui/nav-drawer.ts";
 import type { Statement } from "bun:sqlite";
 import { esc } from "../lib/format.ts";
+import { staticUrl } from "../lib/static-assets.ts";
 import { logo } from "../lib/icons.ts";
 import { appSidebar, navItemsHtml, type NavItem } from "../ui/app-sidebar.ts";
 import { logoLockup } from "../ui/logo-lockup.ts";
@@ -126,20 +127,20 @@ export function createLayoutViews(qRunning: Statement, themeCss?: () => string, 
   <title>${esc(title)} · Zimer</title>
   <script src="https://unpkg.com/htmx.org@2.0.4"></script>
   ${phHead}
-  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="${staticUrl("style.css")}">
   ${themeStyle()}
-  <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32.png">
-  <link rel="apple-touch-icon" href="/static/alien-180.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="${staticUrl("favicon-32.png")}">
+  <link rel="apple-touch-icon" href="${staticUrl("alien-180.png")}">
   <!-- #936: PWA — installable app shell. Manifest + theme color; the service
        worker (scoped to /static/) makes static assets resilient and satisfies
        the installability check. Registration is a no-op when unsupported. -->
   <link rel="manifest" href="/static/manifest.webmanifest">
   <meta name="theme-color" content="#08090a">
   <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("/static/sw.js").catch(function(){});}</script>
-  <script src="/static/shortcut.js" defer></script>
-  <script src="/static/terms.js" defer></script>
-  <script src="/static/dialog.js" defer></script>
-  ${phHead ? `<script src="/static/analytics.js" defer></script>` : ""}
+  <script src="${staticUrl("shortcut.js")}" defer></script>
+  <script src="${staticUrl("terms.js")}" defer></script>
+  <script src="${staticUrl("dialog.js")}" defer></script>
+  ${phHead ? `<script src="${staticUrl("analytics.js")}" defer></script>` : ""}
   </head>
   <body class="app${fixed ? " app-fixed" : ""}" data-timer-running="${running ? 1 : 0}"${startAttr}>
   <!-- #511: skip link — keyboard users jump past the shell straight to content. -->
@@ -177,9 +178,9 @@ export function createLayoutViews(qRunning: Statement, themeCss?: () => string, 
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
   <title>${esc(title)} &middot; Zimer</title>
-  <link rel="stylesheet" href="/static/style.css">
-  <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32.png">
-  <link rel="apple-touch-icon" href="/static/alien-180.png">
+  <link rel="stylesheet" href="${staticUrl("style.css")}">
+  <link rel="icon" type="image/png" sizes="32x32" href="${staticUrl("favicon-32.png")}">
+  <link rel="apple-touch-icon" href="${staticUrl("alien-180.png")}">
   </head>
   <body>
   <main class="page-public-invoice">

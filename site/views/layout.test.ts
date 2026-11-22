@@ -18,6 +18,12 @@ describe("layout theme override (#884)", () => {
     expect(styleIdx).toBeGreaterThan(cssIdx);
     expect(head).toContain("--primary:#ffb4a8");
   });
+  test("the stylesheet URL carries its content-hash version (#993)", () => {
+    const { layout } = createLayoutViews(noRunning, () => "");
+    const head = layout("T", "body");
+    expect(head).toMatch(/href="\/static\/style\.css\?v=[0-9a-f]{12}"/);
+    expect(head).toMatch(/src="\/static\/dialog\.js\?v=[0-9a-f]{12}"/);
+  });
   test("default theme emits pumpkin values", () => {
     const { layout } = createLayoutViews(noRunning, () => themeCss(themeKey("")));
     expect(layout("T", "body")).toContain("--primary:#fb923c");

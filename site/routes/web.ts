@@ -19,6 +19,7 @@ import { THEMES, themeCss, themeKey } from "../lib/theme.ts"; /* #884 */
 import type { AccountsDb } from "../lib/accounts.ts"; /* #732 */
 import { findTenantByPublicToken } from "../lib/tenants.ts"; /* #741 */
 import { countProofs, deleteProof, getProof, insertProof, listProofs, sanitizeFilename, validateProofFile, PROOF_MAX_BYTES, PROOF_MAX_PER_INVOICE } from "../lib/payment_proofs.ts"; /* #956 */
+import { servedVersion, staticUrl } from "../lib/static-assets.ts"; /* #993 */
 import { textField } from "../ui/field.ts";
 import { card } from "../ui/card.ts";
 import { settingsDataList, settingsDataRow, settingsSection } from "../ui/settings-section.ts";
@@ -87,8 +88,8 @@ export interface WebTenant {
 function csrfBlockedPage(): string {
   return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Request blocked · Zimer</title>
-  <link rel="stylesheet" href="/static/style.css">
-  <link rel="icon" type="image/svg+xml" href="/static/logo.svg"></head>
+  <link rel="stylesheet" href="${staticUrl("style.css")}">
+  <link rel="icon" type="image/svg+xml" href="${staticUrl("logo.svg")}"></head>
   <body><main class="login">
   ${card({ content: `<h1 class="ui-page-title" style="margin-top:0">Request blocked</h1>
   <p class="muted">This action was refused because it didn't come from the app itself. If you reached this page from inside Zimer, please try again.</p>` })}
@@ -191,14 +192,20 @@ export function createWebRouter(deps: WebDeps) {
           if (/\.test\.[^/]+$/i.test(path)) return html(pages.notFoundPage(authedPage(req, TOKEN)), 404);
           const f = Bun.file(p);
           if (!(await f.exists())) return html(pages.notFoundPage(authedPage(req, TOKEN)), 404);
-          /* #374: filenames aren't fingerprinted, so browsers must revalidate
-             every load — otherwise a deploy's new CSS/JS never reaches cached
-             clients. ETag from size+mtime; If-None-Match gets a 304. */
-          const etag = `"${f.size.toString(36)}-${Math.floor(f.lastModified / 1000).toString(36)}"`;
+          /* #374/#993: unversioned URLs revalidate every load (ETag from
+             size+mtime; If-None-Match gets a 304 carrying the same ETag and
+             Cache-Control the 200 would) so a deploy's new CSS/JS always
+             reaches clients. A ?v= carrying the file's current content
+             hash is content-addressed: serve it immutable. */
+          const etag = `"${f.size.toString(36)}-${Math.floor(f.lastModified).toString(36)}"`;
+          const v = url.searchParams.get("v");
+          const cacheControl = v && v === servedVersion(p)
+            ? "public, max-age=31536000, immutable"
+            : "public, no-cache";
           if (req.headers.get("if-none-match") === etag) {
-            return new Response(null, { status: 304 });
+            return new Response(null, { status: 304, headers: { ETag: etag, "Cache-Control": cacheControl } });
           }
-          return new Response(f, { headers: { ETag: etag, "Cache-Control": "public, no-cache" } });
+          return new Response(f, { headers: { ETag: etag, "Cache-Control": cacheControl } });
         }
         if (path === "/login") {
           if (method === "GET") {

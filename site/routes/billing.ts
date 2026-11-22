@@ -30,6 +30,7 @@ import { button } from "../ui/button.ts";
 import { card } from "../ui/card.ts";
 import { logoLockup } from "../ui/logo-lockup.ts";
 import { shortYmd } from "../lib/format.ts";
+import { staticUrl } from "../lib/static-assets.ts";
 
 export interface BillingDeps {
   HOSTED: boolean;
@@ -155,8 +156,8 @@ function billingWallPage(sub: Subscription | null): string {
     `<form method="POST" action="/logout" style="margin-top:var(--spacing-md)">${button({ label: "Log out", variant: "ghost", size: "sm", type: "submit" })}</form>`;
   return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${headline} · Zimer</title>
-  <link rel="stylesheet" href="/static/style.css">
-  <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
+  <link rel="stylesheet" href="${staticUrl("style.css")}">
+  <link rel="icon" type="image/svg+xml" href="${staticUrl("logo.svg")}">
   </head>
   <body><main class="login">
   ${card({ content })}

@@ -42,18 +42,18 @@ describe("#753: mascot placements", () => {
     const { landingPage } = createLandingViews();
     const html = landingPage("https://example.com"); /* #865 */
     expect(html).toContain('class="ui-hero-mascot"');
-    expect(html).toContain('src="/static/mascot-56.webp"');
+    expect(html).toContain('src="/static/mascot-56.webp?v=');
     expect(html).toContain('property="og:image" content="https://example.com/static/og-image-v3.png"');
     expect(html).toContain('name="twitter:card" content="summary_large_image"');
-    expect(html).toContain('href="/static/favicon-32.png"');
-    expect(html).toContain('rel="apple-touch-icon" href="/static/alien-180.png"');
+    expect(html).toContain('href="/static/favicon-32.png?v=');
+    expect(html).toContain('rel="apple-touch-icon" href="/static/alien-180.png?v=');
     expect(html).not.toContain("logo.svg");
   });
 
   test("invoices empty state shows the stopwatch mascot, not the receipt icon", () => {
     const html = invoiceViews().invoicesPage(null, "/invoices");
     expect(html).toContain('class="empty-mascot"');
-    expect(html).toContain('src="/static/mascot-empty.webp"');
+    expect(html).toContain('src="/static/mascot-empty.webp?v=');
     expect(html).toContain("No Zinvoices yet");
   });
 
@@ -62,7 +62,7 @@ describe("#753: mascot placements", () => {
     const html = demoBanner(db);
     expect(html).toContain("New here?");
     expect(html).toContain('class="demo-mascot"');
-    expect(html).toContain('src="/static/mascot-88.webp"');
+    expect(html).toContain('src="/static/mascot-88.webp?v=');
   });
 });
 

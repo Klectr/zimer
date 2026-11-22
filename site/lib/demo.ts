@@ -4,6 +4,7 @@
 
 import type { Database } from "bun:sqlite";
 import { icon } from "./icons.ts";
+import { staticUrl } from "./static-assets.ts";
 import { addDays, daysBetween, sundayOf, termsDays, termsKey, todayStr } from "./format.ts";
 import { button, linkButton } from "../ui/button.ts";
 
@@ -155,7 +156,7 @@ export function demoBanner(db: Database): string {
   </div>`;
   }
   if (workspaceEmpty(db)) return `<div class="demo-banner" data-enter="1">
-    <img class="demo-mascot" src="/static/mascot-88.webp" alt="" width="44" height="44">
+    <img class="demo-mascot" src="${staticUrl("mascot-88.webp")}" alt="" width="44" height="44">
     <span><strong>New here?</strong> Load a fictional workspace — clients, a week of entries, Zinvoices — and try every page in 30 seconds.</span>
     <form method="post" action="/demo/load" class="inline">${button({ label: "Load demo data", type: "submit", size: "sm" })}</form>
   </div>`;

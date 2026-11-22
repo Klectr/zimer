@@ -5,6 +5,7 @@
 
 import { docSections, publicFoot } from "../ui/doc-sections.ts";
 import { daysBetween, esc, money, shortYmd, termsDays, termsKey, todayStr } from "../lib/format.ts";
+import { staticUrl } from "../lib/static-assets.ts";
 import { icon, logo } from "../lib/icons.ts";
 import type { ChangelogEntry } from "../lib/changelog.ts"; /* #303 */
 import type { TermsSection } from "../lib/license-terms.ts"; /* #341 */
@@ -114,8 +115,8 @@ export function createPublicViews(deps: PublicViewDeps) {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
   <title>Invoice ${esc(inv.number)} · Zimer</title>${ogTags("Invoice · Zimer", "View and pay your invoice securely.", origin + tokenPath, origin + "/static/og-image.png", OG_BRAND)}
-  <link rel="stylesheet" href="/static/style.css">
-  <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
+  <link rel="stylesheet" href="${staticUrl("style.css")}">
+  <link rel="icon" type="image/svg+xml" href="${staticUrl("logo.svg")}">
   </head>
   <body>
   <main class="page-public-invoice">
@@ -160,8 +161,8 @@ export function createPublicViews(deps: PublicViewDeps) {
   <title>Privacy policy · Zimer</title>
   <meta name="description" content="Zimer privacy policy: what we store, where it lives, what we never do with your data, and how to delete your account.">
   <link rel="canonical" href="${origin}/privacy">${ogTags("Privacy policy · Zimer", "Zimer privacy policy: what we store, where it lives, what we never do with your data, and how to delete your account.", origin + "/privacy", origin + "/static/og-image-v3.png")}
-  <link rel="stylesheet" href="/static/style.css">
-  <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
+  <link rel="stylesheet" href="${staticUrl("style.css")}">
+  <link rel="icon" type="image/svg+xml" href="${staticUrl("logo.svg")}">
   </head>
   <body>
   <main class="page-public page-changelog">
@@ -186,8 +187,8 @@ export function createPublicViews(deps: PublicViewDeps) {
   <title>Changelog · Zimer</title>
   <meta name="description" content="What's new in Zimer: release notes, fixes, and product changes.">
   <link rel="canonical" href="${origin}/changelog">${ogTags("Changelog · Zimer", "What's new in Zimer: release notes, fixes, and product changes.", origin + "/changelog", origin + "/static/og-image-v3.png")}
-  <link rel="stylesheet" href="/static/style.css">
-  <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
+  <link rel="stylesheet" href="${staticUrl("style.css")}">
+  <link rel="icon" type="image/svg+xml" href="${staticUrl("logo.svg")}">
   </head>
   <body>
   <main class="page-public page-changelog">
@@ -211,8 +212,8 @@ export function createPublicViews(deps: PublicViewDeps) {
   <title>Terms of service · Zimer</title>
   <meta name="description" content="Zimer terms of service: the $12/month hosted plan with a 14-day free trial, 30-day refunds, and the free-forever self-hosted option.">
   <link rel="canonical" href="${origin}/terms">${ogTags("Terms of service · Zimer", "Zimer terms of service: the $12/month hosted plan with a 14-day free trial, 30-day refunds, and the free-forever self-hosted option.", origin + "/terms", origin + "/static/og-image-v3.png")}
-  <link rel="stylesheet" href="/static/style.css">
-  <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
+  <link rel="stylesheet" href="${staticUrl("style.css")}">
+  <link rel="icon" type="image/svg+xml" href="${staticUrl("logo.svg")}">
   </head>
   <body>
   <main class="page-public page-changelog">
@@ -227,8 +228,8 @@ export function createPublicViews(deps: PublicViewDeps) {
     return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
   <title>Log in · Zimer</title>
-  <link rel="stylesheet" href="/static/style.css">
-  <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
+  <link rel="stylesheet" href="${staticUrl("style.css")}">
+  <link rel="icon" type="image/svg+xml" href="${staticUrl("logo.svg")}">
   </head>
   <body><main class="login">
   ${authCard({
@@ -248,9 +249,9 @@ export function createPublicViews(deps: PublicViewDeps) {
     return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
   <title>${title} · Zimer</title>
-  <link rel="stylesheet" href="/static/style.css">
-  <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
-  <script src="/static/utm.js" defer></script></head>
+  <link rel="stylesheet" href="${staticUrl("style.css")}">
+  <link rel="icon" type="image/svg+xml" href="${staticUrl("logo.svg")}">
+  <script src="${staticUrl("utm.js")}" defer></script></head>
   <body><main class="login">
   ${cardHtml}
   </main></body></html>`;
