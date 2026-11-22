@@ -32,7 +32,7 @@ export function createPublicViews(deps: PublicViewDeps) {
       relative URLs, so image and url are absolute. Keep invoice tags generic —
       never client names or amounts. */
   const OG_CARD = { width: 1200, height: 630, alt: "Klectr the alien with a clock and books beside the headline 'Turn your hours into an invoice.'" };
-  const OG_BRAND = { width: 2240, height: 1120, alt: "Klectr the alien with a clock and books beside the text 'your Zimer is your Zinvoice.'" };
+  const OG_BRAND = { width: 1200, height: 600, alt: "Klectr the alien with a clock and books beside the text 'your Zimer is your Zinvoice.'" };
   function ogTags(title: string, description: string, url: string, image: string, card = OG_CARD): string {
     return `
   <meta property="og:title" content="${esc(title)}">
