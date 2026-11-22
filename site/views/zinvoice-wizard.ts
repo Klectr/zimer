@@ -117,6 +117,8 @@ export interface WizardPreviewOptions {
   internalNotes: string;
   /** No lines yet: both create actions stay disabled. */
   disabled: boolean;
+  /** A notice above the create actions (e.g. no business name set). */
+  noticeHtml?: string;
 }
 
 /** The live preview: checked lines, total, due date, more details, and the
@@ -138,6 +140,7 @@ export function wizardPreviewCard(o: WizardPreviewOptions): string {
           ${textField({ id: "inv-notes", label: "Notes (optional)", name: "notes", value: o.notes })}
           ${textField({ id: "inv-internal", label: "Internal notes (only you see this)", name: "internal_notes", value: o.internalNotes })}
         </details>
+        ${o.noticeHtml ?? ""}
         <div class="inv-summary-actions">
           ${button({ label: "Save draft", type: "submit", variant: "primary", block: true, disabled: o.disabled })}
           ${button({ label: "Send Zinvoice", type: "submit", block: true, disabled: o.disabled, attrs: 'name="intent" value="send"' })}

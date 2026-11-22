@@ -20,6 +20,7 @@ import { statusChip, stripePaidChip } from "../ui/status-chip.ts";
 import { zinvoiceTable, zinvoiceTableRows, type ZinvoiceTableRow } from "../ui/zinvoice-table.ts";
 import { filterChips } from "../ui/filter-chips.ts";
 import { textField } from "../ui/field.ts";
+import { inlineAlert } from "../ui/alert.ts";
 import { lineItemsHeadRow, wizardLayout, wizardLinesSection, wizardPreviewCard, wizardStep1, ZINVOICE_WIZARD_SCRIPT } from "./zinvoice-wizard.ts";
 import { internalNotes, paymentProofSection, zinvoiceDetailHead, zinvoiceShareCard, zinvoiceStatusCard, ZINVOICE_COPY_SCRIPT } from "./zinvoice-detail.ts";
 import { shareLine } from "../ui/share-line.ts";
@@ -286,6 +287,18 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     return fmtDur(Math.round((Number(h) || 0) * 3600));
   }
 
+  /* Without a business name the PDF and the client's page have no sender —
+     warn wherever a Zinvoice is about to be created or sent (never blocks). */
+  function noSenderAlert(): string {
+    if ((getMeta(db, "business_name") || "").trim()) return "";
+    return inlineAlert({
+      tone: "warning",
+      text: "Your business name isn't set, so this Zinvoice won't say who it's from.",
+      actionHtml: linkButton({ label: "Set business name", href: "/settings", size: "sm" }),
+      id: "no-sender-alert",
+    });
+  }
+
   /* The mock's live preview card: the checked lines, the total, the due
      date, and the create actions (Save draft / Send Zinvoice). It renders
      on the page and again as the preview fragment's out-of-band swap, so
@@ -305,6 +318,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       dueDate: p.due_date, issueDate: p.issue_date, taxRate: p.tax_rate,
       notes: p.notes, internalNotes: p.internal_notes,
       disabled: noItems,
+      noticeHtml: noSenderAlert(),
     });
   }
 
@@ -720,6 +734,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
             ${iconButton({ icon: "delete", label: "Delete draft", danger: true, className: "tip-right", type: "submit", attrs: `data-confirm="Delete this draft Zinvoice? Its entries become unbilled again." data-confirm-label="Delete draft"` })}
           </form>` : ""}`,
       })}
+      ${inv.status === "draft" ? noSenderAlert() : ""}
       <div class="inv-detail-grid">
         <div class="inv-detail-main">
           ${linesCard}

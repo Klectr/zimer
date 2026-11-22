@@ -1090,3 +1090,34 @@ describe("#1224: no-pay-path warning on the Public link card", () => {
     }
   });
 });
+
+/** No business name → the Zinvoice would go out with no sender. Warn (never
+ *  block) in the wizard's preview card and on a draft's detail page. */
+describe("no-sender warning", () => {
+  const metaDb = (businessName: string) => ({
+    query: (_sql: string) => ({
+      get: (key?: unknown) => ({ value: key === "business_name" ? businessName : "" }),
+      all: () => [],
+      run: () => {},
+    }),
+  }) as unknown as Database;
+  const p = { client_id: "", from: "2026-11-01", to: "2026-11-21", rate: "", number: "INV-0001", issue_date: "2026-11-21", due_date: "", tax_rate: "0", notes: "", internal_notes: "" };
+
+  test("the wizard warns above Save/Send when the business name is empty", () => {
+    const html = views([], { db: metaDb("") }).invoiceNewPage(p as any);
+    expect(html).toContain('id="no-sender-alert"');
+    expect(html).toContain("Your business name isn&#39;t set");
+    expect(html).toContain('href="/settings"');
+    expect(html.indexOf('id="no-sender-alert"')).toBeLessThan(html.indexOf('class="inv-summary-actions"'));
+  });
+
+  test("no warning once the business name is set", () => {
+    expect(views([], { db: metaDb("Northstar Studio") }).invoiceNewPage(p as any)).not.toContain("no-sender-alert");
+  });
+
+  test("a draft's detail page warns; a sent one doesn't (its copy is frozen)", () => {
+    const v = views([], { db: metaDb("") });
+    expect(v.invoiceDetailBody(detailInv("draft", null) as any, "http://x")).toContain('id="no-sender-alert"');
+    expect(v.invoiceDetailBody(detailInv("sent", null) as any, "http://x")).not.toContain("no-sender-alert");
+  });
+});
