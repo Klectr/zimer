@@ -362,6 +362,17 @@ export function createApiRouter(deps: ApiDeps) {
               const number = String(body.number || nextInvoiceNumber());
               if (db.query("SELECT 1 FROM invoices WHERE number = ?").get(number))
                 return json({ error: "invoice number already exists" }, 400);
+              /* #1436: issue/due are stored dates — an explicitly provided
+                 one must be a real calendar day (validYmd, as #1429);
+                 verbatim garbage would feed ordering, overdue math, the
+                 PDF and the CSV export. Absent issue_date defaults to
+                 today; absent due_date stays null. */
+              const issueDate = body.issue_date ? validYmd(body.issue_date) : todayStr();
+              if (!issueDate)
+                return json({ error: "issue_date must be a valid date (YYYY-MM-DD)" }, 400);
+              const dueDate = body.due_date ? validYmd(body.due_date) : null;
+              if (body.due_date && !dueDate)
+                return json({ error: "due_date must be a valid date (YYYY-MM-DD)" }, 400);
               let items: { description: string; hours: number; rate: number; entry_ids?: number[] }[];
               if (Array.isArray(body.items)) {
                 items = body.items;
@@ -395,8 +406,8 @@ export function createApiRouter(deps: ApiDeps) {
                 .get(
                   body.client_id ? Number(body.client_id) : null,
                   number,
-                  String(body.issue_date || todayStr()),
-                  body.due_date ? String(body.due_date) : null,
+                  issueDate,
+                  dueDate,
                   Number(body.tax_rate) || 0,
                   String(body.notes || ""),
                   String(body.internal_notes || ""),
