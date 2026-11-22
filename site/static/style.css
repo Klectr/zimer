@@ -368,6 +368,8 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 /* One reading column of full-width sections, in order of use: profile,
    preferences, data, about. Two uneven columns read as scattered. */
 .ui-settings-stack { display: flex; flex-direction: column; gap: var(--spacing-sm); max-width: 760px; min-width: 0; }
+/* The page (title + stack) centers in the content area on wide displays. */
+.ui-settings-page { max-width: 760px; margin-inline: auto; }
 .ui-settings-form-2col { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--spacing-md) var(--spacing-sm); }
 .ui-settings-field { display: flex; flex-direction: column; gap: var(--spacing-xs); min-width: 0; }
 .ui-settings-stack .ui-card { container-type: inline-size; min-width: 0; }

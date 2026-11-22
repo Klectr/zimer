@@ -303,6 +303,7 @@ describe("settings layout (#1202 parity)", () => {
     expect(css).toContain(".ui-settings-stack { display: flex; flex-direction: column; gap: var(--spacing-sm); max-width: 760px;");
     expect(css).not.toContain(".ui-settings-grid");
     expect(css).not.toContain(".ui-settings-col");
+    expect(css).toContain(".ui-settings-page { max-width: 760px; margin-inline: auto; }");
     /* #1338: tracks can shrink (minmax(0, 1fr)), inputs fill their field,
        and the form drops to one column by its CARD's width, not the
        viewport's — a half-width card at 1024 overflowed by 26px. */

@@ -139,6 +139,7 @@ describe("settings page (#693)", () => {
     const body = await res!.text();
     expect(body).toContain("<!DOCTYPE html>");
     expect(body).toContain("<title>Settings</title>");
+    expect(body).toContain('class="ui-settings-page"');
     expect(body).toContain('class="ui-settings-stack"');
     expect(body).toContain('id="biz-profile"');
   });
