@@ -90,11 +90,11 @@ export function createPublicViews(deps: PublicViewDeps) {
     } else if (inv.status === "sent") chipHtml = tag({ label: "Sent", tone: "neutral" });
     const issued = longYmd(inv.issue_date);
     const sheet = publicInvoice({
-      business: business || `Zinvoice ${inv.number}`,
+      business: business || `Invoice ${inv.number}`,
       from: { email: deps.businessEmail?.() || "", address: deps.businessAddress?.() || "" },
       billTo: { name: inv.client_name || "", email: inv.client_email || "", address: inv.client_address || "" },
       meta: business
-        ? `Zinvoice ${inv.number}${issued ? ` · Issued ${issued}` : ""}`
+        ? `Invoice ${inv.number}${issued ? ` · Issued ${issued}` : ""}`
         : `${issued ? `Issued ${issued}` : ""}`,
       chipHtml,
       lines,
@@ -113,7 +113,7 @@ export function createPublicViews(deps: PublicViewDeps) {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
-  <title>Zinvoice ${esc(inv.number)} · Zimer</title>${ogTags("Zinvoice · Zimer", "View and pay your Zinvoice securely.", origin + tokenPath, origin + "/static/og-image.png", OG_BRAND)}
+  <title>Invoice ${esc(inv.number)} · Zimer</title>${ogTags("Invoice · Zimer", "View and pay your invoice securely.", origin + tokenPath, origin + "/static/og-image.png", OG_BRAND)}
   <link rel="stylesheet" href="/static/style.css">
   <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
   </head>

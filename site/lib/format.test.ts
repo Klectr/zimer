@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { clientColor, csvCell, fmtDur, greeting, safeCssColor, schemeColor, shortDateRange, shortDateRangeYear, shortYmd } from "./format.ts";
+import { clientColor, clientTermsDescription, termsDescription, csvCell, fmtDur, greeting, safeCssColor, schemeColor, shortDateRange, shortDateRangeYear, shortYmd } from "./format.ts";
 
 /* #914: CSV formula injection — cells starting with =, +, - or @ (after
    leading whitespace) get a single-quote prefix so Excel/Sheets open them
@@ -127,5 +127,13 @@ describe("greeting", () => {
   test("evening from 17:00", () => {
     expect(greeting(at(17))).toBe("Good evening");
     expect(greeting(at(23))).toBe("Good evening");
+  });
+});
+
+describe("client-facing terms wording", () => {
+  test("clientTermsDescription says invoice, never Zinvoice", () => {
+    expect(clientTermsDescription("net_30")).toBe("Payment is due within 30 days of the invoice date.");
+    expect(clientTermsDescription("due_on_receipt")).toBe("Payment is due upon receipt of this invoice.");
+    expect(termsDescription("net_30")).toContain("Zinvoice"); // in-app text keeps the product word
   });
 });

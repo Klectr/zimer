@@ -48,7 +48,7 @@ describe("social meta tags (#924)", () => {
   test("public invoice page has generic OG tags, no PII", () => {
     const html = (views as any).publicInvoicePage(inv, "https://zimer.klectr.dev", "/i/abc123");
     for (const tag of [
-      'property="og:title" content="Zinvoice · Zimer"',
+      'property="og:title" content="Invoice · Zimer"',
       'property="og:url" content="https://zimer.klectr.dev/i/abc123"',
       'property="og:image" content="https://zimer.klectr.dev/static/og-image.png"',
       'property="og:image:width" content="1200"',
@@ -57,9 +57,14 @@ describe("social meta tags (#924)", () => {
     ]) expect(html).toContain(tag);
     expect(html).not.toContain("Acme"); // client names never leak
   });
-  test("#1217: public invoice tab title says Zinvoice, matching the heading and OG tags", () => {
+  /* Client-facing pages say "invoice" (Zinvoice is the user's product word);
+     the tab title still matches the heading and OG tags (#1217). */
+  test("#1217: public invoice tab title says Invoice, matching the heading and OG tags", () => {
     const html = (views as any).publicInvoicePage(inv, "https://zimer.klectr.dev", "/i/abc123");
-    expect(html).toContain("<title>Zinvoice INV-0001 · Zimer</title>");
+    expect(html).toContain("<title>Invoice INV-0001 · Zimer</title>");
+    /* Only the brand image's alt text (it describes the artwork's words)
+       may still say Zinvoice; no title, heading, meta or terms line does. */
+    expect(html.replace(/alt="[^"]*"|content="Klectr[^"]*"/g, "")).not.toMatch(/Zinvoice(?! is your)/);
   });
   test("changelog page has OG tags", () => {
     const html = (views as any).changelogPage([], "https://zimer.klectr.dev");
@@ -207,7 +212,7 @@ describe("public invoice summary (#1136)", () => {
     const html = v.publicInvoicePage(inv, "https://example.com", "/i/abc123");
     expect(html).toContain('class="ui-public-sheet"');
     expect(html).toContain("Studio — Triston Armstrong");
-    expect(html).toContain("Zinvoice INV-2001 · Issued Nov 5, 2026");
+    expect(html).toContain("Invoice INV-2001 · Issued Nov 5, 2026");
     expect(html).toContain("Due Nov 19");
     /* #1224: the description stays clean and the billing math sits under it. */
     expect(html).toContain('<span class="ui-summary-label">Intake form fixes<span class="ui-summary-detail">9.50 h × $95.00</span></span>');

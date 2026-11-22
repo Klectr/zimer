@@ -3,7 +3,7 @@
  *  invoiceSheet is also returned so the public-views factory can reuse it. */
 
 import type { Database, Statement } from "bun:sqlite";
-import { addDays, daysBetween, durationSeconds, esc, fmtDur, money, round2, shortDateRange, shortDateRangeYear, shortYmd, termsDays, termsDescription, termsKey, todayStr } from "../lib/format.ts";
+import { addDays, daysBetween, durationSeconds, esc, fmtDur, money, round2, shortDateRange, shortDateRangeYear, shortYmd, clientTermsDescription, termsDays, termsDescription, termsKey, todayStr } from "../lib/format.ts";
 import { icon } from "../lib/icons.ts";
 import { getMeta } from "../db.ts";
 import { workspaceEmpty } from "../lib/demo.ts"; /* #300: empty-state CTA */
@@ -454,7 +454,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
        #293: fixed list — print the canned description.
        #295: pay-when-paid has no fixed due date, so the due line is suppressed. */
     const termsKey_ = termsKey(inv.client_payment_terms, getMeta(db, "business_payment_terms"));
-    const terms = termsDescription(termsKey_);
+    const terms = clientTermsDescription(termsKey_);
     /* #612: the issued/billing dates move out of the header band.
        #615: they sit directly above the table headers, i.e. below the
        parties row. The #560 nowrap treatment (each phrase in its own
@@ -471,7 +471,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     const badgeLabel = inv.status === "paid" ? "Paid" : inv.status === "draft" ? "Draft" : "Unpaid";
     const head = `
         <div class="inv-modern-band">
-          <div class="inv-modern-title">Zinvoice</div>
+          <div class="inv-modern-title">Invoice</div>
           <div class="inv-modern-right">
             <div class="inv-modern-number">${esc(inv.number)}</div>
             <span class="inv-modern-badge${badgeCls}">${badgeLabel}</span>${paidChip}
@@ -569,9 +569,11 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
          #293: fixed list — print the canned description.
          #295: pay-when-paid has no fixed due date — suppress the PDF due line.
          #639: paid invoices have nothing left to pay — drop the link. */
-      terms: termsDescription(termsKey_),
+      terms: clientTermsDescription(termsKey_),
       hideDue: termsKey_ === "pay_when_paid",
       payUrl: inv.public_token && inv.status !== "paid" ? `${origin}/i/${inv.public_token}` : undefined,
+      payByCard: !!inv.stripe_payment_link,
+      paymentInstructions: getMeta(db, "business_payment_instructions") || undefined,
     };
   }
 
