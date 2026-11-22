@@ -19,7 +19,7 @@ import { iconButton } from "../ui/icon-button.ts";
 import { emptyState } from "../ui/empty-state.ts";
 import { statBlock } from "../ui/stat.ts";
 import { statusChip } from "../ui/status-chip.ts";
-import { filterChips } from "../ui/filter-chips.ts";
+import { zinvoiceFilterBar, zinvoiceTable, zinvoiceTableRows, type ZinvoiceTableRow } from "../ui/zinvoice-table.ts";
 import { lineItemsTable } from "../ui/line-items.ts";
 import { progressBar } from "../ui/progress.ts";
 import { formSection, invoiceSummary } from "../ui/zinvoice-form.ts";
@@ -122,62 +122,40 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       `</div>`;
   }
 
+  /* Status chips: the detail view's head still uses this one-chip form. */
   function invBadge(r: any): string {
     if (isOverdue(r)) return statusChip("sent", { overdue: true });
     if (r.status === "paid") return statusChip("paid", { icon: "check" });
     return statusChip(r.status === "sent" ? "sent" : "draft");
   }
 
-  /* The mock's list rows are one line per column: Number, Client, Issued,
-     Due, Status, Total. Drafts are not issued yet, so both dates read as
-     a dash; overdue keeps the age that makes the state actionable. */
-  function dueCell(r: any): string {
-    if (r.status === "draft" || !r.due_date) return "—";
-    const main = `<span class="inv-cell-main">${esc(shortYmd(r.due_date))}</span>`;
-    if (r.status === "paid" && r.paid_at)
-      return main + `<span class="inv-cell-sub">Paid ${esc(shortYmd(r.paid_at))}</span>`;
-    return main;
-  }
-
-  function rowStatus(r: any): string {
-    if (isOverdue(r)) {
-      const days = r.due_date ? Math.max(0, daysBetween(r.due_date as string, todayStr())) : 0;
-      return statusChip("sent", { overdue: true, suffix: days ? `${days}d` : undefined });
-    }
-    return invBadge(r);
+  /* Map DB rows into the zinvoiceTable component (site/ui/zinvoice-table.ts):
+     formatting and the overdue rule live here, the markup lives there. */
+  function tableRow(r: any): ZinvoiceTableRow {
+    const overdue = isOverdue(r);
+    return {
+      number: String(r.number),
+      href: `/invoices?invoice=${r.id}`,
+      client: r.client_name || undefined,
+      status: r.status === "paid" ? "paid" : r.status === "sent" ? "sent" : "draft",
+      issued: r.issue_date ? shortYmd(r.issue_date) : undefined,
+      due: r.due_date ? shortYmd(r.due_date) : undefined,
+      paid: r.paid_at ? shortYmd(r.paid_at) : undefined,
+      overdue,
+      overdueDays: overdue && r.due_date ? Math.max(0, daysBetween(r.due_date as string, todayStr())) : undefined,
+      total: money(rowTotal(r)),
+    };
   }
 
   function invoiceTableRowsHtml(rows: any[]): string {
-    return rows.map(r => {
-      const draft = r.status === "draft";
-      return `
-      <tr>
-        <td><a class="inv-num-link" href="/invoices?invoice=${r.id}">${esc(r.number)}</a></td>
-        <td>${r.client_name ? esc(r.client_name) : "<em>No client</em>"}</td>
-        <td>${!draft && r.issue_date ? esc(shortYmd(r.issue_date)) : "—"}</td>
-        <td class="col-opt">${dueCell(r)}</td>
-        <td>${rowStatus(r)}</td>
-        <td class="num inv-amt">${money(rowTotal(r))}</td>
-      </tr>`;
-    }).join("");
+    return zinvoiceTableRows(rows.map(tableRow));
   }
 
   function invoiceTableHtml(rows: any[], filtered: boolean): string {
-    if (!rows.length) {
-      return card({
-        content: emptyState({
-          icon: "receipt",
-          body: filtered ? "No Zinvoices match this filter." : "No Zinvoices yet.",
-          action: filtered ? linkButton({ label: "Clear filter", href: "/invoices", variant: "ghost" }) : undefined,
-        }),
-      });
-    }
-    return card({
-      className: "inv-table-card",
-      content: `<div class="table-wrap"><table class="ui-table">
-        <thead><tr><th scope="col">Number</th><th scope="col">Client</th><th scope="col">Issued</th><th scope="col" class="col-opt">Due</th><th scope="col">Status</th><th scope="col" class="num">Total</th></tr></thead>
-        <tbody id="inv-list">${invoiceTableRowsHtml(rows)}</tbody>
-      </table></div>`,
+    return zinvoiceTable({
+      rows: rows.map(tableRow),
+      emptyBody: filtered ? "No Zinvoices match this filter." : "No Zinvoices yet.",
+      emptyActionHtml: filtered ? linkButton({ label: "Clear filter", href: "/invoices", variant: "ghost" }) : undefined,
     });
   }
 
@@ -197,22 +175,17 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       const qs = params.toString();
       return qs ? `/invoices?${qs}` : "/invoices";
     };
-    return `<div class="inv-filter-row">
-      ${filterChips({
-        items: FILTERS.map(f => ({
-          key: f.key, label: f.label, href: hrefFor(f.key),
-          /* The chips swap the list region in place, so switching a status
-             never reloads the page or re-runs the layout. */
-          attrs: `hx-get="${esc(hrefFor(f.key))}" hx-target="#inv-list-region" hx-swap="innerHTML" hx-push-url="true"`,
-        })),
-        active, label: "Filter Zinvoices by status",
-      })}
-      <form method="get" action="/invoices" class="inv-search"
-        hx-get="/invoices" hx-target="#inv-list-region" hx-swap="innerHTML" hx-push-url="true">
-        ${active !== "all" ? `<input type="hidden" name="status" value="${esc(active)}">` : ""}
-        ${textField({ id: "inv-q", label: "Search Zinvoices", labelHidden: true, icon: "search", name: "q", type: "search", value: q, placeholder: "Search client or number" })}
-      </form>
-    </div>`;
+    return zinvoiceFilterBar({
+      chips: FILTERS.map(f => ({
+        key: f.key, label: f.label, href: hrefFor(f.key),
+        /* The chips swap the list region in place, so switching a status
+           never reloads the page or re-runs the layout. */
+        attrs: `hx-get="${esc(hrefFor(f.key))}" hx-target="#inv-list-region" hx-swap="innerHTML" hx-push-url="true"`,
+      })),
+      active, q,
+      searchAttrs: `hx-get="/invoices" hx-target="#inv-list-region" hx-swap="innerHTML" hx-push-url="true"`,
+      hiddenHtml: active !== "all" ? `<input type="hidden" name="status" value="${esc(active)}">` : "",
+    });
   }
 
   /* Out-of-band refresh after a detail action changes an invoice — the

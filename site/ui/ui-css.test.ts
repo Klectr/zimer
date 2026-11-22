@@ -315,8 +315,12 @@ describe("ui component CSS", () => {
 });
 
 describe("invoice list compact rows (#1210)", () => {
-  test("below 640px the list rows stack instead of scrolling sideways", () => {
-    const block = css.match(/@media screen and \(max-width: 640px\) \{[^]*?\.inv-table-card[^]*?\n\}/);
+  /* Keyed to the table card's width (container query), not the viewport:
+     a narrow card on a wide window must stack too, never scroll sideways. */
+  test("on a narrow card the list rows stack instead of scrolling sideways", () => {
+    expect(css).toContain(".inv-table-card { container-type: inline-size; }");
+    expect(css).toMatch(/@container \(max-width: 679px\) \{\s*\.inv-table-card \.col-opt \{ display: none; \}/);
+    const block = css.match(/@container \(max-width: 559px\) \{[^]*?\n\}/);
     expect(block).not.toBeNull();
     const b = block![0];
     expect(b).toContain(".inv-table-card .table-wrap");
