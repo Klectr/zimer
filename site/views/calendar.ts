@@ -5,14 +5,13 @@
 
 import type { Database, Statement } from "bun:sqlite";
 import { addDays, durationSeconds, entryInvoiceMark, entryIsLocked, esc, fmtDur, schemeColor } from "../lib/format.ts";
-import { icon } from "../lib/icons.ts";
 import { workspaceEmpty } from "../lib/demo.ts"; /* #300: first-run hint */
 import { button, linkButton } from "../ui/button.ts";
 import { selectField, textField } from "../ui/field.ts";
 import { weekView, type WeekDay, type WeekEntry } from "../ui/week-view.ts";
 import { iconButton } from "../ui/icon-button.ts";
-import { tag } from "../ui/tag.ts";
 import { visualizer, type VizDay, type VizEntry } from "../ui/visualizer.ts";
+import { calFirstRun, calHint, calLegend, weekClients, weekDelta, weekNav, weekSummary, zinvoiceNudge } from "../ui/calendar-pane.ts";
 import type { Entry } from "../lib/types.ts";
 
 export interface CalendarViewDeps {
@@ -319,74 +318,34 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     const isThisWeek = sun === sundayOfYmd(today);
     const weekLabel = new Date(sun + "T12:00:00").toLocaleDateString([], { month: "short", day: "numeric" });
     const navTitle = isThisWeek ? "This week" : `Week of ${weekLabel}`;
-    const navActions = `
-      ${isThisWeek ? "" : `<a class="ui-btn ui-btn-ghost" href="/calendar" hx-get="/partial/week" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar">Today</a>`}
-      <a class="ui-icon-btn" href="/calendar?week=${prev}" hx-get="/partial/week?week=${prev}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?week=${prev}" data-slide="prev" data-tip="Previous week" aria-label="Previous week">${icon("chevron_left")}</a>
-      <a class="ui-icon-btn tip-right" href="/calendar?week=${next}" hx-get="/partial/week?week=${next}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?week=${next}" data-slide="next" data-tip="Next week" aria-label="Next week">${icon("chevron_right")}</a>`;
+    const weekHref = (w: string) => ({ href: `/calendar?week=${w}`, partial: `/partial/week?week=${w}` });
     const showChipAmount = uninvoiced < weekBillable;
-    const nudgeChip = uninvoiced > 0 ? `
-      <a class="nudge-chip${showChipAmount ? "" : " nudge-chip--solo"}" href="/invoices/new?from=${sun}&to=${addDays(sun, 7)}">
-        ${showChipAmount ? `<span>${fmtDur(uninvoiced)} not yet Zinvoiced</span>` : ""}
-        ${/* #592: the link invoices the VIEWED week, so "this week" lies on
-           past/future weeks. Keep it on the current week, "this period"
-           everywhere else. */ ""}
-        <span class="nudge-go">${icon("receipt")} ${isThisWeek ? "Zinvoice this week" : "Zinvoice this period"}</span>
-      </a>` : "";
-    const clientStrip = clientRows.length === 0 ? "" : `
-      <div class="week-clients">
-        ${clientRows.map(c => `
-          <span class="week-client">
-            <span class="week-client-dot"${c.color ? ` style="background:${esc(schemeColor(c.color))}"` : ""}></span>
-            <span>${esc(c.name)}</span>
-            <span class="muted">${fmtDur(c.secs)}</span>
-          </span>`).join("")}
-      </div>`;
-    const deltaHtml = (() => {
-      /* #524: no previous-week data → omit the delta AND its separator. A
-         dangling "· —" reads like a half-loaded widget. */
-      if (prevBillable <= 0 || weekPhase === "future") return "";
-      const vs = weekPhase === "current" ? "vs this time last week" : "vs prev week";
-      const pct = Math.round(((weekBillable - prevBillable) / prevBillable) * 100);
-      /* #542: trend icon comes from the icon system, not a text glyph (↑/↓/→)
-         — house rule, see #448. The svg is aria-hidden; the direction word
-         lives in the span's accessible label so the info survives the swap. */
-      const trend = pct > 0 ? "trend_up" : pct < 0 ? "trend_down" : "trend_flat";
-      const dirWord = pct > 0 ? "up" : pct < 0 ? "down" : "unchanged";
-      const abs = Math.abs(pct);
-      /* #590: the direction word belongs in the VISIBLE text, not just the
-         icon and the aria-label — "100% vs prev week" reads ambiguous at a
-         glance (100% of what, which direction?). */
-      return ` · <span class="muted cal-delta" aria-label="${abs}% ${dirWord} ${vs}">${icon(trend)} ${abs}% ${dirWord} ${vs}</span>`;
-    })();
-    /* The intermediate stacked layout (840–1279px) moves the zinvoice
-       action up beside the week arrows so the summary stays one compact
-       row instead of a full-width block. The duplicated node is hidden by
-       CSS at the breakpoints where the other one shows. */
-    const nudgeNav = nudgeChip.replace('class="nudge-chip', 'class="nudge-chip nudge-nav');
-    return `
-      <div class="week-nav">
-        <h1 class="ui-page-title">${esc(navTitle)}</h1>
-        <div class="week-nav-actions">
-          ${navActions}
-          ${nudgeNav}
-        </div>
-      </div>
-      <div class="cal-summary">
-        <div class="ui-page-title cal-summary-total">${fmtDur(weekTotal)}</div>
-        <div class="ui-row-meta cal-summary-sub">${fmtDur(weekBillable)} billable${deltaHtml}</div>
-        ${nudgeChip}
-      </div>
-      ${weekTargetBar(weekTotal)}
-      ${clientStrip}
-      ${/* #781: the create gesture differs per presentation — drag-to-create on
-         the 24h grid, the per-day + button on the narrow agenda. Both variants
-         render in place; the client picks by strip width (see syncCalHint). */ ""}
-      <p class="muted tiny cal-hint"><span class="cal-hint-grid">Drag across the calendar to log time. Click an entry to edit it.</span><span class="cal-hint-agenda">Tap + to log time, tap an entry to edit.</span></p>
-      ${(empty ?? workspaceEmpty(db)) ? `<div class="cal-first-run">
-        ${icon("info")}
-        <p><strong>New here?</strong> Load fictional sample data to explore the calendar.</p>
-        <form method="post" action="/demo/load" class="inline">${button({ label: "Load demo data", variant: "ghost", type: "submit" })}</form>
-      </div>` : ""}`;
+    /* #592: the link invoices the VIEWED week, so "this week" is only true
+       on the current week; "this period" everywhere else. */
+    const nudge = (nav: boolean) => uninvoiced > 0 ? zinvoiceNudge({
+      href: `/invoices/new?from=${sun}&to=${addDays(sun, 7)}`,
+      label: isThisWeek ? "Zinvoice this week" : "Zinvoice this period",
+      amount: showChipAmount ? `${fmtDur(uninvoiced)} not yet Zinvoiced` : undefined,
+      nav,
+    }) : "";
+    /* #524: no previous-week data → no delta and no dangling separator. */
+    const deltaHtml = prevBillable <= 0 || weekPhase === "future" ? undefined : weekDelta({
+      pct: Math.round(((weekBillable - prevBillable) / prevBillable) * 100),
+      vs: weekPhase === "current" ? "vs this time last week" : "vs prev week",
+    });
+    /* The intermediate stacked layout (840–1279px) shows the nudge beside
+       the week arrows; CSS hides whichever copy doesn't apply. */
+    return weekNav({
+        title: navTitle,
+        today: isThisWeek ? undefined : { href: "/calendar", partial: "/partial/week" },
+        prev: weekHref(prev), next: weekHref(next),
+        extraHtml: nudge(true),
+      }) +
+      weekSummary({ total: fmtDur(weekTotal), billable: fmtDur(weekBillable), deltaHtml, nudgeHtml: nudge(false) }) +
+      weekTargetBar(weekTotal) +
+      weekClients(clientRows.map(c => ({ name: c.name, color: c.color ? schemeColor(c.color) : null, dur: fmtDur(c.secs) }))) +
+      calHint() +
+      ((empty ?? workspaceEmpty(db)) ? calFirstRun() : "");
   }
 
   /** #572: a carousel strip's inner HTML for one week — the visualizer
@@ -398,11 +357,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     const nowMin = nowP.hh * 60 + nowP.mm;
     return `
       <div class="cal-scroll" data-enter="3">${visualizer({ days: vizDays(wd), startHour: 0, endHour: 24, hourPx: calHourPx, nowMin })}</div>
-      <div class="cal-legend">
-        ${tag({ label: "Invoiced", tone: "neutral" })}
-        ${tag({ label: "Running", tone: "success", dot: true })}
-        ${linkButton({ label: "Export week CSV", href: `/export/entries.csv?from=${sun}&to=${addDays(sun, 7)}`, size: "sm", download: true, className: "cal-legend-export" })}
-      </div>
+      ${calLegend({ exportHref: `/export/entries.csv?from=${sun}&to=${addDays(sun, 7)}` })}
       ${weekView({ agendaOnly: true, days: agendaDays(wd) })}
       <template class="cal-pane-tpl">${paneInner(wd, pre?.empty)}</template>`;
   }
