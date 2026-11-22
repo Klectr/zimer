@@ -747,6 +747,10 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
+/* Links are pumpkin (AGENTS.md: accent for links). :where() keeps this at
+   zero specificity, so any component class that sets its own color wins;
+   without it, plain links fell back to the UA's lavender/purple. */
+:where(a) { color: var(--color-primary); text-underline-offset: 2px; }
 .muted { color: var(--color-text-secondary); }
 .tiny { font-size: var(--font-size-sm); }
 .error { color: var(--color-error); }

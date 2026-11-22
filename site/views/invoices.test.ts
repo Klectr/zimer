@@ -1065,7 +1065,7 @@ describe("#1224: no-pay-path warning on the Public link card", () => {
 
   test("sent, no card link, no instructions → warning with a Settings link", () => {
     const html = views([], { db: dbWith("") }).invoiceDetailBody(detailInv("sent", null) as any, "http://x");
-    expect(html).toContain("Your client won't see how to pay.");
+    expect(html).toContain("Your client won&#39;t see how to pay.");
     expect(html).toContain('href="/settings"');
     expect(html).toContain("Add payment instructions");
     expect(html).toContain("Anyone with the link can view — no login");

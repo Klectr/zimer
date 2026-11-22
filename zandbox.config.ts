@@ -9,6 +9,7 @@ import { shellStories } from "./stories/shell.stories";
 import { dataStories } from "./stories/data.stories";
 import { clientsStories } from "./stories/clients.stories";
 import { zinvoicesStories } from "./stories/zinvoices.stories";
+import { zinvoiceDetailStories } from "./stories/zinvoice-detail.stories";
 import { calendarStories } from "./stories/calendar.stories";
 import { feedbackStories } from "./stories/feedback.stories";
 import { formsStories } from "./stories/forms.stories";
@@ -27,6 +28,7 @@ const config: ZandboxConfig = {
     ...dataStories,
     ...clientsStories,
     ...zinvoicesStories,
+    ...zinvoiceDetailStories,
     ...calendarStories,
     ...feedbackStories,
     ...formsStories,
