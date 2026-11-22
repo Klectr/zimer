@@ -1,9 +1,10 @@
+/** Page sections for the single-Zinvoice page — single-use view helpers, not Zandbox
+ *  components (Zandbox is for small reusable pieces; see AGENTS.md). */
 import { esc } from "../lib/format";
 import { icon } from "../lib/icons";
-import { card } from "./card";
-import { iconButton } from "./icon-button";
-import { linkButton } from "./button";
-import { progressBar } from "./progress";
+import { card } from "../ui/card";
+import { linkButton } from "../ui/button";
+import { progressBar } from "../ui/progress";
 
 /** The single-Zinvoice page (suite mock): a head with back link, title and
  *  actions; a main column (lines, time breakdown, internal notes, proof of
@@ -52,34 +53,6 @@ export function zinvoiceStatusCard(o: ZinvoiceStatusCardOptions): string {
       ${progressBar({ value: o.progress, label: "Zinvoice progress", tone: o.tone ?? "neutral" })}
       <p class="inv-status-line">${esc(o.line)}</p>
       ${activity}` });
-}
-
-export const stripePaidChip = (): string =>
-  ` <span class="stripe-paid-chip">${icon("bolt")}<span>Paid via Stripe</span></span>`;
-
-export interface ShareLineOptions {
-  label: string;
-  /** Warning tone for the label (a broken or missing pay path). */
-  warn?: boolean;
-  /** The link, shown truncated with the full value in a tooltip. */
-  url?: string;
-  /** Plain text in place of a URL. */
-  text?: string;
-  /** A sentence that may wrap, with an action beside it. */
-  note?: string;
-  actionsHtml?: string;
-}
-
-export function shareLine(o: ShareLineOptions): string {
-  const label = `<span class="share-label${o.warn ? " warn" : ""}">${esc(o.label)}</span>`;
-  if (o.note != null) {
-    return `<div class="share-line share-line-wrap">${label}<span class="share-note">${esc(o.note)}</span>${o.actionsHtml ?? ""}</div>`;
-  }
-  const value = o.url
-    ? `<span class="share-url-wrap" data-tip="${esc(o.url)}"><span class="share-url">${esc(o.url)}</span></span>`
-    : o.text ? `<span class="share-url">${esc(o.text)}</span>` : "";
-  const actions = o.actionsHtml ? `<span class="share-icons">${o.actionsHtml}</span>` : "";
-  return `<div class="share-line">${label}${value}${actions}</div>`;
 }
 
 export interface ZinvoiceShareCardOptions {
@@ -133,41 +106,6 @@ export const ZINVOICE_COPY_SCRIPT = `<script>(function(){
       }
       document.querySelectorAll("#invoice-detail").forEach(wire);
     })();</script>`;
-
-export interface TimeBreakdownBar {
-  label: string;
-  hours: number;
-  /** Hover title, e.g. "Nov 3: 4.5 h tracked". */
-  tip: string;
-}
-
-export interface TimeBreakdownChartOptions {
-  per: "day" | "week";
-  /** e.g. "18.5 h" */
-  totalLabel: string;
-  bars: TimeBreakdownBar[];
-}
-
-/** Hand-rolled SVG bars (no chart library). Heights scale to the busiest bar;
- *  every bar keeps a 3px minimum so tiny days stay visible. */
-export function timeBreakdownChart(o: TimeBreakdownChartOptions): string {
-  const max = Math.max(1, ...o.bars.map((b) => b.hours));
-  const W = 600, baseline = 150, areaH = 120, n = Math.max(1, o.bars.length);
-  const slot = W / n, bw = Math.min(34, slot * 0.62);
-  const bars = o.bars.map((b, i) => {
-    const h = Math.max(3, Math.round(b.hours / max * areaH));
-    const x = (i * slot + (slot - bw) / 2).toFixed(1);
-    const cx = (i * slot + slot / 2).toFixed(1);
-    return `<g><title>${esc(b.tip)}</title>` +
-      `<rect x="${x}" y="${baseline - h}" width="${bw.toFixed(1)}" height="${h}" rx="4" class="tb-bar"/>` +
-      `<text x="${cx}" y="${baseline + 18}" text-anchor="middle">${esc(b.label)}</text></g>`;
-  }).join("");
-  return `<section class="inv-breakdown" aria-label="Time breakdown">` +
-    `<div class="ui-block-title">Time breakdown</div>` +
-    `<p class="muted inv-breakdown-sub">Tracked time per ${o.per} — ${esc(o.totalLabel)} total</p>` +
-    `<svg class="tb-chart" viewBox="0 0 ${W} 180" role="img" aria-label="Tracked time per ${o.per}">${bars}</svg>` +
-    `</section>`;
-}
 
 /** #302: internal-only notes — app surface only, never printed or shared. */
 export function internalNotes(text: string): string {

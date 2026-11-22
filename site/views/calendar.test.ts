@@ -943,9 +943,9 @@ describe("mobile week-summary compaction (#945)", () => {
     expect(css).toMatch(/@media\s*\(max-width:\s*839px\)[\s\S]*?\.cal-supporting\s+\.nudge-chip\s*\{[^}]*padding:\s*4px 10px/);
     expect(css).toMatch(/@media\s*\(max-width:\s*839px\)[\s\S]*?\.cal-supporting\s+\.week-clients\s*\{[^}]*gap:\s*4px 12px/);
   });
-  /* The hint is the calHint() component now (site/ui/calendar-pane.ts). */
+  /* The hint lives with the calendar pane sections (site/views/calendar-pane.ts). */
   test("agenda hint text is the short mobile version", async () => {
-    const src = await Bun.file("site/ui/calendar-pane.ts").text();
+    const src = await Bun.file("site/views/calendar-pane.ts").text();
     expect(src).toContain("Tap + to log time, tap an entry to edit.");
   });
 });

@@ -1,8 +1,9 @@
+/** Page sections for the calendar's supporting pane — single-use view helpers, not Zandbox
+ *  components (Zandbox is for small reusable pieces; see AGENTS.md). */
 import { esc, safeCssColor } from "../lib/format";
 import { icon } from "../lib/icons";
-import { button, linkButton } from "./button";
-import { progressBar } from "./progress";
-import { tag } from "./tag";
+import { button, linkButton } from "../ui/button";
+import { tag } from "../ui/tag";
 
 /** The calendar's supporting pane (#572): week nav, the week's totals and
  *  delta, the Zinvoice nudge, the weekly target, the client strip, the hint,
@@ -61,21 +62,6 @@ export function zinvoiceNudge(o: ZinvoiceNudgeOptions): string {
       </a>`;
 }
 
-export interface WeekDeltaOptions {
-  /** Signed percent vs the comparison week. */
-  pct: number;
-  /** "vs this time last week" / "vs prev week". */
-  vs: string;
-}
-
-/** #542/#590: icon from the icon system, direction word in the visible text. */
-export function weekDelta(o: WeekDeltaOptions): string {
-  const trend = o.pct > 0 ? "trend_up" : o.pct < 0 ? "trend_down" : "trend_flat";
-  const dir = o.pct > 0 ? "up" : o.pct < 0 ? "down" : "unchanged";
-  const text = `${Math.abs(o.pct)}% ${dir} ${o.vs}`;
-  return `<span class="muted cal-delta" aria-label="${esc(text)}">${icon(trend)} ${esc(text)}</span>`;
-}
-
 export interface WeekSummaryOptions {
   total: string;
   billable: string;
@@ -89,23 +75,6 @@ export function weekSummary(o: WeekSummaryOptions): string {
         <div class="ui-page-title cal-summary-total">${esc(o.total)}</div>
         <div class="ui-row-meta cal-summary-sub">${esc(o.billable)} billable${o.deltaHtml ? ` · ${o.deltaHtml}` : ""}</div>
         ${o.nudgeHtml ?? ""}
-      </div>`;
-}
-
-export interface WeekTargetBarOptions {
-  pct: number;
-  /** e.g. "38h 02m / 40h" */
-  label: string;
-  over?: boolean;
-  ariaLabel: string;
-}
-
-/** Slim pacing bar under the week header (#908). */
-export function weekTargetBar(o: WeekTargetBarOptions): string {
-  return `
-      <div class="week-target">
-        ${progressBar({ value: Math.min(100, Math.max(0, o.pct)), label: o.ariaLabel })}
-        <div class="ui-row-meta">${esc(o.label)}${o.over ? ` · <span class="tiny">over target</span>` : ""}</div>
       </div>`;
 }
 

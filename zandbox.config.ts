@@ -9,12 +9,11 @@ import { shellStories } from "./stories/shell.stories";
 import { dataStories } from "./stories/data.stories";
 import { clientsStories } from "./stories/clients.stories";
 import { zinvoicesStories } from "./stories/zinvoices.stories";
-import { zinvoiceDetailStories } from "./stories/zinvoice-detail.stories";
-import { zinvoiceWizardStories } from "./stories/zinvoice-wizard.stories";
-import { timerHomeStories } from "./stories/timer-home.stories";
 import { systemStories } from "./stories/system.stories";
-import { calendarPaneStories } from "./stories/calendar-pane.stories";
 import { publicPagesStories } from "./stories/public-pages.stories";
+import { indicatorStories } from "./stories/indicators.stories";
+import { shareLineStories } from "./stories/share-line.stories";
+import { timeBreakdownStories } from "./stories/time-breakdown.stories";
 import { calendarStories } from "./stories/calendar.stories";
 import { feedbackStories } from "./stories/feedback.stories";
 import { formsStories } from "./stories/forms.stories";
@@ -33,12 +32,11 @@ const config: ZandboxConfig = {
     ...dataStories,
     ...clientsStories,
     ...zinvoicesStories,
-    ...zinvoiceDetailStories,
-    ...zinvoiceWizardStories,
-    ...timerHomeStories,
     ...systemStories,
-    ...calendarPaneStories,
     ...publicPagesStories,
+    ...indicatorStories,
+    ...shareLineStories,
+    ...timeBreakdownStories,
     ...calendarStories,
     ...feedbackStories,
     ...formsStories,

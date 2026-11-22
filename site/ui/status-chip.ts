@@ -24,3 +24,7 @@ export function statusChip(status: ZinvoiceStatus, opts: StatusChipOptions = {})
   const lead = opts.icon ? icon(opts.icon) : "";
   return `<span class="ui-chip ui-chip-${tone}">${lead}${esc(label)}</span>`;
 }
+
+/** "Paid via Stripe" beside a paid chip (#448: bolt from the icon system). */
+export const stripePaidChip = (): string =>
+  ` <span class="stripe-paid-chip">${icon("bolt")}<span>Paid via Stripe</span></span>`;

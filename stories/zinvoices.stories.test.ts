@@ -3,7 +3,7 @@ import { zinvoicesStories } from "./zinvoices.stories";
 import config from "../zandbox.config";
 
 describe("zinvoices stories", () => {
-  test("render every status, the empty state and the filter bar", () => {
+  test("render every status and the empty state", () => {
     const all = zinvoicesStories.map((s) => s.render()).join("");
     expect(all).toContain('class="ui-card inv-table-card"');
     for (const chip of ["ui-chip-draft", "ui-chip-sent", "ui-chip-overdue", "ui-chip-paid"]) expect(all).toContain(chip);
@@ -11,7 +11,6 @@ describe("zinvoices stories", () => {
     expect(all).toContain("Paid Oct 18");
     expect(all).toContain("<em>No client</em>");
     expect(all).toContain("No Zinvoices match this filter.");
-    expect(all).toContain('class="inv-filter-row"');
   });
 
   test("are registered in the Zandbox config", () => {

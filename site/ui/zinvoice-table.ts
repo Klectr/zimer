@@ -1,12 +1,10 @@
 import { esc } from "../lib/format";
 import { card } from "./card";
 import { emptyState } from "./empty-state";
-import { filterChips, type FilterChipItem } from "./filter-chips";
-import { textField } from "./field";
 import { statusChip, type ZinvoiceStatus } from "./status-chip";
 
 /** The Zinvoices list (suite mock, #1203): one line per Zinvoice — Number,
- *  Client, Issued, Due, Status, Total — plus its filter/search bar.
+ *  Client, Issued, Due, Status, Total.
  *  Presentational: the view formats dates and money and decides overdue. */
 
 export interface ZinvoiceTableRow {
@@ -74,25 +72,4 @@ export function zinvoiceTable(o: ZinvoiceTableOptions): string {
         <tbody id="inv-list">${zinvoiceTableRows(o.rows)}</tbody>
       </table></div>`,
   });
-}
-
-export interface ZinvoiceFilterBarOptions {
-  chips: FilterChipItem[];
-  active: string;
-  /** Current search text. */
-  q: string;
-  /** Extra attributes on the search form (e.g. hx-get/hx-target). */
-  searchAttrs?: string;
-  /** Hidden inputs that ride along with a search (e.g. the active status). */
-  hiddenHtml?: string;
-}
-
-export function zinvoiceFilterBar(o: ZinvoiceFilterBarOptions): string {
-  return `<div class="inv-filter-row">
-      ${filterChips({ items: o.chips, active: o.active, label: "Filter Zinvoices by status" })}
-      <form method="get" action="/invoices" class="inv-search"${o.searchAttrs ? ` ${o.searchAttrs}` : ""}>
-        ${o.hiddenHtml ?? ""}
-        ${textField({ id: "inv-q", label: "Search Zinvoices", labelHidden: true, icon: "search", name: "q", type: "search", value: o.q, placeholder: "Search client or number" })}
-      </form>
-    </div>`;
 }

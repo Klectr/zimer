@@ -9,7 +9,9 @@ import { entryRow as uiEntryRow } from "../ui/rows.ts";
 import { appHeader } from "../ui/app-header.ts";
 import { iconButton } from "../ui/icon-button.ts";
 import { statStrip } from "../ui/stat.ts";
-import { invoiceMark, repeatEntryForm, targetBar, timerRunningCard, timerStartCard, todayEntriesCard } from "../ui/timer-home.ts";
+import { repeatEntryForm, timerRunningCard, timerStartCard, todayEntriesCard } from "./timer-home.ts";
+import { targetBar } from "../ui/target-bar.ts";
+import { invoiceMark } from "../ui/invoice-mark.ts";
 import type { Entry } from "../lib/types.ts";
 
 export interface TimerViewDeps {

@@ -3,7 +3,7 @@
  *  options and progress bars. Wired once in
  *  server.ts and injected into the route and view factories that need them. */
 
-import { weekTargetBar as weekTargetBarUi } from "../ui/calendar-pane.ts";
+import { targetBar } from "../ui/target-bar.ts";
 import { randomBytes } from "node:crypto";
 import type { Database, Statement } from "bun:sqlite";
 import { addDays, durationSeconds, esc, fmtDur, round2 } from "./format.ts";
@@ -226,7 +226,8 @@ export function createDomain(deps: DomainDeps) {
       (five days at the user's daily target, #908). */
   function weekTargetBar(weekTotalSecs: number): string {
     const target = 5 * dayTargetSecs(db);
-    return weekTargetBarUi({
+    return targetBar({
+      inline: true,
       pct: (weekTotalSecs / target) * 100,
       label: `${fmtDur(weekTotalSecs)} / ${fmtDur(target)}`,
       over: weekTotalSecs >= target,
