@@ -1040,16 +1040,35 @@ body.app-fixed .ui-shell-main { min-height: 0; }
 .inv-new-grid, .inv-detail-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); gap: var(--spacing-md); align-items: start; }
 .inv-step1-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.5fr) minmax(0, .8fr); gap: var(--spacing-sm); align-items: start; }
 .inv-step1-range { display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-sm); }
-@media (max-width: 1279px) {
+/* Both grids and the step-1 fields step down by their own container's
+   width, not the viewport's: with the sidebar, a 1024–1280px window left
+   the wizard's lines card too narrow and its table scrolled sideways. */
+.inv-new-form, #invoice-detail, .ui-card.form-card { container-type: inline-size; }
+@container (max-width: 959px) {
+  .inv-new-grid, .inv-detail-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@container (max-width: 639px) {
   .inv-step1-grid { grid-template-columns: 1fr 1fr; }
   .inv-step1-range { grid-column: 1 / -1; }
 }
-@media (max-width: 639px) {
+@container (max-width: 399px) {
   .inv-step1-grid { grid-template-columns: 1fr; }
   .inv-step1-range { grid-column: auto; }
 }
-@media (max-width: 1023px) {
-  .inv-new-grid, .inv-detail-grid { grid-template-columns: minmax(0, 1fr); }
+/* Editable lines on a narrow card: one small block per line — include +
+   dates, the description, then hours · rate · amount — instead of a table
+   that scrolls sideways. */
+@container (max-width: 479px) {
+  .inv-lines-edit thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .inv-lines-edit, .inv-lines-edit tbody { display: block; }
+  .inv-lines-edit tr { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--spacing-xs); padding: var(--spacing-sm) 0; border-bottom: 1px solid var(--color-border-secondary); }
+  .inv-lines-edit td { display: block; padding: 0; border: 0; min-width: 0; }
+  .inv-lines-edit td:nth-child(1), .inv-lines-edit td:nth-child(2) { grid-column: 1 / -1; }
+  .inv-lines-edit td:nth-child(3)::before { content: "Hours"; }
+  .inv-lines-edit td:nth-child(4)::before { content: "Rate"; }
+  .inv-lines-edit td:nth-child(3)::before, .inv-lines-edit td:nth-child(4)::before { display: block; font-size: var(--font-size-sm); color: var(--color-text-tertiary); }
+  .inv-lines-edit td:nth-child(5) { align-self: end; padding-bottom: var(--spacing-xxs); }
+  .inv-lines-edit .cell-input.num { max-width: none; }
 }
 .inv-detail-rail { display: flex; flex-direction: column; gap: var(--spacing-md); min-width: 0; }
 .inv-detail-main { min-width: 0; }

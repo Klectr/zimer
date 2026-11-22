@@ -63,8 +63,11 @@ describe("shell actions locked spec (#654)", () => {
 });
 
 describe("zinvoices detail layout (#1202)", () => {
-  test("the detail grid collapses to one column on narrow screens", () => {
-    expect(css).toContain("@media (max-width: 1023px) {\n  .inv-new-grid, .inv-detail-grid { grid-template-columns: minmax(0, 1fr); }\n}");
+  /* Keyed to the grid's container (container query), not the viewport:
+     the sidebar made 1024–1280px windows too tight for two columns. */
+  test("the detail and wizard grids collapse to one column when their container is narrow", () => {
+    expect(css).toContain(".inv-new-form, #invoice-detail, .ui-card.form-card { container-type: inline-size; }");
+    expect(css).toContain("@container (max-width: 959px) {\n  .inv-new-grid, .inv-detail-grid { grid-template-columns: minmax(0, 1fr); }\n}");
   });
 
   test("the retired two-pane stat-hiding rule is gone with the pane", () => {
@@ -292,9 +295,14 @@ describe("new-zinvoice layout (#1202 parity)", () => {
   test("the create form is not capped at the 480px edit-form width", () => {
     expect(css).toContain(".form.inv-new-form { max-width: none; }");
   });
-  test("client, period, and rate share one row on wide cards and 2-up below 1280", () => {
+  test("client, period, and rate share one row on wide cards and go 2-up, then 1-up, as the card narrows", () => {
     expect(css).toContain(".inv-step1-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.5fr) minmax(0, .8fr);");
-    expect(css).toContain("@media (max-width: 1279px) {\n  .inv-step1-grid { grid-template-columns: 1fr 1fr; }");
+    expect(css).toContain("@container (max-width: 639px) {\n  .inv-step1-grid { grid-template-columns: 1fr 1fr; }");
+    expect(css).toContain("@container (max-width: 399px) {\n  .inv-step1-grid { grid-template-columns: 1fr; }");
+  });
+
+  test("editable lines stack on a narrow card instead of scrolling sideways", () => {
+    expect(css).toMatch(/@container \(max-width: 479px\) \{[^]*?\.inv-lines-edit tr \{ display: grid;/);
   });
 });
 
