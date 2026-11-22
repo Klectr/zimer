@@ -411,6 +411,97 @@ describe("invoice detail projection (#1281)", () => {
   });
 });
 
+describe("POST /api/invoices date validation (#1436)", () => {
+  function dateTenant() {
+    const db = new BunDatabase(":memory:");
+    db.exec(`CREATE TABLE invoices (id INTEGER PRIMARY KEY, status TEXT NOT NULL DEFAULT 'draft', paid_at TEXT)`);
+    db.exec(`CREATE TABLE invoice_items (id INTEGER PRIMARY KEY, invoice_id INTEGER, description TEXT, hours REAL, rate REAL, amount REAL, date_from TEXT, date_to TEXT)`);
+    db.exec(`CREATE TABLE time_entries (id INTEGER PRIMARY KEY, invoice_id INTEGER)`);
+    for (const col of ["client_id INTEGER", "number TEXT", "issue_date TEXT", "due_date TEXT",
+      "tax_rate REAL DEFAULT 0", "notes TEXT DEFAULT ''", "internal_notes TEXT DEFAULT ''",
+      "period_from TEXT", "period_to TEXT"])
+      db.exec(`ALTER TABLE invoices ADD COLUMN ${col}`);
+    return {
+      db,
+      qRunning: stubStatement(), qOne: stubStatement(), qRange: stubStatement(),
+      qInvoice: { get: (id: number) => db.query("SELECT id, status FROM invoices WHERE id = ?").get(id) } as unknown as Statement,
+      qInvoices: stubStatement(),
+      groupToLineItems: () => [], unbilledEntries: () => [],
+      getInvoice: (id: number) => db.query("SELECT * FROM invoices WHERE id = ?").get(id) as any,
+      invoiceTotals: () => ({ subtotal: 0, tax: 0, total: 0 }),
+      nextInvoiceNumber: () => "INV-0001", mintPublicToken: () => "tok",
+      stripeLinkFor: async () => ({}),
+      revenueTotals: () => null, revenueMonthly: () => [], revenueByClient: () => [],
+      revenueOverdue: () => [], revenueSnapshot: () => ({ totals: null, by_month: [], by_client: [], overdue: [] }), freezeInvoiceSnapshots: () => {},
+    };
+  }
+  function routerFor(tenant: any) {
+    return createApiRouter({
+      getTenant: () => tenant as any,
+      TOKEN: "test-token",
+      authedApi: () => true,
+      json: (data: unknown, status = 200) => Response.json(data, { status }),
+      entryToJson: (e: any) => e,
+      verifyWebhookSignature: () => false,
+      shareOrigin: () => "",
+    }).handleApi;
+  }
+  async function post(tenant: any, body: unknown) {
+    const handleApi = routerFor(tenant);
+    const req = new Request("http://localhost/api/invoices", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    return (await handleApi(req, new URL(req.url), "/api/invoices", "POST"))!;
+  }
+  const item = { description: "Work", hours: 1, rate: 100 };
+  test("valid issue_date/due_date are stored verbatim", async () => {
+    const tenant = dateTenant();
+    const res = await post(tenant, { client_id: 3, items: [item], issue_date: "2026-11-01", due_date: "2026-11-15" });
+    expect(res.status).toBe(201);
+    const row = tenant.db.query("SELECT issue_date, due_date FROM invoices").get() as any;
+    expect(row).toEqual({ issue_date: "2026-11-01", due_date: "2026-11-15" });
+  });
+  test("an impossible issue_date is a 400 and creates nothing", async () => {
+    const tenant = dateTenant();
+    const res = await post(tenant, { client_id: 3, items: [item], issue_date: "2026-02-30" });
+    expect(res.status).toBe(400);
+    expect((await res.json() as any).error).toContain("issue_date");
+    expect((tenant.db.query("SELECT COUNT(*) AS n FROM invoices").get() as any).n).toBe(0);
+  });
+  test("a malformed or impossible due_date is a 400 and creates nothing", async () => {
+    for (const due_date of ["11/15/2026", "2026-13-01"]) {
+      const tenant = dateTenant();
+      const res = await post(tenant, { client_id: 3, items: [item], due_date });
+      expect(res.status).toBe(400);
+      expect((await res.json() as any).error).toContain("due_date");
+      expect((tenant.db.query("SELECT COUNT(*) AS n FROM invoices").get() as any).n).toBe(0);
+    }
+  });
+  test("absent issue_date defaults to today and absent due_date stays null", async () => {
+    const tenant = dateTenant();
+    const res = await post(tenant, { client_id: 3, items: [item] });
+    expect(res.status).toBe(201);
+    const row = tenant.db.query("SELECT issue_date, due_date FROM invoices").get() as any;
+    expect(row.issue_date).toBe(new Date().toISOString().slice(0, 10));
+    expect(row.due_date).toBeNull();
+  });
+  test("valid per-item date_from/date_to are stored", async () => {
+    const tenant = dateTenant();
+    const res = await post(tenant, { client_id: 3, items: [{ ...item, date_from: "2026-11-07", date_to: "2026-11-20" }] });
+    expect(res.status).toBe(201);
+    const row = tenant.db.query("SELECT date_from, date_to FROM invoice_items").get() as any;
+    expect(row).toEqual({ date_from: "2026-11-07", date_to: "2026-11-20" });
+  });
+  test("an impossible per-item date is a 400 and creates nothing", async () => {
+    const tenant = dateTenant();
+    const res = await post(tenant, { client_id: 3, items: [{ ...item, date_from: "2026-02-30" }] });
+    expect(res.status).toBe(400);
+    expect((await res.json() as any).error).toContain("date_from");
+    expect((tenant.db.query("SELECT COUNT(*) AS n FROM invoices").get() as any).n).toBe(0);
+  });
+});
+
 /** Dates stamped on an action are the user's local day when the client
  *  sends one (client_day), else the UTC day. */
 describe("PATCH /api/invoices/:id honours client_day", () => {
