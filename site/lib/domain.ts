@@ -152,21 +152,34 @@ export function createDomain(deps: DomainDeps) {
     return first?.first_day ? String(first.first_day) : null;
   }
 
-  /** Per-client finished, unbilled time with invoice rounding applied (#328). */
+  /** Per-client finished, unbilled time with invoice rounding applied (#328).
+      #992: aggregated in SQL instead of loading every unbilled entry into JS.
+      The per-entry math mirrors durationSeconds + roundUpSeconds exactly:
+      whole milliseconds from the stored ISO timestamps, rounded to the
+      nearest second (clamped at 0), then rounded UP to the increment with
+      integer division — a .5s remainder rounds up, an exact multiple stays. */
   function unbilledByClient(): { id: number; name: string; secs: number }[] {
+    const inc = ROUNDING_MINUTES * 60;
     const rows = db.query(
-      `SELECT c.id, c.name, e.start_time, e.end_time FROM time_entries e
-       JOIN projects p ON p.id = e.project_id
-       JOIN clients c ON c.id = p.client_id
-       WHERE e.invoice_id IS NULL AND e.end_time IS NOT NULL
+      `SELECT c.id, c.name, SUM(
+         CASE WHEN d.secs <= 0 THEN d.secs
+              ELSE ((d.secs + ${inc - 1}) / ${inc}) * ${inc} END
+       ) AS secs
+       FROM (
+         SELECT p.client_id AS client_id,
+                MAX(0, CAST(ROUND(
+                  (CAST(ROUND(unixepoch(e.end_time, 'subsec') * 1000) AS INTEGER)
+                   - CAST(ROUND(unixepoch(e.start_time, 'subsec') * 1000) AS INTEGER)) / 1000.0
+                ) AS INTEGER)) AS secs
+         FROM time_entries e
+         JOIN projects p ON p.id = e.project_id
+         WHERE e.invoice_id IS NULL AND e.end_time IS NOT NULL
+       ) d
+       JOIN clients c ON c.id = d.client_id
+       GROUP BY c.id, c.name
+       HAVING secs > 0
        ORDER BY c.name`).all() as any[];
-    const map = new Map<number, { id: number; name: string; secs: number }>();
-    for (const r of rows) {
-      const g = map.get(r.id) ?? { id: r.id, name: r.name, secs: 0 };
-      g.secs += roundUpSeconds(durationSeconds(r.start_time, r.end_time), ROUNDING_MINUTES);
-      map.set(r.id, g);
-    }
-    return [...map.values()].filter(g => g.secs > 0);
+    return rows.map(r => ({ id: r.id, name: r.name, secs: r.secs }));
   }
 
   /** Fixed billable rounding, minutes. Every invoice rounds each entry's
