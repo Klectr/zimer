@@ -506,3 +506,16 @@ describe("client dialog order", () => {
     expect(del).toBeGreaterThan(form);
   });
 });
+
+/** The client hover card follows the mouse and flips at the edges; keyboard
+ *  focus keeps the anchored position (inline offsets are cleared on leave). */
+describe("client hover card follows the pointer", () => {
+  test("the page wires a mouse-only pointermove that positions and clears the card", () => {
+    const html = pageHtml();
+    expect(html).toContain('document.addEventListener("pointermove"');
+    expect(html).toContain('if(ev.pointerType !== "mouse") return;');
+    expect(html).toContain("x = ev.clientX - gap - w;");
+    expect(html).toContain("y = ev.clientY - gap - h;");
+    expect(html).toContain('c.style.left = ""; c.style.top = "";');
+  });
+});
