@@ -573,6 +573,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       hideDue: termsKey_ === "pay_when_paid",
       payUrl: inv.public_token && inv.status !== "paid" ? `${origin}/i/${inv.public_token}` : undefined,
       payByCard: !!inv.stripe_payment_link,
+      overdue: inv.status === "sent" && isOverdue(inv),
       paymentInstructions: getMeta(db, "business_payment_instructions") || undefined,
     };
   }

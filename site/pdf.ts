@@ -11,7 +11,7 @@
  */
 
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { resourcePath } from "./lib/paths.ts"; /* #519 */
 import { fmtDur } from "./lib/format.ts";
 
@@ -59,6 +59,8 @@ export type PdfInvoice = {
   /** The page behind payUrl can take a card payment (a Stripe link exists).
       Without it the link only shows the invoice: label it VIEW, not PAY. */
   payByCard?: boolean;
+  /** Sent and past its due date: badge OVERDUE (red), "Was due …". */
+  overdue?: boolean;
   /** The business's own "how to pay" text (bank transfer, check…), from
       Settings. Printed on unpaid invoices — often the only way to pay. */
   paymentInstructions?: string;
@@ -71,29 +73,48 @@ const NUM_WIDTHS: Record<string, number> = {
   ".": 278, ",": 278, "$": 556, " ": 278, "%": 889, "-": 333,
 };
 
-/* #233: map common typographic characters to ASCII equivalents instead of
-   letting them degrade to "?". Anything else non-ASCII still becomes "?". */
-const TYPO_MAP: Record<string, string> = {
-  "—": "-", "–": "-", "−": "-",
-  "\u201c": '"', "\u201d": '"', "„": '"',
-  "\u2018": "'", "\u2019": "'", "‚": "'",
-  "…": "...", "•": "-", "·": "-", " ": " ",
+/* Fonts use WinAnsiEncoding, so these typographic characters print as
+   themselves (octal codes in the content stream) instead of being flattened
+   to ASCII. Anything else outside printable ASCII still becomes "?". */
+const WIN_ANSI: Record<string, string> = {
+  "–": "\\226", "—": "\\227", "‘": "\\221", "’": "\\222",
+  "“": "\\223", "”": "\\224", "•": "\\225", "…": "\\205",
+  "·": "\\267", " ": " ", "−": "-", "„": '"', "‚": "'",
 };
 
-function ascii(s: string): string {
+function escPdf(s: string): string {
   let out = "";
-  for (const ch of s) out += TYPO_MAP[ch] ?? (/[\x20-\x7e]/.test(ch) ? ch : "?");
+  for (const ch of s) {
+    if (WIN_ANSI[ch] !== undefined) out += WIN_ANSI[ch];
+    else if (/[\x20-\x7e]/.test(ch)) out += ch === "\\" || ch === "(" || ch === ")" ? "\\" + ch : ch;
+    else out += "?";
+  }
   return out;
 }
 
-function escPdf(s: string): string {
-  return ascii(s).replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
+/* Helvetica / Helvetica-Bold advance widths (AFM, per 1000 em) for ASCII
+   32–126, plus the WinAnsi extras above. Right-aligned text (From block,
+   invoice number, totals, labels) is placed with these, so edges line up. */
+const HELV = [278,278,355,556,556,889,667,191,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,278,278,584,584,584,556,1015,667,667,722,722,667,611,778,722,278,500,667,556,833,722,778,667,778,722,667,611,722,667,944,667,667,611,278,278,278,469,556,333,556,556,500,556,556,278,556,556,222,222,500,222,833,556,556,556,556,333,500,278,556,500,722,500,500,500,334,260,334,584];
+const HELV_B = [278,333,474,556,556,889,722,238,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,333,333,584,584,584,611,975,722,722,722,722,667,611,778,722,278,556,722,611,833,722,778,667,778,722,667,611,722,667,944,667,667,611,333,278,333,584,556,333,556,611,556,611,556,333,611,611,278,278,556,278,889,611,611,611,611,389,556,333,611,556,778,556,556,500,389,280,389,584];
+const EXTRA_W: Record<string, [number, number]> = {
+  "–": [556, 556], "—": [1000, 1000], "‘": [222, 278], "’": [222, 278],
+  "“": [333, 500], "”": [333, 500], "•": [350, 350], "…": [1000, 1000], "·": [278, 278],
+};
+
+function textWidth(s: string, size: number, bold = false): number {
+  const table = bold ? HELV_B : HELV;
+  let w = 0;
+  for (const ch of s) {
+    const c = ch.codePointAt(0)!;
+    w += c >= 32 && c <= 126 ? table[c - 32] : EXTRA_W[ch]?.[bold ? 1 : 0] ?? 556;
+  }
+  return (w * size) / 1000;
 }
 
+/* Kept name for the numeric call sites. */
 function numWidth(s: string, size: number): number {
-  let w = 0;
-  for (const ch of s) w += NUM_WIDTHS[ch] ?? 500;
-  return (w * size) / 1000;
+  return textWidth(s, size);
 }
 
 function money(n: number): string {
@@ -114,11 +135,11 @@ function fmtDateShort(ymd: string): string {
   if (!y || !m || !d) return ymd;
   return `${MONTHS[m - 1]} ${d}`;
 }
-/** #243: per-line date cell — "Sep 11" or "Aug 31-Sep 11". */
+/** #243: per-line date cell — "Sep 11" or "Aug 31 – Sep 11". */
 function lineDate(it: PdfLineItem): string {
   if (!it.dateFrom) return "";
   return it.dateTo && it.dateTo !== it.dateFrom
-    ? `${fmtDateShort(it.dateFrom)}-${fmtDateShort(it.dateTo)}`
+    ? `${fmtDateShort(it.dateFrom)} – ${fmtDateShort(it.dateTo)}`
     : fmtDateShort(it.dateFrom);
 }
 /** #243: simple word-wrap paragraph for short blocks like payment terms. */
@@ -163,7 +184,7 @@ class PdfDoc {
     this.cmds.push(`BT ${color}/F2 ${size} Tf ${tc.toFixed(2)} Tc ${xx.toFixed(1)} ${yy.toFixed(1)} Td (${escPdf(s)}) Tj 0 Tc ET`);
   }
   rtext(rightX: number, yy: number, size: number, s: string, bold = false, gray: boolean | [number, number, number] = false) {
-    this.text(rightX - numWidth(s, size), yy, size, s, bold, gray === true, Array.isArray(gray) ? gray : undefined);
+    this.text(rightX - textWidth(s, size, bold), yy, size, s, bold, gray === true, Array.isArray(gray) ? gray : undefined);
   }
   /** #233: filled rectangle — bands, zebra rows, badges, tinted totals. */
   fill(x: number, yy: number, w: number, h: number, rgb: [number, number, number]) {
@@ -277,12 +298,8 @@ const TINT: [number, number, number] = [1.0, 0.961, 0.882];
 const WHITE: [number, number, number] = [1, 1, 1];
 const SOFT: [number, number, number] = [0.72, 0.72, 0.74];
 
-/* Width estimate for letter-spaced BOLD CAPS labels: base-14 Helvetica-Bold
-   caps average ~680/1000, well above numWidth's 500 fallback. */
 function capsWidth(s: string, size: number): number {
-  let w = 0;
-  for (const ch of s) w += ch === " " ? 278 : /[A-Z]/.test(ch) ? 680 : 500;
-  return (w * size) / 1000;
+  return textWidth(s, size, true);
 }
 
 /* Tracking for caps labels: ~0.28em between letters — the same rhythm the
@@ -315,19 +332,24 @@ function wrapChars(text: string, max: number): string[] {
    sent, so it reads DRAFT on a neutral gray instead of the amber UNPAID
    reserved for sent invoices awaiting payment. */
 const DRAFT_GRAY: [number, number, number] = [0.62, 0.63, 0.65];
-function statusBadge(doc: PdfDoc, rightX: number, yy: number, status: string) {
-  const paid = status === "paid";
-  const draft = status === "draft";
-  const label = paid ? "PAID" : draft ? "DRAFT" : "UNPAID";
-  const pw = label.length * 6.4 + 20, ph = 20;
+const OVERDUE_RED: [number, number, number] = [0.86, 0.25, 0.25];
+function statusBadge(doc: PdfDoc, rightX: number, yy: number, inv: PdfInvoice) {
+  const paid = inv.status === "paid";
+  const draft = inv.status === "draft";
+  /* A sent invoice that isn't late says when it's due ("DUE DEC 21") —
+     "UNPAID" before the due date reads like a demand. OVERDUE once late. */
+  const due = !paid && !draft && inv.dueDate && !inv.hideDue ? fmtDateShort(inv.dueDate).toUpperCase() : "";
+  const label = paid ? "PAID" : draft ? "DRAFT" : inv.overdue ? "OVERDUE" : due ? `DUE ${due}` : "UNPAID";
+  const pw = textWidth(label, 9, true) + 20, ph = 20;
   const x = rightX - pw;
-  doc.fill(x, yy - 6, pw, ph, paid ? [0.16, 0.55, 0.28] : draft ? DRAFT_GRAY : PUMPKIN);
-  doc.text(x + 10, yy, 9, label, true, false, paid ? WHITE : INK);
+  const fill = paid ? [0.16, 0.55, 0.28] as [number, number, number] : draft ? DRAFT_GRAY : inv.overdue ? OVERDUE_RED : PUMPKIN;
+  doc.fill(x, yy - 6, pw, ph, fill);
+  doc.text(x + 10, yy, 9, label, true, false, paid || inv.overdue ? WHITE : INK);
 }
 
 function drawModern(inv: PdfInvoice, doc: PdfDoc) {
   /* ---- dark header band (page 1) ---- */
-  const bandH = 148;
+  const bandH = 104;
   doc.fill(0, PAGE_H - bandH, PAGE_W, bandH, INK);
   /* #241: brand lockup — logo mark left of the title, white on the band */
   const logoSize = 40;
@@ -336,7 +358,7 @@ function drawModern(inv: PdfInvoice, doc: PdfDoc) {
   doc.text(titleX, PAGE_H - 62, 30, "INVOICE", true, false, WHITE);
   doc.fill(titleX, PAGE_H - 74, 72, 3.5, PUMPKIN);
   doc.rtext(RIGHT, PAGE_H - 52, 15, inv.number, true, WHITE);
-  statusBadge(doc, RIGHT, PAGE_H - 74, inv.status);
+  statusBadge(doc, RIGHT, PAGE_H - 74, inv);
   doc.y = PAGE_H - bandH - 36;
 
   /* ---- bill-to (left) / from (right) ---- */
@@ -422,12 +444,12 @@ function drawModern(inv: PdfInvoice, doc: PdfDoc) {
 
   /* ---- totals ---- */
   const totalRow = (label: string, val: string, bold = false, size = 11, tint = false) => {
-    if (tint) doc.fill(C_RATE - 150, doc.y - 9, 150 + (RIGHT - C_RATE) + 10, size + 18, TINT);
+    if (tint) doc.fill(C_RATE - 150, doc.y - 9, RIGHT - (C_RATE - 150), size + 18, TINT);
     /* Right-align the label so it ends clear of the value — at 14pt "TOTAL
        DUE" is wider than the C_RATE..C_AMT gap. */
-    const lr = tint ? C_AMT - numWidth(val, size) - 16 : C_RATE;
-    doc.text(lr - capsWidth(label, size), doc.y, size, label, bold);
-    doc.rtext(C_AMT, doc.y, size, val, bold);
+    const lr = tint ? C_AMT - 10 - textWidth(val, size, bold) - 16 : C_RATE;
+    doc.text(lr - textWidth(label, size, bold), doc.y, size, label, bold);
+    doc.rtext(C_AMT - 10, doc.y, size, val, bold);
     doc.y -= size + 12;
   };
   totalRow("Subtotal", money(inv.subtotal));
@@ -436,6 +458,12 @@ function drawModern(inv: PdfInvoice, doc: PdfDoc) {
   /* #859: only a sent zinvoice has something due — a draft's total reads
      TOTAL like a paid one's. */
   totalRow(inv.status === "sent" ? "TOTAL DUE" : "TOTAL", money(inv.total), true, 14, true);
+  /* "How much, and by when" in one place. */
+  if (inv.status === "sent" && inv.dueDate && !inv.hideDue) {
+    doc.y += 2;
+    doc.rtext(C_AMT - 10, doc.y, 10, `${inv.overdue ? "Was due" : "Due by"} ${fmtDate(inv.dueDate)}`, true, inv.overdue ? OVERDUE_RED : true);
+    doc.y -= 16;
+  }
 
   /* ---- payment (#243): online payment link + plain-language terms ---- */
   if (inv.payUrl) {
@@ -498,7 +526,7 @@ function drawModern(inv: PdfInvoice, doc: PdfDoc) {
 
   /* ---- footers ---- */
   doc.pages.forEach((p, i) => {
-    p.push(`BT 0.45 0.45 0.45 rg /F1 9 Tf ${M} 40 Td (${escPdf(inv.number)} - Generated by Zimer) Tj ET`);
+    p.push(`BT 0.45 0.45 0.45 rg /F1 9 Tf ${M} 40 Td (${escPdf(`${inv.number} · Generated by Zimer`)}) Tj ET`);
     const pg = `Page ${i + 1} of ${doc.pages.length}`;
     p.push(`BT 0.45 0.45 0.45 rg /F1 9 Tf ${(RIGHT - numWidth(pg, 9)).toFixed(1)} 40 Td (${escPdf(pg)}) Tj ET`);
   });
@@ -570,8 +598,8 @@ function assemblePdf(pages: string[][]): Uint8Array {
     const stream = p.join("\n");
     objs[4 + i * 2] = `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`;
   });
-  objs[font1] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>";
-  objs[font2] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>";
+  objs[font1] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>";
+  objs[font2] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>";
 
   let out = "%PDF-1.4\n";
   const offsets: number[] = [];
