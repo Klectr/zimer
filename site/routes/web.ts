@@ -1053,12 +1053,18 @@ export function createWebRouter(deps: WebDeps) {
             return new Response("Zinvoice number already exists.", { status: 400 });
           const clientId = form.get("client_id") ? Number(form.get("client_id")) : null;
           const dueRaw = String(form.get("due_date") || "");
+          /* #1350: keep the wizard's From/To as the Zinvoice's billing period.
+             Only a well-formed, ordered pair is stored; anything else stays
+             NULL and the surfaces fall back to the line-item dates. */
+          const ymd = (v: FormDataEntryValue | null) => { const t = String(v || "").trim(); return /^\d{4}-\d{2}-\d{2}$/.test(t) ? t : null; };
+          const pFrom = ymd(form.get("from")), pTo = ymd(form.get("to"));
+          const [periodFrom, periodTo] = pFrom && pTo && pFrom <= pTo ? [pFrom, pTo] : [null, null];
           const inv = db.query(
-            `INSERT INTO invoices (client_id, number, issue_date, due_date, tax_rate, notes, internal_notes)
-             VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id`)
+            `INSERT INTO invoices (client_id, number, issue_date, due_date, tax_rate, notes, internal_notes, period_from, period_to)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`)
             .get(clientId, number, String(form.get("issue_date") || todayStr()),
                  dueRaw || null, Number(form.get("tax_rate") || 0), String(form.get("notes") || ""),
-                 String(form.get("internal_notes") || "")) as any;
+                 String(form.get("internal_notes") || ""), periodFrom, periodTo) as any;
           const insItem = db.query(
             "INSERT INTO invoice_items (invoice_id, description, hours, rate, amount, date_from, date_to) VALUES (?, ?, ?, ?, ?, ?, ?)");
           const linkEntry = db.query("UPDATE time_entries SET invoice_id = ? WHERE id = ?");

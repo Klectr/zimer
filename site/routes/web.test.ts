@@ -12,6 +12,7 @@ import { createDomain } from "../lib/domain.ts";
 import { createWebRouter } from "./web.ts";
 import { createManageViews } from "../views/manage.ts";
 import { createInvoiceViews } from "../views/invoices.ts";
+import { invoicePdf } from "../pdf.ts";
 
 function setup() {
   const db = createDb(mkdtempSync(join(tmpdir(), "tk-web-"))).db;
@@ -995,5 +996,72 @@ describe("public invoice PDF download (#1291)", () => {
     const { get } = setupPublicPdf("rotatedtoken1234567890rotated12");
     const res = await get(`/i/${PUB_TOKEN}.pdf`);
     expect(res!.status).toBe(404);
+  });
+});
+
+/** #1350: the wizard's billing period is the Zinvoice's period. It used to be
+ *  dropped on create and re-derived from the first/last entry dates, so a
+ *  Saturday-start period (Nov 7) printed as the first worked Monday (Nov 9). */
+describe("billing period from the wizard (#1350)", () => {
+  const wizardPost = (extra: Record<string, string> = {}) => ({
+    ...baseInvoiceFields, number: "INV-0016", groups: "1",
+    g0_desc: "Development", g0_hours: "10", g0_rate: "40",
+    g0_ids: "", g0_date_from: "2026-11-09", g0_date_to: "2026-11-20",
+    from: "2026-11-07", to: "2026-11-20", ...extra,
+  });
+  const viewsFor = (db: any) => {
+    const qInvoice = db.query(`SELECT i.*, c.name AS client_name, c.color AS client_color, c.payment_terms AS client_payment_terms,
+      c.email AS client_email, c.phone AS client_phone, c.website AS client_website, c.address AS client_address
+      FROM invoices i LEFT JOIN clients c ON c.id = i.client_id WHERE i.id = ?`);
+    const qInvoiceItems = db.query("SELECT * FROM invoice_items WHERE invoice_id = ? ORDER BY id");
+    const domain = createDomain({ db, qInvoice, qInvoiceItems, TOKEN: "t" } as any);
+    const views = createInvoiceViews({
+      db, qInvoices: db.query("SELECT * FROM invoices"), layout: (_t: string, b: string) => b,
+      getPublicToken: domain.getPublicToken, stripeConfigured: () => false,
+      nextInvoiceNumber: domain.nextInvoiceNumber, invoiceTotals: domain.invoiceTotals,
+      isOverdue: () => false, unbilledByClient: domain.unbilledByClient,
+    });
+    return { domain, views };
+  };
+
+  test("create stores the wizard's From/To on the Zinvoice", async () => {
+    const { db, handleWeb } = setupSend();
+    await postInvoice(handleWeb, wizardPost());
+    const inv = db.query("SELECT period_from, period_to FROM invoices WHERE number = 'INV-0016'").get() as any;
+    expect(inv).toEqual({ period_from: "2026-11-07", period_to: "2026-11-20" });
+  });
+
+  test("the sheet and the PDF show the stored period, not the first entry's date", async () => {
+    const { db, handleWeb } = setupSend();
+    await postInvoice(handleWeb, wizardPost());
+    const { domain, views } = viewsFor(db);
+    const id = (db.query("SELECT id FROM invoices WHERE number = 'INV-0016'").get() as any).id;
+    const inv = domain.getInvoice(id)!;
+    const sheet = views.invoiceSheet(inv);
+    expect(sheet).toContain("Billing period: Nov 7 – Nov 20, 2026");
+    expect(sheet).not.toContain("Billing period: Nov 9");
+    const pdfIn = views.invoicePdfInput(inv, "http://x");
+    expect(pdfIn.period).toBe("Nov 7 – Nov 20, 2026");
+    const bytes = new TextDecoder("latin1").decode(invoicePdf(pdfIn));
+    expect(bytes).toContain("Billing period Nov 7");
+  });
+
+  test("a missing or reversed range stores no period; surfaces fall back to the line dates", async () => {
+    const { db, handleWeb } = setupSend();
+    await postInvoice(handleWeb, wizardPost({ from: "2026-11-20", to: "2026-11-07" }));
+    const row = db.query("SELECT id, period_from, period_to FROM invoices").get() as any;
+    expect(row.period_from).toBeNull();
+    expect(row.period_to).toBeNull();
+    const { domain, views } = viewsFor(db);
+    const inv = domain.getInvoice(row.id)!;
+    expect(views.invoiceSheet(inv)).toContain("Billing period: Nov 9 – Nov 20, 2026");
+    expect(views.invoicePdfInput(inv, "http://x").period).toBeUndefined();
+  });
+
+  test("invoice the rest continues the day after the stored period end", async () => {
+    const { db, handleWeb } = setupSend();
+    await postInvoice(handleWeb, wizardPost({ from: "2026-11-07", to: "2026-11-20", g0_date_to: "2026-11-18" }));
+    const { domain } = viewsFor(db);
+    expect(domain.clientRestFrom(1)).toBe("2026-11-21");
   });
 });
