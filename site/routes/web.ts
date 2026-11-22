@@ -193,17 +193,18 @@ export function createWebRouter(deps: WebDeps) {
           const f = Bun.file(p);
           if (!(await f.exists())) return html(pages.notFoundPage(authedPage(req, TOKEN)), 404);
           /* #374/#993: unversioned URLs revalidate every load (ETag from
-             size+mtime; If-None-Match gets a 304) so a deploy's new CSS/JS
-             always reaches clients. A ?v= carrying the file's current
-             content hash is content-addressed: serve it immutable. */
-          const etag = `"${f.size.toString(36)}-${Math.floor(f.lastModified / 1000).toString(36)}"`;
-          if (req.headers.get("if-none-match") === etag) {
-            return new Response(null, { status: 304 });
-          }
+             size+mtime; If-None-Match gets a 304 carrying the same ETag and
+             Cache-Control the 200 would) so a deploy's new CSS/JS always
+             reaches clients. A ?v= carrying the file's current content
+             hash is content-addressed: serve it immutable. */
+          const etag = `"${f.size.toString(36)}-${Math.floor(f.lastModified).toString(36)}"`;
           const v = url.searchParams.get("v");
-          const cacheControl = v && v === servedVersion(p, f.size, Math.floor(f.lastModified))
+          const cacheControl = v && v === servedVersion(p)
             ? "public, max-age=31536000, immutable"
             : "public, no-cache";
+          if (req.headers.get("if-none-match") === etag) {
+            return new Response(null, { status: 304, headers: { ETag: etag, "Cache-Control": cacheControl } });
+          }
           return new Response(f, { headers: { ETag: etag, "Cache-Control": cacheControl } });
         }
         if (path === "/login") {

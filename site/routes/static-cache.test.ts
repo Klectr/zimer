@@ -36,8 +36,8 @@ function setup() {
   return { handleWeb };
 }
 
-async function get(handleWeb: any, path: string) {
-  const req = new Request(`http://x${path}`);
+async function get(handleWeb: any, path: string, headers: Record<string, string> = {}) {
+  const req = new Request(`http://x${path}`, { headers });
   return handleWeb(req, new URL(req.url), path.split("?")[0], "GET");
 }
 
@@ -46,6 +46,17 @@ describe("static cache headers (#993)", () => {
     const { handleWeb } = setup();
     const res = await get(handleWeb, `/static/app.js?v=${APP_VERSION}`);
     expect(res.status).toBe(200);
+    expect(res.headers.get("Cache-Control")).toBe("public, max-age=31536000, immutable");
+  });
+
+  test("a 304 reaffirms the ETag and Cache-Control of the 200", async () => {
+    const { handleWeb } = setup();
+    const first = await get(handleWeb, `/static/app.js?v=${APP_VERSION}`);
+    const etag = first.headers.get("ETag");
+    expect(etag).toBeTruthy();
+    const res = await get(handleWeb, `/static/app.js?v=${APP_VERSION}`, { "If-None-Match": etag! });
+    expect(res.status).toBe(304);
+    expect(res.headers.get("ETag")).toBe(etag);
     expect(res.headers.get("Cache-Control")).toBe("public, max-age=31536000, immutable");
   });
 
