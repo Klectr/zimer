@@ -20,7 +20,7 @@ import type { AccountsDb } from "../lib/accounts.ts"; /* #732 */
 import { findTenantByPublicToken } from "../lib/tenants.ts"; /* #741 */
 import { countProofs, deleteProof, getProof, insertProof, listProofs, sanitizeFilename, validateProofFile, PROOF_MAX_BYTES, PROOF_MAX_PER_INVOICE } from "../lib/payment_proofs.ts"; /* #956 */
 import { servedVersion, staticUrl } from "../lib/static-assets.ts"; /* #993 */
-import { endAfterStart, existingProjectId, normalizeEntryTimestamp, nonNegativeRate, stopEndTime } from "./api.ts"; /* #1434, #1442, #1450, #1452, #1462 */
+import { endAfterStart, existingClientId, existingProjectId, normalizeEntryTimestamp, nonNegativeRate, stopEndTime } from "./api.ts"; /* #1434, #1442, #1450, #1452, #1462, #1464 */
 import { textField } from "../ui/field.ts";
 import { card } from "../ui/card.ts";
 import { settingsDataList, settingsDataRow, settingsSection } from "../ui/settings-section.ts";
@@ -1005,9 +1005,17 @@ export function createWebRouter(deps: WebDeps) {
             }
             return new Response("Project name is required.", { status: 400 });
           }
+          const clientId = cid ? existingClientId(db, String(cid)) : null;
+          if (cid && clientId === null) {
+            if (isHtmx(req)) {
+              const sel = clientSelection("none");
+              if (sel) return html(clientDialogProjects(sel, "That client no longer exists."), 422);
+            }
+            return new Response("That client no longer exists.", { status: 400 });
+          }
           db.query("INSERT INTO projects (name, client_id) VALUES (?, ?)")
-            .run(name, cid ? Number(cid) : null);
-          const sel = clientSelection(cid ? String(cid) : "none");
+            .run(name, clientId);
+          const sel = clientSelection(clientId ? String(clientId) : "none");
           if (isHtmx(req)) {
             return html(clientDialogProjects(sel!) + manageListsOob());
           }
