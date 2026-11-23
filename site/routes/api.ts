@@ -82,6 +82,12 @@ export function nonNegativeRate(raw: unknown): number | null {
   return Number.isFinite(n) && n >= 0 ? n : null;
 }
 
+/* #1450: a finished entry must end after it starts — an end at or before
+   the start saves a duration that clamps to 0 everywhere downstream. */
+export function endAfterStart(startIso: string, endIso: string | null): boolean {
+  return endIso === null || new Date(endIso).getTime() > new Date(startIso).getTime();
+}
+
 export function createApiRouter(deps: ApiDeps) {
   const {
     getTenant, TOKEN, authedApi, json, entryToJson, verifyWebhookSignature, shareOrigin,
@@ -285,6 +291,8 @@ export function createApiRouter(deps: ApiDeps) {
                     endTime = normalized;
                   }
                 }
+                if (!endAfterStart(startTime, endTime))
+                  return json({ error: "end_time must be after start_time" }, 400);
                 db.query(`UPDATE time_entries SET description = ?, project_id = ?, start_time = ?, end_time = ? WHERE id = ?`)
                   .run(
                     body.description !== undefined ? String(body.description) : cur.description,

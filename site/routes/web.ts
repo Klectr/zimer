@@ -20,7 +20,7 @@ import type { AccountsDb } from "../lib/accounts.ts"; /* #732 */
 import { findTenantByPublicToken } from "../lib/tenants.ts"; /* #741 */
 import { countProofs, deleteProof, getProof, insertProof, listProofs, sanitizeFilename, validateProofFile, PROOF_MAX_BYTES, PROOF_MAX_PER_INVOICE } from "../lib/payment_proofs.ts"; /* #956 */
 import { servedVersion, staticUrl } from "../lib/static-assets.ts"; /* #993 */
-import { normalizeEntryTimestamp, nonNegativeRate } from "./api.ts"; /* #1434, #1442 */
+import { endAfterStart, normalizeEntryTimestamp, nonNegativeRate } from "./api.ts"; /* #1434, #1442, #1450 */
 import { textField } from "../ui/field.ts";
 import { card } from "../ui/card.ts";
 import { settingsDataList, settingsDataRow, settingsSection } from "../ui/settings-section.ts";
@@ -595,6 +595,8 @@ export function createWebRouter(deps: WebDeps) {
             const endIso = endRaw ? normalizeEntryTimestamp(endRaw) : null;
             if (!startIso || (endRaw && !endIso))
               return new Response("start_time/end_time must be a valid timestamp with a timezone offset", { status: 400 });
+            if (!endAfterStart(startIso, endIso))
+              return new Response("end_time must be after start_time", { status: 400 });
             /* #930: idempotent against rapid re-submits (double-tap on save) —
                an identical entry created seconds ago is returned, not duplicated. */
             const dupe = db.query(
@@ -640,6 +642,8 @@ export function createWebRouter(deps: WebDeps) {
           const endIso = endRaw ? normalizeEntryTimestamp(endRaw) : null;
           if (!startIso || (endRaw && !endIso))
             return new Response("start_time/end_time must be a valid timestamp with a timezone offset", { status: 400 });
+          if (!endAfterStart(startIso, endIso))
+            return new Response("end_time must be after start_time", { status: 400 });
           db.query("UPDATE time_entries SET description = ?, project_id = ?, start_time = ?, end_time = ? WHERE id = ?")
             .run(
               String(form.get("description") || ""),

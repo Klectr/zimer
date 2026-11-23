@@ -799,4 +799,39 @@ describe("PATCH /api/entries/:id timestamp normalization (#1432)", () => {
     expect(res.status).toBe(200);
     expect(row().end_time).toBeNull();
   });
+
+  test("an end_time before the start_time is 400 and saves nothing (#1450)", async () => {
+    const { patch, row } = entrySetup();
+    const res = await patch({ start_time: "2026-10-07T14:00:00.000Z", end_time: "2026-10-07T13:00:00.000Z" });
+    expect(res.status).toBe(400);
+    expect(row()).toEqual({ start_time: "2026-10-07T14:00:00.000Z", end_time: "2026-10-07T15:00:00.000Z" });
+  });
+
+  test("an end_time equal to the start_time is 400 and saves nothing (#1450)", async () => {
+    const { patch, row } = entrySetup();
+    const res = await patch({ end_time: "2026-10-07T14:00:00.000Z" });
+    expect(res.status).toBe(400);
+    expect(row().end_time).toBe("2026-10-07T15:00:00.000Z");
+  });
+
+  test("an end_time patched before the stored start_time is 400 (#1450)", async () => {
+    const { patch, row } = entrySetup();
+    const res = await patch({ end_time: "2026-10-07T13:59:00.000Z" });
+    expect(res.status).toBe(400);
+    expect(row().end_time).toBe("2026-10-07T15:00:00.000Z");
+  });
+
+  test("a start_time patched after the stored end_time is 400 (#1450)", async () => {
+    const { patch, row } = entrySetup();
+    const res = await patch({ start_time: "2026-10-07T15:01:00.000Z" });
+    expect(res.status).toBe(400);
+    expect(row().start_time).toBe("2026-10-07T14:00:00.000Z");
+  });
+
+  test("a valid ordered pair still saves (#1450)", async () => {
+    const { patch, row } = entrySetup();
+    const res = await patch({ start_time: "2026-10-07T14:00:00.000Z", end_time: "2026-10-07T14:01:00.000Z" });
+    expect(res.status).toBe(200);
+    expect(row()).toEqual({ start_time: "2026-10-07T14:00:00.000Z", end_time: "2026-10-07T14:01:00.000Z" });
+  });
 });
