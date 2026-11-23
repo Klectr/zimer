@@ -120,6 +120,18 @@ export function existingClientId(db: Database, raw: unknown): number | null {
   return db.query("SELECT 1 FROM clients WHERE id = ?").get(n) ? n : null;
 }
 
+/* #1470: a caller-supplied entry_id on invoice create must name an entry
+   that can actually be billed to this invoice: it exists, is finished, is
+   not already on an invoice, and belongs to the invoice's client through
+   its project (the same reach unbilledEntries uses). */
+export function entryLinkable(db: Database, id: number, clientId: number | null): boolean {
+  const row = db.query(
+    `SELECT e.end_time AS end_time, e.invoice_id AS invoice_id, p.client_id AS entry_client_id
+     FROM time_entries e LEFT JOIN projects p ON p.id = e.project_id WHERE e.id = ?`).get(id) as any;
+  if (!row || !row.end_time || row.invoice_id !== null) return false;
+  return (row.entry_client_id ?? null) === clientId;
+}
+
 export function createApiRouter(deps: ApiDeps) {
   const {
     getTenant, TOKEN, authedApi, json, entryToJson, verifyWebhookSignature, shareOrigin,
@@ -455,7 +467,8 @@ export function createApiRouter(deps: ApiDeps) {
               if (taxRate === null || !Number.isFinite(round2(taxRate)))
                 return json({ error: "tax_rate must be a number at or above 0" }, 400);
               let items: { description: string; hours: number; rate: number; entry_ids?: number[] }[];
-              if (Array.isArray(body.items)) {
+              const callerItems = Array.isArray(body.items);
+              if (callerItems) {
                 items = body.items;
               } else {
                 if (!body.client_id || !body.from || !body.to)
@@ -510,6 +523,20 @@ export function createApiRouter(deps: ApiDeps) {
                   date_to: validYmd(it.date_to),
                 }))
                 .filter(it => it.hours > 0);
+              /* #1470: caller-supplied entry_ids are linked verbatim below —
+                 each one must be billable to this invoice, or the create
+                 would steal an entry off another invoice, invoice a running
+                 entry, or tie another client's time to this invoice. The
+                 from/to path's ids come from unbilledEntries and are
+                 linkable by construction. */
+              if (callerItems) {
+                for (const it of clean) {
+                  for (const eid of it.entry_ids) {
+                    if (!entryLinkable(db, eid, clientId))
+                      return json({ error: "entry_id is not billable to this invoice" }, 400);
+                  }
+                }
+              }
               if (!clean.length) return json({ error: "no billable line items" }, 400);
               /* #1448: per-row checks keep each amount finite, but the
                  derived totals can still overflow — rows summing past the
