@@ -110,6 +110,16 @@ export function existingProjectId(db: Database, raw: unknown): number | null {
   return db.query("SELECT 1 FROM projects WHERE id = ?").get(n) ? n : null;
 }
 
+/* #1464: sibling of existingProjectId for project create — a provided
+   client_id must name a real client, or the project renders client-less
+   via LEFT JOIN and its time can never be invoiced. */
+export function existingClientId(db: Database, raw: unknown): number | null {
+  if (typeof raw !== "number" && typeof raw !== "string") return null;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n <= 0) return null;
+  return db.query("SELECT 1 FROM clients WHERE id = ?").get(n) ? n : null;
+}
+
 export function createApiRouter(deps: ApiDeps) {
   const {
     getTenant, TOKEN, authedApi, json, entryToJson, verifyWebhookSignature, shareOrigin,
@@ -373,8 +383,11 @@ export function createApiRouter(deps: ApiDeps) {
             if (path === "/api/projects" && method === "POST") {
               const name = typeof body.name === "string" ? body.name.trim() : "";
               if (!name) return json({ error: "name required" }, 400);
+              const clientId = body.client_id ? existingClientId(db, body.client_id) : null;
+              if (body.client_id && clientId === null)
+                return json({ error: "client_id not found" }, 400);
               const r = db.query("INSERT INTO projects (name, client_id) VALUES (?, ?) RETURNING *")
-                .get(name, body.client_id ? Number(body.client_id) : null) as any;
+                .get(name, clientId) as any;
               return json(r, 201);
             }
             m = path.match(/^\/api\/projects\/(\d+)$/);
