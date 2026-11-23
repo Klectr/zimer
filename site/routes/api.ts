@@ -88,6 +88,15 @@ export function endAfterStart(startIso: string, endIso: string | null): boolean 
   return endIso === null || new Date(endIso).getTime() > new Date(startIso).getTime();
 }
 
+/* #1452: the end a timer stop stores — never at or before the start, even
+   when the running entry's start was edited into the future or the stop
+   lands in the start's own millisecond. */
+export function stopEndTime(startIso: string): string {
+  const now = Date.now();
+  const start = new Date(startIso).getTime();
+  return new Date(Number.isFinite(start) && now <= start ? start + 1000 : now).toISOString();
+}
+
 export function createApiRouter(deps: ApiDeps) {
   const {
     getTenant, TOKEN, authedApi, json, entryToJson, verifyWebhookSignature, shareOrigin,
@@ -257,7 +266,7 @@ export function createApiRouter(deps: ApiDeps) {
               const running = qRunning.get() as Entry | null;
               if (!running) return json({ error: "no timer running" }, 404);
               db.query("UPDATE time_entries SET end_time = ? WHERE id = ?")
-                .run(new Date().toISOString(), running.id);
+                .run(stopEndTime(running.start_time), running.id);
               return json(entryToJson(qOne.get(running.id) as Entry));
             }
             if (path === "/api/entries" && method === "GET") {
