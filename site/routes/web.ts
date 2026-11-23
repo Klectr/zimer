@@ -889,6 +889,12 @@ export function createWebRouter(deps: WebDeps) {
         }
         if (path === "/clients" && method === "POST") {
           const form = await req.formData();
+          /* #1454: mirror the settings route — a name is required; trim it
+             so a blank, whitespace-only, or missing field stores nothing
+             (a missing field would otherwise store the string "null"). */
+          const name = String(form.get("name") || "").trim();
+          if (!name)
+            return new Response("Client name is required.", { status: 400 });
           /* #1442: mirror the settings route's rate rule — a provided rate
              must be finite and at or above 0 (blank/absent → 0). */
           const rate = nonNegativeRate(form.get("rate"));
@@ -899,7 +905,7 @@ export function createWebRouter(deps: WebDeps) {
              as the settings route's contact fields. */
           const email = String(form.get("email") || "").trim();
           const r = db.query("INSERT INTO clients (name, color, rate, email) VALUES (?, ?, ?, ?) RETURNING id")
-            .get(String(form.get("name")), clientColor(form.get("color")),
+            .get(name, clientColor(form.get("color")),
                  rate, email || null) as any;
           return new Response(null, { status: 302, headers: { Location: "/manage" } });
         }
@@ -976,9 +982,13 @@ export function createWebRouter(deps: WebDeps) {
         }
         if (path === "/projects" && method === "POST") {
           const form = await req.formData();
+          /* #1454: same name rule as client create — trimmed, required. */
+          const name = String(form.get("name") || "").trim();
+          if (!name)
+            return new Response("Project name is required.", { status: 400 });
           const cid = form.get("client_id");
           db.query("INSERT INTO projects (name, client_id) VALUES (?, ?)")
-            .run(String(form.get("name")), cid ? Number(cid) : null);
+            .run(name, cid ? Number(cid) : null);
           const sel = clientSelection(cid ? String(cid) : "none");
           if (isHtmx(req)) {
             return html(clientDialogProjects(sel!) + manageListsOob());
