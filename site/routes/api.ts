@@ -126,10 +126,11 @@ export function existingClientId(db: Database, raw: unknown): number | null {
    its project (the same reach unbilledEntries uses). */
 export function entryLinkable(db: Database, id: number, clientId: number | null): boolean {
   const row = db.query(
-    `SELECT e.end_time AS end_time, e.invoice_id AS invoice_id, p.client_id AS entry_client_id
+    `SELECT e.end_time AS end_time, e.invoice_id AS invoice_id, p.id AS project_id, p.client_id AS entry_client_id
      FROM time_entries e LEFT JOIN projects p ON p.id = e.project_id WHERE e.id = ?`).get(id) as any;
   if (!row || !row.end_time || row.invoice_id !== null) return false;
-  return (row.entry_client_id ?? null) === clientId;
+  if (row.project_id === null || row.entry_client_id === null) return false;
+  return row.entry_client_id === clientId;
 }
 
 export function createApiRouter(deps: ApiDeps) {

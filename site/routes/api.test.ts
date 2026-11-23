@@ -1230,6 +1230,19 @@ describe("POST /api/invoices entry_id linkability (#1470)", () => {
     expect((tenant.db.query("SELECT invoice_id FROM time_entries WHERE id = 1").get() as any).invoice_id).toBe(inv.id);
   });
 
+  test("a project-less entry is not billable even to a client-less invoice", async () => {
+    const tenant = linkTenant();
+    tenant.db.query("INSERT INTO time_entries (id, project_id, start_time, end_time, invoice_id) VALUES (5, NULL, '2026-11-07T09:00:00', '2026-11-07T10:00:00', NULL)").run();
+    tenant.db.query("INSERT INTO projects (id, name, client_id) VALUES (12, 'NoClient', NULL)").run();
+    tenant.db.query("INSERT INTO time_entries (id, project_id, start_time, end_time, invoice_id) VALUES (6, 12, '2026-11-07T09:00:00', '2026-11-07T10:00:00', NULL)").run();
+    for (const eid of [5, 6]) {
+      const res = await post(tenant, { items: [withEntry(eid)] });
+      expect(res.status).toBe(400);
+    }
+    expect((tenant.db.query("SELECT COUNT(*) AS n FROM invoices").get() as any).n).toBe(0);
+    expect((tenant.db.query("SELECT COUNT(*) AS n FROM time_entries WHERE invoice_id IS NOT NULL AND id IN (5, 6)").get() as any).n).toBe(0);
+  });
+
   test("an already-invoiced, running, other-client or missing entry is a 400 and creates nothing", async () => {
     for (const eid of [2, 3, 4, 999]) {
       const tenant = linkTenant();
