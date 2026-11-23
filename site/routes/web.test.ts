@@ -1730,6 +1730,7 @@ describe("web entry project_id validation (#1462)", () => {
     const req = new Request("http://x/clients/999/settings", { method: "POST", body: form });
     const r = await handleWeb(req, new URL(req.url), "/clients/999/settings", "POST");
     expect(r!.status).toBe(404);
+    expect(JSON.parse(r!.headers.get("HX-Trigger")!)).toEqual({ "tk-toast": "That client no longer exists" });
   });
 
   test("POST /clients/:id/delete for a nonexistent client is 404 (#1474)", async () => {
@@ -1753,6 +1754,7 @@ describe("web entry project_id validation (#1462)", () => {
     const req = new Request("http://x/invoices/999/public-token/regenerate", { method: "POST" });
     const r = await handleWeb(req, new URL(req.url), "/invoices/999/public-token/regenerate", "POST");
     expect(r!.status).toBe(404);
+    expect(JSON.parse(r!.headers.get("HX-Trigger")!)).toEqual({ "tk-toast": "That invoice no longer exists" });
   });
 
   test("POST /invoices/:id/public-token/revoke for a nonexistent invoice is 404 (#1474)", async () => {
