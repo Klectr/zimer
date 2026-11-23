@@ -1256,3 +1256,91 @@ describe("POST /api/invoices entry_id linkability (#1470)", () => {
     }
   });
 });
+
+describe("API deletes 404 on missing rows (#1476)", () => {
+  function deleteTenant() {
+    const db = new BunDatabase(":memory:");
+    db.exec(`CREATE TABLE clients (id INTEGER PRIMARY KEY, name TEXT, color TEXT, rate REAL)`);
+    db.exec(`CREATE TABLE projects (id INTEGER PRIMARY KEY, name TEXT, client_id INTEGER)`);
+    db.exec(`CREATE TABLE time_entries (
+      id INTEGER PRIMARY KEY, project_id INTEGER, description TEXT NOT NULL DEFAULT '',
+      start_time TEXT NOT NULL, end_time TEXT, invoice_id INTEGER)`);
+    db.exec(`CREATE TABLE invoices (id INTEGER PRIMARY KEY, client_id INTEGER, status TEXT NOT NULL DEFAULT 'draft')`);
+    db.query("INSERT INTO clients (id, name) VALUES (1, 'Acme')").run();
+    db.query("INSERT INTO projects (id, name, client_id) VALUES (1, 'Website', 1)").run();
+    db.query("INSERT INTO time_entries (id, project_id, description, start_time, end_time) VALUES (1, 1, 'Work', '2026-10-07T14:00:00.000Z', '2026-10-07T15:00:00.000Z')").run();
+    db.query("INSERT INTO invoices (id, client_id) VALUES (1, 1)").run();
+    const withStatus = (r: any) => r ? { ...r, invoice_status: null } : null;
+    const qOne = { get: (id: number) => withStatus(db.query("SELECT * FROM time_entries WHERE id = ?").get(id)) } as unknown as Statement;
+    const tenant = {
+      db, qRunning: stubStatement(), qOne, qRange: stubStatement(),
+      qInvoice: stubStatement(), qInvoices: stubStatement(),
+      groupToLineItems: () => [], unbilledEntries: () => [],
+      getInvoice: () => null, invoiceTotals: () => ({ subtotal: 0, tax: 0, total: 0 }),
+      nextInvoiceNumber: () => "INV-0001", mintPublicToken: () => "tok",
+      stripeLinkFor: async () => ({}),
+      revenueTotals: () => null, revenueMonthly: () => [], revenueByClient: () => [], revenueOverdue: () => [],
+      revenueSnapshot: () => ({ totals: null, by_month: [], by_client: [], overdue: [] }),
+      freezeInvoiceSnapshots: () => {},
+    };
+    const { handleApi } = createApiRouter({
+      getTenant: () => tenant as any, TOKEN: "test-token", authedApi: () => true,
+      json: (data: unknown, status = 200) => Response.json(data, { status }),
+      entryToJson: (e: any) => e, verifyWebhookSignature: () => false, shareOrigin: () => "",
+    });
+    async function call(method: string, path: string) {
+      const req = new Request(`http://localhost${path}`, { method });
+      return (await handleApi(req, new URL(req.url), path, method))!;
+    }
+    const count = (table: string) => (db.query(`SELECT COUNT(*) AS n FROM ${table}`).get() as any).n;
+    return { call, count, db };
+  }
+
+  test("DELETE /api/entries/999 is a 404 and deletes nothing", async () => {
+    const { call, count } = deleteTenant();
+    const res = await call("DELETE", "/api/entries/999");
+    expect(res.status).toBe(404);
+    expect((await res.json() as any).error).toBe("not found");
+    expect(count("time_entries")).toBe(1);
+  });
+
+  test("DELETE /api/entries/1 is a 204 and removes the entry", async () => {
+    const { call, count } = deleteTenant();
+    const res = await call("DELETE", "/api/entries/1");
+    expect(res.status).toBe(204);
+    expect(count("time_entries")).toBe(0);
+  });
+
+  test("DELETE /api/clients/999 is a 404 and deletes nothing", async () => {
+    const { call, count } = deleteTenant();
+    const res = await call("DELETE", "/api/clients/999");
+    expect(res.status).toBe(404);
+    expect((await res.json() as any).error).toBe("not found");
+    expect(count("clients")).toBe(1);
+  });
+
+  test("DELETE /api/clients/1 is a 204, removes the client and nulls its references", async () => {
+    const { call, count, db } = deleteTenant();
+    const res = await call("DELETE", "/api/clients/1");
+    expect(res.status).toBe(204);
+    expect(count("clients")).toBe(0);
+    expect((db.query("SELECT client_id FROM projects WHERE id = 1").get() as any).client_id).toBeNull();
+    expect((db.query("SELECT client_id FROM invoices WHERE id = 1").get() as any).client_id).toBeNull();
+  });
+
+  test("DELETE /api/projects/999 is a 404 and deletes nothing", async () => {
+    const { call, count } = deleteTenant();
+    const res = await call("DELETE", "/api/projects/999");
+    expect(res.status).toBe(404);
+    expect((await res.json() as any).error).toBe("not found");
+    expect(count("projects")).toBe(1);
+  });
+
+  test("DELETE /api/projects/1 is a 204, removes the project and nulls its entries", async () => {
+    const { call, count, db } = deleteTenant();
+    const res = await call("DELETE", "/api/projects/1");
+    expect(res.status).toBe(204);
+    expect(count("projects")).toBe(0);
+    expect((db.query("SELECT project_id FROM time_entries WHERE id = 1").get() as any).project_id).toBeNull();
+  });
+});
