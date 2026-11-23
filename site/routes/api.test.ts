@@ -681,6 +681,70 @@ describe("API rate validation (#1440)", () => {
   });
 });
 
+describe("API name validation (#1456)", () => {
+  function nameTenant() {
+    const db = new BunDatabase(":memory:");
+    db.exec(`CREATE TABLE clients (id INTEGER PRIMARY KEY, name TEXT, color TEXT, rate REAL)`);
+    db.exec(`CREATE TABLE projects (id INTEGER PRIMARY KEY, name TEXT, client_id INTEGER)`);
+    return {
+      db,
+      qRunning: stubStatement(), qOne: stubStatement(), qRange: stubStatement(),
+      qInvoice: stubStatement(), qInvoices: stubStatement(),
+      groupToLineItems: () => [], unbilledEntries: () => [],
+      getInvoice: () => null,
+      invoiceTotals: () => ({ subtotal: 0, tax: 0, total: 0 }),
+      nextInvoiceNumber: () => "INV-0001", mintPublicToken: () => "tok",
+      stripeLinkFor: async () => ({}),
+      revenueTotals: () => null, revenueMonthly: () => [], revenueByClient: () => [],
+      revenueOverdue: () => [], revenueSnapshot: () => ({ totals: null, by_month: [], by_client: [], overdue: [] }), freezeInvoiceSnapshots: () => {},
+    };
+  }
+  async function post(tenant: any, path: string, body: unknown) {
+    const handleApi = createApiRouter({
+      getTenant: () => tenant as any,
+TOKEN: ["test", "token"].join("-"),
+      authedApi: () => true,
+      json: (data: unknown, status = 200) => Response.json(data, { status }),
+      entryToJson: (e: any) => e,
+      verifyWebhookSignature: () => false,
+      shareOrigin: () => "",
+    }).handleApi;
+    const req = new Request(`http://localhost${path}`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    return (await handleApi(req, new URL(req.url), path, "POST"))!;
+  }
+  test("POST /api/clients with a whitespace-only name is a 400 and creates nothing", async () => {
+    const tenant = nameTenant();
+    const res = await post(tenant, "/api/clients", { name: "   " });
+    expect(res.status).toBe(400);
+    expect((await res.json() as any).error).toBe("name required");
+    expect((tenant.db.query("SELECT COUNT(*) AS n FROM clients").get() as any).n).toBe(0);
+  });
+  test("POST /api/clients stores a padded name trimmed", async () => {
+    const tenant = nameTenant();
+    const res = await post(tenant, "/api/clients", { name: "  Acme  " });
+    expect(res.status).toBe(201);
+    expect((await res.json() as any).name).toBe("Acme");
+    expect((tenant.db.query("SELECT name FROM clients").get() as any).name).toBe("Acme");
+  });
+  test("POST /api/projects with a whitespace-only name is a 400 and creates nothing", async () => {
+    const tenant = nameTenant();
+    const res = await post(tenant, "/api/projects", { name: " \t " });
+    expect(res.status).toBe(400);
+    expect((await res.json() as any).error).toBe("name required");
+    expect((tenant.db.query("SELECT COUNT(*) AS n FROM projects").get() as any).n).toBe(0);
+  });
+  test("POST /api/projects stores a padded name trimmed", async () => {
+    const tenant = nameTenant();
+    const res = await post(tenant, "/api/projects", { name: "  Website  " });
+    expect(res.status).toBe(201);
+    expect((await res.json() as any).name).toBe("Website");
+    expect((tenant.db.query("SELECT name FROM projects").get() as any).name).toBe("Website");
+  });
+});
+
 /** Dates stamped on an action are the user's local day when the client
  *  sends one (client_day), else the UTC day. */
 describe("PATCH /api/invoices/:id honours client_day", () => {
