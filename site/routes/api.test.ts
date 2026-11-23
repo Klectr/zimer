@@ -755,6 +755,30 @@ describe("API name validation (#1456)", () => {
     expect((await post(tenant, "/api/projects", { name: 123 })).status).toBe(400);
     expect((tenant.db.query("SELECT COUNT(*) AS n FROM projects").get() as any).n).toBe(0);
   });
+  test("POST /api/projects with a non-existent client_id is a 400 and creates nothing", async () => {
+    const tenant = nameTenant();
+    const res = await post(tenant, "/api/projects", { name: "Website", client_id: 999 });
+    expect(res.status).toBe(400);
+    expect((await res.json() as any).error).toBe("client_id not found");
+    expect((tenant.db.query("SELECT COUNT(*) AS n FROM projects").get() as any).n).toBe(0);
+  });
+  test("POST /api/projects with a non-numeric or fractional client_id is a 400 and creates nothing", async () => {
+    const tenant = nameTenant();
+    for (const bad of ["abc", 1.5, -2, true]) {
+      expect((await post(tenant, "/api/projects", { name: "Website", client_id: bad })).status).toBe(400);
+    }
+    expect((tenant.db.query("SELECT COUNT(*) AS n FROM projects").get() as any).n).toBe(0);
+  });
+  test("POST /api/projects with an existing client_id stores it; absent stores null", async () => {
+    const tenant = nameTenant();
+    tenant.db.query("INSERT INTO clients (name) VALUES ('Acme')").run();
+    const res = await post(tenant, "/api/projects", { name: "Website", client_id: 1 });
+    expect(res.status).toBe(201);
+    expect((await res.json() as any).client_id).toBe(1);
+    const bare = await post(tenant, "/api/projects", { name: "Loose" });
+    expect(bare.status).toBe(201);
+    expect((await bare.json() as any).client_id).toBeNull();
+  });
 });
 
 /** Dates stamped on an action are the user's local day when the client

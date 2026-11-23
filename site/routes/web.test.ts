@@ -356,6 +356,38 @@ describe("create name validation (#1454)", () => {
     expect(res!.status).toBe(200);
     expect(db.query("SELECT COUNT(*) AS n FROM projects WHERE name = 'HTMX Proj'").get()).toEqual({ n: 1 });
   });
+
+  test("a project with a non-existent client_id is rejected and nothing is stored", async () => {
+    const { db, handleWeb } = setup();
+    const res = await postProject(handleWeb, { name: "Site", client_id: "999" });
+    expect(res!.status).toBe(400);
+    expect(await res!.text()).toContain("That client no longer exists.");
+    expect(db.query("SELECT COUNT(*) AS n FROM projects").get()).toEqual({ n: 0 });
+  });
+
+  test("a project with a non-numeric client_id is rejected and nothing is stored", async () => {
+    const { db, handleWeb } = setup();
+    const res = await postProject(handleWeb, { name: "Site", client_id: "abc" });
+    expect(res!.status).toBe(400);
+    expect(db.query("SELECT COUNT(*) AS n FROM projects").get()).toEqual({ n: 0 });
+  });
+
+  test("an HTMX project with a non-existent client_id gets the 422 fragment with the error, nothing stored", async () => {
+    const { db, handleWeb } = setup();
+    const res = await postProject(handleWeb, { name: "Site", client_id: "999" }, true);
+    expect(res!.status).toBe(422);
+    const body = await res!.text();
+    expect(body).toContain("That client no longer exists.");
+    expect(body).toContain('id="client-dialog-projects"');
+    expect(db.query("SELECT COUNT(*) AS n FROM projects").get()).toEqual({ n: 0 });
+  });
+
+  test("a project with an existing client_id stores it", async () => {
+    const { db, client, handleWeb } = setup();
+    const res = await postProject(handleWeb, { name: "Site", client_id: String(client.id) });
+    expect(res!.status).toBe(302);
+    expect(db.query("SELECT client_id FROM projects WHERE name = 'Site'").get()).toEqual({ client_id: client.id });
+  });
 });
 
 /** #668: manual line items — POST /invoices accepts rows with no entry
