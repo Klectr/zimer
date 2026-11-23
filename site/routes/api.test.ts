@@ -1167,3 +1167,79 @@ describe("POST /api/invoices client existence (#1468)", () => {
     expect(rows).toEqual([{ client_id: null }, { client_id: null }, { client_id: null }]);
   });
 });
+
+describe("POST /api/invoices entry_id linkability (#1470)", () => {
+  function linkTenant() {
+    let seq = 0;
+    const db = new BunDatabase(":memory:");
+    db.exec(`CREATE TABLE clients (id INTEGER PRIMARY KEY, name TEXT, color TEXT, rate REAL)`);
+    db.query("INSERT INTO clients (id, name) VALUES (3, 'Acme'), (4, 'Other')").run();
+    db.exec(`CREATE TABLE projects (id INTEGER PRIMARY KEY, name TEXT, client_id INTEGER)`);
+    db.query("INSERT INTO projects (id, name, client_id) VALUES (10, 'Site', 3), (11, 'OtherSite', 4)").run();
+    db.exec(`CREATE TABLE invoices (id INTEGER PRIMARY KEY, status TEXT NOT NULL DEFAULT 'draft', paid_at TEXT)`);
+    db.exec(`CREATE TABLE invoice_items (id INTEGER PRIMARY KEY, invoice_id INTEGER, description TEXT, hours REAL, rate REAL, amount REAL, date_from TEXT, date_to TEXT)`);
+    db.exec(`CREATE TABLE time_entries (id INTEGER PRIMARY KEY, project_id INTEGER, description TEXT, start_time TEXT, end_time TEXT, invoice_id INTEGER)`);
+    /* 1: finished + unbilled, client 3 — linkable. 2: already invoiced.
+       3: still running. 4: finished + unbilled, but client 4's time. */
+    db.query(`INSERT INTO time_entries (id, project_id, start_time, end_time, invoice_id) VALUES
+      (1, 10, '2026-11-07T09:00:00', '2026-11-07T10:00:00', NULL),
+      (2, 10, '2026-11-07T09:00:00', '2026-11-07T10:00:00', 99),
+      (3, 10, '2026-11-07T09:00:00', NULL, NULL),
+      (4, 11, '2026-11-07T09:00:00', '2026-11-07T10:00:00', NULL)`).run();
+    for (const col of ["client_id INTEGER", "number TEXT", "issue_date TEXT", "due_date TEXT",
+      "tax_rate REAL DEFAULT 0", "notes TEXT DEFAULT ''", "internal_notes TEXT DEFAULT ''",
+      "period_from TEXT", "period_to TEXT"])
+      db.exec(`ALTER TABLE invoices ADD COLUMN ${col}`);
+    return {
+      db,
+      qRunning: stubStatement(), qOne: stubStatement(), qRange: stubStatement(),
+      qInvoice: { get: (id: number) => db.query("SELECT id, status FROM invoices WHERE id = ?").get(id) } as unknown as Statement,
+      qInvoices: stubStatement(),
+      groupToLineItems: () => [],
+      unbilledEntries: () => [],
+      getInvoice: (id: number) => db.query("SELECT * FROM invoices WHERE id = ?").get(id) as any,
+      invoiceTotals: () => ({ subtotal: 0, tax: 0, total: 0 }),
+      nextInvoiceNumber: () => `INV-${String(++seq).padStart(4, "0")}`, mintPublicToken: () => "tok",
+      stripeLinkFor: async () => ({}),
+      revenueTotals: () => null, revenueMonthly: () => [], revenueByClient: () => [],
+      revenueOverdue: () => [], revenueSnapshot: () => ({ totals: null, by_month: [], by_client: [], overdue: [] }), freezeInvoiceSnapshots: () => {},
+    };
+  }
+  async function post(tenant: any, body: unknown) {
+    const handleApi = createApiRouter({
+      getTenant: () => tenant as any,
+      TOKEN: "tok", authedApi: () => true,
+      json: (data: unknown, status = 200) => Response.json(data, { status }),
+      entryToJson: (e: any) => e,
+      verifyWebhookSignature: () => false,
+      shareOrigin: () => "",
+    }).handleApi;
+    const req = new Request("http://localhost/api/invoices", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    return (await handleApi(req, new URL(req.url), "/api/invoices", "POST"))!;
+  }
+  const withEntry = (eid: number) => ({ description: "Work", hours: 1, rate: 100, entry_ids: [eid] });
+
+  test("a finished, unbilled entry of the invoice's client links", async () => {
+    const tenant = linkTenant();
+    const res = await post(tenant, { client_id: 3, items: [withEntry(1)] });
+    expect(res.status).toBe(201);
+    const inv = tenant.db.query("SELECT id FROM invoices").get() as any;
+    expect((tenant.db.query("SELECT invoice_id FROM time_entries WHERE id = 1").get() as any).invoice_id).toBe(inv.id);
+  });
+
+  test("an already-invoiced, running, other-client or missing entry is a 400 and creates nothing", async () => {
+    for (const eid of [2, 3, 4, 999]) {
+      const tenant = linkTenant();
+      const res = await post(tenant, { client_id: 3, items: [withEntry(eid)] });
+      expect(res.status).toBe(400);
+      expect((await res.json() as any).error).toContain("entry");
+      expect((tenant.db.query("SELECT COUNT(*) AS n FROM invoices").get() as any).n).toBe(0);
+      expect((tenant.db.query("SELECT COUNT(*) AS n FROM invoice_items").get() as any).n).toBe(0);
+      const after = tenant.db.query("SELECT invoice_id FROM time_entries WHERE id = ?").get(eid) as any;
+      if (after) expect(after.invoice_id).toBe(eid === 2 ? 99 : null);
+    }
+  });
+});
