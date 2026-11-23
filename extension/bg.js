@@ -6,6 +6,15 @@ function decideToggle(running) {
   return running ? "stop" : "start";
 }
 
+function dropStaleProject(lastTimer) {
+  if (!lastTimer) return lastTimer;
+  return { ...lastTimer, projectId: null };
+}
+
+function isStaleProjectError(e) {
+  return !!e && e.status === 400 && e.serverError === "project_id not found";
+}
+
 async function api(path, opts = {}) {
   const { siteUrl, token } = await chrome.storage.sync.get(["siteUrl", "token"]);
   const base = (siteUrl || "").replace(/\/+$/, "");
@@ -14,8 +23,28 @@ async function api(path, opts = {}) {
     ...opts,
     headers: { Authorization: "Bearer " + token, "Content-Type": "application/json", ...(opts.headers || {}) },
   });
-  if (!res.ok) throw new Error(`Request failed (${res.status})`);
+  if (!res.ok) {
+    let serverError = "";
+    try {
+      const data = await res.json();
+      serverError = (data && data.error) || "";
+    } catch {}
+    const err = new Error(serverError || `Request failed (${res.status})`);
+    err.status = res.status;
+    err.serverError = serverError;
+    throw err;
+  }
   return res.status === 204 ? null : res.json();
+}
+
+async function startTimer(lastTimer) {
+  await api("/api/timer/start", {
+    method: "POST",
+    body: JSON.stringify({
+      description: (lastTimer && lastTimer.description) || "",
+      project_id: (lastTimer && lastTimer.projectId) || null,
+    }),
+  });
 }
 
 async function toggleTimer() {
@@ -25,13 +54,19 @@ async function toggleTimer() {
     return "stopped";
   }
   const { lastTimer } = await chrome.storage.sync.get(["lastTimer"]);
-  await api("/api/timer/start", {
-    method: "POST",
-    body: JSON.stringify({
-      description: (lastTimer && lastTimer.description) || "",
-      project_id: (lastTimer && lastTimer.projectId) || null,
-    }),
-  });
+  try {
+    await startTimer(lastTimer);
+  } catch (e) {
+    if (!isStaleProjectError(e) || !(lastTimer && lastTimer.projectId)) throw e;
+    const { lastTimer: current } = await chrome.storage.sync.get(["lastTimer"]);
+    if (current && current.projectId === lastTimer.projectId) {
+      const cleared = dropStaleProject(current);
+      await chrome.storage.sync.set({ lastTimer: cleared });
+      await startTimer(cleared);
+    } else {
+      await startTimer(current || dropStaleProject(lastTimer));
+    }
+  }
   return "started";
 }
 
@@ -42,4 +77,4 @@ if (typeof chrome !== "undefined" && chrome.commands && chrome.commands.onComman
   });
 }
 
-if (typeof module !== "undefined") module.exports = { decideToggle };
+if (typeof module !== "undefined") module.exports = { decideToggle, dropStaleProject, isStaleProjectError, toggleTimer };
