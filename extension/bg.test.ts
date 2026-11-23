@@ -41,7 +41,7 @@ function makeHarness(opts: { running?: boolean; lastTimer?: any; validProjectId?
       const body = JSON.parse(init.body);
       startBodies.push(body);
       if (body.project_id !== null && body.project_id !== opts.validProjectId) {
-        return { ok: false, status: 400, json: async () => ({ error: "project not found" }) };
+        return { ok: false, status: 400, json: async () => ({ error: "project_id not found" }) };
       }
       return { ok: true, status: 200, json: async () => ({}) };
     }
@@ -104,8 +104,119 @@ describe("extension bg hotkey toggle with a stale project (#1460)", () => {
         return { ok: false, status: 400, json: async () => ({ error: "bad request" }) };
       },
     );
-    await expect(bg.toggleTimer()).rejects.toThrow("Request failed (400)");
+    await expect(bg.toggleTimer()).rejects.toThrow("bad request");
     expect(starts).toBe(1);
+  });
+
+  test("an unrelated 400 with a stored project does not clear it or retry", async () => {
+    let starts = 0;
+    const store: Record<string, any> = { lastTimer: { description: "Deep work", projectId: 5 } };
+    const bg = loadBg(
+      {
+        storage: {
+          sync: {
+            get: async (keys: string[]) =>
+              keys.includes("lastTimer")
+                ? { lastTimer: store.lastTimer }
+                : { siteUrl: "https://example.test", token: "test-token" },
+            set: async (values: Record<string, any>) => Object.assign(store, values),
+          },
+        },
+      },
+      async (url: string) => {
+        if (url.endsWith("/api/status")) return { ok: true, status: 200, json: async () => ({ running: false }) };
+        starts++;
+        return { ok: false, status: 400, json: async () => ({ error: "description too long" }) };
+      },
+    );
+    await expect(bg.toggleTimer()).rejects.toThrow("description too long");
+    expect(starts).toBe(1);
+    expect(store.lastTimer.projectId).toBe(5);
+  });
+
+  test("a 500 with a stored project does not clear it or retry", async () => {
+    let starts = 0;
+    const store: Record<string, any> = { lastTimer: { description: "Deep work", projectId: 999 } };
+    const bg = loadBg(
+      {
+        storage: {
+          sync: {
+            get: async (keys: string[]) =>
+              keys.includes("lastTimer")
+                ? { lastTimer: store.lastTimer }
+                : { siteUrl: "https://example.test", token: "test-token" },
+            set: async (values: Record<string, any>) => Object.assign(store, values),
+          },
+        },
+      },
+      async (url: string) => {
+        if (url.endsWith("/api/status")) return { ok: true, status: 200, json: async () => ({ running: false }) };
+        starts++;
+        return { ok: false, status: 500, json: async () => ({ error: "boom" }) };
+      },
+    );
+    await expect(bg.toggleTimer()).rejects.toThrow("boom");
+    expect(starts).toBe(1);
+    expect(store.lastTimer.projectId).toBe(999);
+  });
+
+  test("when the retry also fails, exactly two starts are attempted and the error propagates", async () => {
+    let starts = 0;
+    const bg = loadBg(
+      {
+        storage: {
+          sync: {
+            get: async (keys: string[]) =>
+              keys.includes("lastTimer")
+                ? { lastTimer: { description: "", projectId: 999 } }
+                : { siteUrl: "https://example.test", token: "test-token" },
+            set: async () => {},
+          },
+        },
+      },
+      async (url: string, init: any = {}) => {
+        if (url.endsWith("/api/status")) return { ok: true, status: 200, json: async () => ({ running: false }) };
+        starts++;
+        const body = JSON.parse(init.body);
+        if (body.project_id !== null) return { ok: false, status: 400, json: async () => ({ error: "project_id not found" }) };
+        return { ok: false, status: 500, json: async () => ({ error: "boom" }) };
+      },
+    );
+    await expect(bg.toggleTimer()).rejects.toThrow("boom");
+    expect(starts).toBe(2);
+  });
+
+  test("a fresher lastTimer written mid-toggle wins over clearing the stale snapshot", async () => {
+    let lastTimerReads = 0;
+    const sets: any[] = [];
+    const startBodies: any[] = [];
+    const bg = loadBg(
+      {
+        storage: {
+          sync: {
+            get: async (keys: string[]) => {
+              if (!keys.includes("lastTimer")) return { siteUrl: "https://example.test", token: "test-token" };
+              lastTimerReads++;
+              return lastTimerReads === 1
+                ? { lastTimer: { description: "Old", projectId: 999 } }
+                : { lastTimer: { description: "New", projectId: 7 } };
+            },
+            set: async (values: Record<string, any>) => sets.push(values),
+          },
+        },
+      },
+      async (url: string, init: any = {}) => {
+        if (url.endsWith("/api/status")) return { ok: true, status: 200, json: async () => ({ running: false }) };
+        const body = JSON.parse(init.body);
+        startBodies.push(body);
+        if (body.project_id === 999) return { ok: false, status: 400, json: async () => ({ error: "project_id not found" }) };
+        return { ok: true, status: 200, json: async () => ({}) };
+      },
+    );
+    await expect(bg.toggleTimer()).resolves.toBe("started");
+    expect(startBodies.length).toBe(2);
+    expect(startBodies[1]).toEqual({ description: "New", project_id: 7 });
+    expect(sets.length).toBe(0);
   });
 
   test("a running timer still stops and never starts", async () => {

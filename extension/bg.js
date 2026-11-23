@@ -11,6 +11,10 @@ function dropStaleProject(lastTimer) {
   return { ...lastTimer, projectId: null };
 }
 
+function isStaleProjectError(e) {
+  return !!e && e.status === 400 && e.serverError === "project_id not found";
+}
+
 async function api(path, opts = {}) {
   const { siteUrl, token } = await chrome.storage.sync.get(["siteUrl", "token"]);
   const base = (siteUrl || "").replace(/\/+$/, "");
@@ -20,8 +24,14 @@ async function api(path, opts = {}) {
     headers: { Authorization: "Bearer " + token, "Content-Type": "application/json", ...(opts.headers || {}) },
   });
   if (!res.ok) {
-    const err = new Error(`Request failed (${res.status})`);
+    let serverError = "";
+    try {
+      const data = await res.json();
+      serverError = (data && data.error) || "";
+    } catch {}
+    const err = new Error(serverError || `Request failed (${res.status})`);
     err.status = res.status;
+    err.serverError = serverError;
     throw err;
   }
   return res.status === 204 ? null : res.json();
@@ -47,10 +57,15 @@ async function toggleTimer() {
   try {
     await startTimer(lastTimer);
   } catch (e) {
-    if (e.status !== 400 || !(lastTimer && lastTimer.projectId)) throw e;
-    const cleared = dropStaleProject(lastTimer);
-    await chrome.storage.sync.set({ lastTimer: cleared });
-    await startTimer(cleared);
+    if (!isStaleProjectError(e) || !(lastTimer && lastTimer.projectId)) throw e;
+    const { lastTimer: current } = await chrome.storage.sync.get(["lastTimer"]);
+    if (current && current.projectId === lastTimer.projectId) {
+      const cleared = dropStaleProject(current);
+      await chrome.storage.sync.set({ lastTimer: cleared });
+      await startTimer(cleared);
+    } else {
+      await startTimer(current || dropStaleProject(lastTimer));
+    }
   }
   return "started";
 }
@@ -62,4 +77,4 @@ if (typeof chrome !== "undefined" && chrome.commands && chrome.commands.onComman
   });
 }
 
-if (typeof module !== "undefined") module.exports = { decideToggle, dropStaleProject, toggleTimer };
+if (typeof module !== "undefined") module.exports = { decideToggle, dropStaleProject, isStaleProjectError, toggleTimer };
