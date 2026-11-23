@@ -956,3 +956,92 @@ describe("timer stop end time (#1452)", () => {
     expect(row().end_time).toBe(new Date(new Date(future).getTime() + 1000).toISOString());
   });
 });
+
+describe("API entry project_id validation (#1458)", () => {
+  function entryTenant() {
+    const db = new BunDatabase(":memory:");
+    db.exec(`CREATE TABLE projects (id INTEGER PRIMARY KEY, name TEXT, client_id INTEGER)`);
+    db.exec(`CREATE TABLE time_entries (
+      id INTEGER PRIMARY KEY, project_id INTEGER, description TEXT NOT NULL DEFAULT '',
+      start_time TEXT NOT NULL, end_time TEXT, invoice_id INTEGER)`);
+    db.query("INSERT INTO projects (id, name, client_id) VALUES (1, 'Website', NULL)").run();
+    db.query("INSERT INTO time_entries (id, project_id, description, start_time, end_time) VALUES (1, NULL, 'Work', '2026-10-07T14:00:00.000Z', '2026-10-07T15:00:00.000Z')").run();
+    const withStatus = (r: any) => r ? { ...r, invoice_status: null } : null;
+    const qOne = { get: (id: number) => withStatus(db.query("SELECT * FROM time_entries WHERE id = ?").get(id)) } as unknown as Statement;
+    const qRunning = { get: () => withStatus(db.query("SELECT * FROM time_entries WHERE end_time IS NULL ORDER BY start_time DESC LIMIT 1").get()) } as unknown as Statement;
+    const tenant = {
+      db, qRunning, qOne, qRange: stubStatement(),
+      qInvoice: stubStatement(), qInvoices: stubStatement(),
+      groupToLineItems: () => [], unbilledEntries: () => [],
+      getInvoice: () => null, invoiceTotals: () => ({ subtotal: 0, tax: 0, total: 0 }),
+      nextInvoiceNumber: () => "INV-0001", mintPublicToken: () => "tok",
+      stripeLinkFor: async () => ({}),
+      revenueTotals: () => null, revenueMonthly: () => [], revenueByClient: () => [], revenueOverdue: () => [],
+      revenueSnapshot: () => ({ totals: null, by_month: [], by_client: [], overdue: [] }),
+      freezeInvoiceSnapshots: () => {},
+    };
+    const { handleApi } = createApiRouter({
+      getTenant: () => tenant as any, TOKEN: "test-token", authedApi: () => true,
+      json: (data: unknown, status = 200) => Response.json(data, { status }),
+      entryToJson: (e: any) => e, verifyWebhookSignature: () => false, shareOrigin: () => "",
+    });
+    async function call(method: string, path: string, body: unknown) {
+      const req = new Request(`http://localhost${path}`, {
+        method, headers: { "content-type": "application/json" }, body: JSON.stringify(body),
+      });
+      return (await handleApi(req, new URL(req.url), path, method))!;
+    }
+    const count = () => (db.query("SELECT COUNT(*) AS n FROM time_entries").get() as any).n;
+    const projectOf = (id: number) => (db.query("SELECT project_id FROM time_entries WHERE id = ?").get(id) as any)?.project_id;
+    return { call, count, projectOf };
+  }
+
+  test("POST /api/timer/start with a non-existent project_id is a 400 and creates nothing", async () => {
+    const { call, count } = entryTenant();
+    const res = await call("POST", "/api/timer/start", { project_id: 999, description: "x" });
+    expect(res.status).toBe(400);
+    expect((await res.json() as any).error).toBe("project_id not found");
+    expect(count()).toBe(1);
+  });
+
+  test("POST /api/timer/start with a non-numeric or fractional project_id is a 400 and creates nothing", async () => {
+    const { call, count } = entryTenant();
+    for (const bad of ["abc", 1.5, -2, true, [1], { id: 1 }]) {
+      const res = await call("POST", "/api/timer/start", { project_id: bad, description: "x" });
+      expect(res.status).toBe(400);
+    }
+    expect(count()).toBe(1);
+  });
+
+  test("POST /api/timer/start with an existing project_id stores it", async () => {
+    const { call, projectOf } = entryTenant();
+    const res = await call("POST", "/api/timer/start", { project_id: 1, description: "x" });
+    expect(res.status).toBe(201);
+    expect(projectOf(2)).toBe(1);
+  });
+
+  test("PATCH /api/entries/:id with a non-existent project_id is a 400 and saves nothing", async () => {
+    const { call, projectOf } = entryTenant();
+    const res = await call("PATCH", "/api/entries/1", { project_id: 999 });
+    expect(res.status).toBe(400);
+    expect((await res.json() as any).error).toBe("project_id not found");
+    expect(projectOf(1)).toBeNull();
+  });
+
+  test("PATCH /api/entries/:id with a non-numeric project_id is a 400 and saves nothing", async () => {
+    const { call, projectOf } = entryTenant();
+    const res = await call("PATCH", "/api/entries/1", { project_id: "abc" });
+    expect(res.status).toBe(400);
+    expect(projectOf(1)).toBeNull();
+  });
+
+  test("PATCH /api/entries/:id with an existing project_id stores it; null clears it", async () => {
+    const { call, projectOf } = entryTenant();
+    let res = await call("PATCH", "/api/entries/1", { project_id: 1 });
+    expect(res.status).toBe(200);
+    expect(projectOf(1)).toBe(1);
+    res = await call("PATCH", "/api/entries/1", { project_id: null });
+    expect(res.status).toBe(200);
+    expect(projectOf(1)).toBeNull();
+  });
+});
