@@ -383,8 +383,9 @@ export function createApiRouter(deps: ApiDeps) {
             if (path === "/api/projects" && method === "POST") {
               const name = typeof body.name === "string" ? body.name.trim() : "";
               if (!name) return json({ error: "name required" }, 400);
-              const clientId = body.client_id ? existingClientId(db, body.client_id) : null;
-              if (body.client_id && clientId === null)
+              const hasClient = body.client_id !== undefined && body.client_id !== null && body.client_id !== "";
+              const clientId = hasClient ? existingClientId(db, body.client_id) : null;
+              if (hasClient && clientId === null)
                 return json({ error: "client_id not found" }, 400);
               const r = db.query("INSERT INTO projects (name, client_id) VALUES (?, ?) RETURNING *")
                 .get(name, clientId) as any;

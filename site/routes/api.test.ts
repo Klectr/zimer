@@ -764,10 +764,18 @@ describe("API name validation (#1456)", () => {
   });
   test("POST /api/projects with a non-numeric or fractional client_id is a 400 and creates nothing", async () => {
     const tenant = nameTenant();
-    for (const bad of ["abc", 1.5, -2, true]) {
+    for (const bad of ["abc", 1.5, -2, true, 0, "0", false]) {
       expect((await post(tenant, "/api/projects", { name: "Website", client_id: bad })).status).toBe(400);
     }
     expect((tenant.db.query("SELECT COUNT(*) AS n FROM projects").get() as any).n).toBe(0);
+  });
+  test("POST /api/projects with an empty client_id stores no client", async () => {
+    const tenant = nameTenant();
+    for (const empty of ["", null]) {
+      const res = await post(tenant, "/api/projects", { name: "Website", client_id: empty });
+      expect(res.status).toBe(201);
+      expect((await res.json() as any).client_id).toBeNull();
+    }
   });
   test("POST /api/projects with an existing client_id stores it; absent stores null", async () => {
     const tenant = nameTenant();

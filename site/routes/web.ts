@@ -1015,7 +1015,7 @@ export function createWebRouter(deps: WebDeps) {
           }
           db.query("INSERT INTO projects (name, client_id) VALUES (?, ?)")
             .run(name, clientId);
-          const sel = clientSelection(cid ? String(cid) : "none");
+          const sel = clientSelection(clientId ? String(clientId) : "none");
           if (isHtmx(req)) {
             return html(clientDialogProjects(sel!) + manageListsOob());
           }
