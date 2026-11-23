@@ -1203,7 +1203,13 @@ export function createWebRouter(deps: WebDeps) {
           const number = String(form.get("number") || nextInvoiceNumber());
           if (db.query("SELECT 1 FROM invoices WHERE number = ?").get(number))
             return new Response("Zinvoice number already exists.", { status: 400 });
-          const clientId = form.get("client_id") ? Number(form.get("client_id")) : null;
+          /* #1468: a provided client_id must name a real client, as on
+             project create — a stale or tampered id would store an invoice
+             that renders client-less. Absent stays client-less. */
+          const cidRaw = form.get("client_id");
+          const clientId = cidRaw ? existingClientId(db, String(cidRaw)) : null;
+          if (cidRaw && clientId === null)
+            return new Response("That client no longer exists.", { status: 400 });
           const dueRaw = String(form.get("due_date") || "");
           /* #1350: keep the wizard's From/To as the Zinvoice's billing period.
              Only a well-formed, ordered pair is stored; anything else stays

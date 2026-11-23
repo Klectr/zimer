@@ -279,6 +279,8 @@ describe("invoice detail projection (#1281)", () => {
   function detailTenant() {
     const db = new BunDatabase(":memory:");
     db.exec(`CREATE TABLE invoices (id INTEGER PRIMARY KEY, status TEXT NOT NULL DEFAULT 'draft', paid_at TEXT)`);
+    db.exec(`CREATE TABLE clients (id INTEGER PRIMARY KEY, name TEXT, color TEXT, rate REAL)`);
+    db.query("INSERT INTO clients (id, name) VALUES (3, 'Acme')").run();
     db.query("INSERT INTO invoices (id, status) VALUES (7, 'sent')").run();
     return {
       db,
@@ -416,6 +418,8 @@ describe("POST /api/invoices date validation (#1436)", () => {
   function dateTenant() {
     const db = new BunDatabase(":memory:");
     db.exec(`CREATE TABLE invoices (id INTEGER PRIMARY KEY, status TEXT NOT NULL DEFAULT 'draft', paid_at TEXT)`);
+    db.exec(`CREATE TABLE clients (id INTEGER PRIMARY KEY, name TEXT, color TEXT, rate REAL)`);
+    db.query("INSERT INTO clients (id, name) VALUES (3, 'Acme')").run();
     db.exec(`CREATE TABLE invoice_items (id INTEGER PRIMARY KEY, invoice_id INTEGER, description TEXT, hours REAL, rate REAL, amount REAL, date_from TEXT, date_to TEXT)`);
     db.exec(`CREATE TABLE time_entries (id INTEGER PRIMARY KEY, invoice_id INTEGER)`);
     for (const col of ["client_id INTEGER", "number TEXT", "issue_date TEXT", "due_date TEXT",
@@ -513,6 +517,7 @@ describe("API rate validation (#1440)", () => {
   function rateTenant() {
     const db = new BunDatabase(":memory:");
     db.exec(`CREATE TABLE clients (id INTEGER PRIMARY KEY, name TEXT, color TEXT, rate REAL)`);
+    db.query("INSERT INTO clients (id, name) VALUES (3, 'Seed Co')").run();
     db.exec(`CREATE TABLE invoices (id INTEGER PRIMARY KEY, status TEXT NOT NULL DEFAULT 'draft', paid_at TEXT)`);
     db.exec(`CREATE TABLE invoice_items (id INTEGER PRIMARY KEY, invoice_id INTEGER, description TEXT, hours REAL, rate REAL, amount REAL, date_from TEXT, date_to TEXT)`);
     db.exec(`CREATE TABLE time_entries (id INTEGER PRIMARY KEY, invoice_id INTEGER)`);
@@ -570,7 +575,7 @@ describe("API rate validation (#1440)", () => {
     const tenant = rateTenant();
     const res = await post(tenant, "/api/clients", { name: "Acme", rate: true });
     expect(res.status).toBe(400);
-    expect((tenant.db.query("SELECT COUNT(*) AS n FROM clients").get() as any).n).toBe(0);
+    expect((tenant.db.query("SELECT COUNT(*) AS n FROM clients WHERE name = 'Acme'").get() as any).n).toBe(0);
   });
   test("POST /api/invoices with a rate too large to round is a 400 and creates nothing", async () => {
     const tenant = rateTenant();
@@ -635,7 +640,7 @@ describe("API rate validation (#1440)", () => {
     const res = await post(tenant, "/api/clients", { name: "Acme", rate: -50 });
     expect(res.status).toBe(400);
     expect((await res.json() as any).error).toContain("rate");
-    expect((tenant.db.query("SELECT COUNT(*) AS n FROM clients").get() as any).n).toBe(0);
+    expect((tenant.db.query("SELECT COUNT(*) AS n FROM clients WHERE name = 'Acme'").get() as any).n).toBe(0);
   });
   test("POST /api/clients stores a valid rate and defaults an absent one to 0", async () => {
     const tenant = rateTenant();
@@ -1075,5 +1080,89 @@ describe("API entry project_id validation (#1458)", () => {
     res = await call("PATCH", "/api/entries/1", { project_id: null });
     expect(res.status).toBe(200);
     expect(projectOf(1)).toBeNull();
+  });
+});
+
+describe("POST /api/invoices client existence (#1468)", () => {
+  function invTenant() {
+    let seq = 0;
+    const db = new BunDatabase(":memory:");
+    db.exec(`CREATE TABLE clients (id INTEGER PRIMARY KEY, name TEXT, color TEXT, rate REAL)`);
+    db.query("INSERT INTO clients (id, name) VALUES (3, 'Acme')").run();
+    db.exec(`CREATE TABLE invoices (id INTEGER PRIMARY KEY, status TEXT NOT NULL DEFAULT 'draft', paid_at TEXT)`);
+    db.exec(`CREATE TABLE invoice_items (id INTEGER PRIMARY KEY, invoice_id INTEGER, description TEXT, hours REAL, rate REAL, amount REAL, date_from TEXT, date_to TEXT)`);
+    db.exec(`CREATE TABLE time_entries (id INTEGER PRIMARY KEY, invoice_id INTEGER)`);
+    for (const col of ["client_id INTEGER", "number TEXT", "issue_date TEXT", "due_date TEXT",
+      "tax_rate REAL DEFAULT 0", "notes TEXT DEFAULT ''", "internal_notes TEXT DEFAULT ''",
+      "period_from TEXT", "period_to TEXT"])
+      db.exec(`ALTER TABLE invoices ADD COLUMN ${col}`);
+    return {
+      db,
+      qRunning: stubStatement(), qOne: stubStatement(), qRange: stubStatement(),
+      qInvoice: { get: (id: number) => db.query("SELECT id, status FROM invoices WHERE id = ?").get(id) } as unknown as Statement,
+      qInvoices: stubStatement(),
+      groupToLineItems: () => [{ description: "Work", hours: 2, rate: 50, entry_ids: [] }],
+      unbilledEntries: () => [{ id: 1 }],
+      getInvoice: (id: number) => db.query("SELECT * FROM invoices WHERE id = ?").get(id) as any,
+      invoiceTotals: () => ({ subtotal: 0, tax: 0, total: 0 }),
+      nextInvoiceNumber: () => `INV-${String(++seq).padStart(4, "0")}`, mintPublicToken: () => "tok",
+      stripeLinkFor: async () => ({}),
+      revenueTotals: () => null, revenueMonthly: () => [], revenueByClient: () => [],
+      revenueOverdue: () => [], revenueSnapshot: () => ({ totals: null, by_month: [], by_client: [], overdue: [] }), freezeInvoiceSnapshots: () => {},
+    };
+  }
+  async function post(tenant: any, body: unknown) {
+    const handleApi = createApiRouter({
+      getTenant: () => tenant as any,
+      TOKEN: "test-token",
+      authedApi: () => true,
+      json: (data: unknown, status = 200) => Response.json(data, { status }),
+      entryToJson: (e: any) => e,
+      verifyWebhookSignature: () => false,
+      shareOrigin: () => "",
+    }).handleApi;
+    const req = new Request("http://localhost/api/invoices", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    return (await handleApi(req, new URL(req.url), "/api/invoices", "POST"))!;
+  }
+  const item = { description: "Work", hours: 1, rate: 100 };
+  const count = (tenant: any) => (tenant.db.query("SELECT COUNT(*) AS n FROM invoices").get() as any).n;
+
+  test("a non-existent client_id is a 400 and creates nothing, on both build paths", async () => {
+    const tenant = invTenant();
+    const viaItems = await post(tenant, { client_id: 999, items: [item] });
+    expect(viaItems.status).toBe(400);
+    expect((await viaItems.json() as any).error).toBe("client_id not found");
+    const viaRange = await post(tenant, { client_id: 999, from: "2026-11-07", to: "2026-11-20", rate: 50 });
+    expect(viaRange.status).toBe(400);
+    expect((await viaRange.json() as any).error).toBe("client_id not found");
+    expect(count(tenant)).toBe(0);
+  });
+
+  test("a non-numeric, fractional, negative or boolean client_id is a 400 and creates nothing", async () => {
+    const tenant = invTenant();
+    for (const bad of ["abc", 1.5, -2, true, 0, "0", false, [3], {}]) {
+      expect((await post(tenant, { client_id: bad, items: [item] })).status).toBe(400);
+    }
+    expect(count(tenant)).toBe(0);
+  });
+
+  test("an existing client_id stores it, on both build paths", async () => {
+    const tenant = invTenant();
+    expect((await post(tenant, { client_id: 3, items: [item] })).status).toBe(201);
+    expect((await post(tenant, { client_id: "3", from: "2026-11-07", to: "2026-11-20", rate: 50 })).status).toBe(201);
+    const rows = tenant.db.query("SELECT client_id FROM invoices ORDER BY id").all() as any[];
+    expect(rows).toEqual([{ client_id: 3 }, { client_id: 3 }]);
+  });
+
+  test("an absent or empty client_id still creates a client-less invoice from items[]", async () => {
+    const tenant = invTenant();
+    for (const body of [{ items: [item] }, { client_id: "", items: [item] }, { client_id: null, items: [item] }]) {
+      expect((await post(tenant, body)).status).toBe(201);
+    }
+    const rows = tenant.db.query("SELECT client_id FROM invoices ORDER BY id").all() as any[];
+    expect(rows).toEqual([{ client_id: null }, { client_id: null }, { client_id: null }]);
   });
 });
