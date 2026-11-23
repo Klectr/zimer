@@ -431,6 +431,15 @@ export function createApiRouter(deps: ApiDeps) {
               const number = String(body.number || nextInvoiceNumber());
               if (db.query("SELECT 1 FROM invoices WHERE number = ?").get(number))
                 return json({ error: "invoice number already exists" }, 400);
+              /* #1468: a provided client_id must name a real client, as on
+                 project create (#1464) — a dangling or non-numeric id would
+                 store an invoice that renders client-less and can never be
+                 tied back to a client. Absent/empty stays client-less,
+                 which client deletes already produce by nulling the FK. */
+              const hasClient = body.client_id !== undefined && body.client_id !== null && body.client_id !== "";
+              const clientId = hasClient ? existingClientId(db, body.client_id) : null;
+              if (hasClient && clientId === null)
+                return json({ error: "client_id not found" }, 400);
               /* #1436: issue/due are stored dates — an explicitly provided
                  one must be a real calendar day (validYmd, as #1429);
                  verbatim garbage would feed ordering, overdue math, the
@@ -455,7 +464,7 @@ export function createApiRouter(deps: ApiDeps) {
                 if (rate === null)
                   return json({ error: "rate must be a number at or above 0" }, 400);
                 items = groupToLineItems(
-                  unbilledEntries(Number(body.client_id), String(body.from), String(body.to)),
+                  unbilledEntries(clientId!, String(body.from), String(body.to)),
                   rate);
               }
               /* #1436: per-line billing dates are stored dates too —
@@ -519,7 +528,7 @@ export function createApiRouter(deps: ApiDeps) {
                 `INSERT INTO invoices (client_id, number, issue_date, due_date, tax_rate, notes, internal_notes, period_from, period_to)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`)
                 .get(
-                  body.client_id ? Number(body.client_id) : null,
+                  clientId,
                   number,
                   issueDate,
                   dueDate,

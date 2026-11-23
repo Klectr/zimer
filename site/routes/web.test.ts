@@ -435,6 +435,29 @@ describe("manual line items (#668)", () => {
     expect(item.description).toBe("Item");
   });
 
+  test("an invoice with a non-existent client_id is rejected and nothing is stored (#1468)", async () => {
+    const { db, handleWeb } = setup();
+    const res = await postInvoice(handleWeb, {
+      ...baseInvoiceFields, client_id: "999", groups: "1",
+      g0_desc: "Logo design", g0_hours: "1", g0_rate: "250",
+      g0_ids: "", g0_date_from: "", g0_date_to: "",
+    });
+    expect(res!.status).toBe(400);
+    expect(await res!.text()).toContain("That client no longer exists.");
+    expect(db.query("SELECT COUNT(*) AS n FROM invoices").get()).toEqual({ n: 0 });
+  });
+
+  test("an invoice with a non-numeric client_id is rejected and nothing is stored (#1468)", async () => {
+    const { db, handleWeb } = setup();
+    const res = await postInvoice(handleWeb, {
+      ...baseInvoiceFields, client_id: "abc", groups: "1",
+      g0_desc: "Logo design", g0_hours: "1", g0_rate: "250",
+      g0_ids: "", g0_date_from: "", g0_date_to: "",
+    });
+    expect(res!.status).toBe(400);
+    expect(db.query("SELECT COUNT(*) AS n FROM invoices").get()).toEqual({ n: 0 });
+  });
+
   test("mixed auto and manual rows: entries link only on the auto row", async () => {
     const { db, client, handleWeb } = setup();
     db.query("INSERT INTO projects (name, client_id) VALUES ('Site', ?)").run(client.id);
