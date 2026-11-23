@@ -1537,3 +1537,58 @@ describe("status route honours client_day", () => {
     expect((db.query("SELECT sent_at FROM invoices").get() as any).sent_at).toBe(yesterdayUtc());
   });
 });
+
+/** #1462: the web entry routes get the API's #1458 check — a provided
+ * project_id must name a real project, or nothing is stored. */
+describe("web entry project_id validation (#1462)", () => {
+  const times = { start_time: "2026-10-08T09:00:00.000Z", end_time: "2026-10-08T10:00:00.000Z" };
+
+  test("POST /entries with a nonexistent project_id is 400 and creates nothing", async () => {
+    const { db, handleWeb } = setup();
+    const r = await postEntry(handleWeb, { project_id: "999", description: "", ...times });
+    expect(r!.status).toBe(400);
+    expect((db.query("SELECT COUNT(*) c FROM time_entries").get() as any).c).toBe(0);
+  });
+
+  test("POST /entries with a non-numeric project_id is 400 and creates nothing", async () => {
+    const { db, handleWeb } = setup();
+    const r = await postEntry(handleWeb, { project_id: "abc", description: "", ...times });
+    expect(r!.status).toBe(400);
+    expect((db.query("SELECT COUNT(*) c FROM time_entries").get() as any).c).toBe(0);
+  });
+
+  test("POST /entries with a real project_id still works", async () => {
+    const { db, handleWeb } = setup();
+    db.query("INSERT INTO projects (name) VALUES ('Site')").run();
+    const project = db.query("SELECT id FROM projects").get() as any;
+    const r = await postEntry(handleWeb, { project_id: String(project.id), description: "", ...times });
+    expect(r!.status).toBe(201);
+    expect((db.query("SELECT project_id FROM time_entries").get() as any).project_id).toBe(project.id);
+  });
+
+  test("POST /timer/start with a nonexistent project_id is 400 and starts nothing", async () => {
+    const { db, handleWeb } = setup();
+    const form = new FormData();
+    form.append("project_id", "999");
+    form.append("description", "");
+    const req = new Request("http://x/timer/start", { method: "POST", body: form });
+    const r = await handleWeb(req, new URL(req.url), "/timer/start", "POST");
+    expect(r!.status).toBe(400);
+    expect((db.query("SELECT COUNT(*) c FROM time_entries").get() as any).c).toBe(0);
+  });
+
+  test("POST /entries/:id with a nonexistent project_id is 400 and leaves the entry untouched", async () => {
+    const { db, handleWeb } = setup();
+    const ins = db.query("INSERT INTO time_entries (description, start_time, end_time) VALUES ('x', '2026-10-08T09:00:00.000Z', '2026-10-08T10:00:00.000Z')").run();
+    const id = Number(ins.lastInsertRowid);
+    const form = new FormData();
+    form.append("description", "x");
+    form.append("project_id", "999");
+    form.append("start_time", "2026-10-08T09:00:00.000Z");
+    form.append("end_time", "2026-10-08T10:00:00.000Z");
+    const req = new Request(`http://x/entries/${id}`, { method: "POST", body: form });
+    const r = await handleWeb(req, new URL(req.url), `/entries/${id}`, "POST");
+    expect(r!.status).toBe(400);
+    expect((db.query("SELECT project_id FROM time_entries WHERE id = ?").get(id) as any).project_id).toBeNull();
+  });
+});

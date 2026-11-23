@@ -20,7 +20,7 @@ import type { AccountsDb } from "../lib/accounts.ts"; /* #732 */
 import { findTenantByPublicToken } from "../lib/tenants.ts"; /* #741 */
 import { countProofs, deleteProof, getProof, insertProof, listProofs, sanitizeFilename, validateProofFile, PROOF_MAX_BYTES, PROOF_MAX_PER_INVOICE } from "../lib/payment_proofs.ts"; /* #956 */
 import { servedVersion, staticUrl } from "../lib/static-assets.ts"; /* #993 */
-import { endAfterStart, normalizeEntryTimestamp, nonNegativeRate, stopEndTime } from "./api.ts"; /* #1434, #1442, #1450, #1452 */
+import { endAfterStart, existingProjectId, normalizeEntryTimestamp, nonNegativeRate, stopEndTime } from "./api.ts"; /* #1434, #1442, #1450, #1452, #1462 */
 import { textField } from "../ui/field.ts";
 import { card } from "../ui/card.ts";
 import { settingsDataList, settingsDataRow, settingsSection } from "../ui/settings-section.ts";
@@ -559,9 +559,11 @@ export function createWebRouter(deps: WebDeps) {
           if (path === "/timer/start" && method === "POST") {
             if (qRunning.get()) return html(timerPartial(), 409);
             const form = await req.formData();
-            const pid = form.get("project_id");
+            const pidRaw = form.get("project_id");
+            const pid = pidRaw ? existingProjectId(db, String(pidRaw)) : null;
+            if (pidRaw && pid === null) return new Response("project_id not found", { status: 400 });
             db.query("INSERT INTO time_entries (project_id, description, start_time) VALUES (?, ?, ?)")
-              .run(pid ? Number(pid) : null, String(form.get("description") || ""), new Date().toISOString());
+              .run(pid, String(form.get("description") || ""), new Date().toISOString());
             return html(timerPartial(), 200, { "HX-Trigger": "timer-updated, timer-started" });
           }
           if (path === "/timer/stop" && method === "POST") {
@@ -584,7 +586,9 @@ export function createWebRouter(deps: WebDeps) {
           if (path === "/entries" && method === "POST") {
             const form = await req.formData();
             const endRaw = String(form.get("end_time") || "");
-            const pid = form.get("project_id") ? Number(form.get("project_id")) : null;
+            const pidRaw = form.get("project_id");
+            const pid = pidRaw ? existingProjectId(db, String(pidRaw)) : null;
+            if (pidRaw && pid === null) return new Response("project_id not found", { status: 400 });
             const desc = String(form.get("description") || "");
             const startRaw = String(form.get("start_time"));
             /* #964: bare datetimes parse as UTC — reject them loudly instead
@@ -632,7 +636,9 @@ export function createWebRouter(deps: WebDeps) {
             return new Response("This time is invoiced and can't be edited.", { status: 403 });
           const form = await req.formData();
           const endRaw = String(form.get("end_time") || "");
-          const pid = form.get("project_id");
+          const pidRaw = form.get("project_id");
+          const pid = pidRaw ? existingProjectId(db, String(pidRaw)) : null;
+          if (pidRaw && pid === null) return new Response("project_id not found", { status: 400 });
           const startRaw = String(form.get("start_time"));
           /* #964: bare datetimes parse as UTC — reject them loudly instead
              of silently corrupting the entry's times. #1434: impossible
@@ -647,7 +653,7 @@ export function createWebRouter(deps: WebDeps) {
           db.query("UPDATE time_entries SET description = ?, project_id = ?, start_time = ?, end_time = ? WHERE id = ?")
             .run(
               String(form.get("description") || ""),
-              pid ? Number(pid) : null,
+              pid,
               startIso,
               endIso,
               id);
