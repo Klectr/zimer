@@ -1006,7 +1006,7 @@ describe("API entry project_id validation (#1458)", () => {
 
   test("POST /api/timer/start with a non-numeric or fractional project_id is a 400 and creates nothing", async () => {
     const { call, count } = entryTenant();
-    for (const bad of ["abc", 1.5, -2]) {
+    for (const bad of ["abc", 1.5, -2, true, [1], { id: 1 }]) {
       const res = await call("POST", "/api/timer/start", { project_id: bad, description: "x" });
       expect(res.status).toBe(400);
     }

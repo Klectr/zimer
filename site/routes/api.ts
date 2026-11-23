@@ -104,6 +104,7 @@ export function stopEndTime(startIso: string): string {
    would silently store NULL instead of the project the caller named.
    Returns the id when it exists, null otherwise. */
 export function existingProjectId(db: Database, raw: unknown): number | null {
+  if (typeof raw !== "number" && typeof raw !== "string") return null;
   const n = Number(raw);
   if (!Number.isInteger(n) || n <= 0) return null;
   return db.query("SELECT 1 FROM projects WHERE id = ?").get(n) ? n : null;
