@@ -1721,4 +1721,47 @@ describe("web entry project_id validation (#1462)", () => {
     expect(r!.status).toBe(400);
     expect((db.query("SELECT project_id FROM time_entries WHERE id = ?").get(id) as any).project_id).toBeNull();
   });
+
+  test("POST /clients/:id/settings for a nonexistent client is 404 (#1474)", async () => {
+    const { handleWeb } = setup();
+    const form = new FormData();
+    form.append("name", "Ghost");
+    form.append("rate", "50");
+    const req = new Request("http://x/clients/999/settings", { method: "POST", body: form });
+    const r = await handleWeb(req, new URL(req.url), "/clients/999/settings", "POST");
+    expect(r!.status).toBe(404);
+    expect(JSON.parse(r!.headers.get("HX-Trigger")!)).toEqual({ "tk-toast": "That client no longer exists" });
+  });
+
+  test("POST /clients/:id/delete for a nonexistent client is 404 (#1474)", async () => {
+    const { handleWeb } = setup();
+    const req = new Request("http://x/clients/999/delete", { method: "POST" });
+    const r = await handleWeb(req, new URL(req.url), "/clients/999/delete", "POST");
+    expect(r!.status).toBe(404);
+    expect(JSON.parse(r!.headers.get("HX-Trigger")!)).toEqual({ "tk-toast": "That client no longer exists" });
+  });
+
+  test("POST /projects/:id/delete for a nonexistent project is 404 (#1474)", async () => {
+    const { handleWeb } = setup();
+    const req = new Request("http://x/projects/999/delete", { method: "POST" });
+    const r = await handleWeb(req, new URL(req.url), "/projects/999/delete", "POST");
+    expect(r!.status).toBe(404);
+    expect(JSON.parse(r!.headers.get("HX-Trigger")!)).toEqual({ "tk-toast": "That project no longer exists" });
+  });
+
+  test("POST /invoices/:id/public-token/regenerate for a nonexistent invoice is 404 (#1474)", async () => {
+    const { handleWeb } = setup();
+    const req = new Request("http://x/invoices/999/public-token/regenerate", { method: "POST" });
+    const r = await handleWeb(req, new URL(req.url), "/invoices/999/public-token/regenerate", "POST");
+    expect(r!.status).toBe(404);
+    expect(JSON.parse(r!.headers.get("HX-Trigger")!)).toEqual({ "tk-toast": "That invoice no longer exists" });
+  });
+
+  test("POST /invoices/:id/public-token/revoke for a nonexistent invoice is 404 (#1474)", async () => {
+    const { handleWeb } = setup();
+    const req = new Request("http://x/invoices/999/public-token/revoke", { method: "POST" });
+    const r = await handleWeb(req, new URL(req.url), "/invoices/999/public-token/revoke", "POST");
+    expect(r!.status).toBe(404);
+    expect(JSON.parse(r!.headers.get("HX-Trigger")!)).toEqual({ "tk-toast": "That invoice no longer exists" });
+  });
 });

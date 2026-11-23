@@ -951,7 +951,9 @@ export function createWebRouter(deps: WebDeps) {
           const rate = rateRaw === "" ? 0 : Number(rateRaw);
           const terms = String(form.get("payment_terms") || "").trim();
           const existingSel = clientSelection(m[1]);
-          const existingColor = existingSel && existingSel.kind === "client" ? existingSel.client.color : undefined;
+          if (!existingSel || existingSel.kind !== "client")
+            return new Response("Client not found.", { status: 404, headers: { "HX-Trigger": JSON.stringify({ "tk-toast": "That client no longer exists" }) } });
+          const existingColor = existingSel.client.color;
           const fail = (msg: string) => {
             if (!isHtmx(req)) return new Response(msg, { status: 400 });
             const sel = clientSelection(m[1]);
@@ -982,6 +984,8 @@ export function createWebRouter(deps: WebDeps) {
         }
         m = path.match(/^\/clients\/(\d+)\/delete$/);
         if (m && method === "POST") {
+          if (!db.query("SELECT id FROM clients WHERE id = ?").get(Number(m[1])))
+            return new Response("Client not found.", { status: 404, headers: { "HX-Trigger": JSON.stringify({ "tk-toast": "That client no longer exists" }) } });
           /* FK actions in the schema are not enforced (no PRAGMA foreign_keys):
              null these out explicitly so nothing dangles. */
           db.transaction(() => {
@@ -1029,6 +1033,7 @@ export function createWebRouter(deps: WebDeps) {
         if (m && method === "POST") {
           /* Which detail pane owns this project — needed before the delete. */
           const p = db.query("SELECT client_id FROM projects WHERE id = ?").get(Number(m[1])) as any;
+          if (!p) return new Response("Project not found.", { status: 404, headers: { "HX-Trigger": JSON.stringify({ "tk-toast": "That project no longer exists" }) } });
           /* Schema FK is not enforced: null entries explicitly. */
           db.transaction(() => {
             db.query("UPDATE time_entries SET project_id = NULL WHERE project_id = ?").run(Number(m[1]));
@@ -1366,6 +1371,7 @@ export function createWebRouter(deps: WebDeps) {
         }
         m = path.match(/^\/invoices\/(\d+)\/public-token\/regenerate$/);
         if (m && method === "POST") {
+          if (!qInvoice.get(Number(m[1]))) return new Response("Invoice not found.", { status: 404, headers: { "HX-Trigger": JSON.stringify({ "tk-toast": "That invoice no longer exists" }) } });
           mintPublicToken(Number(m[1]));
           freezeInvoiceSnapshots(Number(m[1]), shareOrigin(req)); /* #606: new token -> re-freeze */
           if (isHtmx(req)) { const full = getInvoice(Number(m[1])); if (full) return html(invoiceDetailBody(full, shareOrigin(req))); } // #71
@@ -1373,6 +1379,7 @@ export function createWebRouter(deps: WebDeps) {
         }
         m = path.match(/^\/invoices\/(\d+)\/public-token\/revoke$/);
         if (m && method === "POST") {
+          if (!qInvoice.get(Number(m[1]))) return new Response("Invoice not found.", { status: 404, headers: { "HX-Trigger": JSON.stringify({ "tk-toast": "That invoice no longer exists" }) } });
           db.query("UPDATE invoices SET public_token = NULL WHERE id = ?").run(Number(m[1]));
           freezeInvoiceSnapshots(Number(m[1]), shareOrigin(req)); /* #606: revoked link must leave the PDF */
           if (isHtmx(req)) { const full = getInvoice(Number(m[1])); if (full) return html(invoiceDetailBody(full, shareOrigin(req))); } // #71
