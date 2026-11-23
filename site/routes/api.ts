@@ -322,11 +322,12 @@ export function createApiRouter(deps: ApiDeps) {
             if (path === "/api/clients" && method === "GET")
               return json(db.query("SELECT * FROM clients ORDER BY name").all());
             if (path === "/api/clients" && method === "POST") {
-              if (!body.name) return json({ error: "name required" }, 400);
+              const name = typeof body.name === "string" ? body.name.trim() : "";
+              if (!name) return json({ error: "name required" }, 400);
               const rate = nonNegativeRate(body.rate);
               if (rate === null) return json({ error: "rate must be a number at or above 0" }, 400);
               const r = db.query("INSERT INTO clients (name, color, rate) VALUES (?, ?, ?) RETURNING *")
-                .get(String(body.name), clientColor(body.color), rate) as any;
+                .get(name, clientColor(body.color), rate) as any;
               return json(r, 201);
             }
             m = path.match(/^\/api\/clients\/(\d+)$/);
@@ -345,9 +346,10 @@ export function createApiRouter(deps: ApiDeps) {
                 `SELECT p.id, p.name, p.client_id, c.name AS client_name, c.color AS client_color
                  FROM projects p LEFT JOIN clients c ON c.id = p.client_id ORDER BY p.name`).all());
             if (path === "/api/projects" && method === "POST") {
-              if (!body.name) return json({ error: "name required" }, 400);
+              const name = typeof body.name === "string" ? body.name.trim() : "";
+              if (!name) return json({ error: "name required" }, 400);
               const r = db.query("INSERT INTO projects (name, client_id) VALUES (?, ?) RETURNING *")
-                .get(String(body.name), body.client_id ? Number(body.client_id) : null) as any;
+                .get(name, body.client_id ? Number(body.client_id) : null) as any;
               return json(r, 201);
             }
             m = path.match(/^\/api\/projects\/(\d+)$/);
