@@ -273,11 +273,15 @@ describe("client create rate validation (#1442)", () => {
   });
 });
 
-/** #1454: web create routes require a name, like settings and the API. */
-function postProject(handleWeb: any, fields: Record<string, string>) {
+/** #1454: web create routes require a name, like the settings route.
+ *  (The API routes only reject a missing/empty name — whitespace names
+ *  still slip through there; that parity gap is filed separately.) */
+function postProject(handleWeb: any, fields: Record<string, string>, htmx = false) {
   const form = new FormData();
   for (const [k, v] of Object.entries(fields)) form.append(k, v);
-  const req = new Request("http://x/projects", { method: "POST", body: form });
+  const headers: Record<string, string> = {};
+  if (htmx) headers["HX-Request"] = "true";
+  const req = new Request("http://x/projects", { method: "POST", body: form, headers });
   return handleWeb(req, new URL(req.url), "/projects", "POST");
 }
 
@@ -293,16 +297,18 @@ describe("create name validation (#1454)", () => {
 
   test("a whitespace-only client name is rejected", async () => {
     const { db, handleWeb } = setup();
+    const before = (db.query("SELECT COUNT(*) AS n FROM clients").get() as any).n;
     const res = await postClient(handleWeb, { name: "   ", rate: "", color: "", email: "" });
     expect(res!.status).toBe(400);
-    expect(db.query("SELECT COUNT(*) AS n FROM clients WHERE trim(name) = ''").get()).toEqual({ n: 0 });
+    expect((db.query("SELECT COUNT(*) AS n FROM clients").get() as any).n).toBe(before);
   });
 
   test("a missing client name field is rejected, not stored as \"null\"", async () => {
     const { db, handleWeb } = setup();
+    const before = (db.query("SELECT COUNT(*) AS n FROM clients").get() as any).n;
     const res = await postClient(handleWeb, { rate: "", color: "", email: "" });
     expect(res!.status).toBe(400);
-    expect(db.query("SELECT COUNT(*) AS n FROM clients WHERE name = 'null'").get()).toEqual({ n: 0 });
+    expect((db.query("SELECT COUNT(*) AS n FROM clients").get() as any).n).toBe(before);
   });
 
   test("a padded client name is stored trimmed", async () => {
@@ -325,6 +331,30 @@ describe("create name validation (#1454)", () => {
     const res = await postProject(handleWeb, { name: "  Site Redesign  " });
     expect(res!.status).toBe(302);
     expect(db.query("SELECT COUNT(*) AS n FROM projects WHERE name = 'Site Redesign'").get()).toEqual({ n: 1 });
+  });
+
+  test("a missing project name field is rejected, not stored as \"null\"", async () => {
+    const { db, handleWeb } = setup();
+    const res = await postProject(handleWeb, {});
+    expect(res!.status).toBe(400);
+    expect(db.query("SELECT COUNT(*) AS n FROM projects").get()).toEqual({ n: 0 });
+  });
+
+  test("an HTMX blank project name gets the 422 fragment with the error, nothing stored", async () => {
+    const { db, handleWeb } = setup();
+    const res = await postProject(handleWeb, { name: "   " }, true);
+    expect(res!.status).toBe(422);
+    const body = await res!.text();
+    expect(body).toContain("Project name is required.");
+    expect(body).toContain('id="client-dialog-projects"');
+    expect(db.query("SELECT COUNT(*) AS n FROM projects").get()).toEqual({ n: 0 });
+  });
+
+  test("an HTMX valid project name swaps the fragment and stores trimmed", async () => {
+    const { db, handleWeb } = setup();
+    const res = await postProject(handleWeb, { name: "  HTMX Proj  " }, true);
+    expect(res!.status).toBe(200);
+    expect(db.query("SELECT COUNT(*) AS n FROM projects WHERE name = 'HTMX Proj'").get()).toEqual({ n: 1 });
   });
 });
 

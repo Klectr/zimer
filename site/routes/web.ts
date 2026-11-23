@@ -53,7 +53,7 @@ export interface WebTenant {
   managePage: () => string;
   clientSelection: (raw: string | null) => ClientSel | null;
   clientDialogBody: (sel: ClientSel) => string;
-  clientDialogProjects: (sel: ClientSel) => string;
+  clientDialogProjects: (sel: ClientSel, error?: string) => string;
   manageListsOob: () => string;
   bizProfileSection: () => string;
   dailyTargetSection: () => string; /* #908 */
@@ -891,8 +891,10 @@ export function createWebRouter(deps: WebDeps) {
           const form = await req.formData();
           /* #1454: mirror the settings route — a name is required; trim it
              so a blank, whitespace-only, or missing field stores nothing
-             (a missing field would otherwise store the string "null"). */
-          const name = String(form.get("name") || "").trim();
+             (a missing field would otherwise store the string "null", and
+             a non-string part would store "[object File]"). */
+          const nameRaw = form.get("name");
+          const name = typeof nameRaw === "string" ? nameRaw.trim() : "";
           if (!name)
             return new Response("Client name is required.", { status: 400 });
           /* #1442: mirror the settings route's rate rule — a provided rate
@@ -982,11 +984,21 @@ export function createWebRouter(deps: WebDeps) {
         }
         if (path === "/projects" && method === "POST") {
           const form = await req.formData();
-          /* #1454: same name rule as client create — trimmed, required. */
-          const name = String(form.get("name") || "").trim();
-          if (!name)
-            return new Response("Project name is required.", { status: 400 });
+          /* #1454: same name rule as client create — trimmed, required.
+             The add form is HTMX, which never swaps a bare 400, so an HTMX
+             rejection answers 422 with the projects fragment re-rendered
+             around the error (the manage page's beforeSwap hook swaps 422s
+             for this route, same as client settings); plain posts keep 400. */
+          const nameRaw = form.get("name");
+          const name = typeof nameRaw === "string" ? nameRaw.trim() : "";
           const cid = form.get("client_id");
+          if (!name) {
+            if (isHtmx(req)) {
+              const sel = clientSelection(cid ? String(cid) : "none");
+              if (sel) return html(clientDialogProjects(sel, "Project name is required."), 422);
+            }
+            return new Response("Project name is required.", { status: 400 });
+          }
           db.query("INSERT INTO projects (name, client_id) VALUES (?, ?)")
             .run(name, cid ? Number(cid) : null);
           const sel = clientSelection(cid ? String(cid) : "none");
