@@ -15,7 +15,8 @@ import { createInvoiceViews } from "../views/invoices.ts";
 import { invoicePdf } from "../pdf.ts";
 
 function setup() {
-  const db = createDb(mkdtempSync(join(tmpdir(), "tk-web-"))).db;
+  const bundle = createDb(mkdtempSync(join(tmpdir(), "tk-web-")));
+  const db = bundle.db;
   db.query("INSERT INTO clients (name, color, rate) VALUES ('Bytebot', '#fb923c', 40)").run();
   const client = db.query("SELECT * FROM clients").get() as any;
   const views = createManageViews({ db, layout: (_t: string, b: string) => b, unbilledByClient: () => [] });
@@ -24,7 +25,7 @@ function setup() {
   const tenant = {
     db, dbPath: "",
     qRunning: { get: () => null } as any,
-    qOne: { get: () => null } as any,
+    qOne: bundle.qOne as any,
     qRange: { all: () => [] } as any,
     qInvoice: { get: () => null } as any,
     qInvoices: { all: () => [] } as any,
@@ -1681,6 +1682,29 @@ describe("web entry project_id validation (#1462)", () => {
     const r = await handleWeb(req, new URL(req.url), "/timer/start", "POST");
     expect(r!.status).toBe(400);
     expect(JSON.parse(r!.headers.get("HX-Trigger")!)).toEqual({ "tk-toast": "That project no longer exists" });
+  });
+
+  test("POST /entries/:id for a nonexistent entry is 404 (#1472)", async () => {
+    const { handleWeb } = setup();
+    const form = new FormData();
+    form.append("description", "x");
+    form.append("start_time", "2026-10-08T09:00:00.000Z");
+    form.append("end_time", "2026-10-08T10:00:00.000Z");
+    const req = new Request("http://x/entries/9999", { method: "POST", body: form });
+    const r = await handleWeb(req, new URL(req.url), "/entries/9999", "POST");
+    expect(r!.status).toBe(404);
+  });
+
+  test("POST /entries/:id for a nonexistent entry asks for a toast when htmx (#1472)", async () => {
+    const { handleWeb } = setup();
+    const form = new FormData();
+    form.append("description", "x");
+    form.append("start_time", "2026-10-08T09:00:00.000Z");
+    form.append("end_time", "2026-10-08T10:00:00.000Z");
+    const req = new Request("http://x/entries/9999", { method: "POST", body: form, headers: { "HX-Request": "true" } });
+    const r = await handleWeb(req, new URL(req.url), "/entries/9999", "POST");
+    expect(r!.status).toBe(404);
+    expect(JSON.parse(r!.headers.get("HX-Trigger")!)).toEqual({ "tk-toast": "That entry no longer exists" });
   });
 
   test("POST /entries/:id with a nonexistent project_id is 400 and leaves the entry untouched", async () => {

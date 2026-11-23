@@ -632,7 +632,11 @@ export function createWebRouter(deps: WebDeps) {
           /* #334: sent/paid time is a frozen record — edit form and calendar
              resize both land here. */
           const cur = qOne.get(id) as Entry | null;
-          if (cur && entryIsLocked(cur))
+          if (!cur) /* #1472: stale edit (entry deleted elsewhere) — toast for htmx, themed 404 for a plain post, never a silent success */
+            return isHtmx(req)
+              ? new Response("Entry not found.", { status: 404, headers: { "HX-Trigger": JSON.stringify({ "tk-toast": "That entry no longer exists" }) } })
+              : html(notFoundPage(authedPage(req, TOKEN)), 404);
+          if (entryIsLocked(cur))
             return new Response("This time is invoiced and can't be edited.", { status: 403 });
           const form = await req.formData();
           const endRaw = String(form.get("end_time") || "");
