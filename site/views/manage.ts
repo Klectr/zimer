@@ -252,12 +252,13 @@ export function createManageViews(deps: ManageViewDeps) {
         ${iconButton({ icon: "add", label: "Add project", type: "submit" })}
       </form>`;
 
-  function clientDialogProjects(sel: ClientSel): string {
+  function clientDialogProjects(sel: ClientSel, error?: string): string {
     const { byClient, unassigned } = manageData();
     const isClient = sel.kind === "client";
     const projects = isClient ? (byClient.get(sel.client.id) || []) : unassigned;
     return `<div id="client-dialog-projects">
       <h3 class="ui-block-title">Projects</h3>
+      ${error ? `<p class="error" role="alert">${esc(error)}</p>` : ""}
       ${addProjectForm(isClient ? sel.client.id : null)}
       <div class="ui-list">
         ${projects.map(projectRow).join("")}
@@ -395,7 +396,7 @@ export function createManageViews(deps: ManageViewDeps) {
           var cfg=e.detail.requestConfig||{};
           var pi=e.detail.pathInfo||{};
           var p=pi.requestPath||cfg.path||"";
-          if(e.detail.xhr && e.detail.xhr.status===422 && (cfg.verb||"").toLowerCase()==="post" && /\\/clients\\/\\d+\\/settings$/.test(p)){
+          if(e.detail.xhr && e.detail.xhr.status===422 && (cfg.verb||"").toLowerCase()==="post" && (/\\/clients\\/\\d+\\/settings$/.test(p) || /\\/projects$/.test(p))){
             e.detail.shouldSwap = true;
             e.detail.isError = false;
           }
