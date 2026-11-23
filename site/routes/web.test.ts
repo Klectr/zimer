@@ -1683,6 +1683,17 @@ describe("web entry project_id validation (#1462)", () => {
     expect(JSON.parse(r!.headers.get("HX-Trigger")!)).toEqual({ "tk-toast": "That project no longer exists" });
   });
 
+  test("POST /entries/:id for a nonexistent entry is 404 (#1472)", async () => {
+    const { handleWeb } = setup();
+    const form = new FormData();
+    form.append("description", "x");
+    form.append("start_time", "2026-10-08T09:00:00.000Z");
+    form.append("end_time", "2026-10-08T10:00:00.000Z");
+    const req = new Request("http://x/entries/9999", { method: "POST", body: form });
+    const r = await handleWeb(req, new URL(req.url), "/entries/9999", "POST");
+    expect(r!.status).toBe(404);
+  });
+
   test("POST /entries/:id with a nonexistent project_id is 400 and leaves the entry untouched", async () => {
     const { db, handleWeb } = setup();
     const ins = db.query("INSERT INTO time_entries (description, start_time, end_time) VALUES ('x', '2026-10-08T09:00:00.000Z', '2026-10-08T10:00:00.000Z')").run();
