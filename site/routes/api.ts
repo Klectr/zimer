@@ -97,6 +97,18 @@ export function stopEndTime(startIso: string): string {
   return new Date(Number.isFinite(start) && now <= start ? start + 1000 : now).toISOString();
 }
 
+/* #1458: a provided project_id must name a real project — a dangling id
+   stores an entry that counts as billable (project_id IS NOT NULL) in
+   calendar totals but can never be invoiced, because invoicing reaches
+   entries through project → client. A non-numeric id coerces to NaN and
+   would silently store NULL instead of the project the caller named.
+   Returns the id when it exists, null otherwise. */
+export function existingProjectId(db: Database, raw: unknown): number | null {
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n <= 0) return null;
+  return db.query("SELECT 1 FROM projects WHERE id = ?").get(n) ? n : null;
+}
+
 export function createApiRouter(deps: ApiDeps) {
   const {
     getTenant, TOKEN, authedApi, json, entryToJson, verifyWebhookSignature, shareOrigin,
@@ -256,7 +268,9 @@ export function createApiRouter(deps: ApiDeps) {
             }
             if (path === "/api/timer/start" && method === "POST") {
               if (qRunning.get()) return json({ error: "a timer is already running" }, 409);
-              const projectId = body.project_id ? Number(body.project_id) : null;
+              const projectId = body.project_id ? existingProjectId(db, body.project_id) : null;
+              if (body.project_id && projectId === null)
+                return json({ error: "project_id not found" }, 400);
               const r = db.query(
                 "INSERT INTO time_entries (project_id, description, start_time) VALUES (?, ?, ?) RETURNING id")
                 .get(projectId, String(body.description || ""), new Date().toISOString()) as any;
@@ -302,10 +316,20 @@ export function createApiRouter(deps: ApiDeps) {
                 }
                 if (!endAfterStart(startTime, endTime))
                   return json({ error: "end_time must be after start_time" }, 400);
+                let projectId = cur.project_id;
+                if (body.project_id !== undefined) {
+                  if (!body.project_id) projectId = null;
+                  else {
+                    const pid = existingProjectId(db, body.project_id);
+                    if (pid === null)
+                      return json({ error: "project_id not found" }, 400);
+                    projectId = pid;
+                  }
+                }
                 db.query(`UPDATE time_entries SET description = ?, project_id = ?, start_time = ?, end_time = ? WHERE id = ?`)
                   .run(
                     body.description !== undefined ? String(body.description) : cur.description,
-                    body.project_id !== undefined ? (body.project_id ? Number(body.project_id) : null) : cur.project_id,
+                    projectId,
                     startTime,
                     endTime,
                     id);
