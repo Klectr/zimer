@@ -273,6 +273,61 @@ describe("client create rate validation (#1442)", () => {
   });
 });
 
+/** #1454: web create routes require a name, like settings and the API. */
+function postProject(handleWeb: any, fields: Record<string, string>) {
+  const form = new FormData();
+  for (const [k, v] of Object.entries(fields)) form.append(k, v);
+  const req = new Request("http://x/projects", { method: "POST", body: form });
+  return handleWeb(req, new URL(req.url), "/projects", "POST");
+}
+
+describe("create name validation (#1454)", () => {
+  test("a blank client name is rejected and nothing is stored", async () => {
+    const { db, handleWeb } = setup();
+    const before = (db.query("SELECT COUNT(*) AS n FROM clients").get() as any).n;
+    const res = await postClient(handleWeb, { name: "", rate: "", color: "", email: "" });
+    expect(res!.status).toBe(400);
+    expect(await res!.text()).toContain("Client name is required.");
+    expect((db.query("SELECT COUNT(*) AS n FROM clients").get() as any).n).toBe(before);
+  });
+
+  test("a whitespace-only client name is rejected", async () => {
+    const { db, handleWeb } = setup();
+    const res = await postClient(handleWeb, { name: "   ", rate: "", color: "", email: "" });
+    expect(res!.status).toBe(400);
+    expect(db.query("SELECT COUNT(*) AS n FROM clients WHERE trim(name) = ''").get()).toEqual({ n: 0 });
+  });
+
+  test("a missing client name field is rejected, not stored as \"null\"", async () => {
+    const { db, handleWeb } = setup();
+    const res = await postClient(handleWeb, { rate: "", color: "", email: "" });
+    expect(res!.status).toBe(400);
+    expect(db.query("SELECT COUNT(*) AS n FROM clients WHERE name = 'null'").get()).toEqual({ n: 0 });
+  });
+
+  test("a padded client name is stored trimmed", async () => {
+    const { db, handleWeb } = setup();
+    const res = await postClient(handleWeb, { name: "  Padded Co  ", rate: "", color: "", email: "" });
+    expect(res!.status).toBe(302);
+    expect(db.query("SELECT COUNT(*) AS n FROM clients WHERE name = 'Padded Co'").get()).toEqual({ n: 1 });
+  });
+
+  test("a blank project name is rejected and nothing is stored", async () => {
+    const { db, handleWeb } = setup();
+    const res = await postProject(handleWeb, { name: "  " });
+    expect(res!.status).toBe(400);
+    expect(await res!.text()).toContain("Project name is required.");
+    expect(db.query("SELECT COUNT(*) AS n FROM projects").get()).toEqual({ n: 0 });
+  });
+
+  test("a padded project name is stored trimmed", async () => {
+    const { db, handleWeb } = setup();
+    const res = await postProject(handleWeb, { name: "  Site Redesign  " });
+    expect(res!.status).toBe(302);
+    expect(db.query("SELECT COUNT(*) AS n FROM projects WHERE name = 'Site Redesign'").get()).toEqual({ n: 1 });
+  });
+});
+
 /** #668: manual line items — POST /invoices accepts rows with no entry
  *  ids, so one-time work can be invoiced without tracked time. */
 function postInvoice(handleWeb: any, fields: Record<string, string>) {
