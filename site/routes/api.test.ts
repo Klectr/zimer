@@ -702,7 +702,7 @@ describe("API name validation (#1456)", () => {
   async function post(tenant: any, path: string, body: unknown) {
     const handleApi = createApiRouter({
       getTenant: () => tenant as any,
-TOKEN: ["test", "token"].join("-"),
+      TOKEN: ["test", "token"].join("-"),
       authedApi: () => true,
       json: (data: unknown, status = 200) => Response.json(data, { status }),
       entryToJson: (e: any) => e,
@@ -742,6 +742,18 @@ TOKEN: ["test", "token"].join("-"),
     expect(res.status).toBe(201);
     expect((await res.json() as any).name).toBe("Website");
     expect((tenant.db.query("SELECT name FROM projects").get() as any).name).toBe("Website");
+  });
+  test("POST /api/clients with a missing or non-string name is a 400 and creates nothing", async () => {
+    const tenant = nameTenant();
+    expect((await post(tenant, "/api/clients", {})).status).toBe(400);
+    expect((await post(tenant, "/api/clients", { name: 123 })).status).toBe(400);
+    expect((tenant.db.query("SELECT COUNT(*) AS n FROM clients").get() as any).n).toBe(0);
+  });
+  test("POST /api/projects with a missing or non-string name is a 400 and creates nothing", async () => {
+    const tenant = nameTenant();
+    expect((await post(tenant, "/api/projects", {})).status).toBe(400);
+    expect((await post(tenant, "/api/projects", { name: 123 })).status).toBe(400);
+    expect((tenant.db.query("SELECT COUNT(*) AS n FROM projects").get() as any).n).toBe(0);
   });
 });
 
