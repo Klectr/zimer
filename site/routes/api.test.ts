@@ -517,6 +517,7 @@ describe("API rate validation (#1440)", () => {
   function rateTenant() {
     const db = new BunDatabase(":memory:");
     db.exec(`CREATE TABLE clients (id INTEGER PRIMARY KEY, name TEXT, color TEXT, rate REAL)`);
+    /* Seed name is not 'Acme': the client-create tests below post that name. */
     db.query("INSERT INTO clients (id, name) VALUES (3, 'Seed Co')").run();
     db.exec(`CREATE TABLE invoices (id INTEGER PRIMARY KEY, status TEXT NOT NULL DEFAULT 'draft', paid_at TEXT)`);
     db.exec(`CREATE TABLE invoice_items (id INTEGER PRIMARY KEY, invoice_id INTEGER, description TEXT, hours REAL, rate REAL, amount REAL, date_from TEXT, date_to TEXT)`);
@@ -575,7 +576,7 @@ describe("API rate validation (#1440)", () => {
     const tenant = rateTenant();
     const res = await post(tenant, "/api/clients", { name: "Acme", rate: true });
     expect(res.status).toBe(400);
-    expect((tenant.db.query("SELECT COUNT(*) AS n FROM clients WHERE name = 'Acme'").get() as any).n).toBe(0);
+    expect((tenant.db.query("SELECT COUNT(*) AS n FROM clients").get() as any).n).toBe(1);
   });
   test("POST /api/invoices with a rate too large to round is a 400 and creates nothing", async () => {
     const tenant = rateTenant();
@@ -640,7 +641,7 @@ describe("API rate validation (#1440)", () => {
     const res = await post(tenant, "/api/clients", { name: "Acme", rate: -50 });
     expect(res.status).toBe(400);
     expect((await res.json() as any).error).toContain("rate");
-    expect((tenant.db.query("SELECT COUNT(*) AS n FROM clients WHERE name = 'Acme'").get() as any).n).toBe(0);
+    expect((tenant.db.query("SELECT COUNT(*) AS n FROM clients").get() as any).n).toBe(1);
   });
   test("POST /api/clients stores a valid rate and defaults an absent one to 0", async () => {
     const tenant = rateTenant();
