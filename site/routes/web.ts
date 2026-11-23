@@ -561,7 +561,7 @@ export function createWebRouter(deps: WebDeps) {
             const form = await req.formData();
             const pidRaw = form.get("project_id");
             const pid = pidRaw ? existingProjectId(db, String(pidRaw)) : null;
-            if (pidRaw && pid === null) return new Response("project_id not found", { status: 400 });
+            if (pidRaw && pid === null) return new Response("project_id not found", { status: 400, headers: { "HX-Trigger": JSON.stringify({ "tk-toast": "That project no longer exists" }) } });
             db.query("INSERT INTO time_entries (project_id, description, start_time) VALUES (?, ?, ?)")
               .run(pid, String(form.get("description") || ""), new Date().toISOString());
             return html(timerPartial(), 200, { "HX-Trigger": "timer-updated, timer-started" });
