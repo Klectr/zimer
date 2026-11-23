@@ -6,6 +6,11 @@ function decideToggle(running) {
   return running ? "stop" : "start";
 }
 
+function dropStaleProject(lastTimer) {
+  if (!lastTimer) return lastTimer;
+  return { ...lastTimer, projectId: null };
+}
+
 async function api(path, opts = {}) {
   const { siteUrl, token } = await chrome.storage.sync.get(["siteUrl", "token"]);
   const base = (siteUrl || "").replace(/\/+$/, "");
@@ -14,8 +19,22 @@ async function api(path, opts = {}) {
     ...opts,
     headers: { Authorization: "Bearer " + token, "Content-Type": "application/json", ...(opts.headers || {}) },
   });
-  if (!res.ok) throw new Error(`Request failed (${res.status})`);
+  if (!res.ok) {
+    const err = new Error(`Request failed (${res.status})`);
+    err.status = res.status;
+    throw err;
+  }
   return res.status === 204 ? null : res.json();
+}
+
+async function startTimer(lastTimer) {
+  await api("/api/timer/start", {
+    method: "POST",
+    body: JSON.stringify({
+      description: (lastTimer && lastTimer.description) || "",
+      project_id: (lastTimer && lastTimer.projectId) || null,
+    }),
+  });
 }
 
 async function toggleTimer() {
@@ -25,13 +44,14 @@ async function toggleTimer() {
     return "stopped";
   }
   const { lastTimer } = await chrome.storage.sync.get(["lastTimer"]);
-  await api("/api/timer/start", {
-    method: "POST",
-    body: JSON.stringify({
-      description: (lastTimer && lastTimer.description) || "",
-      project_id: (lastTimer && lastTimer.projectId) || null,
-    }),
-  });
+  try {
+    await startTimer(lastTimer);
+  } catch (e) {
+    if (e.status !== 400 || !(lastTimer && lastTimer.projectId)) throw e;
+    const cleared = dropStaleProject(lastTimer);
+    await chrome.storage.sync.set({ lastTimer: cleared });
+    await startTimer(cleared);
+  }
   return "started";
 }
 
@@ -42,4 +62,4 @@ if (typeof chrome !== "undefined" && chrome.commands && chrome.commands.onComman
   });
 }
 
-if (typeof module !== "undefined") module.exports = { decideToggle };
+if (typeof module !== "undefined") module.exports = { decideToggle, dropStaleProject, toggleTimer };
