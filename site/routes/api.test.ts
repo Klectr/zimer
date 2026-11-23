@@ -7,7 +7,7 @@
 import { describe, expect, test } from "bun:test";
 import type { Database, Statement } from "bun:sqlite";
 import { Database as BunDatabase } from "bun:sqlite";
-import { createApiRouter, nonNegativeRate } from "./api.ts";
+import { createApiRouter, nonNegativeRate, stopEndTime } from "./api.ts";
 import { todayStr } from "../lib/format.ts";
 
 const stubStatement = () =>
@@ -833,5 +833,50 @@ describe("PATCH /api/entries/:id timestamp normalization (#1432)", () => {
     const res = await patch({ start_time: "2026-10-07T14:00:00.000Z", end_time: "2026-10-07T14:01:00.000Z" });
     expect(res.status).toBe(200);
     expect(row()).toEqual({ start_time: "2026-10-07T14:00:00.000Z", end_time: "2026-10-07T14:01:00.000Z" });
+  });
+});
+
+describe("timer stop end time (#1452)", () => {
+  test("stopEndTime returns about now for a past start", () => {
+    const before = Date.now();
+    const end = new Date(stopEndTime("2026-10-07T14:00:00.000Z")).getTime();
+    expect(end).toBeGreaterThanOrEqual(before);
+    expect(end).toBeLessThanOrEqual(Date.now());
+  });
+
+  test("stopEndTime clamps a future start to start + 1s", () => {
+    const future = new Date(Date.now() + 3600_000).toISOString();
+    expect(stopEndTime(future)).toBe(new Date(new Date(future).getTime() + 1000).toISOString());
+  });
+
+  test("POST /api/timer/stop never stores an end at or before the start", async () => {
+    const db = new BunDatabase(":memory:");
+    db.exec(`CREATE TABLE time_entries (
+      id INTEGER PRIMARY KEY, project_id INTEGER, description TEXT NOT NULL DEFAULT '',
+      start_time TEXT NOT NULL, end_time TEXT, invoice_id INTEGER)`);
+    const future = new Date(Date.now() + 3600_000).toISOString();
+    db.query("INSERT INTO time_entries (id, project_id, description, start_time, end_time) VALUES (1, NULL, 'Work', ?, NULL)").run(future);
+    const row = () => db.query("SELECT * FROM time_entries WHERE id = 1").get() as any;
+    const q = { get: () => { const r = row(); return r ? { ...r, invoice_status: null } : null; } } as unknown as Statement;
+    const tenant = {
+      db, qRunning: q, qOne: q, qRange: stubStatement(),
+      qInvoice: stubStatement(), qInvoices: stubStatement(),
+      groupToLineItems: () => [], unbilledEntries: () => [],
+      getInvoice: () => null, invoiceTotals: () => ({ subtotal: 0, tax: 0, total: 0 }),
+      nextInvoiceNumber: () => "INV-0001", mintPublicToken: () => "tok",
+      stripeLinkFor: async () => ({}),
+      revenueTotals: () => null, revenueMonthly: () => [], revenueByClient: () => [], revenueOverdue: () => [],
+      revenueSnapshot: () => ({ totals: null, by_month: [], by_client: [], overdue: [] }),
+      freezeInvoiceSnapshots: () => {},
+    };
+    const { handleApi } = createApiRouter({
+      getTenant: () => tenant as any, TOKEN: "test-token", authedApi: () => true,
+      json: (data: unknown, status = 200) => Response.json(data, { status }),
+      entryToJson: (e: any) => e, verifyWebhookSignature: () => false, shareOrigin: () => "",
+    });
+    const req = new Request("http://localhost/api/timer/stop", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
+    const res = (await handleApi(req, new URL(req.url), "/api/timer/stop", "POST"))!;
+    expect(res.status).toBe(200);
+    expect(row().end_time).toBe(new Date(new Date(future).getTime() + 1000).toISOString());
   });
 });
