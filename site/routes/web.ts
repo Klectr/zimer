@@ -20,7 +20,7 @@ import type { AccountsDb } from "../lib/accounts.ts"; /* #732 */
 import { findTenantByPublicToken } from "../lib/tenants.ts"; /* #741 */
 import { countProofs, deleteProof, getProof, insertProof, listProofs, sanitizeFilename, validateProofFile, PROOF_MAX_BYTES, PROOF_MAX_PER_INVOICE } from "../lib/payment_proofs.ts"; /* #956 */
 import { servedVersion, staticUrl } from "../lib/static-assets.ts"; /* #993 */
-import { endAfterStart, normalizeEntryTimestamp, nonNegativeRate } from "./api.ts"; /* #1434, #1442, #1450 */
+import { endAfterStart, normalizeEntryTimestamp, nonNegativeRate, stopEndTime } from "./api.ts"; /* #1434, #1442, #1450, #1452 */
 import { textField } from "../ui/field.ts";
 import { card } from "../ui/card.ts";
 import { settingsDataList, settingsDataRow, settingsSection } from "../ui/settings-section.ts";
@@ -566,7 +566,7 @@ export function createWebRouter(deps: WebDeps) {
           }
           if (path === "/timer/stop" && method === "POST") {
             const running = qRunning.get() as Entry | null;
-            if (running) db.query("UPDATE time_entries SET end_time = ? WHERE id = ?").run(new Date().toISOString(), running.id);
+            if (running) db.query("UPDATE time_entries SET end_time = ? WHERE id = ?").run(stopEndTime(running.start_time), running.id);
             return html(timerPartial(), 200, { "HX-Trigger": "timer-updated, timer-stopped" });
           }
           if (path === "/calendar" && method === "GET") {
