@@ -482,6 +482,46 @@ describe("manual line items (#668)", () => {
     expect(linked.invoice_id).toBe(inv.id);
   });
 
+  test("an entry already on another invoice is rejected and not stolen (#1470)", async () => {
+    const { db, client, handleWeb } = setup();
+    db.query("INSERT INTO projects (name, client_id) VALUES ('Site', ?)").run(client.id);
+    const project = db.query("SELECT id FROM projects").get() as any;
+    db.query("INSERT INTO time_entries (project_id, description, start_time, end_time, invoice_id) VALUES (?, 'Build', '2026-09-20T14:00:00.000Z', '2026-09-20T16:00:00.000Z', 42)").run(project.id);
+    const entry = db.query("SELECT id FROM time_entries").get() as any;
+    const res = await postInvoice(handleWeb, {
+      ...baseInvoiceFields, groups: "1",
+      g0_desc: "Website", g0_hours: "2", g0_rate: "40", g0_ids: String(entry.id),
+      g0_date_from: "2026-09-20", g0_date_to: "2026-09-20",
+    });
+    expect(res!.status).toBe(400);
+    expect(await res!.text()).toContain("no longer available to invoice");
+    expect(db.query("SELECT COUNT(*) AS n FROM invoices").get()).toEqual({ n: 0 });
+    expect(db.query("SELECT invoice_id FROM time_entries WHERE id = ?").get(entry.id)).toEqual({ invoice_id: 42 });
+  });
+
+  test("a running entry and another client's entry are rejected (#1470)", async () => {
+    const { db, client, handleWeb } = setup();
+    db.query("INSERT INTO clients (name) VALUES ('Other')").run();
+    const other = db.query("SELECT id FROM clients WHERE name = 'Other'").get() as any;
+    db.query("INSERT INTO projects (name, client_id) VALUES ('Mine', ?)").run(client.id);
+    db.query("INSERT INTO projects (name, client_id) VALUES ('Theirs', ?)").run(other.id);
+    const mine = db.query("SELECT id FROM projects WHERE name = 'Mine'").get() as any;
+    const theirs = db.query("SELECT id FROM projects WHERE name = 'Theirs'").get() as any;
+    db.query("INSERT INTO time_entries (project_id, description, start_time, end_time) VALUES (?, 'Running', '2026-09-20T14:00:00.000Z', NULL)").run(mine.id);
+    db.query("INSERT INTO time_entries (project_id, description, start_time, end_time) VALUES (?, 'Theirs', '2026-09-20T14:00:00.000Z', '2026-09-20T16:00:00.000Z')").run(theirs.id);
+    const entries = db.query("SELECT id FROM time_entries ORDER BY id").all() as any[];
+    for (const e of entries) {
+      const res = await postInvoice(handleWeb, {
+        ...baseInvoiceFields, groups: "1",
+        g0_desc: "Website", g0_hours: "2", g0_rate: "40", g0_ids: String(e.id),
+        g0_date_from: "2026-09-20", g0_date_to: "2026-09-20",
+      });
+      expect(res!.status).toBe(400);
+    }
+    expect(db.query("SELECT COUNT(*) AS n FROM invoices").get()).toEqual({ n: 0 });
+    expect(db.query("SELECT COUNT(*) AS n FROM time_entries WHERE invoice_id IS NOT NULL").get()).toEqual({ n: 0 });
+  });
+
   test("zero-hour manual rows are skipped and an empty invoice is rejected", async () => {
     const { db, handleWeb } = setup();
     const res = await postInvoice(handleWeb, {

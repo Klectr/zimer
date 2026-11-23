@@ -20,7 +20,7 @@ import type { AccountsDb } from "../lib/accounts.ts"; /* #732 */
 import { findTenantByPublicToken } from "../lib/tenants.ts"; /* #741 */
 import { countProofs, deleteProof, getProof, insertProof, listProofs, sanitizeFilename, validateProofFile, PROOF_MAX_BYTES, PROOF_MAX_PER_INVOICE } from "../lib/payment_proofs.ts"; /* #956 */
 import { servedVersion, staticUrl } from "../lib/static-assets.ts"; /* #993 */
-import { endAfterStart, existingClientId, existingProjectId, normalizeEntryTimestamp, nonNegativeRate, stopEndTime } from "./api.ts"; /* #1434, #1442, #1450, #1452, #1462, #1464 */
+import { endAfterStart, entryLinkable, existingClientId, existingProjectId, normalizeEntryTimestamp, nonNegativeRate, stopEndTime } from "./api.ts"; /* #1434, #1442, #1450, #1452, #1462, #1464 */
 import { textField } from "../ui/field.ts";
 import { card } from "../ui/card.ts";
 import { settingsDataList, settingsDataRow, settingsSection } from "../ui/settings-section.ts";
@@ -1210,6 +1210,16 @@ export function createWebRouter(deps: WebDeps) {
           const clientId = cidRaw ? existingClientId(db, String(cidRaw)) : null;
           if (cidRaw && clientId === null)
             return new Response("That client no longer exists.", { status: 400 });
+          /* #1470: the wizard's entry ids come back as form fields — each
+             one must still be billable to this invoice (finished, not on
+             another invoice, this client's time), or a stale preview would
+             steal the entry onto this invoice. */
+          for (const it of items) {
+            for (const eid of it.entry_ids) {
+              if (!entryLinkable(db, eid, clientId))
+                return new Response("One of those entries is no longer available to invoice.", { status: 400 });
+            }
+          }
           const dueRaw = String(form.get("due_date") || "");
           /* #1350: keep the wizard's From/To as the Zinvoice's billing period.
              Only a well-formed, ordered pair is stored; anything else stays
