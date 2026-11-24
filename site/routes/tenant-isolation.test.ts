@@ -183,7 +183,7 @@ describe("hosted tenant isolation (#733)", () => {
     expect(count(bDb)).toBe(0);
     req = apiReq(`/api/entries/${entries[0].id}`, "DELETE", b.cookie);
     res = (await handleApi(req, new URL(req.url), `/api/entries/${entries[0].id}`, "DELETE"))!;
-    expect(res.status).toBe(204); /* delete of a missing id is a no-op */
+    expect(res.status).toBe(404); /* #1482: in B's tenant the id does not exist — 404 like any missing id, and A's row is untouched below */
     expect(count(aDb)).toBe(1);
     expect(tenants.size()).toBe(2);
   });
