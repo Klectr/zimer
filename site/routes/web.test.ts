@@ -810,6 +810,57 @@ describe("invoice preview and hours hardening (#1444)", () => {
     expect(await res!.text()).toContain("valid date");
   });
 
+  test("a preview for a client that does not exist is rejected (#1490)", async () => {
+    const { handleWeb } = setup();
+    const res = await postPreview(handleWeb, { ...basePreviewFields, client_id: "999" });
+    expect(res!.status).toBe(400);
+    expect(await res!.text()).toContain("no longer exists");
+  });
+
+  test("a preview with a non-numeric client_id is rejected (#1490)", async () => {
+    const { handleWeb } = setup();
+    const res = await postPreview(handleWeb, { ...basePreviewFields, client_id: "abc" });
+    expect(res!.status).toBe(400);
+    expect(await res!.text()).toContain("no longer exists");
+  });
+
+  test("a preview with a garbage from date is rejected (#1490)", async () => {
+    const { handleWeb } = setup();
+    const res = await postPreview(handleWeb, { ...basePreviewFields, from: "2026-02-30" });
+    expect(res!.status).toBe(400);
+    expect(await res!.text()).toContain("valid dates");
+  });
+
+  test("a preview with a garbage to date is rejected (#1490)", async () => {
+    const { handleWeb } = setup();
+    const res = await postPreview(handleWeb, { ...basePreviewFields, to: "not-a-date" });
+    expect(res!.status).toBe(400);
+    expect(await res!.text()).toContain("valid dates");
+  });
+
+  test("a preview with a reversed range is rejected (#1490)", async () => {
+    const { handleWeb } = setup();
+    const res = await postPreview(handleWeb, { ...basePreviewFields, from: "2026-09-20", to: "2026-09-01" });
+    expect(res!.status).toBe(400);
+    expect(await res!.text()).toContain("on or before");
+  });
+
+  test("a padded valid preview range passes (#1490)", async () => {
+    const { handleWeb } = setup();
+    const res = await postPreview(handleWeb, { ...basePreviewFields, from: " 2026-09-01 ", to: " 2026-09-20 " });
+    expect(res!.status).toBe(200);
+  });
+
+  test("an HTMX preview for a missing client gets a visible error fragment (#1490)", async () => {
+    const { handleWeb } = setup();
+    const form = new FormData();
+    for (const [k, v] of Object.entries({ ...basePreviewFields, client_id: "999" })) form.append(k, v);
+    const req = new Request("http://x/invoices/preview", { method: "POST", body: form, headers: { "HX-Request": "true" } });
+    const res = await handleWeb(req, new URL(req.url), "/invoices/preview", "POST");
+    expect(res!.status).toBe(400);
+    expect(await res!.text()).toContain("no longer exists");
+  });
+
   test("non-numeric hours drop the row and leave no orphan invoice", async () => {
     const { db, handleWeb } = setup();
     const res = await postInvoice(handleWeb, {
