@@ -679,7 +679,7 @@ describe("invoice line-date and preview-date validation (#1488)", () => {
       g0_ids: "", g0_date_from: "2026-02-30", g0_date_to: "",
     });
     expect(res!.status).toBe(400);
-    expect(await res!.text()).toContain("valid date");
+    expect(await res!.text()).toContain("Date from must be a valid date");
     expect(db.query("SELECT COUNT(*) AS n FROM invoices").get()).toEqual({ n: 0 });
     expect(db.query("SELECT COUNT(*) AS n FROM invoice_items").get()).toEqual({ n: 0 });
   });
@@ -692,7 +692,7 @@ describe("invoice line-date and preview-date validation (#1488)", () => {
       g0_ids: "", g0_date_from: "", g0_date_to: "not-a-date",
     });
     expect(res!.status).toBe(400);
-    expect(await res!.text()).toContain("valid date");
+    expect(await res!.text()).toContain("Date to must be a valid date");
     expect(db.query("SELECT COUNT(*) AS n FROM invoices").get()).toEqual({ n: 0 });
   });
 
@@ -707,6 +707,18 @@ describe("invoice line-date and preview-date validation (#1488)", () => {
     const item = db.query("SELECT date_from, date_to FROM invoice_items").get() as any;
     expect(item.date_from).toBe("2026-09-01");
     expect(item.date_to).toBe("2026-09-20");
+  });
+
+  test("a padded valid per-line date is stored trimmed", async () => {
+    const { db, handleWeb } = setup();
+    const res = await postInvoice(handleWeb, {
+      ...baseInvoiceFields, groups: "1",
+      g0_desc: "Work", g0_hours: "1", g0_rate: "50",
+      g0_ids: "", g0_date_from: " 2026-09-01 ", g0_date_to: "",
+    });
+    expect(res!.status).toBe(302);
+    const item = db.query("SELECT date_from FROM invoice_items").get() as any;
+    expect(item.date_from).toBe("2026-09-01");
   });
 
   test("a garbage date on a dropped zero-hour row does not block the invoice", async () => {
@@ -766,14 +778,20 @@ describe("invoice preview and hours hardening (#1444)", () => {
     const { handleWeb } = setup();
     const res = await postPreview(handleWeb, { ...basePreviewFields, issue_date: "2026-13-40" });
     expect(res!.status).toBe(400);
-    expect(await res!.text()).toContain("valid date");
+    expect(await res!.text()).toContain("Issue date must be a valid date");
   });
 
   test("a garbage preview due_date is rejected (#1488)", async () => {
     const { handleWeb } = setup();
     const res = await postPreview(handleWeb, { ...basePreviewFields, due_date: "2026-02-30" });
     expect(res!.status).toBe(400);
-    expect(await res!.text()).toContain("valid date");
+    expect(await res!.text()).toContain("Due date must be a valid date");
+  });
+
+  test("a padded valid preview issue_date passes (#1488)", async () => {
+    const { handleWeb } = setup();
+    const res = await postPreview(handleWeb, { ...basePreviewFields, issue_date: " 2026-09-20 " });
+    expect(res!.status).toBe(200);
   });
 
   test("valid preview issue and due dates pass (#1488)", async () => {

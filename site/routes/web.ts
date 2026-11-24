@@ -1161,10 +1161,14 @@ export function createWebRouter(deps: WebDeps) {
              preview renders step 2 with a garbage date that only fails at
              final submit. Absent issue_date defaults to today in p;
              absent due_date stays blank. */
-          if (form.get("issue_date") && !validYmd(form.get("issue_date")))
+          const previewIssue = form.get("issue_date") ? validYmd(form.get("issue_date")) : null;
+          if (form.get("issue_date") && !previewIssue)
             return previewFail("Issue date must be a valid date (YYYY-MM-DD).");
-          if (form.get("due_date") && !validYmd(form.get("due_date")))
+          if (previewIssue) p.issue_date = previewIssue;
+          const previewDue = form.get("due_date") ? validYmd(form.get("due_date")) : null;
+          if (form.get("due_date") && !previewDue)
             return previewFail("Due date must be a valid date (YYYY-MM-DD).");
+          if (previewDue) p.due_date = previewDue;
           const entries = unbilledEntries(Number(p.client_id), p.from + "T00:00:00", p.to + "T00:00:00");
           const preview = !entries.length
             ? { items: [], emptyMsg: "No unbilled, finished entries on this client's projects in that range." }
