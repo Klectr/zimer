@@ -200,6 +200,29 @@ export const ZINVOICE_WIZARD_SCRIPT = `<script>(function(){
           var opt=sel.options[sel.selectedIndex], due=dueEl(), issue=issueEl();
           if(opt&&opt.dataset.termsDays&&issue&&issue.value&&due) due.value=addDaysStr(issue.value,parseInt(opt.dataset.termsDays,10));
         }
+        /* #1083: everything on the form follows the selected client. Its
+           rate replaces the previous client's (a client without a rate
+           leaves the field blank to fill), and a client whose terms have no
+           due date (pay when paid) clears the previous client's due date. */
+        function applyClient(){
+          var opt=sel.options[sel.selectedIndex];
+          if(!sel.value||!opt) return;
+          var r=parseFloat(opt.dataset.rate||'');
+          rate.value=r>0?opt.dataset.rate:'';
+          var due=dueEl();
+          if(due&&!opt.dataset.termsDays) due.value='';
+          deriveDue();
+        }
+        /* #1083: with no client picked, no client's time may stay on the
+           form — drop the time lines (they carry entry ids) and keep only
+           manual lines the user typed. */
+        function dropClientLines(){
+          form.querySelectorAll('#invoice-step2 tbody tr').forEach(function(tr){
+            var ids=tr.querySelector('input[name$="_ids"]');
+            if(ids&&ids.value) tr.remove();
+          });
+          recompute();
+        }
         function updateSub(){
           var sub=document.getElementById('inv-new-sub');
           if(!sub) return;
@@ -207,10 +230,21 @@ export const ZINVOICE_WIZARD_SCRIPT = `<script>(function(){
           var to=document.getElementById('inv-to');
           sub.textContent=sel.value&&opt ? opt.text+' · unbilled through '+shortYmdStr(to?to.value:'') : '';
         }
+        /* #1083: switching clients quickly sends overlapping previews; only
+           the latest may swap in, so a slow answer for the previous client
+           never lands over the current one. */
+        var previewSeq=0;
         function loadPreview(){
           if(!window.htmx||!sel.value) return;
-          window.htmx.ajax('POST','/invoices/preview',{source:'#inv-create-form',target:'#invoice-step2',swap:'innerHTML'});
+          previewSeq++;
+          window.htmx.ajax('POST','/invoices/preview',{source:'#inv-create-form',target:'#invoice-step2',swap:'innerHTML',
+            headers:{'X-Preview-Seq':String(previewSeq)}});
         }
+        document.body.addEventListener('htmx:beforeSwap',function(ev){
+          var h=ev.detail&&ev.detail.requestConfig&&ev.detail.requestConfig.headers;
+          var seq=h&&h['X-Preview-Seq'];
+          if(seq&&seq!==String(previewSeq)) ev.detail.shouldSwap=false;
+        });
         function recompute(){
           var wrap=document.getElementById('inv-preview');
           if(!wrap||!form) return;
@@ -250,10 +284,9 @@ export const ZINVOICE_WIZARD_SCRIPT = `<script>(function(){
         }
         if(rangeEl) rangeEl.addEventListener('change',function(){rangeTouched=true; if(sel.value) loadPreview();});
         sel.addEventListener('change',function(){
-          var opt=sel.options[sel.selectedIndex];
-          if(opt&&opt.dataset.rate&&!rate.value) rate.value=opt.dataset.rate;
-          deriveDue();
+          applyClient();
           updateSub();
+          if(!sel.value){ dropClientLines(); return; }
           if(!window.htmx) return;
           if(sel.value&&!rangeTouched){
             window.htmx.ajax('GET','/partial/invoice-rest?client_id='+encodeURIComponent(sel.value),{target:'#inv-range',swap:'innerHTML'})
