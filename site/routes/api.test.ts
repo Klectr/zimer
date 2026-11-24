@@ -636,6 +636,26 @@ describe("API rate validation (#1440)", () => {
     const row = tenant.db.query("SELECT rate, amount FROM invoice_items").get() as any;
     expect(row).toEqual({ rate: 50, amount: 100 });
   });
+  test("POST /api/invoices from/to path rejects an impossible or malformed range (#1492)", async () => {
+    for (const range of [{ from: "2026-02-30", to: "2026-03-01" }, { from: "2026-11-07", to: "11/20/2026" }]) {
+      const tenant = rateTenant();
+      (tenant as any).unbilledEntries = () => [{ id: 1 }];
+      (tenant as any).groupToLineItems = (_groups: any[], rate: number) => [{ description: "Work", hours: 2, rate, entry_ids: [1] }];
+      const res = await post(tenant, "/api/invoices", { client_id: 3, ...range, rate: 50 });
+      expect(res.status).toBe(400);
+      expect((await res.json() as any).error).toContain("from/to");
+      expect((tenant.db.query("SELECT COUNT(*) AS n FROM invoices").get() as any).n).toBe(0);
+    }
+  });
+  test("POST /api/invoices from/to path rejects a reversed range (#1492)", async () => {
+    const tenant = rateTenant();
+    (tenant as any).unbilledEntries = () => [{ id: 1 }];
+    (tenant as any).groupToLineItems = (_groups: any[], rate: number) => [{ description: "Work", hours: 2, rate, entry_ids: [1] }];
+    const res = await post(tenant, "/api/invoices", { client_id: 3, from: "2026-11-20", to: "2026-11-07", rate: 50 });
+    expect(res.status).toBe(400);
+    expect((await res.json() as any).error).toContain("from");
+    expect((tenant.db.query("SELECT COUNT(*) AS n FROM invoices").get() as any).n).toBe(0);
+  });
   test("POST /api/clients with a negative rate is a 400 and creates nothing", async () => {
     const tenant = rateTenant();
     const res = await post(tenant, "/api/clients", { name: "Acme", rate: -50 });
