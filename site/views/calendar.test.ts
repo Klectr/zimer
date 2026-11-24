@@ -277,6 +277,54 @@ describe("calendar week carousel (#572)", () => {
   });
 });
 
+/** #1501: the ?week= params were shape-checked only, so an impossible date
+ *  (2026-02-30, month 13) rolled over in the Date math and silently rendered
+ *  a different week. A week that is not a real calendar day falls back to
+ *  the current week, like a missing/garbled one always did. */
+describe("calendar week param must be a real date (#1501)", () => {
+  const stubQuery = () => ({
+    get: (..._a: unknown[]) => ({ n: 1 }),
+    all: (..._a: unknown[]) => [],
+  });
+  function views() {
+    const db = {
+      query: (_sql: string) => ({ get: () => ({ n: 1 }), all: () => [] }),
+    } as unknown as Database;
+    return createCalendarViews({
+      db,
+      qOne: stubQuery(),
+      qRange: stubQuery(),
+      entrySelect: "SELECT",
+      layout: (_t: string, b: string) => b,
+      projectOptionRows: () => [],
+      weekTargetBar: () => "",
+      calHourPx: 64,
+    } as any);
+  }
+  test("weekInner with an impossible week renders the current week", () => {
+    setSystemTime(new Date("2026-09-23T17:00:00.000Z"));
+    try {
+      const html = views().weekInner("2026-02-30", "America/Chicago");
+      expect(html).toContain('data-sun="2026-09-20"');
+      expect(html).not.toContain('data-sun="2026-03-01"');
+      expect(html).not.toContain('data-sun="2026-03-08"');
+    } finally { setSystemTime(); }
+  });
+  test("weekStrip with a month-13 week renders the current week", () => {
+    setSystemTime(new Date("2026-09-23T17:00:00.000Z"));
+    try {
+      const html = views().weekStrip("2026-13-01", "America/Chicago");
+      expect(html).toContain('data-date="2026-09-20"');
+      expect(html).toContain('data-date="2026-09-26"');
+    } finally { setSystemTime(); }
+  });
+  test("weekGrid drops an impossible week from the partial URL, keeps a real one", () => {
+    expect(views().weekGrid("2026-02-30")).toContain('hx-get="/partial/week"');
+    expect(views().weekGrid("2026-02-30")).not.toContain("2026-02-30");
+    expect(views().weekGrid("2026-09-20")).toContain('hx-get="/partial/week?week=2026-09-20"');
+  });
+});
+
 /** #500: finish the data-tip sweep — the calendar entry card's invoiced-mark
  *  info was the last native title= tooltip on the grid. On the ui visualizer
  *  the mark rides the block itself: the is-invoiced class plus the invoice

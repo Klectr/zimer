@@ -88,6 +88,25 @@ function getSettings(handleWeb: any, id: number | string, htmx = true) {
   return handleWeb(req, new URL(req.url), `/clients/${id}/settings`, "GET");
 }
 
+describe("calendar ?day= redirect (#1501)", () => {
+  function getCalendar(handleWeb: any, qs: string) {
+    const req = new Request(`http://x/calendar${qs}`);
+    return handleWeb(req, new URL(req.url), "/calendar", "GET");
+  }
+  test("a real day redirects to its containing week", async () => {
+    const { handleWeb } = setup();
+    const res = await getCalendar(handleWeb, "?day=2026-09-21");
+    expect(res.status).toBe(302);
+    expect(res.headers.get("Location")).toBe("/calendar?week=2026-09-20");
+  });
+  test("an impossible day falls back to the calendar page, no redirect", async () => {
+    const { handleWeb } = setup();
+    const res = await getCalendar(handleWeb, "?day=2026-02-30");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Location")).toBeNull();
+  });
+});
+
 describe("client settings (#630)", () => {
   const full = {
     name: "  Byte Bot LLC  ",
