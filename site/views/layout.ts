@@ -195,6 +195,7 @@ export function createLayoutViews(qRunning: Statement, themeCss?: () => string, 
   <main class="page-public-invoice">
   ${body}
   </main>
+  </body>
   </html>`;
   }
 
