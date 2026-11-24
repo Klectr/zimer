@@ -1765,6 +1765,16 @@ describe("web entry project_id validation (#1462)", () => {
     expect(JSON.parse(r!.headers.get("HX-Trigger")!)).toEqual({ "tk-toast": "That invoice no longer exists" });
   });
 
+  test("POST /invoices/:id/status for a nonexistent invoice is 404 (#1480)", async () => {
+    const { handleWeb } = setup();
+    const form = new FormData();
+    form.append("status", "sent");
+    const req = new Request("http://x/invoices/999/status", { method: "POST", body: form });
+    const r = await handleWeb(req, new URL(req.url), "/invoices/999/status", "POST");
+    expect(r!.status).toBe(404);
+    expect(JSON.parse(r!.headers.get("HX-Trigger")!)).toEqual({ "tk-toast": "That invoice no longer exists" });
+  });
+
   test("DELETE /entries/:id for a nonexistent entry is 404 (#1478)", async () => {
     const { handleWeb } = setup();
     const req = new Request("http://x/entries/9999", { method: "DELETE" });
