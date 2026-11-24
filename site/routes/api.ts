@@ -361,7 +361,8 @@ export function createApiRouter(deps: ApiDeps) {
               }
               if (method === "DELETE") {
                 const cur = qOne.get(id) as Entry | null; /* #334 */
-                if (cur && entryIsLocked(cur))
+                if (!cur) return json({ error: "not found" }, 404); /* #1482 */
+                if (entryIsLocked(cur))
                   return json({ error: "This time is invoiced and can't be deleted." }, 403);
                 db.query("DELETE FROM time_entries WHERE id = ?").run(id);
                 return new Response(null, { status: 204 });
@@ -380,6 +381,8 @@ export function createApiRouter(deps: ApiDeps) {
             }
             m = path.match(/^\/api\/clients\/(\d+)$/);
             if (m && method === "DELETE") {
+              if (!db.query("SELECT 1 FROM clients WHERE id = ?").get(Number(m[1])))
+                return json({ error: "not found" }, 404); /* #1482 */
               /* Schema FK actions are not enforced (no PRAGMA foreign_keys):
                  null these out explicitly so nothing dangles. */
               db.transaction(() => {
@@ -406,6 +409,8 @@ export function createApiRouter(deps: ApiDeps) {
             }
             m = path.match(/^\/api\/projects\/(\d+)$/);
             if (m && method === "DELETE") {
+              if (!db.query("SELECT 1 FROM projects WHERE id = ?").get(Number(m[1])))
+                return json({ error: "not found" }, 404); /* #1482 */
               /* Schema FK is not enforced: null entries explicitly. */
               db.transaction(() => {
                 db.query("UPDATE time_entries SET project_id = NULL WHERE project_id = ?").run(Number(m[1]));

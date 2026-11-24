@@ -1256,3 +1256,75 @@ describe("POST /api/invoices entry_id linkability (#1470)", () => {
     }
   });
 });
+
+describe("API deletes of missing rows return 404 (#1482)", () => {
+  function deleteTenant() {
+    const db = new BunDatabase(":memory:");
+    db.exec(`CREATE TABLE clients (id INTEGER PRIMARY KEY, name TEXT, color TEXT, rate REAL)`);
+    db.exec(`CREATE TABLE projects (id INTEGER PRIMARY KEY, name TEXT, client_id INTEGER)`);
+    db.exec(`CREATE TABLE time_entries (id INTEGER PRIMARY KEY, project_id INTEGER, description TEXT, start_time TEXT, end_time TEXT, invoice_id INTEGER)`);
+    db.exec(`CREATE TABLE invoices (id INTEGER PRIMARY KEY, client_id INTEGER)`);
+    db.query("INSERT INTO clients (id, name) VALUES (1, 'Acme')").run();
+    db.query("INSERT INTO projects (id, name, client_id) VALUES (1, 'Website', 1)").run();
+    db.query("INSERT INTO time_entries (id, project_id, start_time, end_time) VALUES (1, 1, '2026-11-07T09:00:00Z', '2026-11-07T10:00:00Z')").run();
+    return {
+      db,
+      qRunning: stubStatement(),
+      qOne: db.query("SELECT *, NULL AS invoice_status FROM time_entries WHERE id = ?"),
+      qRange: stubStatement(),
+      qInvoice: stubStatement(), qInvoices: stubStatement(),
+      groupToLineItems: () => [], unbilledEntries: () => [],
+      getInvoice: () => null,
+      invoiceTotals: () => ({ subtotal: 0, tax: 0, total: 0 }),
+      nextInvoiceNumber: () => "INV-0001", mintPublicToken: () => "tok",
+      stripeLinkFor: async () => ({}),
+      revenueTotals: () => null, revenueMonthly: () => [], revenueByClient: () => [],
+      revenueOverdue: () => [], revenueSnapshot: () => ({ totals: null, by_month: [], by_client: [], overdue: [] }), freezeInvoiceSnapshots: () => {},
+    };
+  }
+  async function del(tenant: any, path: string) {
+    const handleApi = createApiRouter({
+      getTenant: () => tenant as any,
+      TOKEN: "test-token",
+      authedApi: () => true,
+      json: (data: unknown, status = 200) => Response.json(data, { status }),
+      entryToJson: (e: any) => e,
+      verifyWebhookSignature: () => false,
+      shareOrigin: () => "",
+    }).handleApi;
+    const req = new Request(`http://localhost${path}`, { method: "DELETE" });
+    return (await handleApi(req, new URL(req.url), path, "DELETE"))!;
+  }
+  const count = (tenant: any, table: string) =>
+    (tenant.db.query(`SELECT COUNT(*) AS n FROM ${table}`).get() as any).n;
+
+  test("DELETE /api/entries/999 is a 404; an existing entry deletes with 204", async () => {
+    const tenant = deleteTenant();
+    const missing = await del(tenant, "/api/entries/999");
+    expect(missing.status).toBe(404);
+    expect((await missing.json() as any).error).toBe("not found");
+    expect(count(tenant, "time_entries")).toBe(1);
+    expect((await del(tenant, "/api/entries/1")).status).toBe(204);
+    expect(count(tenant, "time_entries")).toBe(0);
+  });
+
+  test("DELETE /api/clients/999 is a 404; an existing client deletes with 204", async () => {
+    const tenant = deleteTenant();
+    const missing = await del(tenant, "/api/clients/999");
+    expect(missing.status).toBe(404);
+    expect((await missing.json() as any).error).toBe("not found");
+    expect(count(tenant, "clients")).toBe(1);
+    expect((await del(tenant, "/api/clients/1")).status).toBe(204);
+    expect(count(tenant, "clients")).toBe(0);
+  });
+
+  test("DELETE /api/projects/999 is a 404; an existing project deletes with 204", async () => {
+    const tenant = deleteTenant();
+    const missing = await del(tenant, "/api/projects/999");
+    expect(missing.status).toBe(404);
+    expect((await missing.json() as any).error).toBe("not found");
+    expect(count(tenant, "projects")).toBe(1);
+    expect((await del(tenant, "/api/projects/1")).status).toBe(204);
+    expect(count(tenant, "projects")).toBe(0);
+  });
+});
