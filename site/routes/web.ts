@@ -1248,7 +1248,14 @@ export function createWebRouter(deps: WebDeps) {
           const dueDate = form.get("due_date") ? validYmd(form.get("due_date")) : null;
           if (form.get("due_date") && !dueDate)
             return new Response("Due date must be a valid date (YYYY-MM-DD).", { status: 400 });
+          /* #1512: groups is the line-item loop bound — Infinity would
+             spin it forever and a huge integer (1e12) nearly as long, on a
+             single-threaded server; non-integers are rejected as invalid
+             input. The wizard emits one line per project plus manual
+             lines, so 1000 is far above any real invoice. */
           const groups = Number(form.get("groups") || 0);
+          if (!Number.isInteger(groups) || groups < 0 || groups > 1000)
+            return new Response("Line item count must be a whole number from 0 to 1000.", { status: 400 });
           const items: { description: string; hours: number; rate: number; amount: number; entry_ids: number[]; date_from: string | null; date_to: string | null }[] = [];
           for (let i = 0; i < groups; i++) {
             const hours = round2(Number(form.get(`g${i}_hours`) || 0));

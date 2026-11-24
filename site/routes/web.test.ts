@@ -621,7 +621,7 @@ describe("invoice rate validation (#1442)", () => {
   });
 
   test("a groups count that is not a whole number in range is rejected and nothing is stored (#1512)", async () => {
-    for (const groups of ["Infinity", "1001", "2.5", "-1", "abc"]) {
+    for (const groups of ["1001", "2.5", "-1", "abc", "Infinity"]) {
       const { db, handleWeb } = setup();
       const res = await postInvoice(handleWeb, {
         ...baseInvoiceFields, groups,
@@ -633,6 +633,26 @@ describe("invoice rate validation (#1442)", () => {
       expect(db.query("SELECT COUNT(*) AS n FROM invoices").get()).toEqual({ n: 0 });
       expect(db.query("SELECT COUNT(*) AS n FROM invoice_items").get()).toEqual({ n: 0 });
     }
+  });
+
+  test("a groups count of 1000 is accepted; the missing rows drop out (#1512)", async () => {
+    const { db, handleWeb } = setup();
+    const res = await postInvoice(handleWeb, {
+      ...baseInvoiceFields, groups: "1000",
+      g0_desc: "Work", g0_hours: "1", g0_rate: "50",
+      g0_ids: "", g0_date_from: "", g0_date_to: "",
+    });
+    expect(res!.status).toBe(302);
+    expect(db.query("SELECT COUNT(*) AS n FROM invoices").get()).toEqual({ n: 1 });
+    expect(db.query("SELECT COUNT(*) AS n FROM invoice_items").get()).toEqual({ n: 1 });
+  });
+
+  test("a groups count of 0 passes the bound and fails as no line items (#1512)", async () => {
+    const { db, handleWeb } = setup();
+    const res = await postInvoice(handleWeb, { ...baseInvoiceFields, groups: "0" });
+    expect(res!.status).toBe(400);
+    expect(await res!.text()).toContain("No line items");
+    expect(db.query("SELECT COUNT(*) AS n FROM invoices").get()).toEqual({ n: 0 });
   });
 
   test("a negative rate on a dropped zero-hour row does not block the invoice", async () => {
