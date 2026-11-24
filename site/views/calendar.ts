@@ -4,7 +4,7 @@
  *  and helpers; every existing call site keeps working unchanged. */
 
 import type { Database, Statement } from "bun:sqlite";
-import { addDays, durationSeconds, entryInvoiceMark, entryIsLocked, esc, fmtDur, schemeColor } from "../lib/format.ts";
+import { addDays, durationSeconds, entryInvoiceMark, entryIsLocked, esc, fmtDur, schemeColor, validYmd } from "../lib/format.ts";
 import { workspaceEmpty } from "../lib/demo.ts"; /* #300: first-run hint */
 import { button, linkButton } from "../ui/button.ts";
 import { selectField, textField } from "../ui/field.ts";
@@ -345,7 +345,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     const tz = validTz(tzParam);
     /* "today" in the client's zone — the server may be on a different date. */
     const today = ymdOf(tzParts(new Date(), tz));
-    const sun = weekStr && /^\d{4}-\d{2}-\d{2}$/.test(weekStr) ? weekStr : sundayOfYmd(today);
+    const sun = validYmd(weekStr) ?? sundayOfYmd(today); /* #1501 */
     const wd = weekData(sun, tz);
     const empty = workspaceEmpty(db);
     const strips = [addDays(sun, -7), sun, addDays(sun, 7)].map((s) => stripHtml(s, tz, s === sun ? { wd, empty } : { empty })).join("");
@@ -368,7 +368,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
   function weekStrip(weekStr?: string, tzParam?: string): string {
     const tz = validTz(tzParam);
     const today = ymdOf(tzParts(new Date(), tz));
-    const sun = weekStr && /^\d{4}-\d{2}-\d{2}$/.test(weekStr) ? weekStr : sundayOfYmd(today);
+    const sun = validYmd(weekStr) ?? sundayOfYmd(today); /* #1501 */
     return stripInnerHtml(sun, tz);
   }
 
@@ -412,7 +412,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
   }
 
   function weekGrid(weekStr?: string): string {
-    const q = weekStr && /^\d{4}-\d{2}-\d{2}$/.test(weekStr) ? `?week=${weekStr}` : "";
+    const q = validYmd(weekStr) ? `?week=${weekStr}` : ""; /* #1501 */
     /* #322: the skeleton mirrors the carousel pane layout (summary aside
        with the week-nav skeleton at its top) so the htmx swap lands
        without a layout flash. */

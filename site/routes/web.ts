@@ -582,7 +582,7 @@ export function createWebRouter(deps: WebDeps) {
             /* #572: day mode is gone; old ?day= links redirect to the
                containing week. Invalid values fall back to this week. */
             const dp = url.searchParams.get("day");
-            if (dp && /^\d{4}-\d{2}-\d{2}$/.test(dp)) {
+            if (dp && validYmd(dp)) { /* #1501 */
               const [y, m, d] = dp.split("-").map(Number);
               const sun = addDays(dp, -new Date(Date.UTC(y, m - 1, d, 12)).getUTCDay());
               return new Response(null, { status: 302, headers: { Location: `/calendar?week=${sun}` } });
