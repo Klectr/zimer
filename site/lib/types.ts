@@ -11,6 +11,7 @@ export type Entry = {
   client_color: string | null;
   client_rate: number | null;
   invoice_id: number | null;
+  billable: number; /* #1082: 1 = billable (default), 0 = not */
   invoice_number: string | null; /* #330: LEFT JOIN invoices in ENTRY_SELECT */
   invoice_status: string | null; /* #330: "draft" | "sent" | "paid" | null */
 };

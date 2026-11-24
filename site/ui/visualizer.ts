@@ -14,6 +14,8 @@ export interface VizEntry {
   locked?: boolean;
   lockedLabel?: string;
   overlap?: boolean;
+  /** #1082: time that will never be invoiced — drawn outline-only. */
+  nonBillable?: boolean;
 }
 
 export interface VizDay {
@@ -116,6 +118,7 @@ export function visualizer(opts: VisualizerOptions): string {
             "ui-viz-block" +
             (e.endMin - e.startMin >= 60 && blockHeight >= 64 ? " is-tall" : "") +
             (e.invoiced ? " is-invoiced" : "") +
+            (e.nonBillable ? " is-nonbillable" : "") +
             (e.locked ? " is-locked" : "") +
             (e.overlap ? " is-overlap" : "") +
             (e.running ? " is-running" : "");
@@ -132,13 +135,14 @@ export function visualizer(opts: VisualizerOptions): string {
              the running-block growth can reveal it without a re-render.
              The full range stays in the aria-label either way. */
           const metaHtml = `<div class="ui-viz-block-meta"${blockHeight >= 40 ? "" : ` style="display:none"`}>${esc(e.running ? meta : fmtRangeCompact(e.startMin, e.endMin))}</div>`;
-          const state = e.running ? ", running" : e.locked ? ", locked" : "";
+          const state = (e.running ? ", running" : e.locked ? ", locked" : "") + (e.nonBillable ? ", non-billable" : "");
           return (
             `<div class="${cls}" tabindex="0" role="button" aria-label="${esc(e.title)}, ${esc(meta)}${state}" ` +
             `data-id="${esc(e.id)}" data-date="${esc(day.date)}" data-start="${hhmm(e.startMin)}" data-end="${hhmm(e.endMin)}"` +
             (e.projectId ? ` data-project-id="${esc(e.projectId)}"` : "") +
             (e.desc ? ` data-desc="${esc(e.desc)}"` : "") +
             (e.locked ? ` data-locked="${esc(e.lockedLabel || "1")}"` : "") +
+            (e.nonBillable ? ` data-billable="0"` : "") +
             ` style="--entry:${safeCssColor(e.color) ?? "var(--color-text-tertiary)"};top:${top}px;height:${blockHeight}px">${handles}` +
             `<div class="ui-viz-block-title">${esc(e.title)}</div>` +
             `${metaHtml}</div>`

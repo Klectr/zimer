@@ -20,7 +20,7 @@ import type { AccountsDb } from "../lib/accounts.ts"; /* #732 */
 import { findTenantByPublicToken } from "../lib/tenants.ts"; /* #741 */
 import { countProofs, deleteProof, getProof, insertProof, listProofs, sanitizeFilename, validateProofFile, PROOF_MAX_BYTES, PROOF_MAX_PER_INVOICE } from "../lib/payment_proofs.ts"; /* #956 */
 import { servedVersion, staticUrl } from "../lib/static-assets.ts"; /* #993 */
-import { endAfterStart, entryLinkable, existingClientId, existingProjectId, normalizeEntryTimestamp, nonNegativeRate, stopEndTime } from "./api.ts"; /* #1434, #1442, #1450, #1452, #1462, #1464 */
+import { billableFromForm, endAfterStart, entryLinkable, existingClientId, existingProjectId, normalizeEntryTimestamp, nonNegativeRate, stopEndTime } from "./api.ts"; /* #1434, #1442, #1450, #1452, #1462, #1464 */
 import { textField } from "../ui/field.ts";
 import { card } from "../ui/card.ts";
 import { settingsDataList, settingsDataRow, settingsSection } from "../ui/settings-section.ts";
@@ -500,7 +500,7 @@ export function createWebRouter(deps: WebDeps) {
             const latest = db.query(
               `SELECT MAX(substr(e.start_time, 1, 10)) AS last_day FROM time_entries e
                JOIN projects p ON p.id = e.project_id
-               WHERE p.client_id = ? AND e.invoice_id IS NULL AND e.end_time IS NOT NULL`
+               WHERE p.client_id = ? AND e.invoice_id IS NULL AND e.end_time IS NOT NULL AND e.billable = 1`
             ).get(clientId) as any;
             if (latest?.last_day && String(latest.last_day) > to) to = String(latest.last_day);
             return to;
@@ -610,8 +610,8 @@ export function createWebRouter(deps: WebDeps) {
                  AND created_at >= strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-10 seconds')`
             ).get(pid, desc, startIso, endIso) as { id: number } | null;
             if (dupe) return json({ ok: true, id: dupe.id }, 200);
-            const ins = db.query("INSERT INTO time_entries (project_id, description, start_time, end_time) VALUES (?, ?, ?, ?)")
-              .run(pid, desc, startIso, endIso);
+            const ins = db.query("INSERT INTO time_entries (project_id, description, start_time, end_time, billable) VALUES (?, ?, ?, ?, ?)")
+              .run(pid, desc, startIso, endIso, billableFromForm(form, 1));
             return json({ ok: true, id: Number(ins.lastInsertRowid) }, 201);
           }
 
@@ -654,12 +654,13 @@ export function createWebRouter(deps: WebDeps) {
             return new Response("start_time/end_time must be a valid timestamp with a timezone offset", { status: 400 });
           if (!endAfterStart(startIso, endIso))
             return new Response("end_time must be after start_time", { status: 400 });
-          db.query("UPDATE time_entries SET description = ?, project_id = ?, start_time = ?, end_time = ? WHERE id = ?")
+          db.query("UPDATE time_entries SET description = ?, project_id = ?, start_time = ?, end_time = ?, billable = ? WHERE id = ?")
             .run(
               String(form.get("description") || ""),
               pid,
               startIso,
               endIso,
+              billableFromForm(form, cur.billable === 0 ? 0 : 1), /* #1082: absent (calendar drag/resize) keeps it */
               id);
           return isHtmx(req)
             /* #903: the timer edit dialog posts via htmx — answer HX-Trigger
@@ -707,7 +708,7 @@ export function createWebRouter(deps: WebDeps) {
            Excel detects the encoding. */
         if (path === "/export/entries.csv" && method === "GET") {
           const rows = db.query(`
-            SELECT e.description, e.start_time, e.end_time,
+            SELECT e.description, e.start_time, e.end_time, e.billable,
                    p.name AS project, c.name AS client, c.rate AS rate
             FROM time_entries e
             LEFT JOIN projects p ON p.id = e.project_id
@@ -725,9 +726,13 @@ export function createWebRouter(deps: WebDeps) {
             const start = new Date(r.start_time);
             const end = r.end_time ? new Date(r.end_time) : null;
             const hours = end ? (end.getTime() - start.getTime()) / 3600000 : 0;
-            const billable = r.project ? "yes" : "no";
+            /* #1082: billable = the entry's flag, and it needs a project
+               (hence a client) to be billed at all. Non-billable time
+               carries no amount. */
+            const isBillable = !!r.project && r.billable !== 0;
+            const billable = isBillable ? "yes" : "no";
             const rate = Number(r.rate || 0);
-            const amount = (hours * rate).toFixed(2);
+            const amount = isBillable ? (hours * rate).toFixed(2) : "0.00";
             const cells = [
               start.toISOString().slice(0, 10), r.client || "", r.project || "",
               r.description || "", start.toISOString().slice(11, 16),
@@ -1066,7 +1071,7 @@ export function createWebRouter(deps: WebDeps) {
             FROM time_entries e
             JOIN projects pr ON pr.id = e.project_id
             JOIN clients c ON c.id = pr.client_id
-            WHERE e.invoice_id IS NULL AND e.end_time IS NOT NULL
+            WHERE e.invoice_id IS NULL AND e.end_time IS NOT NULL AND e.billable = 1
               AND e.start_time >= ? AND e.start_time < date(?, '+1 day')`).all(f, t) as any[];
             if (billable.length !== 1) return { p };
             const c = billable[0];

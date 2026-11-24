@@ -115,6 +115,10 @@ db.exec(`DROP TABLE IF EXISTS recurring_schedules;`);
     ["clients", "website", "TEXT"],
     ["clients", "address", "TEXT"],
     ["time_entries", "invoice_id", "INTEGER REFERENCES invoices(id) ON DELETE SET NULL"],
+    /* Issue #1082: billable flag. Default 1, so every existing entry stays
+       billable and today's invoicing is unchanged. Non-billable time can
+       never land on a Zinvoice. */
+    ["time_entries", "billable", "INTEGER NOT NULL DEFAULT 1"],
     ["invoices", "template", "TEXT NOT NULL DEFAULT 'classic'"],
     ["invoices", "stripe_payment_link", "TEXT"],
     /* Issue #645: payment-link ID (plink_...) for webhook matching — Stripe
@@ -174,7 +178,7 @@ db.exec(`DROP TABLE IF EXISTS recurring_schedules;`);
   catch { /* column already gone */ }
 
   const ENTRY_SELECT = `
-  SELECT e.id, e.project_id, e.description, e.start_time, e.end_time, e.invoice_id,
+  SELECT e.id, e.project_id, e.description, e.start_time, e.end_time, e.invoice_id, e.billable,
          p.name AS project_name, c.name AS client_name, c.color AS client_color, c.rate AS client_rate,
          i.number AS invoice_number, i.status AS invoice_status
   FROM time_entries e

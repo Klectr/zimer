@@ -135,7 +135,7 @@ export const calendarStories: Story[] = [
             { id: "e5", title: "Harbor — overlap demo", startMin: 690, endMin: 750, overlap: true, color: "#34d399" },
           ]},
           { date: "2026-11-04", label: "Wed Nov 4", total: "3h 00m", entries: [{ id: "e6", title: "Harbor — import", startMin: 510, endMin: 690, color: "#34d399" }] },
-          { date: "2026-11-05", label: "Thu Nov 5", total: "", entries: [] },
+          { date: "2026-11-05", label: "Thu Nov 5", total: "1h 00m", entries: [{ id: "e8", title: "Acme — courtesy fix", startMin: 600, endMin: 660, nonBillable: true, color: "#fb923c" }] },
           { date: "2026-11-06", label: "Fri Nov 6", total: "4h 40m", entries: [{ id: "e7", title: "Acme — QA pass", startMin: 540, endMin: 820, color: "#fb923c" }] },
           { date: "2026-11-07", label: "Sat Nov 7", total: "", entries: [] },
           { date: "2026-11-08", label: "Sun Nov 8", total: "", entries: [] },

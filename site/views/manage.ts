@@ -90,7 +90,7 @@ export function createManageViews(deps: ManageViewDeps) {
        FROM time_entries e
        JOIN projects p ON p.id = e.project_id
        JOIN clients c ON c.id = p.client_id
-       WHERE e.invoice_id IS NULL AND e.end_time IS NOT NULL`).all() as any[];
+       WHERE e.invoice_id IS NULL AND e.end_time IS NOT NULL AND e.billable = 1`).all() as any[];
     const groups = new Map<string, { clientId: number; rate: number; secs: number }>();
     for (const r of rows) {
       const key = `${r.client_id}:${r.project_id}`;

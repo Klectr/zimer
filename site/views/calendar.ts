@@ -8,6 +8,7 @@ import { addDays, durationSeconds, entryInvoiceMark, entryIsLocked, esc, fmtDur,
 import { workspaceEmpty } from "../lib/demo.ts"; /* #300: first-run hint */
 import { button, linkButton } from "../ui/button.ts";
 import { selectField, textField } from "../ui/field.ts";
+import { checkboxField } from "../ui/choice.ts";
 import { weekView, type WeekDay, type WeekEntry } from "../ui/week-view.ts";
 import { iconButton } from "../ui/icon-button.ts";
 import { visualizer, type VizDay, type VizEntry } from "../ui/visualizer.ts";
@@ -159,18 +160,20 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     for (const e of rows) {
       const secs = durationSeconds(e.start_time, e.end_time);
       weekTotal += secs;
-      /* Billable = entry has a project (hence a client); non-billable = no project. */
-      if (e.project_id != null) weekBillable += secs;
+      /* Billable = entry has a project (hence a client) and is flagged
+         billable (#1082); no project or flagged off = non-billable. */
+      if (e.project_id != null && e.billable !== 0) weekBillable += secs;
       const key = e.client_name ?? "__none";
       const cur = byClient.get(key) ?? { name: e.client_name ?? "No client", color: e.client_color, secs: 0 };
       cur.secs += secs;
       byClient.set(key, cur);
     }
     const clientRows = [...byClient.values()].sort((a, b) => b.secs - a.secs);
-    /* #351: only invoiceable time counts as "not yet invoiced" — entries with a
-       project. Non-project time can never land on an invoice. */
+    /* #351: only invoiceable time counts as "not yet invoiced" — billable
+       entries with a project. Non-project or non-billable (#1082) time can
+       never land on an invoice. */
     const uninvoiced = rows.reduce(
-      (s, e) => s + (e.invoice_id == null && e.project_id != null ? durationSeconds(e.start_time, e.end_time) : 0), 0);
+      (s, e) => s + (e.invoice_id == null && e.project_id != null && e.billable !== 0 ? durationSeconds(e.start_time, e.end_time) : 0), 0);
     /* #351: week-over-week delta vs the immediately preceding week — billable
        vs billable, since it sits next to the billable figure. */
     const [pFrom, pTo] = weekBoundsISO(addDays(sun, -7), tz);
@@ -182,7 +185,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     const weekPhase = sun === currentSun ? "current" : sun > currentSun ? "future" : "past";
     const cutoff = weekPhase === "current" ? Date.now() - 7 * 86_400_000 : Infinity;
     const prevBillable = prevRows.reduce((a, e) => {
-      if (e.project_id == null) return a;
+      if (e.project_id == null || e.billable === 0) return a;
       const start = new Date(e.start_time).getTime();
       if (start >= cutoff) return a;
       const end = Math.min(e.end_time ? new Date(e.end_time).getTime() : Date.now(), cutoff);
@@ -241,6 +244,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
           title: entryTitle(e),
           desc: e.description || undefined,
           projectId: e.project_id != null ? String(e.project_id) : undefined,
+          nonBillable: e.billable === 0, /* #1082 */
           startMin: a,
           endMin: b,
           running: !e.end_time,
@@ -289,12 +293,12 @@ export function createCalendarViews(deps: CalendarViewDeps) {
         const label = `${e.description || "No description"}, ${fmtDur(durationSeconds(e.start_time, e.end_time))}${markA11y}`;
         return {
           title: entryTitle(e),
-          meta: `${fmt12(a)} – ${running ? "now" : fmt12(b)}`,
+          meta: `${fmt12(a)} – ${running ? "now" : fmt12(b)}${e.billable === 0 ? " · Non-billable" : ""}`, /* #1082 */
           duration: fmtDur(durationSeconds(e.start_time, e.end_time)),
           running,
           invoiced: !!mark,
           dot: schemeColor(e.client_color) ?? undefined,
-          attrs: `data-entry-row data-id="${e.id}" data-desc="${esc(e.description)}" data-project-id="${e.project_id ?? ""}" data-date="${day}" data-start="${toHM(a)}" data-end="${running ? "" : toHM(Math.min(b, 1439))}" data-locked="${locked ? esc(e.invoice_number || "") : ""}" tabindex="0" role="button" aria-label="${esc(label)}"`,
+          attrs: `data-entry-row data-id="${e.id}" data-desc="${esc(e.description)}" data-project-id="${e.project_id ?? ""}" data-billable="${e.billable === 0 ? "0" : "1"}" data-date="${day}" data-start="${toHM(a)}" data-end="${running ? "" : toHM(Math.min(b, 1439))}" data-locked="${locked ? esc(e.invoice_number || "") : ""}" tabindex="0" role="button" aria-label="${esc(label)}"`,
         };
       });
       days.push({
@@ -425,6 +429,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
           ${textField({ id: "cal-desc", label: "Description", autocomplete: "off", list: "tk-desc-suggest-dialog" })}
           ${descDatalist()}
           ${selectField({ id: "cal-project", label: "Project", options: projectSelectOptions() })}
+          ${checkboxField({ id: "cal-billable", label: "Billable", checked: true })}
           <div class="cal-time-row">
             ${textField({ id: "cal-start", label: "Start", type: "time", required: true })}
             ${textField({ id: "cal-end", label: "End", type: "time", required: true })}
@@ -551,6 +556,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     var dateLine=document.getElementById('cal-dialog-date');
     var desc=document.getElementById('cal-desc');
     var project=document.getElementById('cal-project');
+    var billable=document.getElementById('cal-billable'); /* #1082 */
     var startI=document.getElementById('cal-start');
     var endI=document.getElementById('cal-end');
     var dur=document.getElementById('cal-dur');
@@ -583,10 +589,10 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       title.textContent='New entry'; delBtn.hidden=true; err.hidden=true;
       var d=new Date(date+'T12:00:00');
       dateLine.textContent=d.toLocaleDateString([],{weekday:'long',month:'long',day:'numeric'});
-      desc.value=''; project.value='';
+      desc.value=''; project.value=''; billable.checked=true; /* #1082: new time is billable */
       startI.value=toHM(a); endI.value=toHM(b); updDur();
       lockNote.hidden=true; /* #334: the dialog is reused — clear locked state */
-      desc.disabled=false; project.disabled=false; startI.disabled=false; endI.disabled=false;
+      desc.disabled=false; project.disabled=false; billable.disabled=false; startI.disabled=false; endI.disabled=false;
       saveBtn.hidden=false;
       showScrim(); desc.focus();
     }
@@ -601,15 +607,16 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       var d=new Date(dayStr+'T12:00:00');
       dateLine.textContent=d.toLocaleDateString([],{weekday:'long',month:'long',day:'numeric'});
       desc.value=el.dataset.desc||''; project.value=el.dataset.projectId||'';
+      billable.checked=el.dataset.billable!=='0'; /* #1082 */
       startI.value=el.dataset.start||'09:00'; endI.value=el.dataset.end||toHM(toMin(startI.value)+60); updDur();
       if(locked){
         lockNote.textContent='Zinvoiced on '+locked+' — this time can\u2019t be edited.';
         lockNote.hidden=false;
-        desc.disabled=true; project.disabled=true; startI.disabled=true; endI.disabled=true;
+        desc.disabled=true; project.disabled=true; billable.disabled=true; startI.disabled=true; endI.disabled=true;
         saveBtn.hidden=true;
       }else{
         lockNote.hidden=true;
-        desc.disabled=false; project.disabled=false; startI.disabled=false; endI.disabled=false;
+        desc.disabled=false; project.disabled=false; billable.disabled=false; startI.disabled=false; endI.disabled=false;
         saveBtn.hidden=false;
       }
       showScrim(); if(!locked) desc.focus();
@@ -788,6 +795,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       var fd=new URLSearchParams();
       fd.set('description',desc.value);
       fd.set('project_id',project.value);
+      fd.set('billable',billable.checked?'1':'0'); /* #1082 */
       fd.set('start_time',dayStr+'T'+startI.value+tzSuffix());
       fd.set('end_time',dayStr+'T'+endI.value+tzSuffix());
       var url=mode==='create'?'/entries':'/entries/'+editId;
@@ -1164,6 +1172,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     return `
         ${textField({ id: "ee-desc", label: "Description", name: "description", value: e.description, attrs: dis ? "disabled" : undefined })}
         ${selectField({ id: "ee-project", label: "Project", name: "project_id", value: e.project_id ? String(e.project_id) : "", disabled: !!dis, options: projectSelectOptions() })}
+        ${dis ? "" : `<input type="hidden" name="billable" value="0">`}${checkboxField({ id: "ee-billable", label: "Billable", name: "billable", value: "1", checked: e.billable !== 0, disabled: !!dis })}
         ${textField({ id: "ee-start", label: "Start", name: "start_time", type: "datetime-local", required: true, attrs: `data-iso="${esc(e.start_time)}"${dis}` })}
         ${textField({ id: "ee-end", label: "End (blank = still running)", name: "end_time", type: "datetime-local", attrs: `data-iso="${esc(e.end_time || "")}"${dis}` })}`;
   }

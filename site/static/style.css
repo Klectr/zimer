@@ -584,6 +584,8 @@ a.ui-row:focus-visible { outline: 2px solid var(--color-primary); outline-offset
 .ui-viz-block:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 .ui-viz-block.is-invoiced { background: var(--color-fill-secondary); border-color: var(--color-border); }
 .ui-viz-block.is-locked { cursor: default; }
+/* #1082: non-billable time reads as outline only — counted, never invoiced */
+.ui-viz-block.is-nonbillable { background: transparent; }
 .ui-viz-block.is-overlap { box-shadow: 0 -4px 8px -2px rgb(0 0 0 / 0.35); }
 .ui-viz-block.is-running { border-style: dashed; border-color: var(--color-success); background: var(--color-success-bg); cursor: default; }
 .ui-viz-block-title { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
