@@ -1170,6 +1170,7 @@ export function createWebRouter(deps: WebDeps) {
             return previewFail("Date range must be valid dates (YYYY-MM-DD).");
           if (rangeFrom > rangeTo)
             return previewFail("Date range must start on or before it ends.");
+          p.client_id = String(previewClientId);
           p.from = rangeFrom;
           p.to = rangeTo;
           /* #1488: mirror the create route's date rule (#1486) — a provided
