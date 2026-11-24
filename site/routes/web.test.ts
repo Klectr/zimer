@@ -667,6 +667,63 @@ describe("invoice date validation (#1486)", () => {
   });
 });
 
+/** #1488: web invoice create validates per-line dates like the API
+ *  (#1436), and the preview route validates issue/due dates like the
+ *  create route (#1486) — a provided date must be a real calendar day. */
+describe("invoice line-date and preview-date validation (#1488)", () => {
+  test("a garbage per-line date_from is rejected and nothing is stored", async () => {
+    const { db, handleWeb } = setup();
+    const res = await postInvoice(handleWeb, {
+      ...baseInvoiceFields, groups: "1",
+      g0_desc: "Work", g0_hours: "1", g0_rate: "50",
+      g0_ids: "", g0_date_from: "2026-02-30", g0_date_to: "",
+    });
+    expect(res!.status).toBe(400);
+    expect(await res!.text()).toContain("valid date");
+    expect(db.query("SELECT COUNT(*) AS n FROM invoices").get()).toEqual({ n: 0 });
+    expect(db.query("SELECT COUNT(*) AS n FROM invoice_items").get()).toEqual({ n: 0 });
+  });
+
+  test("a garbage per-line date_to is rejected and nothing is stored", async () => {
+    const { db, handleWeb } = setup();
+    const res = await postInvoice(handleWeb, {
+      ...baseInvoiceFields, groups: "1",
+      g0_desc: "Work", g0_hours: "1", g0_rate: "50",
+      g0_ids: "", g0_date_from: "", g0_date_to: "not-a-date",
+    });
+    expect(res!.status).toBe(400);
+    expect(await res!.text()).toContain("valid date");
+    expect(db.query("SELECT COUNT(*) AS n FROM invoices").get()).toEqual({ n: 0 });
+  });
+
+  test("valid per-line dates are stored as given", async () => {
+    const { db, handleWeb } = setup();
+    const res = await postInvoice(handleWeb, {
+      ...baseInvoiceFields, groups: "1",
+      g0_desc: "Work", g0_hours: "1", g0_rate: "50",
+      g0_ids: "", g0_date_from: "2026-09-01", g0_date_to: "2026-09-20",
+    });
+    expect(res!.status).toBe(302);
+    const item = db.query("SELECT date_from, date_to FROM invoice_items").get() as any;
+    expect(item.date_from).toBe("2026-09-01");
+    expect(item.date_to).toBe("2026-09-20");
+  });
+
+  test("a garbage date on a dropped zero-hour row does not block the invoice", async () => {
+    const { db, handleWeb } = setup();
+    const res = await postInvoice(handleWeb, {
+      ...baseInvoiceFields, groups: "2",
+      g0_desc: "Work", g0_hours: "1", g0_rate: "50",
+      g0_ids: "", g0_date_from: "", g0_date_to: "",
+      g1_desc: "Skipped", g1_hours: "0", g1_rate: "50",
+      g1_ids: "", g1_date_from: "garbage", g1_date_to: "",
+    });
+    expect(res!.status).toBe(302);
+    expect(db.query("SELECT COUNT(*) AS n FROM invoices").get()).toEqual({ n: 1 });
+    expect(db.query("SELECT COUNT(*) AS n FROM invoice_items").get()).toEqual({ n: 1 });
+  });
+});
+
 /** #1444: preview validates rate/tax like the create route, and non-finite
  *  hours drop the row instead of orphaning the invoice header. */
 function postPreview(handleWeb: any, fields: Record<string, string>) {
@@ -703,6 +760,36 @@ describe("invoice preview and hours hardening (#1444)", () => {
     const { handleWeb } = setup();
     const res = await postPreview(handleWeb, { ...basePreviewFields, rate: "40", tax_rate: "8.25" });
     expect(res!.status).toBe(200);
+  });
+
+  test("a garbage preview issue_date is rejected (#1488)", async () => {
+    const { handleWeb } = setup();
+    const res = await postPreview(handleWeb, { ...basePreviewFields, issue_date: "2026-13-40" });
+    expect(res!.status).toBe(400);
+    expect(await res!.text()).toContain("valid date");
+  });
+
+  test("a garbage preview due_date is rejected (#1488)", async () => {
+    const { handleWeb } = setup();
+    const res = await postPreview(handleWeb, { ...basePreviewFields, due_date: "2026-02-30" });
+    expect(res!.status).toBe(400);
+    expect(await res!.text()).toContain("valid date");
+  });
+
+  test("valid preview issue and due dates pass (#1488)", async () => {
+    const { handleWeb } = setup();
+    const res = await postPreview(handleWeb, { ...basePreviewFields, issue_date: "2026-09-20", due_date: "2026-10-20" });
+    expect(res!.status).toBe(200);
+  });
+
+  test("an HTMX preview with a garbage issue_date gets a visible error fragment (#1488)", async () => {
+    const { handleWeb } = setup();
+    const form = new FormData();
+    for (const [k, v] of Object.entries({ ...basePreviewFields, issue_date: "garbage" })) form.append(k, v);
+    const req = new Request("http://x/invoices/preview", { method: "POST", body: form, headers: { "HX-Request": "true" } });
+    const res = await handleWeb(req, new URL(req.url), "/invoices/preview", "POST");
+    expect(res!.status).toBe(400);
+    expect(await res!.text()).toContain("valid date");
   });
 
   test("non-numeric hours drop the row and leave no orphan invoice", async () => {

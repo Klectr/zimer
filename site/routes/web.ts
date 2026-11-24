@@ -1156,6 +1156,15 @@ export function createWebRouter(deps: WebDeps) {
           const previewTax = nonNegativeRate(form.get("tax_rate"));
           if (previewTax === null || !Number.isFinite(round2(previewTax)))
             return previewFail("Tax rate must be a number at or above 0.");
+          /* #1488: mirror the create route's date rule (#1486) — a provided
+             issue_date or due_date must be a real calendar day, or the
+             preview renders step 2 with a garbage date that only fails at
+             final submit. Absent issue_date defaults to today in p;
+             absent due_date stays blank. */
+          if (form.get("issue_date") && !validYmd(form.get("issue_date")))
+            return previewFail("Issue date must be a valid date (YYYY-MM-DD).");
+          if (form.get("due_date") && !validYmd(form.get("due_date")))
+            return previewFail("Due date must be a valid date (YYYY-MM-DD).");
           const entries = unbilledEntries(Number(p.client_id), p.from + "T00:00:00", p.to + "T00:00:00");
           const preview = !entries.length
             ? { items: [], emptyMsg: "No unbilled, finished entries on this client's projects in that range." }
@@ -1202,6 +1211,18 @@ export function createWebRouter(deps: WebDeps) {
                never store a non-finite amount. */
             if (!Number.isFinite(round2(hours * rate)))
               return new Response("Rate must be a number at or above 0.", { status: 400 });
+            /* #1488: per-line billing dates are stored dates — mirror the
+               API rule (#1436): a provided one on a surviving row must be a
+               real calendar day; verbatim garbage would feed the PDF and
+               the period fallback. Blank stays null. */
+            const dateFromRaw = form.get(`g${i}_date_from`);
+            const dateFrom = dateFromRaw ? validYmd(dateFromRaw) : null;
+            if (dateFromRaw && !dateFrom)
+              return new Response("Date from must be a valid date (YYYY-MM-DD).", { status: 400 });
+            const dateToRaw = form.get(`g${i}_date_to`);
+            const dateTo = dateToRaw ? validYmd(dateToRaw) : null;
+            if (dateToRaw && !dateTo)
+              return new Response("Date to must be a valid date (YYYY-MM-DD).", { status: 400 });
             items.push({
               /* #668: manual rows carry no entry ids (one-time work with no
                  tracked time) — their description defaults to "Item" while
@@ -1209,8 +1230,8 @@ export function createWebRouter(deps: WebDeps) {
               description: String(form.get(`g${i}_desc`) || (ids.length ? "Time" : "Item")),
               hours, rate, amount: round2(hours * rate), entry_ids: ids,
               /* #243: per-line billing dates from the grouped entries */
-              date_from: String(form.get(`g${i}_date_from`) || "") || null,
-              date_to: String(form.get(`g${i}_date_to`) || "") || null,
+              date_from: dateFrom,
+              date_to: dateTo,
             });
           }
           if (!items.length) return new Response("No line items — nothing to Zinvoice.", { status: 400 });
