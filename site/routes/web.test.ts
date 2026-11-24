@@ -20,6 +20,7 @@ function setup() {
   db.query("INSERT INTO clients (name, color, rate) VALUES ('Bytebot', '#fb923c', 40)").run();
   const client = db.query("SELECT * FROM clients").get() as any;
   const views = createManageViews({ db, layout: (_t: string, b: string) => b, unbilledByClient: () => [] });
+  const unbilledCalls: any[][] = [];
   const noop = () => "";
   /* #733: data deps resolve per request through getTenant now. */
   const tenant = {
@@ -42,7 +43,7 @@ function setup() {
     getInvoice: () => null, invoiceTotals: () => ({ subtotal: 0, tax: 0, total: 0 }),
     nextInvoiceNumber: () => "INV-0001",
     stripeLinkFor: async () => ({}),
-    unbilledEntries: () => [], groupToLineItems: () => [],
+    unbilledEntries: (...args: any[]) => { unbilledCalls.push(args); return []; }, groupToLineItems: () => [],
     clientRestFrom: () => null, ensurePublicToken: () => "",
     getPublicToken: () => null, mintPublicToken: () => "",
     invoicePdfInput: () => ({} as any),
@@ -68,7 +69,7 @@ function setup() {
     workspaceEmpty: () => false, demoIds: () => [], seedDemoData: () => {},
     removeDemoData: () => {}, entryToJson: (e: any) => e,
   });
-  return { db, client, handleWeb };
+  return { db, client, handleWeb, unbilledCalls };
 }
 
 function postSettings(handleWeb: any, id: number, fields: Record<string, string>, htmx = true) {
@@ -808,6 +809,65 @@ describe("invoice preview and hours hardening (#1444)", () => {
     const res = await handleWeb(req, new URL(req.url), "/invoices/preview", "POST");
     expect(res!.status).toBe(400);
     expect(await res!.text()).toContain("valid date");
+  });
+
+  test("a preview for a client that does not exist is rejected (#1490)", async () => {
+    const { handleWeb } = setup();
+    const res = await postPreview(handleWeb, { ...basePreviewFields, client_id: "999" });
+    expect(res!.status).toBe(400);
+    expect(await res!.text()).toContain("no longer exists");
+  });
+
+  test("a preview with a non-numeric client_id is rejected (#1490)", async () => {
+    const { handleWeb } = setup();
+    const res = await postPreview(handleWeb, { ...basePreviewFields, client_id: "abc" });
+    expect(res!.status).toBe(400);
+    expect(await res!.text()).toContain("no longer exists");
+  });
+
+  test("a preview with a garbage from date is rejected (#1490)", async () => {
+    const { handleWeb } = setup();
+    const res = await postPreview(handleWeb, { ...basePreviewFields, from: "2026-02-30" });
+    expect(res!.status).toBe(400);
+    expect(await res!.text()).toContain("valid dates");
+  });
+
+  test("a preview with a garbage to date is rejected (#1490)", async () => {
+    const { handleWeb } = setup();
+    const res = await postPreview(handleWeb, { ...basePreviewFields, to: "not-a-date" });
+    expect(res!.status).toBe(400);
+    expect(await res!.text()).toContain("valid dates");
+  });
+
+  test("a preview with a reversed range is rejected (#1490)", async () => {
+    const { handleWeb } = setup();
+    const res = await postPreview(handleWeb, { ...basePreviewFields, from: "2026-09-20", to: "2026-09-01" });
+    expect(res!.status).toBe(400);
+    expect(await res!.text()).toContain("on or before");
+  });
+
+  test("a padded valid preview range passes, trimmed into the query (#1490)", async () => {
+    const { handleWeb, unbilledCalls } = setup();
+    const res = await postPreview(handleWeb, { ...basePreviewFields, from: " 2026-09-01 ", to: " 2026-09-20 " });
+    expect(res!.status).toBe(200);
+    expect(unbilledCalls).toEqual([[1, "2026-09-01T00:00:00", "2026-09-20T00:00:00"]]);
+  });
+
+  test("a same-day preview range passes (#1490)", async () => {
+    const { handleWeb, unbilledCalls } = setup();
+    const res = await postPreview(handleWeb, { ...basePreviewFields, from: "2026-09-10", to: "2026-09-10" });
+    expect(res!.status).toBe(200);
+    expect(unbilledCalls).toEqual([[1, "2026-09-10T00:00:00", "2026-09-10T00:00:00"]]);
+  });
+
+  test("an HTMX preview for a missing client gets a visible error fragment (#1490)", async () => {
+    const { handleWeb } = setup();
+    const form = new FormData();
+    for (const [k, v] of Object.entries({ ...basePreviewFields, client_id: "999" })) form.append(k, v);
+    const req = new Request("http://x/invoices/preview", { method: "POST", body: form, headers: { "HX-Request": "true" } });
+    const res = await handleWeb(req, new URL(req.url), "/invoices/preview", "POST");
+    expect(res!.status).toBe(400);
+    expect(await res!.text()).toContain("no longer exists");
   });
 
   test("non-numeric hours drop the row and leave no orphan invoice", async () => {

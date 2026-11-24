@@ -1156,6 +1156,23 @@ export function createWebRouter(deps: WebDeps) {
           const previewTax = nonNegativeRate(form.get("tax_rate"));
           if (previewTax === null || !Number.isFinite(round2(previewTax)))
             return previewFail("Tax rate must be a number at or above 0.");
+          /* #1490: the preview queries by client and range — validate both
+             like the create route does (#1468, #1486). A stale or tampered
+             client_id, or a garbage or reversed from/to, would otherwise
+             render the "no unbilled entries" empty message, claiming a
+             client has no billable time when the query itself was invalid. */
+          const previewClientId = existingClientId(db, p.client_id);
+          if (previewClientId === null)
+            return previewFail("That client no longer exists.");
+          const rangeFrom = validYmd(form.get("from"));
+          const rangeTo = validYmd(form.get("to"));
+          if (!rangeFrom || !rangeTo)
+            return previewFail("Date range must be valid dates (YYYY-MM-DD).");
+          if (rangeFrom > rangeTo)
+            return previewFail("Date range must start on or before it ends.");
+          p.client_id = String(previewClientId);
+          p.from = rangeFrom;
+          p.to = rangeTo;
           /* #1488: mirror the create route's date rule (#1486) — a provided
              issue_date or due_date must be a real calendar day, or the
              preview renders step 2 with a garbage date that only fails at
@@ -1169,7 +1186,7 @@ export function createWebRouter(deps: WebDeps) {
           if (form.get("due_date") && !previewDue)
             return previewFail("Due date must be a valid date (YYYY-MM-DD).");
           if (previewDue) p.due_date = previewDue;
-          const entries = unbilledEntries(Number(p.client_id), p.from + "T00:00:00", p.to + "T00:00:00");
+          const entries = unbilledEntries(previewClientId, p.from + "T00:00:00", p.to + "T00:00:00");
           const preview = !entries.length
             ? { items: [], emptyMsg: "No unbilled, finished entries on this client's projects in that range." }
             : { items: groupToLineItems(entries, previewRate), rounding: 5 };
