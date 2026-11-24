@@ -120,15 +120,35 @@ export function existingClientId(db: Database, raw: unknown): number | null {
   return db.query("SELECT 1 FROM clients WHERE id = ?").get(n) ? n : null;
 }
 
+/* #1082: the billable flag from a form post. The entry forms send a hidden
+   billable=0 before the checkbox (billable=1), so a checked box wins and an
+   unchecked one still says 0. Absent entirely (the calendar's drag/resize
+   posts) keeps `fallback` — the entry's current flag, or 1 on create. */
+export function billableFromForm(form: { getAll(name: string): unknown[] }, fallback: 0 | 1): 0 | 1 {
+  const vals = form.getAll("billable").map(String);
+  if (!vals.length) return fallback;
+  return vals.some((v) => v === "1" || v === "on" || v === "true") ? 1 : 0;
+}
+
+/* #1082: the JSON API's billable field — booleans (or 0/1). Anything else
+   is invalid; undefined keeps `fallback`. */
+export function billableFromJson(raw: unknown, fallback: 0 | 1): 0 | 1 | null {
+  if (raw === undefined) return fallback;
+  if (raw === true || raw === 1) return 1;
+  if (raw === false || raw === 0) return 0;
+  return null;
+}
+
 /* #1470: a caller-supplied entry_id on invoice create must name an entry
    that can actually be billed to this invoice: it exists, is finished, is
    not already on an invoice, and belongs to the invoice's client through
    its project (the same reach unbilledEntries uses). */
 export function entryLinkable(db: Database, id: number, clientId: number | null): boolean {
   const row = db.query(
-    `SELECT e.end_time AS end_time, e.invoice_id AS invoice_id, p.id AS project_id, p.client_id AS entry_client_id
+    `SELECT e.end_time AS end_time, e.invoice_id AS invoice_id, e.billable AS billable, p.id AS project_id, p.client_id AS entry_client_id
      FROM time_entries e LEFT JOIN projects p ON p.id = e.project_id WHERE e.id = ?`).get(id) as any;
   if (!row || !row.end_time || row.invoice_id !== null) return false;
+  if (row.billable === 0) return false; /* #1082: non-billable time is never invoiced */
   if (row.project_id === null || row.entry_client_id === null) return false;
   return row.entry_client_id === clientId;
 }
@@ -375,12 +395,15 @@ export function createApiRouter(deps: ApiDeps) {
                     projectId = pid;
                   }
                 }
-                db.query(`UPDATE time_entries SET description = ?, project_id = ?, start_time = ?, end_time = ? WHERE id = ?`)
+                const billable = billableFromJson(body.billable, cur.billable === 0 ? 0 : 1); /* #1082 */
+                if (billable === null) return json({ error: "billable must be true or false" }, 400);
+                db.query(`UPDATE time_entries SET description = ?, project_id = ?, start_time = ?, end_time = ?, billable = ? WHERE id = ?`)
                   .run(
                     body.description !== undefined ? String(body.description) : cur.description,
                     projectId,
                     startTime,
                     endTime,
+                    billable,
                     id);
                 return json(entryToJson(qOne.get(id) as Entry));
               }

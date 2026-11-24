@@ -2022,3 +2022,61 @@ describe("web entry project_id validation (#1462)", () => {
     expect(db.query("SELECT id FROM time_entries WHERE id = ?").get(id)).toBeNull();
   });
 });
+
+/** #1082: the billable flag on web entry create/edit and in the CSV export. */
+describe("entry billable flag (#1082)", () => {
+  const times = { start_time: "2026-10-08T09:00:00.000Z", end_time: "2026-10-08T10:00:00.000Z" };
+  const flag = (db: Database) => (db.query("SELECT billable FROM time_entries").get() as any).billable;
+
+  function postEdit(handleWeb: any, id: number, fields: [string, string][]) {
+    const form = new FormData();
+    for (const [k, v] of fields) form.append(k, v);
+    const req = new Request(`http://x/entries/${id}`, { method: "POST", body: form });
+    return handleWeb(req, new URL(req.url), `/entries/${id}`, "POST");
+  }
+
+  test("a new entry is billable unless the form says otherwise", async () => {
+    const { db, handleWeb } = setup();
+    expect((await postEntry(handleWeb, { project_id: "", description: "a", ...times }))!.status).toBe(201);
+    expect(flag(db)).toBe(1);
+    db.exec("DELETE FROM time_entries");
+    expect((await postEntry(handleWeb, { project_id: "", description: "b", billable: "0", ...times }))!.status).toBe(201);
+    expect(flag(db)).toBe(0);
+  });
+
+  test("the edit form's hidden 0 + checked 1 saves billable; hidden 0 alone saves non-billable", async () => {
+    const { db, handleWeb } = setup();
+    db.query("INSERT INTO time_entries (description, start_time, end_time) VALUES ('x', ?, ?)").run(times.start_time, times.end_time);
+    const id = (db.query("SELECT id FROM time_entries").get() as any).id;
+    const base: [string, string][] = [["description", "x"], ["project_id", ""], ["start_time", times.start_time], ["end_time", times.end_time]];
+    await postEdit(handleWeb, id, [...base, ["billable", "0"]]);
+    expect(flag(db)).toBe(0);
+    await postEdit(handleWeb, id, [...base, ["billable", "0"], ["billable", "1"]]);
+    expect(flag(db)).toBe(1);
+  });
+
+  test("a calendar move/resize (no billable field) keeps a non-billable entry non-billable", async () => {
+    const { db, handleWeb } = setup();
+    db.query("INSERT INTO time_entries (description, start_time, end_time, billable) VALUES ('x', ?, ?, 0)").run(times.start_time, times.end_time);
+    const id = (db.query("SELECT id FROM time_entries").get() as any).id;
+    const r = await postEdit(handleWeb, id, [["description", "x"], ["project_id", ""], ["start_time", "2026-10-08T09:15:00.000Z"], ["end_time", times.end_time]]);
+    expect(r!.status).toBe(302);
+    expect(flag(db)).toBe(0);
+  });
+
+  test("the CSV billable column reads the flag, and non-billable time carries no amount", async () => {
+    const { db, client, handleWeb } = setup();
+    db.query("INSERT INTO projects (client_id, name) VALUES (?, 'Site')").run(client.id);
+    const pid = (db.query("SELECT id FROM projects").get() as any).id;
+    const ins = db.query("INSERT INTO time_entries (project_id, description, start_time, end_time, billable) VALUES (?, ?, ?, ?, ?)");
+    ins.run(pid, "billed", "2026-10-08T09:00:00.000Z", "2026-10-08T10:00:00.000Z", 1);
+    ins.run(pid, "courtesy", "2026-10-08T11:00:00.000Z", "2026-10-08T12:00:00.000Z", 0);
+    ins.run(null, "admin", "2026-10-08T13:00:00.000Z", "2026-10-08T14:00:00.000Z", 1);
+    const req = new Request("http://x/export/entries.csv");
+    const csv = await (await handleWeb(req, new URL(req.url), "/export/entries.csv", "GET"))!.text();
+    const line = (d: string) => csv.split("\n").find((l: string) => l.includes(d))!;
+    expect(line("billed")).toContain(",1.00,yes,40.00,40.00");
+    expect(line("courtesy")).toContain(",1.00,no,40.00,0.00");
+    expect(line("admin")).toContain(",1.00,no,");
+  });
+});

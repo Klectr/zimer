@@ -841,7 +841,7 @@ describe("PATCH /api/entries/:id timestamp normalization (#1432)", () => {
     const db = new BunDatabase(":memory:");
     db.exec(`CREATE TABLE time_entries (
       id INTEGER PRIMARY KEY, project_id INTEGER, description TEXT NOT NULL DEFAULT '',
-      start_time TEXT NOT NULL, end_time TEXT, invoice_id INTEGER)`);
+      start_time TEXT NOT NULL, end_time TEXT, invoice_id INTEGER, billable INTEGER NOT NULL DEFAULT 1)`);
     db.query("INSERT INTO time_entries (id, project_id, description, start_time, end_time) VALUES (1, NULL, 'Work', '2026-10-07T14:00:00.000Z', '2026-10-07T15:00:00.000Z')").run();
     const qOne = {
       get: (id: number) => {
@@ -872,8 +872,26 @@ describe("PATCH /api/entries/:id timestamp normalization (#1432)", () => {
       return (await handleApi(req, new URL(req.url), "/api/entries/1", "PATCH"))!;
     }
     const row = () => db.query("SELECT start_time, end_time FROM time_entries WHERE id = 1").get() as any;
-    return { patch, row };
+    const billable = () => (db.query("SELECT billable FROM time_entries WHERE id = 1").get() as any).billable;
+    return { patch, row, billable };
   }
+
+  test("billable: false marks the entry non-billable; omitting it keeps the flag (#1082)", async () => {
+    const { patch, billable } = entrySetup();
+    expect((await patch({ billable: false })).status).toBe(200);
+    expect(billable()).toBe(0);
+    expect((await patch({ description: "Still not billable" })).status).toBe(200);
+    expect(billable()).toBe(0);
+    expect((await patch({ billable: true })).status).toBe(200);
+    expect(billable()).toBe(1);
+  });
+
+  test("a billable value that isn't a boolean is a 400 and changes nothing (#1082)", async () => {
+    const { patch, billable } = entrySetup();
+    const r = await patch({ billable: "no" });
+    expect(r.status).toBe(400);
+    expect(billable()).toBe(1);
+  });
 
   test("offset and microsecond timestamps are stored as canonical toISOString()", async () => {
     const { patch, row } = entrySetup();
@@ -987,7 +1005,7 @@ describe("timer stop end time (#1452)", () => {
     const db = new BunDatabase(":memory:");
     db.exec(`CREATE TABLE time_entries (
       id INTEGER PRIMARY KEY, project_id INTEGER, description TEXT NOT NULL DEFAULT '',
-      start_time TEXT NOT NULL, end_time TEXT, invoice_id INTEGER)`);
+      start_time TEXT NOT NULL, end_time TEXT, invoice_id INTEGER, billable INTEGER NOT NULL DEFAULT 1)`);
     const future = new Date(Date.now() + 3600_000).toISOString();
     db.query("INSERT INTO time_entries (id, project_id, description, start_time, end_time) VALUES (1, NULL, 'Work', ?, NULL)").run(future);
     const row = () => db.query("SELECT * FROM time_entries WHERE id = 1").get() as any;
@@ -1021,7 +1039,7 @@ describe("API entry project_id validation (#1458)", () => {
     db.exec(`CREATE TABLE projects (id INTEGER PRIMARY KEY, name TEXT, client_id INTEGER)`);
     db.exec(`CREATE TABLE time_entries (
       id INTEGER PRIMARY KEY, project_id INTEGER, description TEXT NOT NULL DEFAULT '',
-      start_time TEXT NOT NULL, end_time TEXT, invoice_id INTEGER)`);
+      start_time TEXT NOT NULL, end_time TEXT, invoice_id INTEGER, billable INTEGER NOT NULL DEFAULT 1)`);
     db.query("INSERT INTO projects (id, name, client_id) VALUES (1, 'Website', NULL)").run();
     db.query("INSERT INTO time_entries (id, project_id, description, start_time, end_time) VALUES (1, NULL, 'Work', '2026-10-07T14:00:00.000Z', '2026-10-07T15:00:00.000Z')").run();
     const withStatus = (r: any) => r ? { ...r, invoice_status: null } : null;
@@ -1198,7 +1216,7 @@ describe("POST /api/invoices entry_id linkability (#1470)", () => {
     db.query("INSERT INTO projects (id, name, client_id) VALUES (10, 'Site', 3), (11, 'OtherSite', 4)").run();
     db.exec(`CREATE TABLE invoices (id INTEGER PRIMARY KEY, status TEXT NOT NULL DEFAULT 'draft', paid_at TEXT)`);
     db.exec(`CREATE TABLE invoice_items (id INTEGER PRIMARY KEY, invoice_id INTEGER, description TEXT, hours REAL, rate REAL, amount REAL, date_from TEXT, date_to TEXT)`);
-    db.exec(`CREATE TABLE time_entries (id INTEGER PRIMARY KEY, project_id INTEGER, description TEXT, start_time TEXT, end_time TEXT, invoice_id INTEGER)`);
+    db.exec(`CREATE TABLE time_entries (id INTEGER PRIMARY KEY, project_id INTEGER, description TEXT, start_time TEXT, end_time TEXT, invoice_id INTEGER, billable INTEGER NOT NULL DEFAULT 1)`);
     /* 1: finished + unbilled, client 3 — linkable. 2: already invoiced.
        3: still running. 4: finished + unbilled, but client 4's time. */
     db.query(`INSERT INTO time_entries (id, project_id, start_time, end_time, invoice_id) VALUES
@@ -1282,7 +1300,7 @@ describe("API deletes of missing rows return 404 (#1482)", () => {
     const db = new BunDatabase(":memory:");
     db.exec(`CREATE TABLE clients (id INTEGER PRIMARY KEY, name TEXT, color TEXT, rate REAL)`);
     db.exec(`CREATE TABLE projects (id INTEGER PRIMARY KEY, name TEXT, client_id INTEGER)`);
-    db.exec(`CREATE TABLE time_entries (id INTEGER PRIMARY KEY, project_id INTEGER, description TEXT, start_time TEXT, end_time TEXT, invoice_id INTEGER)`);
+    db.exec(`CREATE TABLE time_entries (id INTEGER PRIMARY KEY, project_id INTEGER, description TEXT, start_time TEXT, end_time TEXT, invoice_id INTEGER, billable INTEGER NOT NULL DEFAULT 1)`);
     db.exec(`CREATE TABLE invoices (id INTEGER PRIMARY KEY, client_id INTEGER)`);
     db.query("INSERT INTO clients (id, name) VALUES (1, 'Acme')").run();
     db.query("INSERT INTO projects (id, name, client_id) VALUES (1, 'Website', 1)").run();
@@ -1352,7 +1370,7 @@ describe("API deletes of missing rows return 404 (#1482)", () => {
 describe("GET /api/entries range validation (#1494)", () => {
   function entriesTenant() {
     const db = new BunDatabase(":memory:");
-    db.exec(`CREATE TABLE time_entries (id INTEGER PRIMARY KEY, project_id INTEGER, description TEXT, start_time TEXT, end_time TEXT, invoice_id INTEGER)`);
+    db.exec(`CREATE TABLE time_entries (id INTEGER PRIMARY KEY, project_id INTEGER, description TEXT, start_time TEXT, end_time TEXT, invoice_id INTEGER, billable INTEGER NOT NULL DEFAULT 1)`);
     db.query("INSERT INTO time_entries (id, start_time, end_time) VALUES (1, '2026-11-07T09:00:00.000Z', '2026-11-07T10:00:00.000Z'), (2, '2026-11-09T09:00:00.000Z', '2026-11-09T10:00:00.000Z')").run();
     return {
       db,

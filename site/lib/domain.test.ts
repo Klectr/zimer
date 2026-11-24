@@ -20,7 +20,7 @@ function setup() {
     CREATE TABLE projects (id INTEGER PRIMARY KEY, client_id INTEGER, name TEXT NOT NULL);
     CREATE TABLE time_entries (id INTEGER PRIMARY KEY, project_id INTEGER,
       description TEXT NOT NULL DEFAULT '', start_time TEXT NOT NULL, end_time TEXT,
-      invoice_id INTEGER REFERENCES invoices(id) ON DELETE SET NULL,
+      invoice_id INTEGER REFERENCES invoices(id) ON DELETE SET NULL, billable INTEGER NOT NULL DEFAULT 1,
       created_at TEXT NOT NULL DEFAULT '');
     CREATE TABLE invoices (id INTEGER PRIMARY KEY);`);
   db.query("INSERT INTO clients (id, name, rate) VALUES (1, 'Gpb', 40)").run();
@@ -62,7 +62,7 @@ describe("unbilledByClient SQL aggregation (#992)", () => {
       CREATE TABLE projects (id INTEGER PRIMARY KEY, client_id INTEGER, name TEXT NOT NULL);
       CREATE TABLE time_entries (id INTEGER PRIMARY KEY, project_id INTEGER,
         description TEXT NOT NULL DEFAULT '', start_time TEXT NOT NULL, end_time TEXT,
-        invoice_id INTEGER REFERENCES invoices(id) ON DELETE SET NULL,
+        invoice_id INTEGER REFERENCES invoices(id) ON DELETE SET NULL, billable INTEGER NOT NULL DEFAULT 1,
         created_at TEXT NOT NULL DEFAULT '');
       CREATE TABLE invoices (id INTEGER PRIMARY KEY);`);
     db.query("INSERT INTO clients (id, name, rate) VALUES (1, 'Beta', 40), (2, 'Alpha', 50), (3, 'Zero', 10)").run();

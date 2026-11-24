@@ -125,7 +125,7 @@ export function createDomain(deps: DomainDeps) {
               p.name AS project_name
        FROM time_entries e
        JOIN projects p ON p.id = e.project_id
-       WHERE e.invoice_id IS NULL AND e.end_time IS NOT NULL
+       WHERE e.invoice_id IS NULL AND e.end_time IS NOT NULL AND e.billable = 1
          AND p.client_id = ? AND e.start_time >= ? AND e.start_time < date(?, '+1 day')
        ORDER BY e.start_time`).all(clientId, from, to) as any[];
   }
@@ -147,7 +147,7 @@ export function createDomain(deps: DomainDeps) {
     const first = db.query(
       `SELECT MIN(substr(e.start_time, 1, 10)) AS first_day FROM time_entries e
        JOIN projects p ON p.id = e.project_id
-       WHERE p.client_id = ? AND e.invoice_id IS NULL AND e.end_time IS NOT NULL`
+       WHERE p.client_id = ? AND e.invoice_id IS NULL AND e.end_time IS NOT NULL AND e.billable = 1`
     ).get(clientId) as any;
     return first?.first_day ? String(first.first_day) : null;
   }
@@ -174,7 +174,7 @@ export function createDomain(deps: DomainDeps) {
                 ) AS INTEGER)) AS secs
          FROM time_entries e
          JOIN projects p ON p.id = e.project_id
-         WHERE e.invoice_id IS NULL AND e.end_time IS NOT NULL
+         WHERE e.invoice_id IS NULL AND e.end_time IS NOT NULL AND e.billable = 1
        ) d
        JOIN clients c ON c.id = d.client_id
        GROUP BY c.id, c.name

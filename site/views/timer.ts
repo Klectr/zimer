@@ -61,7 +61,8 @@ export function createTimerViews(deps: TimerViewDeps) {
       ? (e.client_name ? `${e.client_name} — ${e.project_name}` : e.project_name)
       : (e.client_name || e.description || "No description");
     const descPart = (e.project_name || e.client_name) && e.description ? ` · ${esc(e.description)}` : "";
-    const metaHtml = `${invMark}<span>${startTs} – ${endTs}</span>${descPart}`;
+    const nonBillable = e.billable === 0 ? " · Non-billable" : ""; /* #1082 */
+    const metaHtml = `${invMark}<span>${startTs} – ${endTs}</span>${descPart}${nonBillable}`;
     let actions = "";
     if (!entryIsLocked(e)) {
       const parts: string[] = [];
@@ -80,7 +81,7 @@ export function createTimerViews(deps: TimerViewDeps) {
       }
       actions = parts.join("");
     }
-    const amount = e.end_time && e.client_rate
+    const amount = e.end_time && e.client_rate && e.billable !== 0 /* #1082: no amount on non-billable time */
       ? money((durationSeconds(e.start_time, e.end_time) * e.client_rate) / 3600)
       : undefined;
     return uiEntryRow({
@@ -157,7 +158,7 @@ export function createTimerViews(deps: TimerViewDeps) {
       `SELECT c.id AS cid, c.rate AS rate, e.start_time, e.end_time FROM time_entries e
        JOIN projects p ON p.id = e.project_id
        JOIN clients c ON c.id = p.client_id
-       WHERE e.invoice_id IS NULL AND e.end_time IS NOT NULL`).all() as any[];
+       WHERE e.invoice_id IS NULL AND e.end_time IS NOT NULL AND e.billable = 1`).all() as any[];
     let unbilledSecs = 0, unbilledValue = 0;
     const unbilledClients = new Set<number>();
     for (const r of unbilledRows) {
