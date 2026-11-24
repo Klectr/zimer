@@ -717,6 +717,19 @@ export function createWebRouter(deps: WebDeps) {
         /* Milestone 10: CSV exports — accountant-friendly columns, UTF-8 BOM so
            Excel detects the encoding. */
         if (path === "/export/entries.csv" && method === "GET") {
+          /* #1507: a present from/to must be a real calendar date in order —
+             string-comparing garbage filtered out every row and returned a
+             header-only CSV that read as "no entries that week". Mirror the
+             API entries list (#1494) and the invoice preview (#1490): 400.
+             Absent params keep the full export; to stays exclusive. */
+          const fromRaw = (url.searchParams.get("from") || "").trim();
+          const toRaw = (url.searchParams.get("to") || "").trim();
+          const from = fromRaw ? validYmd(fromRaw) : "";
+          const to = toRaw ? validYmd(toRaw) : "";
+          if ((fromRaw && !from) || (toRaw && !to))
+            return new Response("Export range must be valid dates (YYYY-MM-DD).", { status: 400 });
+          if (from && to && from > to)
+            return new Response("Export range must start on or before it ends.", { status: 400 });
           const rows = db.query(`
             SELECT e.description, e.start_time, e.end_time, e.billable, e.tz,
                    p.name AS project, c.name AS client, c.rate AS rate
@@ -725,9 +738,8 @@ export function createWebRouter(deps: WebDeps) {
             LEFT JOIN clients c ON c.id = p.client_id
             ORDER BY e.start_time`).all() as any[];
           /* The calendar's week export passes from/to (to exclusive), so
-             "Export week CSV" downloads that week instead of the whole file. */
-          const from = (url.searchParams.get("from") || "").trim();
-          const to = (url.searchParams.get("to") || "").trim();
+             "Export week CSV" downloads that week instead of the whole file.
+             from/to were parsed and validated above (#1507). */
           const out = ["date,client,project,description,start,end,hours,billable,rate,amount"];
           for (const r of rows) {
             /* #1081: dates and times are the entry's own wall clock (legacy
