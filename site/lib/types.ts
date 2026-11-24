@@ -12,6 +12,7 @@ export type Entry = {
   client_rate: number | null;
   invoice_id: number | null;
   billable: number; /* #1082: 1 = billable (default), 0 = not */
+  tz: string | null; /* #1081: IANA zone the entry was logged in; NULL = legacy */
   invoice_number: string | null; /* #330: LEFT JOIN invoices in ENTRY_SELECT */
   invoice_status: string | null; /* #330: "draft" | "sent" | "paid" | null */
 };

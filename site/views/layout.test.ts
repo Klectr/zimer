@@ -383,11 +383,19 @@ describe("layout inline scripts parse", () => {
   });
 });
 
+describe("client_tz on every POST (#1081)", () => {
+  test("htmx posts and plain form posts both carry the browser's zone", () => {
+    const html = createLayoutViews(noRunning).layout("T", "<p>x</p>");
+    expect(html).toContain("e.detail.parameters['client_tz']=tz");
+    expect(html).toContain("put(f,'client_tz',tz)");
+  });
+});
+
 describe("client_day script", () => {
   test("the layout ships the script that adds the local day to every POST", () => {
     const html = createLayoutViews(noRunning).layout("T", "<p>x</p>");
     expect(html).toContain("htmx:configRequest");
     expect(html).toContain("e.detail.parameters['client_day']=day()");
-    expect(html).toContain("i.name='client_day'");
+    expect(html).toContain("put(f,'client_day',day())");
   });
 });

@@ -434,9 +434,14 @@ describe("calendar week-only carousel (#572)", () => {
   });
 
   test("nudge chip says \"Zinvoice this week\" on the current week (#592)", () => {
-    const aside = asideOf(viewsFor([monEntry, tueEntry]).weekInner(undefined, "America/Chicago"));
-    expect(aside).toContain("Zinvoice this week");
-    expect(aside).not.toContain("Zinvoice this period");
+    /* "now" is inside the fixtures' week: a week only shows entries whose
+       own wall day falls in it (#1081), so the current week must be theirs. */
+    setSystemTime(new Date("2026-09-23T17:00:00.000Z"));
+    try {
+      const aside = asideOf(viewsFor([monEntry, tueEntry]).weekInner(undefined, "America/Chicago"));
+      expect(aside).toContain("Zinvoice this week");
+      expect(aside).not.toContain("Zinvoice this period");
+    } finally { setSystemTime(); }
   });
 
   test("nudge chip omits the amount when no billable time is invoiced yet (#1035)", () => {

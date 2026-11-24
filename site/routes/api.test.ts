@@ -841,7 +841,7 @@ describe("PATCH /api/entries/:id timestamp normalization (#1432)", () => {
     const db = new BunDatabase(":memory:");
     db.exec(`CREATE TABLE time_entries (
       id INTEGER PRIMARY KEY, project_id INTEGER, description TEXT NOT NULL DEFAULT '',
-      start_time TEXT NOT NULL, end_time TEXT, invoice_id INTEGER, billable INTEGER NOT NULL DEFAULT 1)`);
+      start_time TEXT NOT NULL, end_time TEXT, invoice_id INTEGER, billable INTEGER NOT NULL DEFAULT 1, tz TEXT)`);
     db.query("INSERT INTO time_entries (id, project_id, description, start_time, end_time) VALUES (1, NULL, 'Work', '2026-10-07T14:00:00.000Z', '2026-10-07T15:00:00.000Z')").run();
     const qOne = {
       get: (id: number) => {
@@ -1005,7 +1005,7 @@ describe("timer stop end time (#1452)", () => {
     const db = new BunDatabase(":memory:");
     db.exec(`CREATE TABLE time_entries (
       id INTEGER PRIMARY KEY, project_id INTEGER, description TEXT NOT NULL DEFAULT '',
-      start_time TEXT NOT NULL, end_time TEXT, invoice_id INTEGER, billable INTEGER NOT NULL DEFAULT 1)`);
+      start_time TEXT NOT NULL, end_time TEXT, invoice_id INTEGER, billable INTEGER NOT NULL DEFAULT 1, tz TEXT)`);
     const future = new Date(Date.now() + 3600_000).toISOString();
     db.query("INSERT INTO time_entries (id, project_id, description, start_time, end_time) VALUES (1, NULL, 'Work', ?, NULL)").run(future);
     const row = () => db.query("SELECT * FROM time_entries WHERE id = 1").get() as any;
@@ -1039,7 +1039,7 @@ describe("API entry project_id validation (#1458)", () => {
     db.exec(`CREATE TABLE projects (id INTEGER PRIMARY KEY, name TEXT, client_id INTEGER)`);
     db.exec(`CREATE TABLE time_entries (
       id INTEGER PRIMARY KEY, project_id INTEGER, description TEXT NOT NULL DEFAULT '',
-      start_time TEXT NOT NULL, end_time TEXT, invoice_id INTEGER, billable INTEGER NOT NULL DEFAULT 1)`);
+      start_time TEXT NOT NULL, end_time TEXT, invoice_id INTEGER, billable INTEGER NOT NULL DEFAULT 1, tz TEXT)`);
     db.query("INSERT INTO projects (id, name, client_id) VALUES (1, 'Website', NULL)").run();
     db.query("INSERT INTO time_entries (id, project_id, description, start_time, end_time) VALUES (1, NULL, 'Work', '2026-10-07T14:00:00.000Z', '2026-10-07T15:00:00.000Z')").run();
     const withStatus = (r: any) => r ? { ...r, invoice_status: null } : null;
@@ -1069,8 +1069,26 @@ describe("API entry project_id validation (#1458)", () => {
     }
     const count = () => (db.query("SELECT COUNT(*) AS n FROM time_entries").get() as any).n;
     const projectOf = (id: number) => (db.query("SELECT project_id FROM time_entries WHERE id = ?").get(id) as any)?.project_id;
-    return { call, count, projectOf };
+    const tzOf = (id: number) => (db.query("SELECT tz FROM time_entries WHERE id = ?").get(id) as any)?.tz;
+    return { call, count, projectOf, tzOf };
   }
+
+  test("POST /api/timer/start records the caller's zone (#1081)", async () => {
+    const { call, tzOf } = entryTenant();
+    expect((await call("POST", "/api/timer/start", { description: "x", tz: "America/Los_Angeles" })).status).toBe(201);
+    expect(tzOf(2)).toBe("America/Los_Angeles");
+  });
+
+  test("an invalid zone is a 400 on start and on PATCH; omitting it keeps the entry's (#1081)", async () => {
+    const { call, count, tzOf } = entryTenant();
+    expect((await call("POST", "/api/timer/start", { tz: "Mars/Olympus" })).status).toBe(400);
+    expect(count()).toBe(1);
+    expect((await call("PATCH", "/api/entries/1", { tz: "Europe/London" })).status).toBe(200);
+    expect(tzOf(1)).toBe("Europe/London");
+    expect((await call("PATCH", "/api/entries/1", { tz: "nope" })).status).toBe(400);
+    expect((await call("PATCH", "/api/entries/1", { description: "y" })).status).toBe(200);
+    expect(tzOf(1)).toBe("Europe/London");
+  });
 
   test("POST /api/timer/start with a non-existent project_id is a 400 and creates nothing", async () => {
     const { call, count } = entryTenant();
@@ -1216,7 +1234,7 @@ describe("POST /api/invoices entry_id linkability (#1470)", () => {
     db.query("INSERT INTO projects (id, name, client_id) VALUES (10, 'Site', 3), (11, 'OtherSite', 4)").run();
     db.exec(`CREATE TABLE invoices (id INTEGER PRIMARY KEY, status TEXT NOT NULL DEFAULT 'draft', paid_at TEXT)`);
     db.exec(`CREATE TABLE invoice_items (id INTEGER PRIMARY KEY, invoice_id INTEGER, description TEXT, hours REAL, rate REAL, amount REAL, date_from TEXT, date_to TEXT)`);
-    db.exec(`CREATE TABLE time_entries (id INTEGER PRIMARY KEY, project_id INTEGER, description TEXT, start_time TEXT, end_time TEXT, invoice_id INTEGER, billable INTEGER NOT NULL DEFAULT 1)`);
+    db.exec(`CREATE TABLE time_entries (id INTEGER PRIMARY KEY, project_id INTEGER, description TEXT, start_time TEXT, end_time TEXT, invoice_id INTEGER, billable INTEGER NOT NULL DEFAULT 1, tz TEXT)`);
     /* 1: finished + unbilled, client 3 — linkable. 2: already invoiced.
        3: still running. 4: finished + unbilled, but client 4's time. */
     db.query(`INSERT INTO time_entries (id, project_id, start_time, end_time, invoice_id) VALUES
@@ -1300,7 +1318,7 @@ describe("API deletes of missing rows return 404 (#1482)", () => {
     const db = new BunDatabase(":memory:");
     db.exec(`CREATE TABLE clients (id INTEGER PRIMARY KEY, name TEXT, color TEXT, rate REAL)`);
     db.exec(`CREATE TABLE projects (id INTEGER PRIMARY KEY, name TEXT, client_id INTEGER)`);
-    db.exec(`CREATE TABLE time_entries (id INTEGER PRIMARY KEY, project_id INTEGER, description TEXT, start_time TEXT, end_time TEXT, invoice_id INTEGER, billable INTEGER NOT NULL DEFAULT 1)`);
+    db.exec(`CREATE TABLE time_entries (id INTEGER PRIMARY KEY, project_id INTEGER, description TEXT, start_time TEXT, end_time TEXT, invoice_id INTEGER, billable INTEGER NOT NULL DEFAULT 1, tz TEXT)`);
     db.exec(`CREATE TABLE invoices (id INTEGER PRIMARY KEY, client_id INTEGER)`);
     db.query("INSERT INTO clients (id, name) VALUES (1, 'Acme')").run();
     db.query("INSERT INTO projects (id, name, client_id) VALUES (1, 'Website', 1)").run();
@@ -1370,7 +1388,7 @@ describe("API deletes of missing rows return 404 (#1482)", () => {
 describe("GET /api/entries range validation (#1494)", () => {
   function entriesTenant() {
     const db = new BunDatabase(":memory:");
-    db.exec(`CREATE TABLE time_entries (id INTEGER PRIMARY KEY, project_id INTEGER, description TEXT, start_time TEXT, end_time TEXT, invoice_id INTEGER, billable INTEGER NOT NULL DEFAULT 1)`);
+    db.exec(`CREATE TABLE time_entries (id INTEGER PRIMARY KEY, project_id INTEGER, description TEXT, start_time TEXT, end_time TEXT, invoice_id INTEGER, billable INTEGER NOT NULL DEFAULT 1, tz TEXT)`);
     db.query("INSERT INTO time_entries (id, start_time, end_time) VALUES (1, '2026-11-07T09:00:00.000Z', '2026-11-07T10:00:00.000Z'), (2, '2026-11-09T09:00:00.000Z', '2026-11-09T10:00:00.000Z')").run();
     return {
       db,

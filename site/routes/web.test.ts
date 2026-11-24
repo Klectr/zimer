@@ -2080,3 +2080,49 @@ describe("entry billable flag (#1082)", () => {
     expect(line("admin")).toContain(",1.00,no,");
   });
 });
+
+/** #1081: the web forms send bare wall times with the zone they're in. */
+describe("entry wall-clock time on the web routes (#1081)", () => {
+  test("a bare wall time with entry_tz resolves in that zone and records it", async () => {
+    const { db, handleWeb } = setup();
+    const r = await postEntry(handleWeb, {
+      project_id: "", description: "ca", start_time: "2026-07-15T08:00", end_time: "2026-07-15T17:00",
+      entry_tz: "America/Los_Angeles", client_tz: "America/New_York",
+    });
+    expect(r!.status).toBe(201);
+    expect(db.query("SELECT start_time, end_time, tz FROM time_entries").get()).toEqual({
+      start_time: "2026-07-15T15:00:00.000Z", end_time: "2026-07-16T00:00:00.000Z", tz: "America/Los_Angeles",
+    });
+  });
+
+  test("a bare wall time with no zone is still rejected (#964)", async () => {
+    const { db, handleWeb } = setup();
+    const r = await postEntry(handleWeb, { project_id: "", description: "", start_time: "2026-07-15T08:00", end_time: "2026-07-15T17:00" });
+    expect(r!.status).toBe(400);
+    expect((db.query("SELECT COUNT(*) c FROM time_entries").get() as any).c).toBe(0);
+  });
+
+  test("an offset-bearing post records the page's client_tz", async () => {
+    const { db, handleWeb } = setup();
+    await postEntry(handleWeb, { project_id: "", description: "", start_time: "2026-07-15T08:00:00-04:00", end_time: "2026-07-15T09:00:00-04:00", client_tz: "America/New_York" });
+    expect((db.query("SELECT tz FROM time_entries").get() as any).tz).toBe("America/New_York");
+  });
+
+  test("the timer records the zone it was started in", async () => {
+    const { db, handleWeb } = setup();
+    const form = new FormData();
+    form.append("description", "x");
+    form.append("client_tz", "America/Denver");
+    const req = new Request("http://x/timer/start", { method: "POST", body: form });
+    await handleWeb(req, new URL(req.url), "/timer/start", "POST");
+    expect((db.query("SELECT tz FROM time_entries").get() as any).tz).toBe("America/Denver");
+  });
+
+  test("the CSV shows each entry's own wall date and times", async () => {
+    const { db, handleWeb } = setup();
+    db.query("INSERT INTO time_entries (description, start_time, end_time, tz) VALUES ('late ca', '2026-10-01T03:00:00.000Z', '2026-10-01T04:30:00.000Z', 'America/Los_Angeles')").run();
+    const req = new Request("http://x/export/entries.csv");
+    const csv = await (await handleWeb(req, new URL(req.url), "/export/entries.csv", "GET"))!.text();
+    expect(csv).toContain("2026-09-30,,,late ca,20:00,21:30,1.50");
+  });
+});

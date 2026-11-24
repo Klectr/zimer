@@ -119,6 +119,11 @@ db.exec(`DROP TABLE IF EXISTS recurring_schedules;`);
        billable and today's invoicing is unchanged. Non-billable time can
        never land on a Zinvoice. */
     ["time_entries", "billable", "INTEGER NOT NULL DEFAULT 1"],
+    /* Issue #1081: the IANA zone an entry was logged in. Every display and
+       day-bucketing reads it, so 8am logged in California stays 8am viewed
+       from Florida. NULL on entries logged before it existed — those keep
+       rendering in the viewer's zone (lib/wall.ts). */
+    ["time_entries", "tz", "TEXT"],
     ["invoices", "template", "TEXT NOT NULL DEFAULT 'classic'"],
     ["invoices", "stripe_payment_link", "TEXT"],
     /* Issue #645: payment-link ID (plink_...) for webhook matching — Stripe
@@ -178,7 +183,7 @@ db.exec(`DROP TABLE IF EXISTS recurring_schedules;`);
   catch { /* column already gone */ }
 
   const ENTRY_SELECT = `
-  SELECT e.id, e.project_id, e.description, e.start_time, e.end_time, e.invoice_id, e.billable,
+  SELECT e.id, e.project_id, e.description, e.start_time, e.end_time, e.invoice_id, e.billable, e.tz,
          p.name AS project_name, c.name AS client_name, c.color AS client_color, c.rate AS client_rate,
          i.number AS invoice_number, i.status AS invoice_status
   FROM time_entries e

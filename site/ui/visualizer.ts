@@ -16,6 +16,8 @@ export interface VizEntry {
   overlap?: boolean;
   /** #1082: time that will never be invoiced — drawn outline-only. */
   nonBillable?: boolean;
+  /** #1081: the entry's own IANA zone; moves and resizes save in it. */
+  tz?: string;
 }
 
 export interface VizDay {
@@ -143,6 +145,7 @@ export function visualizer(opts: VisualizerOptions): string {
             (e.desc ? ` data-desc="${esc(e.desc)}"` : "") +
             (e.locked ? ` data-locked="${esc(e.lockedLabel || "1")}"` : "") +
             (e.nonBillable ? ` data-billable="0"` : "") +
+            (e.tz ? ` data-tz="${esc(e.tz)}"` : "") +
             ` style="--entry:${safeCssColor(e.color) ?? "var(--color-text-tertiary)"};top:${top}px;height:${blockHeight}px">${handles}` +
             `<div class="ui-viz-block-title">${esc(e.title)}</div>` +
             `${metaHtml}</div>`

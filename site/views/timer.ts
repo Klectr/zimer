@@ -12,6 +12,7 @@ import { statStrip } from "../ui/stat.ts";
 import { repeatEntryForm, timerRunningCard, timerStartCard, todayEntriesCard } from "./timer-home.ts";
 import { targetBar } from "../ui/target-bar.ts";
 import { invoiceMark } from "../ui/invoice-mark.ts";
+import { onWallDays, validTz, widenedWindow, type WallDay } from "../lib/wall.ts";
 import type { Entry } from "../lib/types.ts";
 
 export interface TimerViewDeps {
@@ -51,8 +52,9 @@ export function createTimerViews(deps: TimerViewDeps) {
     /* #255: times are a client concept (the server may be in another
        timezone — VPS is UTC). Emit the ISO instant and let the client format
        it; fmtTimes() in dashboardPage fills these in after every swap. */
-    const startTs = `<time data-ts="${esc(e.start_time)}"></time>`;
-    const endTs = e.end_time ? `<time data-ts="${esc(e.end_time)}"></time>` : "now";
+    const tzAttr = validTz(e.tz) ? ` data-tz="${esc(e.tz!)}"` : ""; /* #1081 */
+    const startTs = `<time data-ts="${esc(e.start_time)}"${tzAttr}></time>`;
+    const endTs = e.end_time ? `<time data-ts="${esc(e.end_time)}"${tzAttr}></time>` : "now";
     /* #330: mark time that's already on an invoice (sent/paid) or in a draft. */
     const mark = entryInvoiceMark(e);
     /* #498: house plain tooltip (data-tip) instead of the native title. */
@@ -108,6 +110,7 @@ export function createTimerViews(deps: TimerViewDeps) {
       return timerRunningCard({
         context,
         startedAt: running.start_time,
+        startedTz: validTz(running.tz) ?? undefined, /* #1081 */
         rate,
         rateLabel: `${rate % 1 === 0 ? `$${rate}` : money(rate)} / hr`,
         worth: money((durationSeconds(running.start_time, null) * rate) / 3600),
@@ -123,9 +126,18 @@ export function createTimerViews(deps: TimerViewDeps) {
      The client passes its own day bounds as UTC instants (?from=&to=, computed
      from client-local midnight); the server validates them and falls back to
      its own day. */
-  function todayPartial(from?: string, to?: string): string {
+  /* #1081: with the client's day and zone, a day's entries are the ones
+     whose own wall day it is — 8–5 worked in California is still "today"
+     (and still 8–5) when you open the page in Florida. */
+  function wallDayEntries(fromDay: string, toDayExclusive: string, tz: string): Entry[] {
+    const [f, t] = widenedWindow(fromDay, toDayExclusive);
+    return onWallDays(qRange.all(f, t) as Entry[], fromDay, toDayExclusive, tz)
+      .sort((a, b) => (a.start_time < b.start_time ? 1 : a.start_time > b.start_time ? -1 : 0));
+  }
+
+  function todayPartial(from?: string, to?: string, wall?: WallDay): string {
     const [f, t] = from && to ? [from, to] : dayBounds(todayStr());
-    const entries = qRange.all(f, t) as Entry[];
+    const entries = wall ? wallDayEntries(wall.day, addDays(wall.day, 1), wall.tz) : qRange.all(f, t) as Entry[];
     const total = entries.reduce((a, e) => a + durationSeconds(e.start_time, e.end_time), 0);
     const bar = todayTargetBar(total);
     if (!entries.length) return `${bar}<p class="ui-note">Nothing tracked today yet.</p>`;
@@ -142,16 +154,17 @@ export function createTimerViews(deps: TimerViewDeps) {
      uses. The dashboard's initial render uses the server day; the
      #today-stats region re-fetches with the client's bounds on load
      (#255), and again on every timer start/stop. */
-  function statRow(from?: string, to?: string, weekFrom?: string, weekTo?: string): string {
+  function statRow(from?: string, to?: string, weekFrom?: string, weekTo?: string, wall?: WallDay): string {
     const target = dayTargetSecs();
     const [tf, tt] = from && to ? [from, to] : dayBounds(todayStr());
-    const todayEntries = qRange.all(tf, tt) as Entry[];
+    const todayEntries = wall ? wallDayEntries(wall.day, addDays(wall.day, 1), wall.tz) : qRange.all(tf, tt) as Entry[];
     const todaySecs = todayEntries.reduce((a, e) => a + durationSeconds(e.start_time, e.end_time), 0);
     const sun = sundayOf(todayStr());
     const [dwf] = dayBounds(sun);
     const [dwt] = dayBounds(addDays(sun, 7));
     const [wf, wt] = weekFrom && weekTo ? [weekFrom, weekTo] : [dwf, dwt];
-    const weekEntries = qRange.all(wf, wt) as Entry[];
+    const wallSun = wall ? sundayOf(wall.day) : null;
+    const weekEntries = wall && wallSun ? wallDayEntries(wallSun, addDays(wallSun, 7), wall.tz) : qRange.all(wf, wt) as Entry[];
     const weekSecs = weekEntries.reduce((a, e) => a + durationSeconds(e.start_time, e.end_time), 0);
     const weekClients = new Set(weekEntries.map(e => e.client_name).filter(Boolean)).size;
     const unbilledRows = db.query(
@@ -194,8 +207,8 @@ export function createTimerViews(deps: TimerViewDeps) {
   /* #1121: the stat row as a partial — the client passes its own day and
      week bounds (#255 pattern, same as /partial/today) so the figures
      agree with the today list below them in every timezone. */
-  function todayStatsPartial(from?: string, to?: string, weekFrom?: string, weekTo?: string): string {
-    return statRow(from, to, weekFrom, weekTo);
+  function todayStatsPartial(from?: string, to?: string, weekFrom?: string, weekTo?: string, wall?: WallDay): string {
+    return statRow(from, to, weekFrom, weekTo, wall);
   }
 
   function dashboardPage(): string {
@@ -222,15 +235,23 @@ export function createTimerViews(deps: TimerViewDeps) {
               document.title=greet+" · Zimer";
               var s=new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime();
               var from=new Date(s).toISOString(), to=new Date(s+864e5).toISOString();
-              el.setAttribute('hx-get','/partial/today?from='+encodeURIComponent(from)+'&to='+encodeURIComponent(to));
+              /* #1081: plus the local day and zone, so the server picks
+                 entries by their own wall day. */
+              var BTZ=''; try{ BTZ=Intl.DateTimeFormat().resolvedOptions().timeZone||''; }catch(x){}
+              var dayStr=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+              var wallQ=BTZ?'&day='+dayStr+'&tz='+encodeURIComponent(BTZ):'';
+              el.setAttribute('hx-get','/partial/today?from='+encodeURIComponent(from)+'&to='+encodeURIComponent(to)+wallQ);
               var stats=document.getElementById('today-stats');
               if(stats){var wsun=new Date(d.getFullYear(),d.getMonth(),d.getDate()-d.getDay());
                 var wend=new Date(wsun.getFullYear(),wsun.getMonth(),wsun.getDate()+7);
-                stats.setAttribute('hx-get','/partial/today-stats?from='+encodeURIComponent(from)+'&to='+encodeURIComponent(to)+'&wfrom='+encodeURIComponent(wsun.toISOString())+'&wto='+encodeURIComponent(wend.toISOString()));}
+                stats.setAttribute('hx-get','/partial/today-stats?from='+encodeURIComponent(from)+'&to='+encodeURIComponent(to)+'&wfrom='+encodeURIComponent(wsun.toISOString())+'&wto='+encodeURIComponent(wend.toISOString())+wallQ);}
               window.__tkFmtTimes=function(root){
                 var els=(root||document).querySelectorAll('[data-ts]');
                 for(var i=0;i<els.length;i++){var t=els[i];
-                  t.textContent=new Date(t.getAttribute('data-ts')).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});}};
+                  /* #1081: an entry's times show in its own zone. */
+                  var o={hour:'numeric',minute:'2-digit'}, z=t.getAttribute('data-tz'); if(z) o.timeZone=z;
+                  try{ t.textContent=new Date(t.getAttribute('data-ts')).toLocaleTimeString([],o); }
+                  catch(x){ t.textContent=new Date(t.getAttribute('data-ts')).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}); }}};
               document.body.addEventListener('htmx:afterSwap',function(e){
                 if(e.detail&&e.detail.target&&e.detail.target.id==='today-list')window.__tkFmtTimes(e.detail.target);});
           window.__tkFmtTimes(el);})();</script>

@@ -43,6 +43,7 @@ async function startTimer(lastTimer) {
     body: JSON.stringify({
       description: (lastTimer && lastTimer.description) || "",
       project_id: (lastTimer && lastTimer.projectId) || null,
+      tz: Intl.DateTimeFormat().resolvedOptions().timeZone, /* #1081 */
     }),
   });
 }

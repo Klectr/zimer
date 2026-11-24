@@ -215,7 +215,7 @@ describe("extension bg hotkey toggle with a stale project (#1460)", () => {
     );
     await expect(bg.toggleTimer()).resolves.toBe("started");
     expect(startBodies.length).toBe(2);
-    expect(startBodies[1]).toEqual({ description: "New", project_id: 7 });
+    expect(startBodies[1]).toEqual({ description: "New", project_id: 7, tz: Intl.DateTimeFormat().resolvedOptions().timeZone });
     expect(sets.length).toBe(0);
   });
 

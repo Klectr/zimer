@@ -15,6 +15,7 @@ import { visualizer, type VizDay, type VizEntry } from "../ui/visualizer.ts";
 import { calFirstRun, calHint, calLegend, weekClients, weekNav, weekSummary, zinvoiceNudge } from "./calendar-pane.ts";
 import { trendDelta } from "../ui/trend-delta.ts";
 import type { Entry } from "../lib/types.ts";
+import { entryDay, entryZone, onWallDays, validTz, wallParts, widenedWindow, ymdOf } from "../lib/wall.ts";
 
 export interface CalendarViewDeps {
   db: Database;
@@ -59,45 +60,9 @@ export function createCalendarViews(deps: CalendarViewDeps) {
      ?tz= on week requests. Without a valid tz we keep the legacy server-local
      behavior. */
   const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-  const ymdOf = (p: { y: number; m: number; d: number }) =>
-    `${p.y}-${String(p.m).padStart(2, "0")}-${String(p.d).padStart(2, "0")}`;
-  const tzFmtCache = new Map<string, Intl.DateTimeFormat>();
-  function tzFmt(tz: string): Intl.DateTimeFormat {
-    let f = tzFmtCache.get(tz);
-    if (!f) {
-      f = new Intl.DateTimeFormat("en-US", { timeZone: tz, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
-      tzFmtCache.set(tz, f);
-    }
-    return f;
-  }
-  const tzFmtSecCache = new Map<string, Intl.DateTimeFormat>();
-  function tzFmtSec(tz: string): Intl.DateTimeFormat {
-    let f = tzFmtSecCache.get(tz);
-    if (!f) {
-      f = new Intl.DateTimeFormat("en-US", { timeZone: tz, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" });
-      tzFmtSecCache.set(tz, f);
-    }
-    return f;
-  }
-  /** Wall-clock parts of an instant in the client's zone. */
-  function tzParts(d: Date, tz: string | null): { y: number; m: number; d: number; hh: number; mm: number } {
-    if (!tz) return { y: d.getFullYear(), m: d.getMonth() + 1, d: d.getDate(), hh: d.getHours(), mm: d.getMinutes() };
-    const p: Record<string, string> = {};
-    for (const x of tzFmt(tz).formatToParts(d)) p[x.type] = x.value;
-    return { y: +p.year, m: +p.month, d: +p.day, hh: +p.hour, mm: +p.minute };
-  }
-  /** Validate an IANA zone string; null when absent or invalid. */
-  function validTz(tz: string | null | undefined): string | null {
-    if (!tz || tz.length > 64 || !/^[A-Za-z0-9_+\-]+(\/[A-Za-z0-9_+\-]+)+$/.test(tz)) return null;
-    try { new Intl.DateTimeFormat("en-US", { timeZone: tz }); return tz; } catch { return null; }
-  }
-  /** UTC offset of a zone at an instant, in minutes (CDT = -300). */
-  function zoneOffsetMin(tz: string, at: Date): number {
-    const p: Record<string, string> = {};
-    for (const x of tzFmtSec(tz).formatToParts(at)) p[x.type] = x.value;
-    const asUTC = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second);
-    return Math.round((asUTC - at.getTime()) / 60000);
-  }
+  /** Wall-clock parts of an instant in the viewer's zone (framing only:
+      today, the now line). Entries use their own zone (#1081). */
+  const tzParts = (d: Date, tz: string | null) => wallParts(d, tz);
   /** Sunday of the week containing a YYYY-MM-DD, from the calendar date alone
       (weekday-safe in every zone, unlike noon-anchored Date parsing). */
   function sundayOfYmd(dateStr: string): string {
@@ -105,22 +70,14 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     return addDays(dateStr, -new Date(Date.UTC(y, m - 1, d, 12)).getUTCDay());
   }
   const weekdayOf = (y: number, m: number, d: number) => WEEKDAYS[new Date(Date.UTC(y, m - 1, d, 12)).getUTCDay()];
-  /** [from, to] ISO instants covering the client's week starting Sunday `sun`.
-      Both bounds are computed independently so DST-transition weeks stay
-      contiguous with their neighbors. Falls back to the legacy naive-local
-      strings without a tz. */
-  function weekBoundsISO(sun: string, tz: string | null): [string, string] {
-    if (!tz) return [sun + "T00:00:00", addDays(sun, 7) + "T00:00:00"];
-    return [new Date(localMidnightUTC(tz, sun)).toISOString(),
-            new Date(localMidnightUTC(tz, addDays(sun, 7))).toISOString()];
-  }
-  /** UTC instant of 00:00 local on a YYYY-MM-DD in tz. Iterative: the offset
-      is sampled at the guess and refined, converging across DST transitions. */
-  function localMidnightUTC(tz: string, dateStr: string): number {
-    const [y, m, d] = dateStr.split("-").map(Number);
-    let guess = Date.UTC(y, m - 1, d);
-    for (let i = 0; i < 3; i++) guess = Date.UTC(y, m - 1, d) - zoneOffsetMin(tz, new Date(guess)) * 60000;
-    return guess;
+  /** #1081: a week's entries — every entry whose own-zone wall day is in
+      the week starting Sunday `sun` (legacy NULL-zone rows use the viewer's
+      zone). Fetched over a widened instant window, cut exactly in code. */
+  function weekEntries(sun: string, tz: string | null): Entry[] {
+    const [f, t] = widenedWindow(sun, addDays(sun, 7));
+    const rows = db.query(
+      `${ENTRY_SELECT} WHERE e.start_time >= ? AND e.start_time < ? ORDER BY e.start_time`).all(f, t) as Entry[];
+    return onWallDays(rows, sun, addDays(sun, 7), tz);
   }
 
   /** #572: week-scoped data shared by the carousel strips, the week grid
@@ -143,13 +100,11 @@ export function createCalendarViews(deps: CalendarViewDeps) {
   function weekData(sun: string, tz: string | null): CalWeekData {
     /* "today" in the client's zone — the server may be on a different date. */
     const today = ymdOf(tzParts(new Date(), tz));
-    // Fetch the whole week in one query, then bucket entries by the client's local day.
-    const [wFrom, wTo] = weekBoundsISO(sun, tz);
-    const rows = db.query(
-      `${ENTRY_SELECT} WHERE e.start_time >= ? AND e.start_time < ? ORDER BY e.start_time`).all(wFrom, wTo) as Entry[];
+    /* #1081: bucket by each entry's own wall day, not the viewer's. */
+    const rows = weekEntries(sun, tz);
     const byDay = new Map<string, Entry[]>();
     for (const e of rows) {
-      const key = ymdOf(tzParts(new Date(e.start_time), tz));
+      const key = entryDay(e, tz);
       if (!byDay.has(key)) byDay.set(key, []);
       byDay.get(key)!.push(e);
     }
@@ -176,8 +131,8 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       (s, e) => s + (e.invoice_id == null && e.project_id != null && e.billable !== 0 ? durationSeconds(e.start_time, e.end_time) : 0), 0);
     /* #351: week-over-week delta vs the immediately preceding week — billable
        vs billable, since it sits next to the billable figure. */
-    const [pFrom, pTo] = weekBoundsISO(addDays(sun, -7), tz);
-    const prevRows = qRange.all(pFrom, pTo) as Entry[];
+    const prevSun = addDays(sun, -7);
+    const prevRows = onWallDays(qRange.all(...widenedWindow(prevSun, sun)) as Entry[], prevSun, sun, tz);
     /* #1219: on the current week, compare against the previous week only up
        to the same moment (now − 7 days) — a partial week against a full one
        always reads as a steep drop early in the week. */
@@ -208,13 +163,21 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       presentations: client-local start/end minutes, running entries
       extended to now (never shorter than 15 minutes), sorted by start. */
   function dayBlocks(day: string, data: CalWeekData): { e: Entry; a: number; b: number }[] {
-    const toMin = (iso: string) => { const p = tzParts(new Date(iso), data.tz); return p.hh * 60 + p.mm; };
+    /* #1081: an entry's minutes are its own wall clock. An entry that ends
+       on a later wall day runs to the bottom of its start day. */
     const nowP = tzParts(new Date(), data.tz);
     const nowMin = nowP.hh * 60 + nowP.mm;
     return (data.byDay.get(day) ?? [])
       .map((e) => {
-        const a = toMin(e.start_time);
-        const b = Math.max(e.end_time ? toMin(e.end_time) : nowMin, a + 15);
+        const zone = entryZone(e, data.tz);
+        const sp = wallParts(e.start_time, zone);
+        const a = sp.hh * 60 + sp.mm;
+        let end = nowMin;
+        if (e.end_time) {
+          const ep = wallParts(e.end_time, zone);
+          end = ymdOf(ep) === day ? ep.hh * 60 + ep.mm : 1440;
+        }
+        const b = Math.max(end, a + 15);
         return { e, a, b };
       })
       .sort((x, y) => x.a - y.a);
@@ -245,6 +208,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
           desc: e.description || undefined,
           projectId: e.project_id != null ? String(e.project_id) : undefined,
           nonBillable: e.billable === 0, /* #1082 */
+          tz: validTz(e.tz) ?? undefined, /* #1081: drag/resize saves in the entry's own zone */
           startMin: a,
           endMin: b,
           running: !e.end_time,
@@ -298,7 +262,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
           running,
           invoiced: !!mark,
           dot: schemeColor(e.client_color) ?? undefined,
-          attrs: `data-entry-row data-id="${e.id}" data-desc="${esc(e.description)}" data-project-id="${e.project_id ?? ""}" data-billable="${e.billable === 0 ? "0" : "1"}" data-date="${day}" data-start="${toHM(a)}" data-end="${running ? "" : toHM(Math.min(b, 1439))}" data-locked="${locked ? esc(e.invoice_number || "") : ""}" tabindex="0" role="button" aria-label="${esc(label)}"`,
+          attrs: `data-entry-row data-id="${e.id}" data-desc="${esc(e.description)}" data-project-id="${e.project_id ?? ""}" data-billable="${e.billable === 0 ? "0" : "1"}" data-tz="${esc(validTz(e.tz) ?? "")}" data-date="${day}" data-start="${toHM(a)}" data-end="${running ? "" : toHM(Math.min(b, 1439))}" data-locked="${locked ? esc(e.invoice_number || "") : ""}" tabindex="0" role="button" aria-label="${esc(label)}"`,
         };
       });
       days.push({
@@ -501,6 +465,14 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     var TZ=""; try{ TZ=Intl.DateTimeFormat().resolvedOptions().timeZone||""; }catch(e){}
     function tzSuffix(){var o=-new Date().getTimezoneOffset();var s=o<0?"-":"+",a=Math.abs(o);
       return s+String(Math.floor(a/60)).padStart(2,"0")+":"+String(a%60).padStart(2,"0");}
+    /* #1081: send wall times as typed plus the zone they're in — the entry's
+       own zone when editing, the browser's for new time — and the server
+       resolves the instant (DST-correct for any date). Without a zone, fall
+       back to today's offset. */
+    function setTimes(fd,date,start,end,zone){
+      if(zone){ fd.set('start_time',date+'T'+start); fd.set('end_time',date+'T'+end); fd.set('entry_tz',zone); }
+      else{ fd.set('start_time',date+'T'+start+tzSuffix()); fd.set('end_time',date+'T'+end+tzSuffix()); }
+    }
     document.body.addEventListener("htmx:configRequest",function(e){
       if(e.detail&&e.detail.path&&e.detail.path.indexOf("/partial/week")===0&&TZ)
         e.detail.parameters.tz=TZ;});
@@ -796,8 +768,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       fd.set('description',desc.value);
       fd.set('project_id',project.value);
       fd.set('billable',billable.checked?'1':'0'); /* #1082 */
-      fd.set('start_time',dayStr+'T'+startI.value+tzSuffix());
-      fd.set('end_time',dayStr+'T'+endI.value+tzSuffix());
+      setTimes(fd,dayStr,startI.value,endI.value,(mode==='edit'&&opener&&opener.dataset.tz)||TZ);
       var url=mode==='create'?'/entries':'/entries/'+editId;
       var hid=mode==='edit'?editId:null;
       fetch(url,{method:'POST',body:fd}).then(function(r){
@@ -866,8 +837,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       var fd=new URLSearchParams();
       fd.set('description',block.dataset.desc||'');
       fd.set('project_id',block.dataset.projectId||'');
-      fd.set('start_time',block.dataset.date+'T'+block.dataset.start+tzSuffix());
-      fd.set('end_time',block.dataset.date+'T'+block.dataset.end+tzSuffix());
+      setTimes(fd,block.dataset.date,block.dataset.start,block.dataset.end,block.dataset.tz||TZ);
       fetch('/entries/'+id,{method:'POST',body:fd}).then(function(resp){
         if(!resp.ok) throw new Error('save failed');
         refreshWeek(id,refocus);
@@ -1174,8 +1144,36 @@ export function createCalendarViews(deps: CalendarViewDeps) {
         ${selectField({ id: "ee-project", label: "Project", name: "project_id", value: e.project_id ? String(e.project_id) : "", disabled: !!dis, options: projectSelectOptions() })}
         ${dis ? "" : `<input type="hidden" name="billable" value="0">`}${checkboxField({ id: "ee-billable", label: "Billable", name: "billable", value: "1", checked: e.billable !== 0, disabled: !!dis })}
         ${textField({ id: "ee-start", label: "Start", name: "start_time", type: "datetime-local", required: true, attrs: `data-iso="${esc(e.start_time)}"${dis}` })}
-        ${textField({ id: "ee-end", label: "End (blank = still running)", name: "end_time", type: "datetime-local", attrs: `data-iso="${esc(e.end_time || "")}"${dis}` })}`;
+        ${textField({ id: "ee-end", label: "End (blank = still running)", name: "end_time", type: "datetime-local", attrs: `data-iso="${esc(e.end_time || "")}"${dis}` })}
+        <input type="hidden" name="entry_tz" value="${esc(validTz(e.tz) ?? "")}">`;
   }
+
+  /** #1081: the edit forms' wall-time behavior, shared by the page and the
+      dialog. Prefill shows the entry's own wall clock (its zone, else the
+      browser's for legacy rows). On save the typed wall times go as-is with
+      entry_tz naming their zone, and the server resolves the instant — so an
+      8am entry logged in California saves as 8am California from anywhere,
+      and a July date edited in November keeps July's offset. Without any
+      zone (very old browsers) it falls back to today's offset suffix.
+      Returns a function that, given a setter, writes the submit values. */
+  const EDIT_WALL_JS = `
+        var p2=function(n){return String(n).padStart(2,"0");};
+        var BTZ=""; try{ BTZ=Intl.DateTimeFormat().resolvedOptions().timeZone||""; }catch(x){}
+        function toLocalInput(iso,zone){var d=new Date(iso);
+          if(zone){try{var p={};new Intl.DateTimeFormat("en-US",{timeZone:zone,hourCycle:"h23",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"})
+            .formatToParts(d).forEach(function(x){p[x.type]=x.value;});
+            return p.year+"-"+p.month+"-"+p.day+"T"+p2(+p.hour%24)+":"+p.minute;}catch(x){}}
+          return d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate())+"T"+p2(d.getHours())+":"+p2(d.getMinutes());}
+        function suffix(){var o=-new Date().getTimezoneOffset(),s=o<0?"-":"+",a=Math.abs(o);
+          return s+p2(Math.floor(a/60))+":"+p2(a%60);}
+        function wireWall(form){
+          var tzIn=form.querySelector('input[name="entry_tz"]');
+          var zone=(tzIn&&tzIn.value)||BTZ;
+          if(tzIn) tzIn.value=zone;
+          var els=form.querySelectorAll('input[type=datetime-local][data-iso]');
+          for(var i=0;i<els.length;i++){var iso=els[i].getAttribute("data-iso");if(iso)els[i].value=toLocalInput(iso,zone);}
+          return function(set){for(var j=0;j<els.length;j++){if(els[j].value) set(els[j],zone?els[j].value:els[j].value+suffix());}};
+        }`;
 
   /** #256: datetime-local inputs are prefilled client-side from the ISO instant
       (data-iso) — the server can't know the client's zone on a full page load.
@@ -1196,20 +1194,14 @@ export function createCalendarViews(deps: CalendarViewDeps) {
           ${linkButton({ label: locked ? "Back" : "Cancel", href: "/calendar", variant: "ghost" })}
         </div>
       </form>
-      <script>(function(){
-        var p2=function(n){return String(n).padStart(2,"0");};
-        function toLocalInput(iso){var d=new Date(iso);
-          return d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate())+"T"+p2(d.getHours())+":"+p2(d.getMinutes());}
-        var els=document.querySelectorAll('input[type=datetime-local][data-iso]');
-        for(var i=0;i<els.length;i++){var iso=els[i].getAttribute("data-iso");if(iso)els[i].value=toLocalInput(iso);}
+      <script>(function(){${EDIT_WALL_JS}
         var form=document.getElementById("edit-entry-form");
+        var values=wireWall(form);
         form.addEventListener("submit",function(ev){
           ev.preventDefault();
-          var o=-new Date().getTimezoneOffset(),s=o<0?"-":"+",a=Math.abs(o);
-          var suf=s+p2(Math.floor(a/60))+":"+p2(a%60);
-          for(var j=0;j<els.length;j++){if(els[j].value){
-            var h=document.createElement("input");h.type="hidden";h.name=els[j].name;h.value=els[j].value+suf;
-            form.appendChild(h);els[j].disabled=true;}}
+          values(function(el,v){
+            var h=document.createElement("input");h.type="hidden";h.name=el.name;h.value=v;
+            form.appendChild(h);el.disabled=true;});
           form.submit();
         });
       })();</script>`);
@@ -1238,24 +1230,14 @@ export function createCalendarViews(deps: CalendarViewDeps) {
           ${locked ? "" : button({ label: "Save entry", variant: "primary", type: "submit" })}
         </div>
       </form>
-      <script>(function(){
-        var p2=function(n){return String(n).padStart(2,"0");};
-        function toLocalInput(iso){var d=new Date(iso);
-          return d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate())+"T"+p2(d.getHours())+":"+p2(d.getMinutes());}
+      <script>(function(){${EDIT_WALL_JS}
         var form=document.getElementById("edit-entry-form");
-        var els=form.querySelectorAll('input[type=datetime-local][data-iso]');
-        for(var i=0;i<els.length;i++){var iso=els[i].getAttribute("data-iso");if(iso)els[i].value=toLocalInput(iso);}
-        /* htmx posts the form — rewrite the datetime params with the client
-           tz offset before htmx gathers them (same suffix rule as the page).
-           #975: assign unconditionally — detail.parameters is a Proxy over
-           FormData with no has trap, so an in-membership check is always
-           false and the suffix silently never landed (bare datetimes then
-           hit the #964 400 guard and the dialog could not save at all). */
+        var values=wireWall(form);
+        /* htmx posts the form — write the datetime params before htmx
+           gathers them. #975: assign unconditionally — detail.parameters is
+           a Proxy over FormData with no has trap. */
         form.addEventListener("htmx:configRequest",function(ev){
-          var o=-new Date().getTimezoneOffset(),s=o<0?"-":"+",a=Math.abs(o);
-          var suf=s+p2(Math.floor(a/60))+":"+p2(a%60);
-          for(var j=0;j<els.length;j++){if(els[j].value){
-            ev.detail.parameters[els[j].name]=els[j].value+suf;}}
+          values(function(el,v){ ev.detail.parameters[el.name]=v; });
         });
       })();</script>`;
   }

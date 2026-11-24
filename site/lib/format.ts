@@ -215,6 +215,7 @@ export function entryToJson(e: Entry) {
     end_time: e.end_time,
     duration_seconds: durationSeconds(e.start_time, e.end_time),
     billable: e.billable !== 0, /* #1082 */
+    tz: e.tz ?? null, /* #1081 */
     project_name: e.project_name,
     client_name: e.client_name,
     client_color: e.client_color,
