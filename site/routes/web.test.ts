@@ -1764,4 +1764,33 @@ describe("web entry project_id validation (#1462)", () => {
     expect(r!.status).toBe(404);
     expect(JSON.parse(r!.headers.get("HX-Trigger")!)).toEqual({ "tk-toast": "That invoice no longer exists" });
   });
+
+  test("DELETE /entries/:id for a nonexistent entry is 404 (#1478)", async () => {
+    const { handleWeb } = setup();
+    const req = new Request("http://x/entries/9999", { method: "DELETE" });
+    const r = await handleWeb(req, new URL(req.url), "/entries/9999", "DELETE");
+    expect(r!.status).toBe(404);
+    expect(JSON.parse(r!.headers.get("HX-Trigger")!)).toEqual({ "tk-toast": "That entry no longer exists" });
+  });
+
+  test("DELETE /entries/:id for an invoiced entry is 403 and keeps the entry (#1478)", async () => {
+    const { db, handleWeb } = setup();
+    const inv = db.query("INSERT INTO invoices (number, issue_date, status) VALUES ('INV-1478', '2026-10-08', 'sent') RETURNING id").get() as any;
+    const ins = db.query("INSERT INTO time_entries (description, start_time, end_time, invoice_id) VALUES ('x', '2026-10-08T09:00:00.000Z', '2026-10-08T10:00:00.000Z', ?)").run(inv.id);
+    const id = Number(ins.lastInsertRowid);
+    const req = new Request(`http://x/entries/${id}`, { method: "DELETE" });
+    const r = await handleWeb(req, new URL(req.url), `/entries/${id}`, "DELETE");
+    expect(r!.status).toBe(403);
+    expect(db.query("SELECT id FROM time_entries WHERE id = ?").get(id)).not.toBeNull();
+  });
+
+  test("DELETE /entries/:id deletes an existing entry (#1478)", async () => {
+    const { db, handleWeb } = setup();
+    const ins = db.query("INSERT INTO time_entries (description, start_time, end_time) VALUES ('x', '2026-10-08T09:00:00.000Z', '2026-10-08T10:00:00.000Z')").run();
+    const id = Number(ins.lastInsertRowid);
+    const req = new Request(`http://x/entries/${id}`, { method: "DELETE" });
+    const r = await handleWeb(req, new URL(req.url), `/entries/${id}`, "DELETE");
+    expect(r!.status).toBe(200);
+    expect(db.query("SELECT id FROM time_entries WHERE id = ?").get(id)).toBeNull();
+  });
 });

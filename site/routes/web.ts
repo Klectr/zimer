@@ -669,7 +669,9 @@ export function createWebRouter(deps: WebDeps) {
         }
         if (m && method === "DELETE") {
           const cur = qOne.get(Number(m[1])) as Entry | null; /* #334 */
-          if (cur && entryIsLocked(cur))
+          if (!cur) /* #1478: stale delete (entry deleted elsewhere) — 404 + toast, never a silent success */
+            return new Response("Entry not found.", { status: 404, headers: { "HX-Trigger": JSON.stringify({ "tk-toast": "That entry no longer exists" }) } });
+          if (entryIsLocked(cur))
             return new Response("This time is invoiced and can't be deleted.", { status: 403 });
           db.query("DELETE FROM time_entries WHERE id = ?").run(Number(m[1]));
           return new Response("", { status: 200 });

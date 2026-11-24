@@ -806,6 +806,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       window.tkConfirm('Delete this entry? This cannot be undone.', 'Delete entry').then(function(ok){
         if(!ok) return;
         fetch('/entries/'+editId,{method:'DELETE'}).then(function(r){
+          if(r.status===404){ close(); refreshWeek(null); return; } /* #1478: already gone — the delete's end state */
           if(!r.ok) throw new Error('delete failed'); /* #334: locked entries 403 */
           close(); refreshWeek(null);
         }).catch(function(ex){ fail(ex.message); });
