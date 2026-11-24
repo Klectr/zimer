@@ -1399,6 +1399,15 @@ describe("GET /api/entries range validation (#1494)", () => {
     expect(res.status).toBe(400);
   });
 
+  test("offset bounds are normalized to instants, not compared as raw strings", async () => {
+    const tenant = entriesTenant();
+    /* to = 10:00 at +02:00 is 08:00Z, before entry 2 at 09:00Z — raw string
+       comparison would wrongly include it ("09:00...Z" < "10:00...+02:00"). */
+    const res = await get(tenant, "?from=2026-11-08T00:00:00Z&to=2026-11-09T10:00:00%2B02:00");
+    expect(res.status).toBe(200);
+    expect((await res.json() as any[]).map((e: any) => e.id)).toEqual([]);
+  });
+
   test("a valid range returns only the entries inside it; no params returns entries up to now", async () => {
     const tenant = entriesTenant();
     const ranged = await get(tenant, "?from=2026-11-08T00:00:00Z&to=2026-11-10T00:00:00Z");
@@ -1407,6 +1416,9 @@ describe("GET /api/entries range validation (#1494)", () => {
     const dateOnly = await get(tenant, "?from=2026-11-07&to=2026-11-08");
     expect(dateOnly.status).toBe(200);
     expect((await dateOnly.json() as any[]).map((e: any) => e.id)).toEqual([1]);
+    const sameDay = await get(tenant, "?from=2026-11-07&to=2026-11-07");
+    expect(sameDay.status).toBe(200);
+    expect((await sameDay.json() as any[]).map((e: any) => e.id)).toEqual([1]);
     const all = await get(tenant, "");
     expect(all.status).toBe(200);
     expect((await all.json() as any[]).length).toBe(2);
