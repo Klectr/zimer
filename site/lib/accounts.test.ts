@@ -18,10 +18,10 @@ describe("hosted accounts (#732)", () => {
     expect(row.timeout).toBe(5000);
   });
 
-  test("accounts DB uses the shared pragma profile (#996)", () => {
+  test("accounts DB uses the cache/temp profile but keeps FULL sync (#996)", () => {
     const a = accountsDb();
     const sync = a.db.query("PRAGMA synchronous").get() as { synchronous: number };
-    expect(sync.synchronous).toBe(1);
+    expect(sync.synchronous).toBe(2);
     const cache = a.db.query("PRAGMA cache_size").get() as { cache_size: number };
     expect(cache.cache_size).toBe(-8000);
     const temp = a.db.query("PRAGMA temp_store").get() as { temp_store: number };
