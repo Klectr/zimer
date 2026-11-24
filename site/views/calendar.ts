@@ -345,7 +345,8 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     const tz = validTz(tzParam);
     /* "today" in the client's zone — the server may be on a different date. */
     const today = ymdOf(tzParts(new Date(), tz));
-    const sun = validYmd(weekStr) ?? sundayOfYmd(today); /* #1501 */
+    const validWeek = validYmd(weekStr); /* #1501 */
+    const sun = validWeek ? sundayOfYmd(validWeek) : sundayOfYmd(today); /* #1505: snap to Sunday */
     const wd = weekData(sun, tz);
     const empty = workspaceEmpty(db);
     const strips = [addDays(sun, -7), sun, addDays(sun, 7)].map((s) => stripHtml(s, tz, s === sun ? { wd, empty } : { empty })).join("");
@@ -368,7 +369,8 @@ export function createCalendarViews(deps: CalendarViewDeps) {
   function weekStrip(weekStr?: string, tzParam?: string): string {
     const tz = validTz(tzParam);
     const today = ymdOf(tzParts(new Date(), tz));
-    const sun = validYmd(weekStr) ?? sundayOfYmd(today); /* #1501 */
+    const validWeek = validYmd(weekStr); /* #1501 */
+    const sun = validWeek ? sundayOfYmd(validWeek) : sundayOfYmd(today); /* #1505: snap to Sunday */
     return stripInnerHtml(sun, tz);
   }
 
@@ -413,7 +415,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
 
   function weekGrid(weekStr?: string): string {
     const validWeek = validYmd(weekStr); /* #1501 */
-    const q = validWeek ? `?week=${validWeek}` : "";
+    const q = validWeek ? `?week=${sundayOfYmd(validWeek)}` : ""; /* #1505: snap to Sunday */
     /* #322: the skeleton mirrors the carousel pane layout (summary aside
        with the week-nav skeleton at its top) so the htmx swap lands
        without a layout flash. */
