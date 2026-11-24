@@ -1172,6 +1172,16 @@ export function createWebRouter(deps: WebDeps) {
           const taxRate = nonNegativeRate(form.get("tax_rate"));
           if (taxRate === null || !Number.isFinite(round2(taxRate)))
             return new Response("Tax rate must be a number at or above 0.", { status: 400 });
+          /* #1486: mirror the API rule (#1436) — a provided issue_date or
+             due_date must be a real calendar day; verbatim garbage would
+             feed ordering, overdue math, the PDF and the CSV export.
+             Absent issue_date defaults to today; absent due_date stays null. */
+          const issueDate = form.get("issue_date") ? validYmd(form.get("issue_date")) : todayStr();
+          if (!issueDate)
+            return new Response("Issue date must be a valid date (YYYY-MM-DD).", { status: 400 });
+          const dueDate = form.get("due_date") ? validYmd(form.get("due_date")) : null;
+          if (form.get("due_date") && !dueDate)
+            return new Response("Due date must be a valid date (YYYY-MM-DD).", { status: 400 });
           const groups = Number(form.get("groups") || 0);
           const items: { description: string; hours: number; rate: number; amount: number; entry_ids: number[]; date_from: string | null; date_to: string | null }[] = [];
           for (let i = 0; i < groups; i++) {
@@ -1231,7 +1241,6 @@ export function createWebRouter(deps: WebDeps) {
                 return new Response("One of those entries is no longer available to invoice.", { status: 400 });
             }
           }
-          const dueRaw = String(form.get("due_date") || "");
           /* #1350: keep the wizard's From/To as the Zinvoice's billing period.
              Only a well-formed, ordered pair is stored; anything else stays
              NULL and the surfaces fall back to the line-item dates. */
@@ -1240,8 +1249,8 @@ export function createWebRouter(deps: WebDeps) {
           const inv = db.query(
             `INSERT INTO invoices (client_id, number, issue_date, due_date, tax_rate, notes, internal_notes, period_from, period_to)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`)
-            .get(clientId, number, String(form.get("issue_date") || todayStr()),
-                 dueRaw || null, taxRate, String(form.get("notes") || ""),
+            .get(clientId, number, issueDate,
+                 dueDate, taxRate, String(form.get("notes") || ""),
                  String(form.get("internal_notes") || ""), periodFrom, periodTo) as any;
           const insItem = db.query(
             "INSERT INTO invoice_items (invoice_id, description, hours, rate, amount, date_from, date_to) VALUES (?, ?, ?, ?, ?, ?, ?)");
