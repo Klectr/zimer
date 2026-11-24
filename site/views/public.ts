@@ -34,7 +34,6 @@ export function createPublicViews(deps: PublicViewDeps) {
       relative URLs, so image and url are absolute. Keep invoice tags generic —
       never client names or amounts. */
   const OG_CARD = { width: 1200, height: 630, alt: "Klectr the alien with a clock and books beside the headline 'Turn your hours into an invoice.'" };
-  const OG_BRAND = { width: 1200, height: 600, alt: "Klectr the alien with a clock and books beside the text 'your Zimer is your Zinvoice.'" };
   function ogTags(title: string, description: string, url: string, image: string, card = OG_CARD): string {
     return `
   <meta property="og:title" content="${esc(title)}">
@@ -114,7 +113,7 @@ export function createPublicViews(deps: PublicViewDeps) {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
-  <title>Invoice ${esc(inv.number)} · Zimer</title>${ogTags("Invoice · Zimer", "View and pay your invoice securely.", origin + tokenPath, origin + "/static/og-image-v3.png", OG_BRAND)}
+  <title>Invoice ${esc(inv.number)} · Zimer</title>${ogTags("Invoice · Zimer", "View and pay your invoice securely.", origin + tokenPath, origin + "/static/og-image-v3.png")}
   <link rel="stylesheet" href="${staticUrl("style.css")}">
   <link rel="icon" type="image/svg+xml" href="${staticUrl("logo.svg")}">
   </head>
