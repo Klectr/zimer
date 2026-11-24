@@ -1293,7 +1293,8 @@ export function createWebRouter(deps: WebDeps) {
           const form = await req.formData();
           const inv = qInvoice.get(Number(m[1])) as Invoice | null;
           const want = String(form.get("status") || "");
-          const ok = !!inv && ((inv.status === "draft" && want === "sent") || (inv.status === "sent" && want === "paid"));
+          if (!inv) return new Response("Invoice not found.", { status: 404, headers: { "HX-Trigger": JSON.stringify({ "tk-toast": "That invoice no longer exists" }) } });
+          const ok = (inv.status === "draft" && want === "sent") || (inv.status === "sent" && want === "paid");
           if (!ok) return new Response("Invalid status transition.", { status: 400 });
           /* The user's local day (their browser sends client_day), else UTC. */
           db.query(want === "paid"
