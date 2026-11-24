@@ -1,5 +1,6 @@
 import { esc } from "../lib/format";
 import { card } from "./card";
+import { checkboxField } from "./choice";
 
 export interface FormSectionOptions {
   step: number;
@@ -12,6 +13,33 @@ export function formSection(opts: FormSectionOptions): string {
     `<div class="ui-form-section">` +
     `<div class="ui-form-section-title">${opts.step} · ${esc(opts.title)}</div>` +
     `${opts.bodyHtml}</div>`
+  );
+}
+
+export interface UnbilledRow {
+  id: string;
+  label: string;
+  hours: string;
+  amount: string;
+  included: boolean;
+}
+
+export function unbilledTable(rows: UnbilledRow[]): string {
+  const body =
+    rows.length === 0
+      ? `<tr><td colspan="4">No unbilled time.</td></tr>`
+      : rows
+          .map(
+            (r) =>
+              `<tr><td>${checkboxField({ id: `unbilled-${r.id}`, label: `Include ${r.label}`, bare: true, checked: r.included })}</td>` +
+              `<td>${esc(r.label)}</td><td class="num">${esc(r.hours)}</td>` +
+              `<td class="num">${esc(r.amount)}</td></tr>`,
+          )
+          .join("");
+  return (
+    `<table class="ui-table"><thead><tr><th scope="col"><span class="ui-sr-only">Include</span></th>` +
+    `<th scope="col">Description</th><th scope="col" class="num">Hours</th>` +
+    `<th scope="col" class="num">Amount</th></tr></thead><tbody>${body}</tbody></table>`
   );
 }
 

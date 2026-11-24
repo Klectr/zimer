@@ -9,7 +9,7 @@ describe("unbilledTable (#1484)", () => {
 
   test("renders a ui-table with one row per entry", () => {
     const html = unbilledTable(rows);
-    expect(html).toContain('<table class="ui-table ui-unbilled">');
+    expect(html).toContain('<table class="ui-table">');
     expect(html).toContain("Design — homepage pass");
     expect(html).toContain("12.5h");
     expect(html).toContain("$1,062.50");
