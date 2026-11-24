@@ -1087,9 +1087,11 @@ export function createWebRouter(deps: WebDeps) {
            day — never before today and never before From (#1048). */
         function prefillNewInvoice(sp: URLSearchParams): { p: any; preview?: any } {
           const p: any = defaultNewInvParams();
-          const from = sp.get("from"), to = sp.get("to");
-          const ymdRe = new RegExp("^\\d{4}-\\d{2}-\\d{2}$");
-          if (from && to && ymdRe.test(from) && ymdRe.test(to) && from < to) {
+          /* #1510: real calendar dates only — a shape-only check let
+             2026-02-30 render verbatim and roll over in addDays; a
+             single-day range (from == to) is valid, as in preview/create. */
+          const from = validYmd(sp.get("from")), to = validYmd(sp.get("to"));
+          if (from && to && from <= to) {
             p.from = from; p.to = to;
             const f = from + "T00:00:00", t = to + "T00:00:00";
             /* #1081: clients with unbilled time on these wall days. */

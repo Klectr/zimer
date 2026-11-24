@@ -1135,6 +1135,31 @@ describe("GET /partial/invoice-rest (#1048)", () => {
     expect(body).toContain(`name="from" value="${future}"`);
   });
 
+  test("the /invoices/new prefill rejects impossible from/to dates (#1510)", async () => {
+    const { handleWeb } = setupSend();
+    const req = new Request("http://x/invoices/new?from=2026-02-30&to=2026-03-05");
+    const res = await handleWeb(req, new URL(req.url), "/invoices/new", "GET");
+    expect(res!.status).toBe(200);
+    const body = await res!.text();
+    expect(body).not.toContain('value="2026-02-30"');
+    expect(body).toContain(`name="from" value="${addDays(todayStr(), -13)}"`);
+    expect(body).toContain(`name="to" value="${addDays(todayStr(), 1)}"`);
+  });
+
+  test("the /invoices/new prefill honors a single-day from == to range (#1510)", async () => {
+    const { db, handleWeb } = setupSend();
+    const day = addDays(todayStr(), -3);
+    db.query("INSERT INTO projects (name, client_id) VALUES ('Site', 1)").run();
+    const project = db.query("SELECT id FROM projects").get() as any;
+    db.query("INSERT INTO time_entries (project_id, description, start_time, end_time) VALUES (?, 'Build', ?, ?)").run(project.id, `${day}T14:00:00.000Z`, `${day}T16:00:00.000Z`);
+    const req = new Request(`http://x/invoices/new?from=${day}&to=${day}`);
+    const res = await handleWeb(req, new URL(req.url), "/invoices/new", "GET");
+    expect(res!.status).toBe(200);
+    const body = await res!.text();
+    expect(body).toContain(`name="from" value="${day}"`);
+    expect(body).toContain(`name="to" value="${day}"`);
+  });
+
   test("past unbilled time keeps To at today", async () => {
     const { db, handleWeb } = setupSend();
     const past = addDays(todayStr(), -2);
