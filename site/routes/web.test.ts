@@ -614,6 +614,59 @@ describe("invoice rate validation (#1442)", () => {
   });
 });
 
+/** #1486: web invoice create validates issue_date/due_date like the API
+ *  (#1436) — a provided date must be a real calendar day or nothing stores. */
+describe("invoice date validation (#1486)", () => {
+  test("a garbage issue_date is rejected and nothing is stored", async () => {
+    const { db, handleWeb } = setup();
+    const res = await postInvoice(handleWeb, {
+      ...baseInvoiceFields, issue_date: "2026-13-40", groups: "1",
+      g0_desc: "Work", g0_hours: "1", g0_rate: "50",
+      g0_ids: "", g0_date_from: "", g0_date_to: "",
+    });
+    expect(res!.status).toBe(400);
+    expect(await res!.text()).toContain("valid date");
+    expect(db.query("SELECT COUNT(*) AS n FROM invoices").get()).toEqual({ n: 0 });
+    expect(db.query("SELECT COUNT(*) AS n FROM invoice_items").get()).toEqual({ n: 0 });
+  });
+
+  test("a garbage due_date is rejected and nothing is stored", async () => {
+    const { db, handleWeb } = setup();
+    const res = await postInvoice(handleWeb, {
+      ...baseInvoiceFields, due_date: "not-a-date", groups: "1",
+      g0_desc: "Work", g0_hours: "1", g0_rate: "50",
+      g0_ids: "", g0_date_from: "", g0_date_to: "",
+    });
+    expect(res!.status).toBe(400);
+    expect(await res!.text()).toContain("valid date");
+    expect(db.query("SELECT COUNT(*) AS n FROM invoices").get()).toEqual({ n: 0 });
+  });
+
+  test("an impossible due_date is rejected and nothing is stored", async () => {
+    const { db, handleWeb } = setup();
+    const res = await postInvoice(handleWeb, {
+      ...baseInvoiceFields, due_date: "2026-02-30", groups: "1",
+      g0_desc: "Work", g0_hours: "1", g0_rate: "50",
+      g0_ids: "", g0_date_from: "", g0_date_to: "",
+    });
+    expect(res!.status).toBe(400);
+    expect(db.query("SELECT COUNT(*) AS n FROM invoices").get()).toEqual({ n: 0 });
+  });
+
+  test("valid issue and due dates are stored as given", async () => {
+    const { db, handleWeb } = setup();
+    const res = await postInvoice(handleWeb, {
+      ...baseInvoiceFields, due_date: "2026-10-20", groups: "1",
+      g0_desc: "Work", g0_hours: "1", g0_rate: "50",
+      g0_ids: "", g0_date_from: "", g0_date_to: "",
+    });
+    expect(res!.status).toBe(302);
+    const inv = db.query("SELECT issue_date, due_date FROM invoices").get() as any;
+    expect(inv.issue_date).toBe("2026-09-20");
+    expect(inv.due_date).toBe("2026-10-20");
+  });
+});
+
 /** #1444: preview validates rate/tax like the create route, and non-finite
  *  hours drop the row instead of orphaning the invoice header. */
 function postPreview(handleWeb: any, fields: Record<string, string>) {
