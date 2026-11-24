@@ -138,7 +138,8 @@ $("btn-start").addEventListener("click", async () => {
     const desc = $("in-desc").value.trim();
     await api("/api/timer/start", {
       method: "POST",
-      body: JSON.stringify({ description: desc, project_id: pid ? Number(pid) : null }),
+      /* #1081: record the zone the work happens in (wall-clock time). */
+      body: JSON.stringify({ description: desc, project_id: pid ? Number(pid) : null, tz: Intl.DateTimeFormat().resolvedOptions().timeZone }),
     });
     // remember for the global hotkey (Milestone 16)
     await chrome.storage.sync.set({ lastTimer: { description: desc, projectId: pid ? Number(pid) : null } });

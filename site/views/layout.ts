@@ -296,15 +296,24 @@ function toastTrigger(): string {
 function clientDayScript(): string {
   return `<script>(function(){
     function day(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+    /* #1081: and the browser's IANA zone as client_tz, so a started timer
+       records where it was worked. */
+    var tz=''; try{ tz=Intl.DateTimeFormat().resolvedOptions().timeZone||''; }catch(x){}
+    function put(f,name,val){
+      var i=f.querySelector('input[name="'+name+'"]');
+      if(!i){ i=document.createElement('input'); i.type='hidden'; i.name=name; f.appendChild(i); }
+      i.value=val;
+    }
     document.body.addEventListener('htmx:configRequest',function(e){
-      if(String(e.detail.verb||'').toLowerCase()==='post') e.detail.parameters['client_day']=day();
+      if(String(e.detail.verb||'').toLowerCase()!=='post') return;
+      e.detail.parameters['client_day']=day();
+      if(tz) e.detail.parameters['client_tz']=tz;
     });
     document.addEventListener('submit',function(e){
       var f=e.target;
       if(!f||String(f.method||'').toLowerCase()!=='post'||f.hasAttribute('hx-post')) return;
-      var i=f.querySelector('input[name="client_day"]');
-      if(!i){ i=document.createElement('input'); i.type='hidden'; i.name='client_day'; f.appendChild(i); }
-      i.value=day();
+      put(f,'client_day',day());
+      if(tz) put(f,'client_tz',tz);
     },true);
   })();</script>`;
 }

@@ -23,6 +23,8 @@ export interface TimerPanelOptions {
   context: string;
   startedLabel?: string;
   startedAt?: string;
+  /** #1081: the zone the start time is shown in (the entry's own). */
+  startedTz?: string;
   elapsed: string;
   metaHtml?: string;
   actionsHtml: string;
@@ -32,7 +34,7 @@ export function timerPanel(opts: TimerPanelOptions): string {
   const started = opts.startedLabel
     ? `<span class="ui-timer-started">${esc(opts.startedLabel)}</span>`
     : opts.startedAt
-      ? `<span class="ui-timer-started">Started <time data-ts="${esc(opts.startedAt)}"></time></span>`
+      ? `<span class="ui-timer-started">Started <time data-ts="${esc(opts.startedAt)}"${opts.startedTz ? ` data-tz="${esc(opts.startedTz)}"` : ""}></time></span>`
       : "";
   const meta = opts.metaHtml ? `<div class="ui-timer-meta">${opts.metaHtml}</div>` : "";
   const inner =

@@ -3,6 +3,8 @@
  *  invoices, CSV export, backup, demo data).
  *  Returns null when nothing matched so the caller can fall through. */
 
+import { entryDay, entryZone, hmOf, onWallDays, validTz, wallDayParam, wallParts, widenedWindow, ymdOf, type WallDay } from "../lib/wall.ts";
+import { INVOICE_ZONE } from "../lib/domain.ts";
 import { join, normalize, sep } from "node:path";
 import type { Database, Statement } from "bun:sqlite";
 import { addDays, clientColor, clientDay, csvCell, entryIsLocked, isPaymentTermsKey, round2, termsDays, termsKey, todayStr, validYmd } from "../lib/format.ts";
@@ -20,7 +22,7 @@ import type { AccountsDb } from "../lib/accounts.ts"; /* #732 */
 import { findTenantByPublicToken } from "../lib/tenants.ts"; /* #741 */
 import { countProofs, deleteProof, getProof, insertProof, listProofs, sanitizeFilename, validateProofFile, PROOF_MAX_BYTES, PROOF_MAX_PER_INVOICE } from "../lib/payment_proofs.ts"; /* #956 */
 import { servedVersion, staticUrl } from "../lib/static-assets.ts"; /* #993 */
-import { billableFromForm, endAfterStart, entryLinkable, existingClientId, existingProjectId, normalizeEntryTimestamp, nonNegativeRate, stopEndTime } from "./api.ts"; /* #1434, #1442, #1450, #1452, #1462, #1464 */
+import { billableFromForm, endAfterStart, entryFormTimes, entryLinkable, existingClientId, existingProjectId, normalizeEntryTimestamp, nonNegativeRate, stopEndTime } from "./api.ts"; /* #1434, #1442, #1450, #1452, #1462, #1464 */
 import { textField } from "../ui/field.ts";
 import { card } from "../ui/card.ts";
 import { settingsDataList, settingsDataRow, settingsSection } from "../ui/settings-section.ts";
@@ -43,8 +45,8 @@ export interface WebTenant {
   errorPage: (authed: boolean) => string;
   dashboardPage: () => string;
   timerPartial: () => string;
-  todayPartial: (from?: string, to?: string) => string;
-  todayStatsPartial: (from?: string, to?: string, weekFrom?: string, weekTo?: string) => string;
+  todayPartial: (from?: string, to?: string, wall?: WallDay) => string;
+  todayStatsPartial: (from?: string, to?: string, weekFrom?: string, weekTo?: string, wall?: WallDay) => string;
   weekInner: (weekStr?: string, tz?: string) => string;
   weekStrip: (weekStr?: string, tz?: string) => string;
   calendarPage: (week?: string) => string;
@@ -497,12 +499,13 @@ export function createWebRouter(deps: WebDeps) {
           function restRangeTo(clientId: number, from: string): string {
             let to = todayStr();
             if (from > to) to = from;
-            const latest = db.query(
-              `SELECT MAX(substr(e.start_time, 1, 10)) AS last_day FROM time_entries e
+            /* #1081: the client's latest unbilled wall day. */
+            const rows = db.query(
+              `SELECT e.start_time, e.tz FROM time_entries e
                JOIN projects p ON p.id = e.project_id
                WHERE p.client_id = ? AND e.invoice_id IS NULL AND e.end_time IS NOT NULL AND e.billable = 1`
-            ).get(clientId) as any;
-            if (latest?.last_day && String(latest.last_day) > to) to = String(latest.last_day);
+            ).all(clientId) as { start_time: string; tz: string | null }[];
+            for (const r of rows) { const d = entryDay(r, INVOICE_ZONE); if (d > to) to = d; }
             return to;
           }
 
@@ -523,7 +526,9 @@ export function createWebRouter(deps: WebDeps) {
             const from = url.searchParams.get("from") || "", to = url.searchParams.get("to") || "";
             const iso = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:?\d{2})$/;
             const ok = iso.test(from) && iso.test(to) && !isNaN(Date.parse(from)) && !isNaN(Date.parse(to));
-            return html(ok ? todayPartial(from, to) : todayPartial());
+            /* #1081: ?day=&tz= picks entries by their own wall day. */
+            const wall = wallDayParam(url.searchParams.get("day"), url.searchParams.get("tz")) ?? undefined;
+            return html(ok ? todayPartial(from, to, wall) : todayPartial(undefined, undefined, wall));
           }
           /* #1121: the dashboard stat row with the client's day + week
              bounds, validated the same way; each pair falls back to the
@@ -536,7 +541,8 @@ export function createWebRouter(deps: WebDeps) {
             const dayOk = pair(from, to), weekOk = pair(wfrom, wto);
             return html(todayStatsPartial(
               dayOk ? from : undefined, dayOk ? to : undefined,
-              weekOk ? wfrom : undefined, weekOk ? wto : undefined));
+              weekOk ? wfrom : undefined, weekOk ? wto : undefined,
+              wallDayParam(url.searchParams.get("day"), url.searchParams.get("tz")) ?? undefined)); /* #1081 */
           }
           /* #328: "invoice the rest" for the new-invoice client picker — returns the
              #inv-range fields with from/to filled from the client's billing
@@ -562,8 +568,9 @@ export function createWebRouter(deps: WebDeps) {
             const pidRaw = form.get("project_id");
             const pid = pidRaw ? existingProjectId(db, String(pidRaw)) : null;
             if (pidRaw && pid === null) return new Response("project_id not found", { status: 400, headers: { "HX-Trigger": JSON.stringify({ "tk-toast": "That project no longer exists" }) } });
-            db.query("INSERT INTO time_entries (project_id, description, start_time) VALUES (?, ?, ?)")
-              .run(pid, String(form.get("description") || ""), new Date().toISOString());
+            /* #1081: the timer records the zone you started it in. */
+            db.query("INSERT INTO time_entries (project_id, description, start_time, tz) VALUES (?, ?, ?, ?)")
+              .run(pid, String(form.get("description") || ""), new Date().toISOString(), validTz(form.get("client_tz")));
             return html(timerPartial(), 200, { "HX-Trigger": "timer-updated, timer-started" });
           }
           if (path === "/timer/stop" && method === "POST") {
@@ -595,8 +602,9 @@ export function createWebRouter(deps: WebDeps) {
                of silently corrupting the entry's times. #1434: impossible
                calendar dates are rejected too (Feb 30 rolled to Mar 2;
                month 13 threw) — same validator as the API (#1432). */
-            const startIso = normalizeEntryTimestamp(startRaw);
-            const endIso = endRaw ? normalizeEntryTimestamp(endRaw) : null;
+            const times = entryFormTimes(form); /* #1081 */
+            const startIso = times.toIso(startRaw);
+            const endIso = endRaw ? times.toIso(endRaw) : null;
             if (!startIso || (endRaw && !endIso))
               return new Response("start_time/end_time must be a valid timestamp with a timezone offset", { status: 400 });
             if (!endAfterStart(startIso, endIso))
@@ -610,8 +618,8 @@ export function createWebRouter(deps: WebDeps) {
                  AND created_at >= strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-10 seconds')`
             ).get(pid, desc, startIso, endIso) as { id: number } | null;
             if (dupe) return json({ ok: true, id: dupe.id }, 200);
-            const ins = db.query("INSERT INTO time_entries (project_id, description, start_time, end_time, billable) VALUES (?, ?, ?, ?, ?)")
-              .run(pid, desc, startIso, endIso, billableFromForm(form, 1));
+            const ins = db.query("INSERT INTO time_entries (project_id, description, start_time, end_time, billable, tz) VALUES (?, ?, ?, ?, ?, ?)")
+              .run(pid, desc, startIso, endIso, billableFromForm(form, 1), times.zone);
             return json({ ok: true, id: Number(ins.lastInsertRowid) }, 201);
           }
 
@@ -648,19 +656,21 @@ export function createWebRouter(deps: WebDeps) {
              of silently corrupting the entry's times. #1434: impossible
              calendar dates are rejected too — same validator as the API
              (#1432). */
-          const startIso = normalizeEntryTimestamp(startRaw);
-          const endIso = endRaw ? normalizeEntryTimestamp(endRaw) : null;
+          const times = entryFormTimes(form); /* #1081 */
+          const startIso = times.toIso(startRaw);
+          const endIso = endRaw ? times.toIso(endRaw) : null;
           if (!startIso || (endRaw && !endIso))
             return new Response("start_time/end_time must be a valid timestamp with a timezone offset", { status: 400 });
           if (!endAfterStart(startIso, endIso))
             return new Response("end_time must be after start_time", { status: 400 });
-          db.query("UPDATE time_entries SET description = ?, project_id = ?, start_time = ?, end_time = ?, billable = ? WHERE id = ?")
+          db.query("UPDATE time_entries SET description = ?, project_id = ?, start_time = ?, end_time = ?, billable = ?, tz = COALESCE(?, tz) WHERE id = ?")
             .run(
               String(form.get("description") || ""),
               pid,
               startIso,
               endIso,
               billableFromForm(form, cur.billable === 0 ? 0 : 1), /* #1082: absent (calendar drag/resize) keeps it */
+              times.zone, /* #1081: the zone the wall times were entered in; absent keeps the entry's */
               id);
           return isHtmx(req)
             /* #903: the timer edit dialog posts via htmx — answer HX-Trigger
@@ -708,7 +718,7 @@ export function createWebRouter(deps: WebDeps) {
            Excel detects the encoding. */
         if (path === "/export/entries.csv" && method === "GET") {
           const rows = db.query(`
-            SELECT e.description, e.start_time, e.end_time, e.billable,
+            SELECT e.description, e.start_time, e.end_time, e.billable, e.tz,
                    p.name AS project, c.name AS client, c.rate AS rate
             FROM time_entries e
             LEFT JOIN projects p ON p.id = e.project_id
@@ -720,7 +730,11 @@ export function createWebRouter(deps: WebDeps) {
           const to = (url.searchParams.get("to") || "").trim();
           const out = ["date,client,project,description,start,end,hours,billable,rate,amount"];
           for (const r of rows) {
-            const day = String(r.start_time).slice(0, 10);
+            /* #1081: dates and times are the entry's own wall clock (legacy
+               rows with no zone: UTC, as before). */
+            const zone = entryZone(r, INVOICE_ZONE);
+            const sp = wallParts(r.start_time, zone);
+            const day = ymdOf(sp);
             if (from && day < from) continue;
             if (to && day >= to) continue;
             const start = new Date(r.start_time);
@@ -734,9 +748,9 @@ export function createWebRouter(deps: WebDeps) {
             const rate = Number(r.rate || 0);
             const amount = isBillable ? (hours * rate).toFixed(2) : "0.00";
             const cells = [
-              start.toISOString().slice(0, 10), r.client || "", r.project || "",
-              r.description || "", start.toISOString().slice(11, 16),
-              end ? end.toISOString().slice(11, 16) : "",
+              day, r.client || "", r.project || "",
+              r.description || "", hmOf(sp),
+              end ? hmOf(wallParts(end, zone)) : "",
               hours.toFixed(2), billable, rate.toFixed(2), amount,
             ];
             out.push(cells.map(csvCell).join(","));
@@ -1066,13 +1080,16 @@ export function createWebRouter(deps: WebDeps) {
           if (from && to && ymdRe.test(from) && ymdRe.test(to) && from < to) {
             p.from = from; p.to = to;
             const f = from + "T00:00:00", t = to + "T00:00:00";
-            const billable = db.query(`
-            SELECT DISTINCT c.id, c.rate, c.payment_terms
+            /* #1081: clients with unbilled time on these wall days. */
+            const [wf, wt] = widenedWindow(from, addDays(to, 1));
+            const inRange = onWallDays(db.query(`
+            SELECT c.id, c.rate, c.payment_terms, e.start_time, e.tz
             FROM time_entries e
             JOIN projects pr ON pr.id = e.project_id
             JOIN clients c ON c.id = pr.client_id
             WHERE e.invoice_id IS NULL AND e.end_time IS NOT NULL AND e.billable = 1
-              AND e.start_time >= ? AND e.start_time < date(?, '+1 day')`).all(f, t) as any[];
+              AND e.start_time >= ? AND e.start_time < ?`).all(wf, wt) as any[], from, addDays(to, 1), INVOICE_ZONE);
+            const billable = [...new Map(inRange.map((r: any) => [r.id, r])).values()];
             if (billable.length !== 1) return { p };
             const c = billable[0];
             p.client_id = String(c.id);

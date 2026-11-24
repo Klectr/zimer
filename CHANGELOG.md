@@ -17,6 +17,9 @@ What's new in Zimer, newest first.
 - **Your clients see "invoice", not "Zinvoice".** The PDF and the public page use the plain word; Zinvoice stays the name inside Zimer.
 - **The public Zinvoice page is complete.** It shows who it's from and who it's for, hours × rate on each line, your payment instructions when there's no card link, and a PDF download.
 - **Zimer warns before a Zinvoice goes out incomplete.** You'll see a note when your business name isn't set (the Zinvoice wouldn't say who it's from), and when a sent Zinvoice gives your client no way to pay.
+- **Mark time as non-billable.** Every entry has a Billable checkbox. Unchecked time still counts toward your day and week, but it never lands on a Zinvoice and carries no amount in the CSV. On the calendar it's drawn as an outline.
+- **Times stay where you worked them.** Each entry remembers the time zone it was logged in, so 8–5 worked in California still reads 8–5 when you open Zimer in Florida, and it stays on the day you worked it, in the calendar, the timer page, Zinvoice dates, and the CSV.
+- **New Zinvoices follow the client you pick.** Switching clients updates the rate and due date to that client's, and clearing the client removes its time from the form.
 - **Faster and lighter.** Responses are compressed, images are smaller, the Zinvoices list loads less, and the calendar does less work per week.
 - **Privacy and accessibility.** Session recording is off inside the app, secondary text meets WCAG AA contrast, selected rows announce themselves to screen readers, and status chips can be reached with the keyboard.
 

@@ -10,6 +10,11 @@ import { addDays, durationSeconds, esc, fmtDur, round2 } from "./format.ts";
 import type { Invoice, InvoiceItem } from "./types.ts";
 import { createPaymentLink, stripeConfigured } from "../stripe.ts";
 import { getMeta } from "../db.ts";
+import { entryDay, onWallDays, widenedWindow } from "./wall.ts";
+
+/** #1081: invoicing has no viewer, so legacy entries with no recorded zone
+    keep the UTC day they always had. Entries with a zone use their own. */
+export const INVOICE_ZONE = "UTC";
 
 export interface DomainDeps {
   db: Database;
@@ -120,14 +125,32 @@ export function createDomain(deps: DomainDeps) {
   /** Unbilled, finished entries for a client's projects inside [from, to] (#598:
       the end date is inclusive — entries starting on the to-date count). */
   function unbilledEntries(clientId: number, from: string, to: string) {
-    return db.query(
-      `SELECT e.id, e.project_id, e.description, e.start_time, e.end_time,
+    /* #1081: the range is wall days — an entry counts on the day it was
+       worked in its own zone (legacy NULL-zone rows: UTC, as before). */
+    const fromDay = from.slice(0, 10), toNext = addDays(to.slice(0, 10), 1);
+    const [f, t] = widenedWindow(fromDay, toNext);
+    const rows = db.query(
+      `SELECT e.id, e.project_id, e.description, e.start_time, e.end_time, e.tz,
               p.name AS project_name
        FROM time_entries e
        JOIN projects p ON p.id = e.project_id
        WHERE e.invoice_id IS NULL AND e.end_time IS NOT NULL AND e.billable = 1
-         AND p.client_id = ? AND e.start_time >= ? AND e.start_time < date(?, '+1 day')
-       ORDER BY e.start_time`).all(clientId, from, to) as any[];
+         AND p.client_id = ? AND e.start_time >= ? AND e.start_time < ?
+       ORDER BY e.start_time`).all(clientId, f, t) as any[];
+    return onWallDays(rows, fromDay, toNext, INVOICE_ZONE);
+  }
+
+  /** #1081: first and last wall day of a client's unbilled, billable,
+      finished time; null when there is none. */
+  function clientUnbilledSpan(clientId: number): { first: string; last: string } | null {
+    const rows = db.query(
+      `SELECT e.start_time, e.tz FROM time_entries e
+       JOIN projects p ON p.id = e.project_id
+       WHERE p.client_id = ? AND e.invoice_id IS NULL AND e.end_time IS NOT NULL AND e.billable = 1`
+    ).all(clientId) as { start_time: string; tz: string | null }[];
+    if (!rows.length) return null;
+    const days = rows.map((r) => entryDay(r, INVOICE_ZONE)).sort();
+    return { first: days[0]!, last: days[days.length - 1]! };
   }
 
   /** "Invoice the rest" (#328): the from-date for a client's next invoice —
@@ -144,12 +167,7 @@ export function createDomain(deps: DomainDeps) {
        JOIN invoices i ON i.id = ii.invoice_id
        WHERE i.client_id = ?`).get(clientId) as any;
     if (last?.last_to) return addDays(String(last.last_to), 1);
-    const first = db.query(
-      `SELECT MIN(substr(e.start_time, 1, 10)) AS first_day FROM time_entries e
-       JOIN projects p ON p.id = e.project_id
-       WHERE p.client_id = ? AND e.invoice_id IS NULL AND e.end_time IS NOT NULL AND e.billable = 1`
-    ).get(clientId) as any;
-    return first?.first_day ? String(first.first_day) : null;
+    return clientUnbilledSpan(clientId)?.first ?? null; /* #1081: wall day */
   }
 
   /** Per-client finished, unbilled time with invoice rounding applied (#328).
@@ -193,7 +211,7 @@ export function createDomain(deps: DomainDeps) {
        billing dates (Date | Description | Hours | Rate | Amount). */
     const groups = new Map<number, { project: string; ids: number[]; secs: number; from: string; to: string }>();
     for (const e of entries) {
-      const day = String(e.start_time).slice(0, 10);
+      const day = entryDay(e, INVOICE_ZONE); /* #1081: the day it was worked */
       const g = groups.get(e.project_id) ?? { project: e.project_name, ids: [], secs: 0, from: day, to: day };
       g.ids.push(e.id);
       g.secs += roundUpSeconds(durationSeconds(e.start_time, e.end_time), ROUNDING_MINUTES);
@@ -271,7 +289,7 @@ export function createDomain(deps: DomainDeps) {
 
   return {
     getInvoice, invoiceTotals, nextInvoiceNumber, stripeLinkFor,
-    unbilledEntries, groupToLineItems, clientRestFrom, unbilledByClient,
+    unbilledEntries, groupToLineItems, clientRestFrom, clientUnbilledSpan, unbilledByClient,
     projectOptions, projectOptionRows, weekTargetBar,
     newPublicToken, ensurePublicToken, getPublicToken, mintPublicToken,
   };

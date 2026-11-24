@@ -2,6 +2,8 @@
  *  template picker + invoice sheet, detail body fragment, and detail page.
  *  invoiceSheet is also returned so the public-views factory can reuse it. */
 
+import { entryDay } from "../lib/wall.ts";
+import { INVOICE_ZONE } from "../lib/domain.ts";
 import type { Database, Statement } from "bun:sqlite";
 import { addDays, daysBetween, durationSeconds, esc, fmtDur, money, round2, shortDateRange, shortDateRangeYear, shortYmd, clientTermsDescription, termsDays, termsKey, todayStr } from "../lib/format.ts";
 import { icon } from "../lib/icons.ts";
@@ -389,11 +391,12 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       display. Empty when no time entries are linked to the invoice. */
   function timeBreakdown(inv: { id: number }): { date: string; hours: number }[] {
     const rows = db.query(
-      `SELECT substr(start_time, 1, 10) AS day, start_time, end_time
+      `SELECT start_time, end_time, tz
        FROM time_entries WHERE invoice_id = ? AND end_time IS NOT NULL`
     ).all(inv.id) as any[];
     const byDay = new Map<string, number>();
     for (const r of rows) {
+      r.day = entryDay(r, INVOICE_ZONE); /* #1081: the day it was worked */
       const secs = Math.ceil(durationSeconds(String(r.start_time), String(r.end_time)) / 300) * 300;
       if (secs > 0) byDay.set(r.day, (byDay.get(r.day) ?? 0) + secs);
     }

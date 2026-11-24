@@ -2,6 +2,7 @@
  *  revenue) plus the unauthenticated Stripe webhook. Returns null when the
  *  path is not an API path so the caller falls through to web routes. */
 
+import { bareWallToIso, validTz } from "../lib/wall.ts";
 import type { Database, Statement } from "bun:sqlite";
 import { clientColor, clientDay, dayBounds, durationSeconds, entryIsLocked, round2, todayStr, validYmd } from "../lib/format.ts";
 import type { Entry, Invoice, InvoiceItem } from "../lib/types.ts";
@@ -118,6 +119,23 @@ export function existingClientId(db: Database, raw: unknown): number | null {
   const n = Number(raw);
   if (!Number.isInteger(n) || n <= 0) return null;
   return db.query("SELECT 1 FROM clients WHERE id = ?").get(n) ? n : null;
+}
+
+/* #1081: an entry form's times. The forms send bare wall times
+   ("2026-11-24T08:00") with entry_tz naming their zone; the instant is
+   resolved in that zone (DST-correct for the date itself). Offset-bearing
+   values (older pages, scripts) still parse as before. A bare value with no
+   zone stays invalid (#964). `zone` is what the entry records: entry_tz,
+   else the page's client_tz. */
+export function entryFormTimes(form: { get(name: string): unknown }): {
+  zone: string | null; toIso: (raw: unknown) => string | null;
+} {
+  const wallZone = validTz(form.get("entry_tz"));
+  const zone = wallZone ?? validTz(form.get("client_tz"));
+  return {
+    zone,
+    toIso: (raw) => (wallZone ? bareWallToIso(raw, wallZone) : null) ?? normalizeEntryTimestamp(raw),
+  };
 }
 
 /* #1082: the billable flag from a form post. The entry forms send a hidden
@@ -315,9 +333,12 @@ export function createApiRouter(deps: ApiDeps) {
               const projectId = body.project_id ? existingProjectId(db, body.project_id) : null;
               if (body.project_id && projectId === null)
                 return json({ error: "project_id not found" }, 400);
+              /* #1081: callers (the extension) send their IANA zone as tz. */
+              if (body.tz !== undefined && body.tz !== null && validTz(body.tz) === null)
+                return json({ error: "tz must be an IANA time zone, e.g. America/Chicago" }, 400);
               const r = db.query(
-                "INSERT INTO time_entries (project_id, description, start_time) VALUES (?, ?, ?) RETURNING id")
-                .get(projectId, String(body.description || ""), new Date().toISOString()) as any;
+                "INSERT INTO time_entries (project_id, description, start_time, tz) VALUES (?, ?, ?, ?) RETURNING id")
+                .get(projectId, String(body.description || ""), new Date().toISOString(), validTz(body.tz)) as any;
               return json(entryToJson(qOne.get(r.id) as Entry), 201);
             }
             if (path === "/api/timer/stop" && method === "POST") {
@@ -397,13 +418,18 @@ export function createApiRouter(deps: ApiDeps) {
                 }
                 const billable = billableFromJson(body.billable, cur.billable === 0 ? 0 : 1); /* #1082 */
                 if (billable === null) return json({ error: "billable must be true or false" }, 400);
-                db.query(`UPDATE time_entries SET description = ?, project_id = ?, start_time = ?, end_time = ?, billable = ? WHERE id = ?`)
+                /* #1081: tz, when given, is the zone the entry was worked in. */
+                if (body.tz !== undefined && body.tz !== null && validTz(body.tz) === null)
+                  return json({ error: "tz must be an IANA time zone, e.g. America/Chicago" }, 400);
+                const tz = body.tz === undefined ? cur.tz ?? null : validTz(body.tz);
+                db.query(`UPDATE time_entries SET description = ?, project_id = ?, start_time = ?, end_time = ?, billable = ?, tz = ? WHERE id = ?`)
                   .run(
                     body.description !== undefined ? String(body.description) : cur.description,
                     projectId,
                     startTime,
                     endTime,
                     billable,
+                    tz,
                     id);
                 return json(entryToJson(qOne.get(id) as Entry));
               }

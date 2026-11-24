@@ -47,6 +47,8 @@ export interface TimerRunningCardOptions {
   context: string;
   /** ISO start instant; the clock ticks from it client-side. */
   startedAt: string;
+  /** #1081: the entry's own zone, for the "Started" time. */
+  startedTz?: string;
   /** Hourly rate (0/omitted: no rate or worth tags). */
   rate?: number;
   rateLabel?: string;
@@ -68,6 +70,7 @@ export function timerRunningCard(o: TimerRunningCardOptions): string {
     statusHtml: tag({ label: "Running", tone: "success", dot: true }),
     context: o.context,
     startedAt: o.startedAt,
+    startedTz: o.startedTz,
     elapsed: "…",
     metaHtml,
     actionsHtml: button({ label: "Stop", variant: "primary", icon: "stop", attrs: 'hx-post="/timer/stop" hx-target="#timer-card" hx-swap="outerHTML swap:200ms" data-tip="Stop (t)" aria-keyshortcuts="t"' }),
@@ -76,7 +79,9 @@ export function timerRunningCard(o: TimerRunningCardOptions): string {
           if(window.__tkTick){clearInterval(window.__tkTick);window.__tkTick=null;}
           var s=new Date(el.dataset.start).getTime();
           var st=document.querySelector('#timer-card time[data-ts]');
-          if(st)st.textContent=new Date(st.getAttribute('data-ts')).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
+          if(st){var so={hour:'numeric',minute:'2-digit'},sz=st.getAttribute('data-tz');if(sz)so.timeZone=sz; /* #1081 */
+            try{st.textContent=new Date(st.getAttribute('data-ts')).toLocaleTimeString([],so);}
+            catch(x){st.textContent=new Date(st.getAttribute('data-ts')).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});}}
           function fmtDurRow(d){var t=Math.floor(d/1000),
             h=Math.floor(t/3600),m=Math.floor(t%3600/60),sec=t%60;
             if(h>0)return m>0?h+'h '+String(m).padStart(2,'0')+'m':h+'h';
