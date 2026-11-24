@@ -121,6 +121,7 @@ export function createPublicViews(deps: PublicViewDeps) {
   <main class="page-public-invoice">
   ${sheet}
   </main>
+  </body>
   </html>`;
   }
 
@@ -169,6 +170,7 @@ export function createPublicViews(deps: PublicViewDeps) {
   ${body}
   ${publicFoot([{ label: "Changelog", href: "/changelog" }, { label: "Terms", href: "/terms" }])}
   </main>
+  </body>
   </html>`;
   }
 
@@ -196,6 +198,7 @@ export function createPublicViews(deps: PublicViewDeps) {
   ${body}
   ${publicFoot()}
   </main>
+  </body>
   </html>`;
   }
 
@@ -220,6 +223,7 @@ export function createPublicViews(deps: PublicViewDeps) {
   ${body}
   ${publicFoot([{ label: "Changelog", href: "/changelog" }, { label: "Privacy", href: "/privacy" }])}
   </main>
+  </body>
   </html>`;
   }
 
