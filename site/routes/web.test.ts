@@ -2181,9 +2181,13 @@ describe("entries CSV export range validation (#1507)", () => {
     const ins = db.query("INSERT INTO time_entries (description, start_time, end_time) VALUES (?, ?, ?)");
     ins.run("in week", "2026-10-08T09:00:00.000Z", "2026-10-08T10:00:00.000Z");
     ins.run("next week", "2026-10-20T09:00:00.000Z", "2026-10-20T10:00:00.000Z");
+    ins.run("on from", "2026-10-04T09:00:00.000Z", "2026-10-04T10:00:00.000Z");
+    ins.run("on to", "2026-10-11T09:00:00.000Z", "2026-10-11T10:00:00.000Z");
     const week = await (await getCsv(handleWeb, "?from=2026-10-04&to=2026-10-11")).text();
     expect(week).toContain("in week");
     expect(week).not.toContain("next week");
+    expect(week).toContain("on from");
+    expect(week).not.toContain("on to");
     const all = await (await getCsv(handleWeb, "")).text();
     expect(all).toContain("in week");
     expect(all).toContain("next week");
