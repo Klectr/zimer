@@ -325,6 +325,45 @@ describe("calendar week param must be a real date (#1501)", () => {
   });
 });
 
+/** #1505: a valid ?week= that is not a Sunday was treated as the week
+ *  start, rendering a Wed–Tue week. It snaps to the Sunday of its
+ *  containing week, like ?day= already does; Sundays are unchanged. */
+describe("calendar week param snaps to Sunday (#1505)", () => {
+  const stubQuery = () => ({
+    get: (..._a: unknown[]) => ({ n: 1 }),
+    all: (..._a: unknown[]) => [],
+  });
+  function views() {
+    const db = {
+      query: (_sql: string) => ({ get: () => ({ n: 1 }), all: () => [] }),
+    } as unknown as Database;
+    return createCalendarViews({
+      db,
+      qOne: stubQuery(),
+      qRange: stubQuery(),
+      entrySelect: "SELECT",
+      layout: (_t: string, b: string) => b,
+      projectOptionRows: () => [],
+      weekTargetBar: () => "",
+      calHourPx: 64,
+    } as any);
+  }
+  test("weekInner with a Wednesday week renders the Sunday-start week", () => {
+    const html = views().weekInner("2026-09-23", "America/Chicago");
+    expect(html).toContain('data-sun="2026-09-20"');
+    expect(html).not.toContain('data-sun="2026-09-23"');
+  });
+  test("weekStrip with a Saturday week renders the Sunday-start week", () => {
+    const html = views().weekStrip("2026-09-26", "America/Chicago");
+    expect(html).toContain('data-date="2026-09-20"');
+    expect(html).toContain('data-date="2026-09-26"');
+  });
+  test("weekGrid snaps a mid-week date to Sunday in the partial URL", () => {
+    expect(views().weekGrid("2026-09-23")).toContain('hx-get="/partial/week?week=2026-09-20"');
+    expect(views().weekGrid("2026-09-20")).toContain('hx-get="/partial/week?week=2026-09-20"');
+  });
+});
+
 /** #500: finish the data-tip sweep — the calendar entry card's invoiced-mark
  *  info was the last native title= tooltip on the grid. On the ui visualizer
  *  the mark rides the block itself: the is-invoiced class plus the invoice
