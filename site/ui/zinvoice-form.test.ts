@@ -18,19 +18,20 @@ describe("unbilledTable (#1484)", () => {
 
   test("included rows render a checked bare checkbox named for the entry", () => {
     const html = unbilledTable(rows);
-    expect(html).toContain('id="unbilled-e1"');
     expect(html).toContain('aria-label="Include Design — homepage pass"');
-    const e1 = html.slice(html.indexOf('id="unbilled-e1"'), html.indexOf('id="unbilled-e1"') + 40);
-    expect(e1).toContain("checked");
-    const e2 = html.slice(html.indexOf('id="unbilled-e2"'), html.indexOf('id="unbilled-e2"') + 40);
-    expect(e2).not.toContain("checked");
+    const inputFor = (id: string) => html.match(new RegExp(`<input[^>]*id="unbilled-${id}"[^>]*>`))?.[0] ?? "";
+    expect(inputFor("e1")).toContain("checked");
+    expect(inputFor("e2")).not.toContain("checked");
   });
 
   test("labels, hours and amounts are escaped", () => {
-    const html = unbilledTable([{ id: "x<1", label: "<img src=x>", hours: "1h", amount: "$1", included: true }]);
+    const html = unbilledTable([{ id: "x<1", label: "<img src=x>", hours: "<b>1h</b>", amount: "$1 & <", included: true }]);
     expect(html).not.toContain("<img src=x>");
     expect(html).toContain("&lt;img src=x&gt;");
-    expect(html).not.toContain('id="unbilled-x<1"');
+    expect(html).toContain('id="unbilled-x&lt;1"');
+    expect(html).toContain('aria-label="Include &lt;img src=x&gt;"');
+    expect(html).toContain("&lt;b&gt;1h&lt;/b&gt;");
+    expect(html).toContain("$1 &amp; &lt;");
   });
 
   test("no rows renders the empty-state row, not an empty table body", () => {
