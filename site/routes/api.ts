@@ -308,8 +308,33 @@ export function createApiRouter(deps: ApiDeps) {
               return json(entryToJson(qOne.get(running.id) as Entry));
             }
             if (path === "/api/entries" && method === "GET") {
-              const from = url.searchParams.get("from") || new Date(0).toISOString();
-              const to = url.searchParams.get("to") || new Date().toISOString();
+              /* #1494: provided bounds are validated and normalized to
+                 canonical ISO instants before they reach the range query —
+                 raw strings compare lexicographically, so an invalid `to`
+                 ("garbage" sorts after every timestamp) silently returned
+                 an unbounded list and a reversed range read as "no
+                 entries". A date-only `from` means that day's UTC midnight;
+                 a date-only `to` means the NEXT midnight, so a same-day
+                 date-only range covers that day (the inclusive-date
+                 convention invoice ranges use). Absent bounds keep the
+                 epoch → now defaults. */
+              const bound = (raw: string | null, isTo: boolean): string | null => {
+                if (raw === null) return null;
+                const ymd = validYmd(raw);
+                if (ymd) {
+                  if (!isTo) return `${ymd}T00:00:00.000Z`;
+                  const next = new Date(`${ymd}T00:00:00.000Z`);
+                  next.setUTCDate(next.getUTCDate() + 1);
+                  return next.toISOString();
+                }
+                return normalizeEntryTimestamp(raw);
+              };
+              const rawFrom = url.searchParams.get("from");
+              const rawTo = url.searchParams.get("to");
+              const from = rawFrom === null ? new Date(0).toISOString() : bound(rawFrom, false);
+              const to = rawTo === null ? new Date().toISOString() : bound(rawTo, true);
+              if (from === null || to === null || from > to)
+                return json({ error: "from/to must be valid timestamps with from on or before to" }, 400);
               return json((qRange.all(from, to) as Entry[]).map(entryToJson));
             }
             let m = path.match(/^\/api\/entries\/(\d+)$/);

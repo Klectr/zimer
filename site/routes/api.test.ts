@@ -1348,3 +1348,79 @@ describe("API deletes of missing rows return 404 (#1482)", () => {
     expect(count(tenant, "projects")).toBe(0);
   });
 });
+
+describe("GET /api/entries range validation (#1494)", () => {
+  function entriesTenant() {
+    const db = new BunDatabase(":memory:");
+    db.exec(`CREATE TABLE time_entries (id INTEGER PRIMARY KEY, project_id INTEGER, description TEXT, start_time TEXT, end_time TEXT, invoice_id INTEGER)`);
+    db.query("INSERT INTO time_entries (id, start_time, end_time) VALUES (1, '2026-11-07T09:00:00.000Z', '2026-11-07T10:00:00.000Z'), (2, '2026-11-09T09:00:00.000Z', '2026-11-09T10:00:00.000Z')").run();
+    return {
+      db,
+      qRunning: stubStatement(),
+      qOne: stubStatement(),
+      qRange: db.query("SELECT * FROM time_entries WHERE start_time >= ? AND start_time < ? ORDER BY start_time DESC"),
+      qInvoice: stubStatement(), qInvoices: stubStatement(),
+      groupToLineItems: () => [], unbilledEntries: () => [],
+      getInvoice: () => null,
+      invoiceTotals: () => ({ subtotal: 0, tax: 0, total: 0 }),
+      nextInvoiceNumber: () => "INV-0001", mintPublicToken: () => "tok",
+      stripeLinkFor: async () => ({}),
+      revenueTotals: () => null, revenueMonthly: () => [], revenueByClient: () => [],
+      revenueOverdue: () => [], revenueSnapshot: () => ({ totals: null, by_month: [], by_client: [], overdue: [] }), freezeInvoiceSnapshots: () => {},
+    };
+  }
+  async function get(tenant: any, qs: string) {
+    const handleApi = createApiRouter({
+      getTenant: () => tenant as any,
+      TOKEN: "test-token",
+      authedApi: () => true,
+      json: (data: unknown, status = 200) => Response.json(data, { status }),
+      entryToJson: (e: any) => e,
+      verifyWebhookSignature: () => false,
+      shareOrigin: () => "",
+    }).handleApi;
+    const path = `/api/entries${qs}`;
+    const req = new Request(`http://localhost${path}`);
+    return (await handleApi(req, new URL(req.url), "/api/entries", "GET"))!;
+  }
+
+  test("an invalid from or to is a 400, not a silent empty or unbounded list", async () => {
+    const tenant = entriesTenant();
+    for (const qs of ["?from=garbage", "?to=garbage", "?from=2026-13-01", "?to=2026-02-30T00:00:00Z"]) {
+      const res = await get(tenant, qs);
+      expect(res.status).toBe(400);
+      expect((await res.json() as any).error).toContain("from/to");
+    }
+  });
+
+  test("a reversed range is a 400", async () => {
+    const tenant = entriesTenant();
+    const res = await get(tenant, "?from=2026-11-10T00:00:00Z&to=2026-11-08T00:00:00Z");
+    expect(res.status).toBe(400);
+  });
+
+  test("offset bounds are normalized to instants, not compared as raw strings", async () => {
+    const tenant = entriesTenant();
+    /* to = 10:00 at +02:00 is 08:00Z, before entry 2 at 09:00Z — raw string
+       comparison would wrongly include it ("09:00...Z" < "10:00...+02:00"). */
+    const res = await get(tenant, "?from=2026-11-08T00:00:00Z&to=2026-11-09T10:00:00%2B02:00");
+    expect(res.status).toBe(200);
+    expect((await res.json() as any[]).map((e: any) => e.id)).toEqual([]);
+  });
+
+  test("a valid range returns only the entries inside it; no params returns entries up to now", async () => {
+    const tenant = entriesTenant();
+    const ranged = await get(tenant, "?from=2026-11-08T00:00:00Z&to=2026-11-10T00:00:00Z");
+    expect(ranged.status).toBe(200);
+    expect((await ranged.json() as any[]).map((e: any) => e.id)).toEqual([2]);
+    const dateOnly = await get(tenant, "?from=2026-11-07&to=2026-11-08");
+    expect(dateOnly.status).toBe(200);
+    expect((await dateOnly.json() as any[]).map((e: any) => e.id)).toEqual([1]);
+    const sameDay = await get(tenant, "?from=2026-11-07&to=2026-11-07");
+    expect(sameDay.status).toBe(200);
+    expect((await sameDay.json() as any[]).map((e: any) => e.id)).toEqual([1]);
+    const all = await get(tenant, "");
+    expect(all.status).toBe(200);
+    expect((await all.json() as any[]).length).toBe(2);
+  });
+});
