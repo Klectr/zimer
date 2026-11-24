@@ -308,8 +308,25 @@ export function createApiRouter(deps: ApiDeps) {
               return json(entryToJson(qOne.get(running.id) as Entry));
             }
             if (path === "/api/entries" && method === "GET") {
-              const from = url.searchParams.get("from") || new Date(0).toISOString();
-              const to = url.searchParams.get("to") || new Date().toISOString();
+              /* #1494: provided bounds are validated and normalized to
+                 canonical ISO instants before they reach the range query —
+                 raw strings compare lexicographically, so an invalid `to`
+                 ("garbage" sorts after every timestamp) silently returned
+                 an unbounded list and a reversed range read as "no
+                 entries". Date-only bounds mean that day's UTC midnight.
+                 Absent bounds keep the epoch → now defaults. */
+              const bound = (raw: string | null): string | null => {
+                if (raw === null) return null;
+                const ymd = validYmd(raw);
+                if (ymd) return `${ymd}T00:00:00.000Z`;
+                return normalizeEntryTimestamp(raw);
+              };
+              const rawFrom = url.searchParams.get("from");
+              const rawTo = url.searchParams.get("to");
+              const from = rawFrom === null ? new Date(0).toISOString() : bound(rawFrom);
+              const to = rawTo === null ? new Date().toISOString() : bound(rawTo);
+              if (from === null || to === null || from > to)
+                return json({ error: "from/to must be valid timestamps with from on or before to" }, 400);
               return json((qRange.all(from, to) as Entry[]).map(entryToJson));
             }
             let m = path.match(/^\/api\/entries\/(\d+)$/);
