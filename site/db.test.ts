@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createDb } from "./db.ts";
+import { createDb, createDbAt } from "./db.ts";
 
 function seededBundle() {
   const bundle = createDb(mkdtempSync(join(tmpdir(), "tk-db-")));
@@ -66,5 +66,27 @@ describe("sqlite busy timeout (#1319, slice of #996)", () => {
     const { db } = createDb(mkdtempSync(join(tmpdir(), "tk-db-")));
     const row = db.query("PRAGMA busy_timeout").get() as { timeout: number };
     expect(row.timeout).toBe(5000);
+  });
+});
+
+describe("sqlite pragma profile (#996)", () => {
+  test("tenant DB uses NORMAL sync, an 8000 KiB cache, and in-memory temp storage", () => {
+    const { db } = createDb(mkdtempSync(join(tmpdir(), "tk-db-")));
+    const sync = db.query("PRAGMA synchronous").get() as { synchronous: number };
+    expect(sync.synchronous).toBe(1);
+    const cache = db.query("PRAGMA cache_size").get() as { cache_size: number };
+    expect(cache.cache_size).toBe(-8000);
+    const temp = db.query("PRAGMA temp_store").get() as { temp_store: number };
+    expect(temp.temp_store).toBe(2);
+  });
+
+  test("createDbAt (the hosted tenant path) carries the same profile", () => {
+    const { db } = createDbAt(join(mkdtempSync(join(tmpdir(), "tk-db-")), "tenant.db"));
+    const sync = db.query("PRAGMA synchronous").get() as { synchronous: number };
+    expect(sync.synchronous).toBe(1);
+    const cache = db.query("PRAGMA cache_size").get() as { cache_size: number };
+    expect(cache.cache_size).toBe(-8000);
+    const temp = db.query("PRAGMA temp_store").get() as { temp_store: number };
+    expect(temp.temp_store).toBe(2);
   });
 });

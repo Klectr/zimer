@@ -17,6 +17,9 @@ export function createDbAt(dbPath: string) {
   const db = new Database(dbPath, { create: true });
   db.exec("PRAGMA journal_mode = WAL;");
   db.exec("PRAGMA busy_timeout = 5000;");
+  db.exec("PRAGMA synchronous = NORMAL;");
+  db.exec("PRAGMA cache_size = -8000;");
+  db.exec("PRAGMA temp_store = MEMORY;");
   /* NOTE: the ON DELETE actions declared below are NOT enforced by SQLite
      (no PRAGMA foreign_keys). Delete routes null out / clean up referencing
      rows explicitly — see the client/project/invoice delete handlers. */
