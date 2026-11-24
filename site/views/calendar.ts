@@ -412,7 +412,8 @@ export function createCalendarViews(deps: CalendarViewDeps) {
   }
 
   function weekGrid(weekStr?: string): string {
-    const q = validYmd(weekStr) ? `?week=${weekStr}` : ""; /* #1501 */
+    const validWeek = validYmd(weekStr); /* #1501 */
+    const q = validWeek ? `?week=${validWeek}` : "";
     /* #322: the skeleton mirrors the carousel pane layout (summary aside
        with the week-nav skeleton at its top) so the htmx swap lands
        without a layout flash. */
