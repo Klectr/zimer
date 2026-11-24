@@ -50,7 +50,7 @@ describe("social meta tags (#924)", () => {
     for (const tag of [
       'property="og:title" content="Invoice · Zimer"',
       'property="og:url" content="https://zimer.klectr.dev/i/abc123"',
-      'property="og:image" content="https://zimer.klectr.dev/static/og-image.png"',
+      'property="og:image" content="https://zimer.klectr.dev/static/og-image-v3.png"',
       'property="og:image:width" content="1200"',
       'property="og:image:height" content="600"',
       'name="twitter:card" content="summary_large_image"',
