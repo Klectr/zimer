@@ -18,6 +18,16 @@ describe("hosted accounts (#732)", () => {
     expect(row.timeout).toBe(5000);
   });
 
+  test("accounts DB uses the shared pragma profile (#996)", () => {
+    const a = accountsDb();
+    const sync = a.db.query("PRAGMA synchronous").get() as { synchronous: number };
+    expect(sync.synchronous).toBe(1);
+    const cache = a.db.query("PRAGMA cache_size").get() as { cache_size: number };
+    expect(cache.cache_size).toBe(-8000);
+    const temp = a.db.query("PRAGMA temp_store").get() as { temp_store: number };
+    expect(temp.temp_store).toBe(2);
+  });
+
   test("signup stores an argon2 hash, never the plaintext password", async () => {
     const a = accountsDb();
     const { user, error } = await a.signup("Ada@example.com", "correct-horse-8");
