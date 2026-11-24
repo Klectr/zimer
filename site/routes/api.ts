@@ -482,8 +482,18 @@ export function createApiRouter(deps: ApiDeps) {
                 const rate = nonNegativeRate(body.rate);
                 if (rate === null)
                   return json({ error: "rate must be a number at or above 0" }, 400);
+                /* #1492: the range is a stored period and the billing
+                   query's window — an impossible date is silently shifted
+                   by SQLite date(?, '+1 day') (Feb 30 → Mar 3), billing
+                   the wrong window, and a reversed range reads as "no
+                   billable items". Validate like the web preview (#1490). */
+                const rangeFrom = validYmd(body.from), rangeTo = validYmd(body.to);
+                if (!rangeFrom || !rangeTo)
+                  return json({ error: "from/to must be valid dates (YYYY-MM-DD)" }, 400);
+                if (rangeFrom > rangeTo)
+                  return json({ error: "from must be on or before to" }, 400);
                 items = groupToLineItems(
-                  unbilledEntries(clientId!, String(body.from), String(body.to)),
+                  unbilledEntries(clientId!, rangeFrom, rangeTo),
                   rate);
               }
               /* #1436: per-line billing dates are stored dates too —
