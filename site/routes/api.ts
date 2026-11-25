@@ -548,6 +548,13 @@ export function createApiRouter(deps: ApiDeps) {
                 return json({ error: "tax_rate must be a number at or above 0" }, 400);
               let items: { description: string; hours: number; rate: number; entry_ids?: number[] }[];
               const callerItems = Array.isArray(body.items);
+              /* #1514: mirror the web wizard's groups bound (#1512) — a
+                 caller-supplied items[] is looped over several times and
+                 then inserted row by row, so an unbounded array ties up
+                 the single-threaded server. 1000 is far above any real
+                 invoice (one line per project plus manual lines). */
+              if (callerItems && body.items.length > 1000)
+                return json({ error: "items must contain at most 1000 line items" }, 400);
               if (callerItems) {
                 items = body.items;
               } else {
