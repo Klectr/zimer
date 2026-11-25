@@ -12,7 +12,7 @@ export function timerDisplay(opts: TimerDisplayOptions): string {
   const cls = opts.size === "sm" ? "ui-timer ui-timer-sm" : "ui-timer";
   const start = opts.start ? ` data-start="${esc(opts.start)}"` : "";
   const id = opts.id ? ` id="${esc(opts.id)}"` : "";
-  return `<div class="${cls}"${id}${start}>${esc(opts.elapsed)}</div>`;
+  return `<div class="${cls}" role="timer"${id}${start}>${esc(opts.elapsed)}</div>`;
 }
 
 export interface TimerPanelOptions {

@@ -26,6 +26,11 @@ describe("timer display + panel", () => {
     expect(timerDisplay({ elapsed: "01:00:00" })).not.toContain("data-start");
   });
 
+  test("elapsed readout carries the timer role (implicit live-off, tick is not announced)", () => {
+    expect(timerDisplay({ elapsed: "01:00:00" })).toContain('role="timer"');
+    expect(timerDisplay({ elapsed: "01:00:00", size: "sm" })).toContain('role="timer"');
+  });
+
   test("running panel tracks (primary tint); idle panel does not", () => {
     const running = timerPanel({ running: true, statusHtml: "S", context: "C", elapsed: "00:01:00", startedAt: "2026-11-08T09:04:00", actionsHtml: "A" });
     const idle = timerPanel({ running: false, statusHtml: "S", context: "C", elapsed: "00:00:00", actionsHtml: "A" });
