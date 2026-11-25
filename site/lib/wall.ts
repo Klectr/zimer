@@ -18,7 +18,7 @@ export function validTz(tz: unknown): string | null {
   if (cached !== undefined) return cached;
   let result: string | null;
   try { new Intl.DateTimeFormat("en-US", { timeZone: tz }); result = tz; } catch { result = null; }
-  if (validTzCache.size >= 256) validTzCache.clear();
+  if (validTzCache.size >= 256) validTzCache.delete(validTzCache.keys().next().value!);
   validTzCache.set(tz, result);
   return result;
 }
