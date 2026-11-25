@@ -83,6 +83,19 @@ export function nonNegativeRate(raw: unknown): number | null {
   return Number.isFinite(n) && n >= 0 ? n : null;
 }
 
+/* #1516: a caller-supplied day/week bound pair (#255), strictly validated:
+   both bounds must be real instants in order. The normalized forms must
+   keep a 4-digit year — an offset that pushes the UTC instant across the
+   9999 boundary yields the extended signed-year form, which neither
+   compares chronologically as a string nor matches stored timestamps in
+   the range query's lexical comparison. The order check itself is
+   numeric for the same reason. Null = invalid, callers fall back. */
+export function validDayBounds(a: unknown, b: unknown): [string, string] | null {
+  const fa = normalizeEntryTimestamp(a), fb = normalizeEntryTimestamp(b);
+  if (!fa || !fb || !/^\d{4}-/.test(fa) || !/^\d{4}-/.test(fb)) return null;
+  return Date.parse(fa) < Date.parse(fb) ? [fa, fb] : null;
+}
+
 /* #1450: a finished entry must end after it starts — an end at or before
    the start saves a duration that clamps to 0 everywhere downstream. */
 export function endAfterStart(startIso: string, endIso: string | null): boolean {
@@ -317,12 +330,11 @@ export function createApiRouter(deps: ApiDeps) {
             if (path === "/api/status" && method === "GET") {
               const running = qRunning.get() as Entry | null;
               if (!running) return json({ running: null });
-              /* #1516: normalizeEntryTimestamp rejects impossible dates
-                 (Date.parse rolls 2026-02-30 to Mar 2) and a reversed pair
-                 is no day at all — both fall back to the server day. */
-              const fromN = normalizeEntryTimestamp(url.searchParams.get("from") || "");
-              const toN = normalizeEntryTimestamp(url.searchParams.get("to") || "");
-              const [f, t] = fromN && toN && fromN < toN ? [fromN, toN] : dayBounds(todayStr());
+              /* #1516: validDayBounds rejects impossible dates (Date.parse
+                 rolls 2026-02-30 to Mar 2) and reversed pairs — both fall
+                 back to the server day. */
+              const [f, t] = validDayBounds(url.searchParams.get("from") || "", url.searchParams.get("to") || "")
+                ?? dayBounds(todayStr());
               const todaySeconds = (qRange.all(f, t) as Entry[])
                 .reduce((a, e) => a + durationSeconds(e.start_time, e.end_time), 0);
               return json({

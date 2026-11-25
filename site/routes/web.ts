@@ -22,7 +22,7 @@ import type { AccountsDb } from "../lib/accounts.ts"; /* #732 */
 import { findTenantByPublicToken } from "../lib/tenants.ts"; /* #741 */
 import { countProofs, deleteProof, getProof, insertProof, listProofs, sanitizeFilename, validateProofFile, PROOF_MAX_BYTES, PROOF_MAX_PER_INVOICE } from "../lib/payment_proofs.ts"; /* #956 */
 import { servedVersion, staticUrl } from "../lib/static-assets.ts"; /* #993 */
-import { billableFromForm, endAfterStart, entryFormTimes, entryLinkable, existingClientId, existingProjectId, normalizeEntryTimestamp, nonNegativeRate, stopEndTime } from "./api.ts"; /* #1434, #1442, #1450, #1452, #1462, #1464 */
+import { billableFromForm, endAfterStart, entryFormTimes, entryLinkable, existingClientId, existingProjectId, normalizeEntryTimestamp, nonNegativeRate, stopEndTime, validDayBounds } from "./api.ts"; /* #1434, #1442, #1450, #1452, #1462, #1464, #1516 */
 import { textField } from "../ui/field.ts";
 import { card } from "../ui/card.ts";
 import { settingsDataList, settingsDataRow, settingsSection } from "../ui/settings-section.ts";
@@ -523,15 +523,13 @@ export function createWebRouter(deps: WebDeps) {
              (?from=&to=, from client-local midnight); validate strictly,
              fall back to the server's day. */
           if (path === "/partial/today" && method === "GET") {
-            /* #1516: normalizeEntryTimestamp rejects impossible dates
-               (Date.parse rolls 2026-02-30 to Mar 2) and a reversed pair
-               is no day at all — both fall back to the server day. */
-            const fromN = normalizeEntryTimestamp(url.searchParams.get("from") || "");
-            const toN = normalizeEntryTimestamp(url.searchParams.get("to") || "");
-            const ok = fromN !== null && toN !== null && fromN < toN;
+            /* #1516: validDayBounds rejects impossible dates (Date.parse
+               rolls 2026-02-30 to Mar 2) and reversed pairs — both fall
+               back to the server day. */
+            const bounds = validDayBounds(url.searchParams.get("from") || "", url.searchParams.get("to") || "");
             /* #1081: ?day=&tz= picks entries by their own wall day. */
             const wall = wallDayParam(url.searchParams.get("day"), url.searchParams.get("tz")) ?? undefined;
-            return html(ok ? todayPartial(fromN, toN, wall) : todayPartial(undefined, undefined, wall));
+            return html(bounds ? todayPartial(bounds[0], bounds[1], wall) : todayPartial(undefined, undefined, wall));
           }
           /* #1121: the dashboard stat row with the client's day + week
              bounds, validated the same way; each pair falls back to the
@@ -539,12 +537,8 @@ export function createWebRouter(deps: WebDeps) {
           if (path === "/partial/today-stats" && method === "GET") {
             /* #1516: as /partial/today — impossible or reversed bounds
                fall back per pair instead of shifting the window. */
-            const pair = (a: string, b: string): [string, string] | null => {
-              const fa = normalizeEntryTimestamp(a), fb = normalizeEntryTimestamp(b);
-              return fa && fb && fa < fb ? [fa, fb] : null;
-            };
-            const day = pair(url.searchParams.get("from") || "", url.searchParams.get("to") || "");
-            const week = pair(url.searchParams.get("wfrom") || "", url.searchParams.get("wto") || "");
+            const day = validDayBounds(url.searchParams.get("from") || "", url.searchParams.get("to") || "");
+            const week = validDayBounds(url.searchParams.get("wfrom") || "", url.searchParams.get("wto") || "");
             return html(todayStatsPartial(
               day?.[0], day?.[1],
               week?.[0], week?.[1],
