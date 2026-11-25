@@ -10,10 +10,17 @@
 
 /** Validate an IANA zone string ("America/Chicago"); null when absent or
     invalid. "UTC" is accepted too. */
+const validTzCache = new Map<string, string | null>();
 export function validTz(tz: unknown): string | null {
   if (typeof tz !== "string" || !tz || tz.length > 64) return null;
   if (tz !== "UTC" && !/^[A-Za-z0-9_+\-]+(\/[A-Za-z0-9_+\-]+)+$/.test(tz)) return null;
-  try { new Intl.DateTimeFormat("en-US", { timeZone: tz }); return tz; } catch { return null; }
+  const cached = validTzCache.get(tz);
+  if (cached !== undefined) return cached;
+  let result: string | null;
+  try { new Intl.DateTimeFormat("en-US", { timeZone: tz }); result = tz; } catch { result = null; }
+  if (validTzCache.size >= 256) validTzCache.delete(validTzCache.keys().next().value!);
+  validTzCache.set(tz, result);
+  return result;
 }
 
 const fmtCache = new Map<string, Intl.DateTimeFormat>();
