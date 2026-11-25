@@ -28,7 +28,8 @@ describe("timer display + panel", () => {
 
   test("elapsed readout carries the timer role (implicit live-off, tick is not announced)", () => {
     expect(timerDisplay({ elapsed: "01:00:00" })).toContain('role="timer"');
-    expect(timerDisplay({ elapsed: "01:00:00", size: "sm" })).toContain('role="timer"');
+    const panel = timerPanel({ running: true, statusHtml: "S", context: "C", elapsed: "00:01:00", actionsHtml: "A" });
+    expect(panel).toContain('role="timer"');
   });
 
   test("running panel tracks (primary tint); idle panel does not", () => {
