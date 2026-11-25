@@ -1257,6 +1257,7 @@ export function createWebRouter(deps: WebDeps) {
           if (!Number.isInteger(groups) || groups < 0 || groups > 1000)
             return new Response("Line item count must be a whole number from 0 to 1000.", { status: 400 });
           const items: { description: string; hours: number; rate: number; amount: number; entry_ids: number[]; date_from: string | null; date_to: string | null }[] = [];
+          let totalEntryIds = 0;
           for (let i = 0; i < groups; i++) {
             const hours = round2(Number(form.get(`g${i}_hours`) || 0));
             const ids = String(form.get(`g${i}_ids`) || "").split(",").map(Number).filter(n => n > 0);
@@ -1264,6 +1265,13 @@ export function createWebRouter(deps: WebDeps) {
                row, mirroring the API clean step — NaN evades hours <= 0 and
                would orphan the invoice header on the item insert. */
             if (!Number.isFinite(hours) || hours <= 0) continue;
+            /* #1522: entry ids get the same aggregate bound as the API
+               (#1514) — each surviving id gets a per-id linkable check
+               below, so an unbounded id list across the groups would
+               defeat the #1512 groups bound. */
+            totalEntryIds += ids.length;
+            if (totalEntryIds > 1000)
+              return new Response("Entry ids must contain at most 1000 entries in total.", { status: 400 });
             /* #1442: per-group rates follow the same rule, checked on the
                rows that survive the hours filter (as #1440 does in the API);
                the rounded value must stay finite too (round2 can overflow). */
