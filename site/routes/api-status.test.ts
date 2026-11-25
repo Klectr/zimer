@@ -121,6 +121,44 @@ describe("GET /api/status (#1185)", () => {
     expect(body.today_seconds).toBeLessThan(700);
   });
 
+  test("impossible bounds fall back to the server day (#1516)", async () => {
+    const { db, status } = setup();
+    const cid = client(db, "Acme Studio", 85);
+    const pid = project(db, "Website rebuild", cid);
+    const dayStart = new Date(dayBounds(todayStr())[0]).getTime();
+    entry(db, pid, "Today", iso(dayStart + 600e3), iso(dayStart + 1200e3));
+    entry(db, null, "Running entry", new Date().toISOString(), null);
+    const { body } = await status("?from=2026-02-30T00:00:00Z&to=2026-03-01T00:00:00Z");
+    expect(body.today_seconds).toBeGreaterThanOrEqual(600);
+    expect(body.today_seconds).toBeLessThan(700);
+  });
+
+  test("reversed bounds fall back to the server day (#1516)", async () => {
+    const { db, status } = setup();
+    const cid = client(db, "Acme Studio", 85);
+    const pid = project(db, "Website rebuild", cid);
+    const dayStart = new Date(dayBounds(todayStr())[0]).getTime();
+    entry(db, pid, "Today", iso(dayStart + 600e3), iso(dayStart + 1200e3));
+    entry(db, null, "Running entry", new Date().toISOString(), null);
+    const q = `?from=${encodeURIComponent(iso(dayStart + 86400e3))}&to=${encodeURIComponent(iso(dayStart))}`;
+    const { body } = await status(q);
+    expect(body.today_seconds).toBeGreaterThanOrEqual(600);
+    expect(body.today_seconds).toBeLessThan(700);
+  });
+
+  test("extended-year bounds fall back to the server day (#1516)", async () => {
+    const { db, status } = setup();
+    const cid = client(db, "Acme Studio", 85);
+    const pid = project(db, "Website rebuild", cid);
+    const dayStart = new Date(dayBounds(todayStr())[0]).getTime();
+    entry(db, pid, "Today", iso(dayStart + 600e3), iso(dayStart + 1200e3));
+    entry(db, null, "Running entry", new Date().toISOString(), null);
+    const q = `?from=${encodeURIComponent("9999-12-31T23:00:00-02:00")}&to=${encodeURIComponent("9999-12-31T12:00:00Z")}`;
+    const { body } = await status(q);
+    expect(body.today_seconds).toBeGreaterThanOrEqual(600);
+    expect(body.today_seconds).toBeLessThan(700);
+  });
+
   test("garbage bounds fall back to the server day", async () => {
     const { db, status } = setup();
     const cid = client(db, "Acme Studio", 85);
