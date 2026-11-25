@@ -627,6 +627,22 @@ describe("API rate validation (#1440)", () => {
     expect((tenant.db.query("SELECT COUNT(*) AS n FROM invoices").get() as any).n).toBe(0);
     expect((tenant.db.query("SELECT COUNT(*) AS n FROM invoice_items").get() as any).n).toBe(0);
   });
+  test("POST /api/invoices with more than 1000 caller items is a 400 and creates nothing (#1514)", async () => {
+    const tenant = rateTenant();
+    const items = Array.from({ length: 1001 }, () => ({ ...item }));
+    const res = await post(tenant, "/api/invoices", { client_id: 3, items });
+    expect(res.status).toBe(400);
+    expect((await res.json() as any).error).toContain("items");
+    expect((tenant.db.query("SELECT COUNT(*) AS n FROM invoices").get() as any).n).toBe(0);
+    expect((tenant.db.query("SELECT COUNT(*) AS n FROM invoice_items").get() as any).n).toBe(0);
+  });
+  test("POST /api/invoices with exactly 1000 caller items is accepted (#1514)", async () => {
+    const tenant = rateTenant();
+    const items = Array.from({ length: 1000 }, () => ({ ...item }));
+    const res = await post(tenant, "/api/invoices", { client_id: 3, items });
+    expect(res.status).toBe(201);
+    expect((tenant.db.query("SELECT COUNT(*) AS n FROM invoice_items").get() as any).n).toBe(1000);
+  });
   test("POST /api/invoices from/to path stores grouped items at the validated rate", async () => {
     const tenant = rateTenant();
     (tenant as any).unbilledEntries = () => [{ id: 1 }];
