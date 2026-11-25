@@ -33,6 +33,17 @@ describe("wall-time helpers", () => {
     expect(validTz(42)).toBeNull();
   });
 
+  test("zone validation answers are stable across repeated calls (#1518)", () => {
+    for (let i = 0; i < 3; i++) {
+      expect(validTz("America/Chicago")).toBe("America/Chicago");
+      expect(validTz("UTC")).toBe("UTC");
+      expect(validTz("Not/AZone")).toBeNull();
+    }
+    for (let i = 0; i < 300; i++) expect(validTz(`Bogus/Zone${i}`)).toBeNull();
+    expect(validTz("America/Chicago")).toBe("America/Chicago");
+    expect(validTz("Bogus/Zone0")).toBeNull();
+  });
+
   test("an entry's day and clock are its own zone's; legacy rows use the viewer's", () => {
     const la = { start_time: "2026-11-24T16:00:00.000Z", tz: "America/Los_Angeles" }; /* 8am LA, 11am NY */
     expect(entryDay(la, "America/New_York")).toBe("2026-11-24");
