@@ -523,25 +523,31 @@ export function createWebRouter(deps: WebDeps) {
              (?from=&to=, from client-local midnight); validate strictly,
              fall back to the server's day. */
           if (path === "/partial/today" && method === "GET") {
-            const from = url.searchParams.get("from") || "", to = url.searchParams.get("to") || "";
-            const iso = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:?\d{2})$/;
-            const ok = iso.test(from) && iso.test(to) && !isNaN(Date.parse(from)) && !isNaN(Date.parse(to));
+            /* #1516: normalizeEntryTimestamp rejects impossible dates
+               (Date.parse rolls 2026-02-30 to Mar 2) and a reversed pair
+               is no day at all — both fall back to the server day. */
+            const fromN = normalizeEntryTimestamp(url.searchParams.get("from") || "");
+            const toN = normalizeEntryTimestamp(url.searchParams.get("to") || "");
+            const ok = fromN !== null && toN !== null && fromN < toN;
             /* #1081: ?day=&tz= picks entries by their own wall day. */
             const wall = wallDayParam(url.searchParams.get("day"), url.searchParams.get("tz")) ?? undefined;
-            return html(ok ? todayPartial(from, to, wall) : todayPartial(undefined, undefined, wall));
+            return html(ok ? todayPartial(fromN, toN, wall) : todayPartial(undefined, undefined, wall));
           }
           /* #1121: the dashboard stat row with the client's day + week
              bounds, validated the same way; each pair falls back to the
              server's bounds independently. */
           if (path === "/partial/today-stats" && method === "GET") {
-            const iso = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:?\d{2})$/;
-            const pair = (a: string, b: string) => iso.test(a) && iso.test(b) && !isNaN(Date.parse(a)) && !isNaN(Date.parse(b));
-            const from = url.searchParams.get("from") || "", to = url.searchParams.get("to") || "";
-            const wfrom = url.searchParams.get("wfrom") || "", wto = url.searchParams.get("wto") || "";
-            const dayOk = pair(from, to), weekOk = pair(wfrom, wto);
+            /* #1516: as /partial/today — impossible or reversed bounds
+               fall back per pair instead of shifting the window. */
+            const pair = (a: string, b: string): [string, string] | null => {
+              const fa = normalizeEntryTimestamp(a), fb = normalizeEntryTimestamp(b);
+              return fa && fb && fa < fb ? [fa, fb] : null;
+            };
+            const day = pair(url.searchParams.get("from") || "", url.searchParams.get("to") || "");
+            const week = pair(url.searchParams.get("wfrom") || "", url.searchParams.get("wto") || "");
             return html(todayStatsPartial(
-              dayOk ? from : undefined, dayOk ? to : undefined,
-              weekOk ? wfrom : undefined, weekOk ? wto : undefined,
+              day?.[0], day?.[1],
+              week?.[0], week?.[1],
               wallDayParam(url.searchParams.get("day"), url.searchParams.get("tz")) ?? undefined)); /* #1081 */
           }
           /* #328: "invoice the rest" for the new-invoice client picker — returns the

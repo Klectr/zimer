@@ -317,10 +317,12 @@ export function createApiRouter(deps: ApiDeps) {
             if (path === "/api/status" && method === "GET") {
               const running = qRunning.get() as Entry | null;
               if (!running) return json({ running: null });
-              const from = url.searchParams.get("from") || "", to = url.searchParams.get("to") || "";
-              const iso = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:?\d{2})$/;
-              const ok = iso.test(from) && iso.test(to) && !isNaN(Date.parse(from)) && !isNaN(Date.parse(to));
-              const [f, t] = ok ? [from, to] : dayBounds(todayStr());
+              /* #1516: normalizeEntryTimestamp rejects impossible dates
+                 (Date.parse rolls 2026-02-30 to Mar 2) and a reversed pair
+                 is no day at all — both fall back to the server day. */
+              const fromN = normalizeEntryTimestamp(url.searchParams.get("from") || "");
+              const toN = normalizeEntryTimestamp(url.searchParams.get("to") || "");
+              const [f, t] = fromN && toN && fromN < toN ? [fromN, toN] : dayBounds(todayStr());
               const todaySeconds = (qRange.all(f, t) as Entry[])
                 .reduce((a, e) => a + durationSeconds(e.start_time, e.end_time), 0);
               return json({
