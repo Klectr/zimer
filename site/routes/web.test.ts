@@ -21,6 +21,8 @@ function setup() {
   const client = db.query("SELECT * FROM clients").get() as any;
   const views = createManageViews({ db, layout: (_t: string, b: string) => b, unbilledByClient: () => [] });
   const unbilledCalls: any[][] = [];
+  const todayCalls: any[][] = [];
+  const statsCalls: any[][] = [];
   const noop = () => "";
   /* #733: data deps resolve per request through getTenant now. */
   const tenant = {
@@ -32,7 +34,10 @@ function setup() {
     qInvoices: { all: () => [] } as any,
     notFoundPage: noop, errorPage: noop,
     dashboardPage: noop,
-    timerPartial: noop, todayPartial: noop, weekInner: noop, weekStrip: noop,
+    timerPartial: noop,
+    todayPartial: (...args: any[]) => { todayCalls.push(args); return ""; },
+    todayStatsPartial: (...args: any[]) => { statsCalls.push(args); return ""; },
+    weekInner: noop, weekStrip: noop,
     calendarPage: noop, editPage: () => null,
     managePage: views.managePage, clientSelection: views.clientSelection,
     clientDialogBody: views.clientDialogBody, clientDialogProjects: views.clientDialogProjects, manageListsOob: views.manageListsOob,
@@ -69,7 +74,7 @@ function setup() {
     workspaceEmpty: () => false, demoIds: () => [], seedDemoData: () => {},
     removeDemoData: () => {}, entryToJson: (e: any) => e,
   });
-  return { db, client, handleWeb, unbilledCalls };
+  return { db, client, handleWeb, unbilledCalls, todayCalls, statsCalls };
 }
 
 function postSettings(handleWeb: any, id: number, fields: Record<string, string>, htmx = true) {
@@ -104,6 +109,40 @@ describe("calendar ?day= redirect (#1501)", () => {
     const res = await getCalendar(handleWeb, "?day=2026-02-30");
     expect(res.status).toBe(200);
     expect(res.headers.get("Location")).toBeNull();
+  });
+});
+
+describe("day-bounds partials (#1516)", () => {
+  function get(handleWeb: any, path: string, qs: string) {
+    const req = new Request(`http://x${path}${qs}`);
+    return handleWeb(req, new URL(req.url), path, "GET");
+  }
+  test("/partial/today passes a valid pair through, normalized", async () => {
+    const { handleWeb, todayCalls } = setup();
+    await get(handleWeb, "/partial/today", "?from=2026-11-25T00:00:00Z&to=2026-11-26T00:00:00Z");
+    expect(todayCalls[0][0]).toBe("2026-11-25T00:00:00.000Z");
+    expect(todayCalls[0][1]).toBe("2026-11-26T00:00:00.000Z");
+  });
+  test("/partial/today falls back on an impossible date", async () => {
+    const { handleWeb, todayCalls } = setup();
+    await get(handleWeb, "/partial/today", "?from=2026-02-30T00:00:00Z&to=2026-03-01T00:00:00Z");
+    expect(todayCalls[0][0]).toBeUndefined();
+    expect(todayCalls[0][1]).toBeUndefined();
+  });
+  test("/partial/today falls back on a reversed pair", async () => {
+    const { handleWeb, todayCalls } = setup();
+    await get(handleWeb, "/partial/today", "?from=2026-11-26T00:00:00Z&to=2026-11-25T00:00:00Z");
+    expect(todayCalls[0][0]).toBeUndefined();
+    expect(todayCalls[0][1]).toBeUndefined();
+  });
+  test("/partial/today-stats falls back per pair", async () => {
+    const { handleWeb, statsCalls } = setup();
+    await get(handleWeb, "/partial/today-stats",
+      "?from=2026-11-25T00:00:00Z&to=2026-11-26T00:00:00Z&wfrom=2026-02-30T00:00:00Z&wto=2026-03-01T00:00:00Z");
+    expect(statsCalls[0][0]).toBe("2026-11-25T00:00:00.000Z");
+    expect(statsCalls[0][1]).toBe("2026-11-26T00:00:00.000Z");
+    expect(statsCalls[0][2]).toBeUndefined();
+    expect(statsCalls[0][3]).toBeUndefined();
   });
 });
 
