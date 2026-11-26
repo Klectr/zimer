@@ -462,7 +462,7 @@ export function createApiRouter(deps: ApiDeps) {
               const name = typeof body.name === "string" ? body.name.trim() : "";
               if (!name) return json({ error: "name required" }, 400);
               const rate = nonNegativeRate(body.rate);
-              if (rate === null) return json({ error: "rate must be a number at or above 0" }, 400);
+              if (rate === null || !Number.isFinite(round2(rate))) return json({ error: "rate must be a number at or above 0" }, 400);
               const r = db.query("INSERT INTO clients (name, color, rate) VALUES (?, ?, ?) RETURNING *")
                 .get(name, clientColor(body.color), rate) as any;
               return json(r, 201);

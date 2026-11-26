@@ -943,9 +943,11 @@ export function createWebRouter(deps: WebDeps) {
           if (!name)
             return new Response("Client name is required.", { status: 400 });
           /* #1442: mirror the settings route's rate rule — a provided rate
-             must be finite and at or above 0 (blank/absent → 0). */
+             must be finite and at or above 0 (blank/absent → 0).
+             #1528: the rounded value must stay finite too, as on invoice
+             rates — round2(1e308) overflows and could never be invoiced. */
           const rate = nonNegativeRate(form.get("rate"));
-          if (rate === null)
+          if (rate === null || !Number.isFinite(round2(rate)))
             return new Response("Hourly rate must be a number at or above 0.", { status: 400 });
           /* #1160: the add form collects email at creation (the page-manage
              mock always had it) — trimmed, blank stored as NULL, same rule
@@ -1003,7 +1005,7 @@ export function createWebRouter(deps: WebDeps) {
             return html(clientSettingsForm(submitted, msg), 422);
           };
           if (!name) return fail("Client name is required.");
-          if (!Number.isFinite(rate) || rate < 0)
+          if (!Number.isFinite(rate) || rate < 0 || !Number.isFinite(round2(rate)))
             return fail("Hourly rate must be a number at or above 0.");
           if (terms !== "" && !isPaymentTermsKey(terms)) return fail("Unknown payment terms.");
           const clean = (v: unknown) => { const s = String(v || "").trim(); return s || null; };
