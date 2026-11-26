@@ -1586,6 +1586,19 @@ describe("business profile save toast (#1335)", () => {
     expect(res!.status).toBe(400);
     expect(res!.headers.get("HX-Trigger")).toBeNull();
   });
+
+  test("a rejected save writes nothing (#1524)", async () => {
+    const { db, handleWeb } = setup();
+    const ok = await postProfile(handleWeb, { business_name: "Studio", business_email: "a@b.c", business_payment_terms: "net_30" });
+    expect(ok!.status).toBe(200);
+    const res = await postProfile(handleWeb, { business_name: "Changed", business_email: "x@y.z", business_address: "1 New St", business_payment_instructions: "Pay me", business_payment_terms: "net999" });
+    expect(res!.status).toBe(400);
+    expect(getMeta(db, "business_name")).toBe("Studio");
+    expect(getMeta(db, "business_email")).toBe("a@b.c");
+    expect(getMeta(db, "business_address")).toBe("");
+    expect(getMeta(db, "business_payment_instructions")).toBe("");
+    expect(getMeta(db, "business_payment_terms")).toBe("net_30");
+  });
 });
 
 describe("logout and CSRF guard (#912)", () => {
