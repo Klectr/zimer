@@ -1476,6 +1476,20 @@ describe("GET /api/entries range validation (#1494)", () => {
     expect((await res.json() as any[]).map((e: any) => e.id)).toEqual([]);
   });
 
+  test("bounds that normalize past the 4-digit year are a 400, not a silent empty list (#1530)", async () => {
+    const tenant = entriesTenant();
+    for (const qs of [
+      "?to=9999-12-31",
+      "?from=2026-11-07&to=9999-12-31",
+      "?to=9999-12-31T23:00:00-02:00",
+      "?from=0000-01-01T01:00:00%2B02:00",
+    ]) {
+      const res = await get(tenant, qs);
+      expect(res.status).toBe(400);
+      expect((await res.json() as any).error).toContain("from/to");
+    }
+  });
+
   test("a valid range returns only the entries inside it; no params returns entries up to now", async () => {
     const tenant = entriesTenant();
     const ranged = await get(tenant, "?from=2026-11-08T00:00:00Z&to=2026-11-10T00:00:00Z");
