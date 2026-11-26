@@ -236,7 +236,7 @@ describe("client settings (#630)", () => {
 
   test("negative or non-numeric rate is rejected with a 422 inline error and leaves the row untouched", async () => {
     const { db, client, handleWeb } = setup();
-    for (const rate of ["-5", "abc"]) {
+    for (const rate of ["-5", "abc", "1e308"]) {
       const res = await postSettings(handleWeb, client.id, { ...full, rate });
       expect(res!.status).toBe(422);
       const body = await res!.text();
@@ -322,6 +322,13 @@ describe("client create rate validation (#1442)", () => {
     const res = await postClient(handleWeb, { name: "Inf Co", rate: "Infinity", color: "", email: "" });
     expect(res!.status).toBe(400);
     expect(db.query("SELECT COUNT(*) AS n FROM clients WHERE name = 'Inf Co'").get()).toEqual({ n: 0 });
+  });
+
+  test("a rate whose rounded value overflows is rejected (#1528)", async () => {
+    const { db, handleWeb } = setup();
+    const res = await postClient(handleWeb, { name: "Huge Co", rate: "1e308", color: "", email: "" });
+    expect(res!.status).toBe(400);
+    expect(db.query("SELECT COUNT(*) AS n FROM clients WHERE name = 'Huge Co'").get()).toEqual({ n: 0 });
   });
 
   test("a valid rate is stored as given", async () => {

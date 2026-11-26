@@ -688,6 +688,13 @@ describe("API rate validation (#1440)", () => {
     expect((await res.json() as any).error).toContain("rate");
     expect((tenant.db.query("SELECT COUNT(*) AS n FROM clients").get() as any).n).toBe(1);
   });
+  test("POST /api/clients with a rate whose rounded value overflows is a 400 and creates nothing (#1528)", async () => {
+    const tenant = rateTenant();
+    const res = await post(tenant, "/api/clients", { name: "Acme", rate: 1e308 });
+    expect(res.status).toBe(400);
+    expect((await res.json() as any).error).toContain("rate");
+    expect((tenant.db.query("SELECT COUNT(*) AS n FROM clients").get() as any).n).toBe(1);
+  });
   test("POST /api/clients stores a valid rate and defaults an absent one to 0", async () => {
     const tenant = rateTenant();
     const ok = await post(tenant, "/api/clients", { name: "Acme", rate: 40 });
