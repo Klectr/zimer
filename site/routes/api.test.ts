@@ -1490,6 +1490,14 @@ describe("GET /api/entries range validation (#1494)", () => {
     }
   });
 
+  test("bounds that stay inside the 4-digit year still work (#1530)", async () => {
+    const tenant = entriesTenant();
+    for (const qs of ["?from=0999-01-01&to=0999-01-02", "?to=9999-12-30", "?to=9999-12-31T00:00:00Z", "?from=0001-01-01T00:30:00%2B01:00&to=2026-11-08"]) {
+      const res = await get(tenant, qs);
+      expect(res.status).toBe(200);
+    }
+  });
+
   test("a valid range returns only the entries inside it; no params returns entries up to now", async () => {
     const tenant = entriesTenant();
     const ranged = await get(tenant, "?from=2026-11-08T00:00:00Z&to=2026-11-10T00:00:00Z");
