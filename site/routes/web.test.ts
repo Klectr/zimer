@@ -686,6 +686,50 @@ describe("invoice rate validation (#1442)", () => {
     expect(db.query("SELECT COUNT(*) AS n FROM invoice_items").get()).toEqual({ n: 1 });
   });
 
+  test("more than 1000 entry ids in one group is rejected and nothing is stored (#1522)", async () => {
+    const { db, handleWeb } = setup();
+    const ids = Array.from({ length: 1001 }, (_, i) => i + 1).join(",");
+    const res = await postInvoice(handleWeb, {
+      ...baseInvoiceFields, groups: "1",
+      g0_desc: "Work", g0_hours: "1", g0_rate: "50",
+      g0_ids: ids, g0_date_from: "", g0_date_to: "",
+    });
+    expect(res!.status).toBe(400);
+    expect(await res!.text()).toContain("at most 1000 entries");
+    expect(db.query("SELECT COUNT(*) AS n FROM invoices").get()).toEqual({ n: 0 });
+    expect(db.query("SELECT COUNT(*) AS n FROM invoice_items").get()).toEqual({ n: 0 });
+  });
+
+  test("entry ids over 1000 in aggregate across groups are rejected (#1522)", async () => {
+    const { db, handleWeb } = setup();
+    const ids = (n: number, from: number) => Array.from({ length: n }, (_, i) => from + i).join(",");
+    const res = await postInvoice(handleWeb, {
+      ...baseInvoiceFields, groups: "2",
+      g0_desc: "Work", g0_hours: "1", g0_rate: "50",
+      g0_ids: ids(600, 1), g0_date_from: "", g0_date_to: "",
+      g1_desc: "More", g1_hours: "1", g1_rate: "50",
+      g1_ids: ids(401, 601), g1_date_from: "", g1_date_to: "",
+    });
+    expect(res!.status).toBe(400);
+    expect(await res!.text()).toContain("at most 1000 entries");
+    expect(db.query("SELECT COUNT(*) AS n FROM invoices").get()).toEqual({ n: 0 });
+  });
+
+  test("exactly 1000 entry ids pass the bound (#1522)", async () => {
+    const { db, client, handleWeb } = setup();
+    db.query("INSERT INTO projects (name, client_id) VALUES ('Site', ?)").run(client.id);
+    const project = db.query("SELECT id FROM projects").get() as any;
+    db.query("INSERT INTO time_entries (project_id, description, start_time, end_time) VALUES (?, 'Build', '2026-09-20T14:00:00.000Z', '2026-09-20T16:00:00.000Z')").run(project.id);
+    const entry = db.query("SELECT id FROM time_entries").get() as any;
+    const res = await postInvoice(handleWeb, {
+      ...baseInvoiceFields, groups: "1",
+      g0_desc: "Work", g0_hours: "1", g0_rate: "50",
+      g0_ids: Array(1000).fill(String(entry.id)).join(","), g0_date_from: "", g0_date_to: "",
+    });
+    expect(res!.status).toBe(302);
+    expect(db.query("SELECT COUNT(*) AS n FROM invoices").get()).toEqual({ n: 1 });
+  });
+
   test("a groups count of 0 passes the bound and fails as no line items (#1512)", async () => {
     const { db, handleWeb } = setup();
     const res = await postInvoice(handleWeb, { ...baseInvoiceFields, groups: "0" });
