@@ -20,6 +20,7 @@ describe("csvCell", () => {
     expect(csvCell("a,b")).toBe("\"a,b\"");
     expect(csvCell("he said \"hi\"")).toBe("\"he said \"\"hi\"\"\"");
     expect(csvCell("x\ny")).toBe("\"x\ny\"");
+    expect(csvCell("x\ry")).toBe("\"x\ry\"");
     expect(csvCell("no trigger at start: = sign")).toBe("no trigger at start: = sign");
   });
 });

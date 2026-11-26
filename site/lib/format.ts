@@ -46,10 +46,11 @@ export function clientColor(v: unknown): string {
 /** Milestone 10: quote a CSV cell when it contains a comma, quote, or newline.
  * #914: a cell whose first non-whitespace char is =, +, - or @ executes as a
  * formula when the CSV is opened in Excel/Sheets. Prefix it with a single
- * quote so spreadsheet apps treat the whole cell as text. */
+ * quote so spreadsheet apps treat the whole cell as text.
+ * #1526: a lone \r is a row terminator to CSV parsers too — quote it like \n. */
 export function csvCell(v: string): string {
   const safe = /^[=+\-@]/.test(v.trimStart()) ? "'" + v : v;
-  return /[",\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
+  return /[",\n\r]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
 }
 
 export function csvResponse(body: string, filename: string): Response {
