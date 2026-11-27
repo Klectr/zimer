@@ -74,6 +74,8 @@ describe("wall-time helpers", () => {
     const [f, t] = widenedWindow("9999-12-24", "9999-12-31");
     expect(f).toBe("9999-12-23T00:00:00.000Z");
     expect("9999-12-30T12:00:00.000Z" >= f && "9999-12-30T12:00:00.000Z" < t).toBe(true);
+    const [, t2] = widenedWindow("9999-12-24", "10000-01-01");
+    expect("9999-12-31T12:00:00.000Z" < t2).toBe(true);
     expect(widenedWindow("2026-11-24", "2026-11-25")).toEqual(["2026-11-23T00:00:00.000Z", "2026-11-26T00:00:00.000Z"]);
   });
 });

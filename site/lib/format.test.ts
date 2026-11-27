@@ -1,5 +1,19 @@
 import { describe, expect, test } from "bun:test";
-import { clientColor, clientDay, clientTermsDescription, termsDescription, csvCell, fmtDur, greeting, safeCssColor, schemeColor, shortDateRange, shortDateRangeYear, shortYmd, validYmd } from "./format.ts";
+import { addDays, clientColor, clientDay, clientTermsDescription, termsDescription, csvCell, fmtDur, greeting, safeCssColor, schemeColor, shortDateRange, shortDateRangeYear, shortYmd, validYmd } from "./format.ts";
+
+describe("addDays", () => {
+  test("crosses month and year boundaries", () => {
+    expect(addDays("2026-11-24", 1)).toBe("2026-11-25");
+    expect(addDays("2026-12-31", 1)).toBe("2027-01-01");
+    expect(addDays("2026-03-01", -1)).toBe("2026-02-28");
+  });
+
+  test("years 0-99 stay their own years, not 1900-1999 (#1534)", () => {
+    expect(addDays("0000-02-29", 1)).toBe("0000-03-01");
+    expect(addDays("0099-03-01", 1)).toBe("0099-03-02");
+    expect(addDays("9999-12-31", 1)).toBe("10000-01-01");
+  });
+});
 
 /* #914: CSV formula injection — cells starting with =, +, - or @ (after
    leading whitespace) get a single-quote prefix so Excel/Sheets open them

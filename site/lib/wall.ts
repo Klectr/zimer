@@ -116,6 +116,9 @@ export function widenedWindow(fromYmd: string, toYmdExclusive: string): [string,
   const from = new Date(`${fromYmd}T00:00:00.000Z`);
   const to = new Date(`${toYmdExclusive}T00:00:00.000Z`);
   from.setUTCDate(from.getUTCDate() - 1);
+  /* #1534: an exclusive bound in year 10000+ (addDays past 9999-12-31)
+     is not a parseable Date — it still means "past every stored entry". */
+  if (Number.isNaN(to.getTime())) return [from.toISOString(), "9999-12-31T23:59:59.999Z"];
   to.setUTCDate(to.getUTCDate() + 1);
   const upper = to.toISOString();
   /* #1534: past 9999 the ISO string switches to extended-year form
