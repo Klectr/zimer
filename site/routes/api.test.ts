@@ -1047,6 +1047,11 @@ describe("timer stop end time (#1452)", () => {
     expect(stopEndTime(future)).toBe(new Date(new Date(future).getTime() + 1000).toISOString());
   });
 
+  test("stopEndTime never crosses into extended-year form (#1532)", () => {
+    expect(stopEndTime("9999-12-31T23:59:59.999Z")).toBe("9999-12-31T23:59:59.999Z");
+    expect(stopEndTime("9999-12-31T23:59:58.500Z")).toBe("9999-12-31T23:59:59.500Z");
+  });
+
   test("POST /api/timer/stop never stores an end at or before the start", async () => {
     const db = new BunDatabase(":memory:");
     db.exec(`CREATE TABLE time_entries (

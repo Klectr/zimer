@@ -76,9 +76,10 @@ export function normalizeEntryTimestamp(raw: unknown): string | null {
   /* #1532: an offset can push the UTC instant past year 9999 or below
      0000, where toISOString switches to the extended signed-year form.
      Stored in that form an entry can never be matched by the lexical
-     range queries, so reject it here — every write path (API PATCH,
-     entry forms) funnels through this normalizer, mirroring the
-     read-side guards (#1516, #1530). */
+     range queries, so reject it here — the caller-supplied write paths
+     (API PATCH, entry forms) funnel through this normalizer, mirroring
+     the read-side guards (#1516, #1530); the one server-generated store,
+     timer stop, clamps at the same boundary in stopEndTime. */
   return /^\d{4}-/.test(iso) ? iso : null;
 }
 
@@ -116,7 +117,11 @@ export function endAfterStart(startIso: string, endIso: string | null): boolean 
 export function stopEndTime(startIso: string): string {
   const now = Date.now();
   const start = new Date(startIso).getTime();
-  return new Date(Number.isFinite(start) && now <= start ? start + 1000 : now).toISOString();
+  const candidate = new Date(Number.isFinite(start) && now <= start ? start + 1000 : now).toISOString();
+  /* #1532: a start in the last second of 9999 would push the +1s end into
+     extended-year form — clamp to the last 4-digit instant instead of
+     storing an unaddressable end. */
+  return /^\d{4}-/.test(candidate) ? candidate : "9999-12-31T23:59:59.999Z";
 }
 
 /* #1458: a provided project_id must name a real project — a dangling id
