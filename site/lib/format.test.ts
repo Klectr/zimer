@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { addDays, clientColor, clientDay, clientTermsDescription, termsDescription, csvCell, fmtDur, greeting, safeCssColor, schemeColor, shortDateRange, shortDateRangeYear, shortYmd, validYmd } from "./format.ts";
+import { addDays, clientColor, clientDay, clientTermsDescription, dayBounds, daysBetween, sundayOf, termsDescription, csvCell, fmtDur, greeting, safeCssColor, schemeColor, shortDateRange, shortDateRangeYear, shortYmd, validYmd } from "./format.ts";
 
 describe("addDays", () => {
   test("crosses month and year boundaries", () => {
@@ -12,6 +12,26 @@ describe("addDays", () => {
     expect(addDays("0000-02-29", 1)).toBe("0000-03-01");
     expect(addDays("0099-03-01", 1)).toBe("0099-03-02");
     expect(addDays("9999-12-31", 1)).toBe("10000-01-01");
+  });
+});
+
+describe("daysBetween / dayBounds / sundayOf year edges (#1536)", () => {
+  test("daysBetween counts across the 0099 to 0100 boundary", () => {
+    expect(daysBetween("0099-12-31", "0100-01-01")).toBe(1);
+    expect(daysBetween("0099-01-01", "0099-01-02")).toBe(1);
+    expect(daysBetween("0000-02-28", "0000-03-01")).toBe(2);
+    expect(daysBetween("2026-01-01", "2026-01-02")).toBe(1);
+  });
+
+  test("dayBounds stay in the requested year and span one day", () => {
+    const [from, to] = dayBounds("0099-06-15");
+    expect(from).toContain("0099-");
+    expect(new Date(to).getTime() - new Date(from).getTime()).toBe(86_400_000);
+  });
+
+  test("sundayOf stays in the requested year", () => {
+    expect(sundayOf("0099-06-15")).toBe("0099-06-14");
+    expect(sundayOf("2026-11-25")).toBe("2026-11-22");
   });
 });
 
