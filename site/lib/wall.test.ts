@@ -8,7 +8,7 @@ import { createDb } from "../db.ts";
 import { createDomain } from "./domain.ts";
 import { createCalendarViews } from "../views/calendar.ts";
 import { createTimerViews } from "../views/timer.ts";
-import { bareWallToIso, entryDay, onWallDays, validTz, wallDayParam, wallParts, wallToIso } from "./wall.ts";
+import { bareWallToIso, entryDay, onWallDays, validTz, wallDayParam, wallParts, wallToIso, widenedWindow } from "./wall.ts";
 
 describe("wall-time helpers", () => {
   test("a wall time resolves with the offset of its own date, across DST", () => {
@@ -66,6 +66,17 @@ describe("wall-time helpers", () => {
     expect(wallDayParam("2026-02-30", "America/Chicago")).toBeNull();
     expect(wallDayParam("2026-11-24", "Nope/Nope")).toBeNull();
     expect(wallDayParam(null, null)).toBeNull();
+  });
+
+  test("year edges: 0000-02-29 parses; the widened window keeps late-9999 entries (#1534)", () => {
+    expect(wallDayParam("0000-02-29", "UTC")).toEqual({ day: "0000-02-29", tz: "UTC" });
+    expect(wallDayParam("0001-02-29", "UTC")).toBeNull();
+    const [f, t] = widenedWindow("9999-12-24", "9999-12-31");
+    expect(f).toBe("9999-12-23T00:00:00.000Z");
+    expect("9999-12-30T12:00:00.000Z" >= f && "9999-12-30T12:00:00.000Z" < t).toBe(true);
+    const [, t2] = widenedWindow("9999-12-24", "10000-01-01");
+    expect("9999-12-31T12:00:00.000Z" < t2).toBe(true);
+    expect(widenedWindow("2026-11-24", "2026-11-25")).toEqual(["2026-11-23T00:00:00.000Z", "2026-11-26T00:00:00.000Z"]);
   });
 });
 

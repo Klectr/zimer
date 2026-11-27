@@ -131,8 +131,12 @@ export function sundayOf(dateStr?: string): string {
 
 export function addDays(dateStr: string, n: number): string {
   const [y, m, d] = dateStr.split("-").map(Number);
-  const dt = new Date(y, m - 1, d + n);
-  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+  const dt = new Date(2000, m - 1, d);
+  dt.setFullYear(y);
+  dt.setDate(dt.getDate() + n);
+  const yy = dt.getFullYear();
+  const yStr = yy >= 0 && yy <= 9999 ? String(yy).padStart(4, "0") : String(yy);
+  return `${yStr}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
 }
 
 /** Whole days between two YYYY-MM-DD dates (local). */
