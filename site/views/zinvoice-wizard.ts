@@ -182,8 +182,8 @@ export const ZINVOICE_WIZARD_SCRIPT = `<script>(function(){
             rangeEl=document.getElementById('inv-range'), rangeTouched=false;
         if(!sel||!form) return;
         var MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-        function addDaysStr(ymd,n){var p=ymd.split('-').map(Number);var d=new Date(p[0],p[1]-1,p[2]+n);
-          return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+        function addDaysStr(ymd,n){var p=ymd.split('-').map(Number);var d=new Date(2000,p[1]-1,p[2]);d.setFullYear(p[0]);d.setDate(d.getDate()+n);
+          return String(d.getFullYear()).padStart(4,'0')+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
         function shortYmdStr(ymd){var p=String(ymd||'').split('-').map(Number);
           return p.length===3&&p[0] ? MONTHS[p[1]-1]+' '+p[2] : '';}
         function moneyFmt(n){return '$'+n.toFixed(2).replace(/\\B(?=(\\d{3})+(?!\\d))/g,',');}
