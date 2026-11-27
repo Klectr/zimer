@@ -54,7 +54,7 @@ export function createPublicViews(deps: PublicViewDeps) {
   function longYmd(ymd: string | null | undefined): string {
     if (!ymd) return "";
     const [y, m, d] = ymd.split("-").map(Number);
-    if (!y || !m || !d || m < 1 || m > 12) return ymd;
+    if (Number.isNaN(y) || !m || !d || m < 1 || m > 12) return ymd;
     return `${MONTHS[m - 1]} ${d}, ${y}`;
   }
   function hoursDetail(hours: number, rate: number): string | undefined {

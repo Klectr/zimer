@@ -124,7 +124,7 @@ function money(n: number): string {
 
 function fmtDate(ymd: string): string {
   const [y, m, d] = ymd.split("-").map(Number);
-  if (!y || !m || !d) return ymd;
+  if (Number.isNaN(y) || !m || !d || m < 1 || m > 12) return ymd;
   return `${MONTHS[m - 1]} ${d}, ${y}`;
 }
 
@@ -132,7 +132,7 @@ function fmtDate(ymd: string): string {
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 function fmtDateShort(ymd: string): string {
   const [y, m, d] = ymd.split("-").map(Number);
-  if (!y || !m || !d) return ymd;
+  if (Number.isNaN(y) || !m || !d || m < 1 || m > 12) return ymd;
   return `${MONTHS[m - 1]} ${d}`;
 }
 /** #243: per-line date cell — "Sep 11" or "Aug 31 – Sep 11". */
