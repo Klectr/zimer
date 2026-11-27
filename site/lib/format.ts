@@ -118,6 +118,7 @@ export function dayBounds(dateStr: string): [string, string] {
   const [y, m, d] = dateStr.split("-").map(Number);
   const start = new Date(2000, m - 1, d, 0, 0, 0);
   start.setFullYear(y);
+  start.setHours(0, 0, 0, 0);
   const end = new Date(start.getTime());
   end.setDate(end.getDate() + 1);
   return [start.toISOString(), end.toISOString()];
@@ -146,7 +147,7 @@ export function addDays(dateStr: string, n: number): string {
 
 /** Whole days between two YYYY-MM-DD dates (local). */
 export function daysBetween(a: string, b: string): number {
-  const p = (s: string) => { const [y, m, d] = s.split("-").map(Number); const dt = new Date(2000, m - 1, d); dt.setFullYear(y); return dt; };
+  const p = (s: string) => { const [y, m, d] = s.split("-").map(Number); const dt = new Date(2000, m - 1, d); dt.setFullYear(y); dt.setHours(0, 0, 0, 0); return dt; };
   return Math.round((p(b).getTime() - p(a).getTime()) / 86400000);
 }
 

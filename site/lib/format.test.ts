@@ -33,6 +33,15 @@ describe("daysBetween / dayBounds / sundayOf year edges (#1536)", () => {
     expect(sundayOf("0099-06-15")).toBe("0099-06-14");
     expect(sundayOf("2026-11-25")).toBe("2026-11-22");
   });
+
+  test("dayBounds starts at local midnight in a midnight-transition zone", () => {
+    const child = Bun.spawnSync({
+      cmd: ["bun", "-e", `import("./site/lib/format.ts").then(m => console.log(new Date(m.dayBounds("2026-10-15")[0]).getHours()))`],
+      cwd: process.cwd(),
+      env: { ...process.env, TZ: "America/Santiago" },
+    });
+    expect(child.stdout.toString().trim()).toBe("0");
+  });
 });
 
 /* #914: CSV formula injection — cells starting with =, +, - or @ (after
