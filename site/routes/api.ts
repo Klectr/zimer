@@ -71,7 +71,15 @@ export function normalizeEntryTimestamp(raw: unknown): string | null {
     || wall.getUTCHours() !== h || wall.getUTCMinutes() !== mi || wall.getUTCSeconds() !== s)
     return null;
   const parsed = new Date(raw);
-  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+  if (Number.isNaN(parsed.getTime())) return null;
+  const iso = parsed.toISOString();
+  /* #1532: an offset can push the UTC instant past year 9999 or below
+     0000, where toISOString switches to the extended signed-year form.
+     Stored in that form an entry can never be matched by the lexical
+     range queries, so reject it here — every write path (API PATCH,
+     entry forms) funnels through this normalizer, mirroring the
+     read-side guards (#1516, #1530). */
+  return /^\d{4}-/.test(iso) ? iso : null;
 }
 
 /* #1440: a money rate as the web UI accepts it — absent or blank means 0,

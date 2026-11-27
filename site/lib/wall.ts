@@ -93,7 +93,11 @@ export function bareWallToIso(raw: unknown, tz: string): string | null {
   check.setUTCFullYear(y);
   if (check.getUTCFullYear() !== y || check.getUTCMonth() !== mo - 1 || check.getUTCDate() !== d
     || check.getUTCHours() !== hh || check.getUTCMinutes() !== mm) return null;
-  return wallToIso(`${m[1]}-${m[2]}-${m[3]}`, `${m[4]}:${m[5]}`, tz);
+  const iso = wallToIso(`${m[1]}-${m[2]}-${m[3]}`, `${m[4]}:${m[5]}`, tz);
+  /* #1532: a zone offset can push a 9999/0000-edge wall time across the
+     4-digit-year boundary into extended-year form — unaddressable when
+     stored, so invalid like an impossible date. */
+  return /^\d{4}-/.test(iso) ? iso : null;
 }
 
 /** Instant window that covers every entry whose wall day falls in
