@@ -495,7 +495,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
         void trackEl.offsetWidth; trackEl.classList.remove('no-anim'); }
     }
     function ymdUTC(d){var p=function(x){return String(x).padStart(2,"0");};
-      return d.getUTCFullYear()+"-"+p(d.getUTCMonth()+1)+"-"+p(d.getUTCDate());}
+      return String(d.getUTCFullYear()).padStart(4,"0")+"-"+p(d.getUTCMonth()+1)+"-"+p(d.getUTCDate());}
     function shiftYmd(ymd,n){var p=ymd.split("-");
       var dt=new Date(Date.UTC(2000,+p[1]-1,+p[2])); dt.setUTCFullYear(+p[0]);
       return ymdUTC(new Date(dt.getTime()+n*864e5));}
