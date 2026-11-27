@@ -25,6 +25,12 @@ describe("wall-time helpers", () => {
     expect(bareWallToIso("garbage", "America/New_York")).toBeNull();
   });
 
+  test("wall times a zone offset pushes past the 4-digit year are null (#1532)", () => {
+    expect(bareWallToIso("9999-12-31T23:00", "America/New_York")).toBeNull();
+    expect(bareWallToIso("0000-01-01T00:30", "Pacific/Auckland")).toBeNull();
+    expect(bareWallToIso("9999-12-31T00:00", "UTC")).toBe("9999-12-31T00:00:00.000Z");
+  });
+
   test("zone names are validated", () => {
     expect(validTz("America/Los_Angeles")).toBe("America/Los_Angeles");
     expect(validTz("UTC")).toBe("UTC");

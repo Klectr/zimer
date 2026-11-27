@@ -932,6 +932,20 @@ describe("PATCH /api/entries/:id timestamp normalization (#1432)", () => {
     expect(row()).toEqual({ start_time: "2026-10-07T14:00:00.123Z", end_time: "2026-10-07T15:00:00.000Z" });
   });
 
+  test("a timestamp that normalizes past the 4-digit year is 400 and saves nothing (#1532)", async () => {
+    const { patch, row } = entrySetup();
+    expect((await patch({ start_time: "9999-12-31T23:00:00-02:00" })).status).toBe(400);
+    expect(row().start_time).toBe("2026-10-07T14:00:00.000Z");
+    expect((await patch({ end_time: "0000-01-01T01:00:00+02:00" })).status).toBe(400);
+    expect(row().end_time).toBe("2026-10-07T15:00:00.000Z");
+  });
+
+  test("a timestamp at the 4-digit-year edge still saves (#1532)", async () => {
+    const { patch, row } = entrySetup();
+    expect((await patch({ end_time: "9999-12-31T00:00:00Z" })).status).toBe(200);
+    expect(row().end_time).toBe("9999-12-31T00:00:00.000Z");
+  });
+
   test("a naive start_time is 400 and saves nothing", async () => {
     const { patch, row } = entrySetup();
     const res = await patch({ start_time: "2026-10-07T16:00" });

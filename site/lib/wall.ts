@@ -62,10 +62,19 @@ export function entryDay(e: { start_time: string; tz?: string | null }, viewerTz
   return ymdOf(wallParts(e.start_time, entryZone(e, viewerTz)));
 }
 
+/* Milliseconds for a UTC wall time. Date.UTC maps years 0-99 to
+   1900-1999, so build on base year 2000 and set the full year — the
+   same trap normalizeEntryTimestamp avoids (#1434, #1532). */
+function utcMs(y: number, mo: number, d: number, hh: number, mm: number, ss = 0): number {
+  const dt = new Date(Date.UTC(2000, mo - 1, d, hh, mm, ss));
+  dt.setUTCFullYear(y);
+  return dt.getTime();
+}
+
 /** UTC offset of a zone at an instant, in minutes (CDT = -300). */
 export function zoneOffsetMin(tz: string, at: Date): number {
   const p = wallParts(at, tz);
-  const asUTC = Date.UTC(p.y, p.m - 1, p.d, p.hh, p.mm, p.ss);
+  const asUTC = utcMs(p.y, p.m, p.d, p.hh, p.mm, p.ss);
   return Math.round((asUTC - at.getTime()) / 60000);
 }
 
@@ -75,7 +84,7 @@ export function zoneOffsetMin(tz: string, at: Date): number {
 export function wallToIso(ymd: string, hm: string, tz: string): string {
   const [y, mo, d] = ymd.split("-").map(Number);
   const [hh, mm] = hm.split(":").map(Number);
-  const target = Date.UTC(y!, mo! - 1, d!, hh!, mm!);
+  const target = utcMs(y!, mo!, d!, hh!, mm!);
   let guess = target;
   for (let i = 0; i < 3; i++) guess = target - zoneOffsetMin(tz, new Date(guess)) * 60000;
   return new Date(guess).toISOString();
