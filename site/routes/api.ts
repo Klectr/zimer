@@ -376,13 +376,23 @@ export function createApiRouter(deps: ApiDeps) {
               const bound = (raw: string | null, isTo: boolean): string | null => {
                 if (raw === null) return null;
                 const ymd = validYmd(raw);
+                let normalized: string | null;
                 if (ymd) {
                   if (!isTo) return `${ymd}T00:00:00.000Z`;
                   const next = new Date(`${ymd}T00:00:00.000Z`);
                   next.setUTCDate(next.getUTCDate() + 1);
-                  return next.toISOString();
+                  normalized = next.toISOString();
+                } else {
+                  normalized = normalizeEntryTimestamp(raw);
                 }
-                return normalizeEntryTimestamp(raw);
+                /* #1530: mirror the validDayBounds guard (#1516) — a bound
+                   that normalizes outside the 4-digit-year form (a date-only
+                   to of 9999-12-31 becomes +010000-01-01, an offset can push
+                   a timestamp across the 9999/0000 boundary) neither compares
+                   chronologically as a string nor matches stored timestamps
+                   in the range query's lexical comparison, so it silently
+                   returned an empty list. Invalid, like any other bad bound. */
+                return normalized !== null && /^\d{4}-/.test(normalized) ? normalized : null;
               };
               const rawFrom = url.searchParams.get("from");
               const rawTo = url.searchParams.get("to");
