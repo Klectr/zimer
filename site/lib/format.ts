@@ -135,6 +135,12 @@ export function sundayOf(dateStr?: string): string {
   return `${yStr}-${String(sun.getMonth() + 1).padStart(2, "0")}-${String(sun.getDate()).padStart(2, "0")}`;
 }
 
+export function utcWeekday(y: number, m: number, d: number): number {
+  const dt = new Date(Date.UTC(2000, m - 1, d, 12));
+  dt.setUTCFullYear(y);
+  return dt.getUTCDay();
+}
+
 export function addDays(dateStr: string, n: number): string {
   const [y, m, d] = dateStr.split("-").map(Number);
   const dt = new Date(2000, m - 1, d);

@@ -7,7 +7,7 @@ import { entryDay, entryZone, hmOf, onWallDays, validTz, wallDayParam, wallParts
 import { INVOICE_ZONE } from "../lib/domain.ts";
 import { join, normalize, sep } from "node:path";
 import type { Database, Statement } from "bun:sqlite";
-import { addDays, clientColor, clientDay, csvCell, entryIsLocked, isPaymentTermsKey, round2, termsDays, termsKey, todayStr, validYmd } from "../lib/format.ts";
+import { addDays, clientColor, clientDay, csvCell, entryIsLocked, isPaymentTermsKey, round2, termsDays, termsKey, todayStr, utcWeekday, validYmd } from "../lib/format.ts";
 import type { Entry, Invoice, InvoiceItem } from "../lib/types.ts";
 import type { ClientSel } from "../views/manage.ts"; /* #367 */
 import type { PdfInvoice } from "../pdf.ts";
@@ -584,7 +584,7 @@ export function createWebRouter(deps: WebDeps) {
             const dp = validYmd(url.searchParams.get("day")); /* #1501 */
             if (dp) {
               const [y, m, d] = dp.split("-").map(Number);
-              const sun = addDays(dp, -new Date(Date.UTC(y, m - 1, d, 12)).getUTCDay());
+              const sun = addDays(dp, -utcWeekday(y, m, d));
               return new Response(null, { status: 302, headers: { Location: `/calendar?week=${sun}` } });
             }
             return html(calendarPage(url.searchParams.get("week") || undefined));

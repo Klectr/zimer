@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { addDays, clientColor, clientDay, clientTermsDescription, dayBounds, daysBetween, sundayOf, termsDescription, csvCell, fmtDur, greeting, safeCssColor, schemeColor, shortDateRange, shortDateRangeYear, shortYmd, validYmd } from "./format.ts";
+import { addDays, clientColor, clientDay, clientTermsDescription, dayBounds, daysBetween, sundayOf, termsDescription, csvCell, fmtDur, greeting, safeCssColor, schemeColor, shortDateRange, shortDateRangeYear, shortYmd, utcWeekday, validYmd } from "./format.ts";
 
 describe("addDays", () => {
   test("crosses month and year boundaries", () => {
@@ -12,6 +12,20 @@ describe("addDays", () => {
     expect(addDays("0000-02-29", 1)).toBe("0000-03-01");
     expect(addDays("0099-03-01", 1)).toBe("0099-03-02");
     expect(addDays("9999-12-31", 1)).toBe("10000-01-01");
+  });
+});
+
+describe("utcWeekday year edges (#1538)", () => {
+  test("years 0-99 keep their own weekday, matching sundayOf", () => {
+    expect(utcWeekday(99, 6, 15)).toBe(1);
+    expect(utcWeekday(0, 2, 29)).toBe(2);
+    expect(addDays("0099-06-15", -utcWeekday(99, 6, 15))).toBe(sundayOf("0099-06-15"));
+    expect(addDays("0000-02-29", -utcWeekday(0, 2, 29))).toBe("0000-02-27");
+  });
+
+  test("ordinary years are unchanged", () => {
+    expect(utcWeekday(2026, 11, 25)).toBe(3);
+    expect(utcWeekday(2026, 11, 22)).toBe(0);
   });
 });
 

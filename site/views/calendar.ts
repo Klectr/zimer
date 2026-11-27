@@ -4,7 +4,7 @@
  *  and helpers; every existing call site keeps working unchanged. */
 
 import type { Database, Statement } from "bun:sqlite";
-import { addDays, durationSeconds, entryInvoiceMark, entryIsLocked, esc, fmtDur, schemeColor, validYmd } from "../lib/format.ts";
+import { addDays, durationSeconds, entryInvoiceMark, entryIsLocked, esc, fmtDur, schemeColor, utcWeekday, validYmd } from "../lib/format.ts";
 import { workspaceEmpty } from "../lib/demo.ts"; /* #300: first-run hint */
 import { button, linkButton } from "../ui/button.ts";
 import { selectField, textField } from "../ui/field.ts";
@@ -67,9 +67,9 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       (weekday-safe in every zone, unlike noon-anchored Date parsing). */
   function sundayOfYmd(dateStr: string): string {
     const [y, m, d] = dateStr.split("-").map(Number);
-    return addDays(dateStr, -new Date(Date.UTC(y, m - 1, d, 12)).getUTCDay());
+    return addDays(dateStr, -utcWeekday(y, m, d));
   }
-  const weekdayOf = (y: number, m: number, d: number) => WEEKDAYS[new Date(Date.UTC(y, m - 1, d, 12)).getUTCDay()];
+  const weekdayOf = (y: number, m: number, d: number) => WEEKDAYS[utcWeekday(y, m, d)];
   /** #1081: a week's entries — every entry whose own-zone wall day is in
       the week starting Sunday `sun` (legacy NULL-zone rows use the viewer's
       zone). Fetched over a widened instant window, cut exactly in code. */
@@ -497,7 +497,8 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     function ymdUTC(d){var p=function(x){return String(x).padStart(2,"0");};
       return d.getUTCFullYear()+"-"+p(d.getUTCMonth()+1)+"-"+p(d.getUTCDate());}
     function shiftYmd(ymd,n){var p=ymd.split("-");
-      return ymdUTC(new Date(Date.UTC(+p[0],+p[1]-1,+p[2])+n*864e5));}
+      var dt=new Date(Date.UTC(2000,+p[1]-1,+p[2])); dt.setUTCFullYear(+p[0]);
+      return ymdUTC(new Date(dt.getTime()+n*864e5));}
     function stripUrl(sun){
       var u='/partial/week?week='+encodeURIComponent(sun)+'&strip=1';
       return u+(TZ?'&tz='+encodeURIComponent(TZ):'');
