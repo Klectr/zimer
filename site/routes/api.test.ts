@@ -932,6 +932,20 @@ describe("PATCH /api/entries/:id timestamp normalization (#1432)", () => {
     expect(row()).toEqual({ start_time: "2026-10-07T14:00:00.123Z", end_time: "2026-10-07T15:00:00.000Z" });
   });
 
+  test("a timestamp that normalizes past the 4-digit year is 400 and saves nothing (#1532)", async () => {
+    const { patch, row } = entrySetup();
+    expect((await patch({ start_time: "9999-12-31T23:00:00-02:00" })).status).toBe(400);
+    expect(row().start_time).toBe("2026-10-07T14:00:00.000Z");
+    expect((await patch({ end_time: "0000-01-01T01:00:00+02:00" })).status).toBe(400);
+    expect(row().end_time).toBe("2026-10-07T15:00:00.000Z");
+  });
+
+  test("a timestamp at the 4-digit-year edge still saves (#1532)", async () => {
+    const { patch, row } = entrySetup();
+    expect((await patch({ end_time: "9999-12-31T00:00:00Z" })).status).toBe(200);
+    expect(row().end_time).toBe("9999-12-31T00:00:00.000Z");
+  });
+
   test("a naive start_time is 400 and saves nothing", async () => {
     const { patch, row } = entrySetup();
     const res = await patch({ start_time: "2026-10-07T16:00" });
@@ -1031,6 +1045,11 @@ describe("timer stop end time (#1452)", () => {
   test("stopEndTime clamps a future start to start + 1s", () => {
     const future = new Date(Date.now() + 3600_000).toISOString();
     expect(stopEndTime(future)).toBe(new Date(new Date(future).getTime() + 1000).toISOString());
+  });
+
+  test("stopEndTime never crosses into extended-year form (#1532)", () => {
+    expect(stopEndTime("9999-12-31T23:59:59.999Z")).toBe("9999-12-31T23:59:59.999Z");
+    expect(stopEndTime("9999-12-31T23:59:58.500Z")).toBe("9999-12-31T23:59:59.500Z");
   });
 
   test("POST /api/timer/stop never stores an end at or before the start", async () => {
