@@ -28,7 +28,7 @@ describe("wizard follows the selected client (#1083)", () => {
       removed: false,
     }, props);
   }
-  function run() {
+  function run(issueYmd = "2026-11-24") {
     const clients = [
       { value: "", text: "Choose a client…", dataset: {} },
       { value: "1", text: "Acme", dataset: { rate: "40", termsDays: "30" } },
@@ -37,7 +37,7 @@ describe("wizard follows the selected client (#1083)", () => {
     ];
     const sel = fakeEl({ options: clients, selectedIndex: 0 });
     Object.defineProperty(sel, "value", { get: () => clients[sel.selectedIndex]!.value });
-    const rate = fakeEl(), due = fakeEl(), issue = fakeEl({ value: "2026-11-24" });
+    const rate = fakeEl(), due = fakeEl(), issue = fakeEl({ value: issueYmd });
     const timeRow = fakeEl({ querySelector: (q: string) => q.includes("_ids") ? { value: "7,8" } : null });
     const manualRow = fakeEl({ querySelector: (q: string) => q.includes("_ids") ? { value: "" } : null });
     const rows = [timeRow, manualRow];
@@ -64,6 +64,11 @@ describe("wizard follows the selected client (#1083)", () => {
     pick(1); expect(due.value).toBe("2026-12-24");
     pick(2); expect(due.value).toBe("");
     pick(3); expect(due.value).toBe("2026-12-09");
+  });
+
+  test("years 0-99 stay their own years in the due date, padded to 4 digits (#1540)", () => {
+    const { pick, due } = run("0099-03-01");
+    pick(1); expect(due.value).toBe("0099-03-31");
   });
 
   test("clearing the client drops its time lines, keeps manual lines, and loads nothing", () => {
