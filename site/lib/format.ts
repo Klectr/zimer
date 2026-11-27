@@ -116,8 +116,11 @@ export function greeting(at: Date = new Date()): string {
 /** Local-day bounds as ISO strings: YYYY-MM-DD in server-local time. */
 export function dayBounds(dateStr: string): [string, string] {
   const [y, m, d] = dateStr.split("-").map(Number);
-  const start = new Date(y, m - 1, d, 0, 0, 0);
-  const end = new Date(y, m - 1, d + 1, 0, 0, 0);
+  const start = new Date(2000, m - 1, d, 0, 0, 0);
+  start.setFullYear(y);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start.getTime());
+  end.setDate(end.getDate() + 1);
   return [start.toISOString(), end.toISOString()];
 }
 
@@ -125,8 +128,11 @@ export function dayBounds(dateStr: string): [string, string] {
 export function sundayOf(dateStr?: string): string {
   const base = dateStr ? new Date(dateStr + "T12:00:00") : new Date();
   const day = base.getDay(); // 0 = Sunday
-  const sun = new Date(base.getFullYear(), base.getMonth(), base.getDate() - day);
-  return `${sun.getFullYear()}-${String(sun.getMonth() + 1).padStart(2, "0")}-${String(sun.getDate()).padStart(2, "0")}`;
+  const sun = new Date(base.getTime());
+  sun.setDate(sun.getDate() - day);
+  const yy = sun.getFullYear();
+  const yStr = yy >= 0 && yy <= 9999 ? String(yy).padStart(4, "0") : String(yy);
+  return `${yStr}-${String(sun.getMonth() + 1).padStart(2, "0")}-${String(sun.getDate()).padStart(2, "0")}`;
 }
 
 export function addDays(dateStr: string, n: number): string {
@@ -141,7 +147,7 @@ export function addDays(dateStr: string, n: number): string {
 
 /** Whole days between two YYYY-MM-DD dates (local). */
 export function daysBetween(a: string, b: string): number {
-  const p = (s: string) => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
+  const p = (s: string) => { const [y, m, d] = s.split("-").map(Number); const dt = new Date(2000, m - 1, d); dt.setFullYear(y); dt.setHours(0, 0, 0, 0); return dt; };
   return Math.round((p(b).getTime() - p(a).getTime()) / 86400000);
 }
 
