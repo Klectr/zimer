@@ -42,14 +42,15 @@ describe("wizard follows the selected client (#1083)", () => {
     const manualRow = fakeEl({ querySelector: (q: string) => q.includes("_ids") ? { value: "" } : null });
     const rows = [timeRow, manualRow];
     const form = fakeEl({ querySelectorAll: (q: string) => q.includes("tbody tr") ? rows.filter(r => !r.removed) : [] });
-    const els: Record<string, any> = { "inv-client": sel, "inv-rate": rate, "inv-create-form": form, "inv-due": due, "inv-issue": issue };
+    const sub = fakeEl(), to = fakeEl();
+    const els: Record<string, any> = { "inv-client": sel, "inv-rate": rate, "inv-create-form": form, "inv-due": due, "inv-issue": issue, "inv-new-sub": sub, "inv-to": to };
     const ajax: string[] = [];
     const doc = { getElementById: (id: string) => els[id] ?? null, addEventListener() {}, body: fakeEl() };
     const win = { htmx: { ajax: (m: string, url: string) => { ajax.push(`${m} ${url}`); return Promise.resolve(); } } };
     const body = ZINVOICE_WIZARD_SCRIPT.replace(/^<script>/, "").replace(/<\/script>$/, "");
     new Function("document", "window", body)(doc, win);
     const pick = (i: number) => { sel.selectedIndex = i; sel.fire("change"); };
-    return { pick, rate, due, rows, ajax };
+    return { pick, rate, due, rows, ajax, sub, to };
   }
 
   test("switching clients replaces the rate instead of keeping the previous client's", () => {
@@ -64,6 +65,16 @@ describe("wizard follows the selected client (#1083)", () => {
     pick(1); expect(due.value).toBe("2026-12-24");
     pick(2); expect(due.value).toBe("");
     pick(3); expect(due.value).toBe("2026-12-09");
+  });
+
+  test("the subtitle formats a year-0000 range end instead of blanking it (#1542)", () => {
+    const { pick, sub, to } = run();
+    to.value = "0000-01-20";
+    pick(1);
+    expect(sub.textContent).toBe("Acme · unbilled through Jan 20");
+    to.value = "2026-13-20";
+    pick(1);
+    expect(sub.textContent).toBe("Acme · unbilled through ");
   });
 
   test("years 0-99 stay their own years in the due date, padded to 4 digits (#1540)", () => {
