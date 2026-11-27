@@ -115,6 +115,13 @@ describe("shortYmd", () => {
     expect(shortYmd("2026-09-01")).toBe("Sep 1");
     expect(shortYmd("nope")).toBe("nope");
   });
+  test("year 0000 is a real year, not a missing date (#1542)", () => {
+    expect(shortYmd("0000-01-15")).toBe("Jan 15");
+    expect(shortDateRangeYear("0000-01-15", "0000-01-20")).toBe("Jan 15 – Jan 20, 0000");
+  });
+  test("an impossible month passes through instead of rendering undefined (#1542)", () => {
+    expect(shortYmd("2026-13-01")).toBe("2026-13-01");
+  });
 });
 
 /* #596: whole-minute durations drop the pointless 00s; #817: whole-hour
