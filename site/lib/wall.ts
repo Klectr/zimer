@@ -117,7 +117,12 @@ export function widenedWindow(fromYmd: string, toYmdExclusive: string): [string,
   const to = new Date(`${toYmdExclusive}T00:00:00.000Z`);
   from.setUTCDate(from.getUTCDate() - 1);
   to.setUTCDate(to.getUTCDate() + 1);
-  return [from.toISOString(), to.toISOString()];
+  const upper = to.toISOString();
+  /* #1534: past 9999 the ISO string switches to extended-year form
+     ("+010000-…"), and "+" sorts before digits — as a lexical SQL bound
+     it would exclude every late-9999 entry before onWallDays can cut.
+     Stored timestamps are 4-digit years, so clamp to the last one. */
+  return [from.toISOString(), upper.startsWith("+") ? "9999-12-31T23:59:59.999Z" : upper];
 }
 
 /** A viewer's local day and zone, as the timer page sends them. */
@@ -128,8 +133,8 @@ export function wallDayParam(day: unknown, tz: unknown): WallDay | null {
   const z = validTz(tz);
   if (!z || typeof day !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
   const [y, m, d] = day.split("-").map(Number);
-  const dt = new Date(Date.UTC(y!, m! - 1, d!));
-  if (dt.getUTCMonth() !== m! - 1 || dt.getUTCDate() !== d!) return null;
+  const dt = new Date(utcMs(y!, m!, d!, 0, 0));
+  if (dt.getUTCFullYear() !== y! || dt.getUTCMonth() !== m! - 1 || dt.getUTCDate() !== d!) return null;
   return { day, tz: z };
 }
 
