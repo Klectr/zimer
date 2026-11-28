@@ -75,6 +75,13 @@ describe("wall-time helpers", () => {
     expect(onWallDays([old], "0999-01-04", "0999-01-05", "America/New_York")).toEqual([]);
   });
 
+  test("a year-0000 entry keeps year 0000 through wallParts (#1544)", () => {
+    const zero = { start_time: "0000-06-15T12:00:00.000Z", tz: "UTC" };
+    expect(wallParts(zero.start_time, zero.tz).y).toBe(0);
+    expect(entryDay(zero, "America/New_York")).toBe("0000-06-15");
+    expect(onWallDays([zero], "0000-06-15", "0000-06-16", "America/New_York")).toEqual([zero]);
+  });
+
   test("?day=&tz= parses only a real day with a real zone", () => {
     expect(wallDayParam("2026-11-24", "America/Chicago")).toEqual({ day: "2026-11-24", tz: "America/Chicago" });
     expect(wallDayParam("2026-02-30", "America/Chicago")).toBeNull();
