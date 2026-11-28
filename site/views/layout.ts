@@ -296,7 +296,7 @@ function toastTrigger(): string {
     hidden input added at submit. The server validates it (clientDay). */
 function clientDayScript(): string {
   return `<script>(function(){
-    function day(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+    function day(){ var d=new Date(); return String(d.getFullYear()).padStart(4,'0')+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
     /* #1081: and the browser's IANA zone as client_tz, so a started timer
        records where it was worked. */
     var tz=''; try{ tz=Intl.DateTimeFormat().resolvedOptions().timeZone||''; }catch(x){}

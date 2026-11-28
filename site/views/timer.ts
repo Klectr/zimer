@@ -238,7 +238,7 @@ export function createTimerViews(deps: TimerViewDeps) {
               /* #1081: plus the local day and zone, so the server picks
                  entries by their own wall day. */
               var BTZ=''; try{ BTZ=Intl.DateTimeFormat().resolvedOptions().timeZone||''; }catch(x){}
-              var dayStr=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+              var dayStr=String(d.getFullYear()).padStart(4,'0')+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
               var wallQ=BTZ?'&day='+dayStr+'&tz='+encodeURIComponent(BTZ):'';
               el.setAttribute('hx-get','/partial/today?from='+encodeURIComponent(from)+'&to='+encodeURIComponent(to)+wallQ);
               var stats=document.getElementById('today-stats');

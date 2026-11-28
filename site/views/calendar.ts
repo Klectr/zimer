@@ -977,7 +977,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
        week refresh. */
     function clientToday(){
       var n=new Date();var p=function(x){return String(x).padStart(2,'0');};
-      return n.getFullYear()+'-'+p(n.getMonth()+1)+'-'+p(n.getDate());
+      return String(n.getFullYear()).padStart(4,'0')+'-'+p(n.getMonth()+1)+'-'+p(n.getDate());
     }
     /* Position every strip's now-line; strips whose week has no today
        column hide theirs. The line is a client concept (the server may
@@ -1166,8 +1166,8 @@ export function createCalendarViews(deps: CalendarViewDeps) {
         function toLocalInput(iso,zone){var d=new Date(iso);
           if(zone){try{var p={};new Intl.DateTimeFormat("en-US",{timeZone:zone,hourCycle:"h23",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"})
             .formatToParts(d).forEach(function(x){p[x.type]=x.value;});
-            return p.year+"-"+p.month+"-"+p.day+"T"+p2(+p.hour%24)+":"+p.minute;}catch(x){}}
-          return d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate())+"T"+p2(d.getHours())+":"+p2(d.getMinutes());}
+            return String(p.year).padStart(4,"0")+"-"+p.month+"-"+p.day+"T"+p2(+p.hour%24)+":"+p.minute;}catch(x){}}
+          return String(d.getFullYear()).padStart(4,"0")+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate())+"T"+p2(d.getHours())+":"+p2(d.getMinutes());}
         function suffix(){var o=-new Date().getTimezoneOffset(),s=o<0?"-":"+",a=Math.abs(o);
           return s+p2(Math.floor(a/60))+":"+p2(a%60);}
         function wireWall(form){
