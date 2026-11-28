@@ -79,7 +79,7 @@ const SHORT_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 export function shortYmd(ymd: string): string {
   const [y, m, d] = ymd.split("-").map(Number);
-  if (!y || !m || !d) return ymd;
+  if (Number.isNaN(y) || !m || !d || m < 1 || m > 12) return ymd;
   return `${SHORT_MONTHS[m - 1]} ${d}`;
 }
 export function shortDateRange(from: string | null | undefined, to: string | null | undefined): string {

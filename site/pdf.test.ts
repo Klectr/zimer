@@ -254,3 +254,18 @@ describe("PDF layout polish", () => {
     expect(pdfText({ ...sent, status: "paid" })).not.toContain("Due by");
   });
 });
+
+/** #1542: year 0000 is a real year (validYmd accepts 0000-02-29) — the PDF
+ *  date helpers must format it, not fall back to the raw YMD string. */
+describe("#1542: PDF dates in year 0000", () => {
+  test("issue/due dates and line dates format instead of printing raw YMD", () => {
+    const text = pdfText({
+      ...base, issueDate: "0000-01-15", dueDate: "0000-01-30",
+      items: [{ description: "Work", hours: 1, rate: 10, amount: 10, dateFrom: "0000-01-15", dateTo: "0000-01-15" }],
+    });
+    expect(text).toContain("Jan 15, 0");
+    expect(text).toContain("Jan 30, 0");
+    expect(text).not.toContain("0000-01-15");
+    expect(text).not.toContain("0000-01-30");
+  });
+});

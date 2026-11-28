@@ -241,6 +241,11 @@ describe("public invoice summary (#1136)", () => {
     expect(html).toContain("Overdue");
     expect(html).toContain("ui-tag-error");
   });
+  test("a year-0000 issue date formats instead of printing raw YMD (#1542)", () => {
+    const html = v.publicInvoicePage({ ...inv, issue_date: "0000-01-15" }, "https://example.com", "/i/abc123");
+    expect(html).toContain("Issued Jan 15, 0");
+    expect(html).not.toContain("0000-01-15");
+  });
 });
 
 describe("public invoice due chip tone (#1253)", () => {
