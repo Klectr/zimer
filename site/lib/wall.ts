@@ -49,7 +49,11 @@ export function wallParts(at: Date | string, tz: string | null): WallParts {
 }
 
 const pad = (n: number) => String(n).padStart(2, "0");
-export const ymdOf = (p: { y: number; m: number; d: number }) => `${p.y}-${pad(p.m)}-${pad(p.d)}`;
+/* #1544: the year pads to 4 digits like every other YMD builder
+   (format.ts, calendar ymdUTC) — entryDay results are compared
+   lexically against padded bounds, so a raw year under 1000 fell
+   outside its own range. Wider/negative years stay as-is. */
+export const ymdOf = (p: { y: number; m: number; d: number }) => `${p.y >= 0 && p.y <= 9999 ? String(p.y).padStart(4, "0") : p.y}-${pad(p.m)}-${pad(p.d)}`;
 export const hmOf = (p: { hh: number; mm: number }) => `${pad(p.hh)}:${pad(p.mm)}`;
 
 /** The zone an entry is shown in: its own, else the viewer's (legacy rows). */
