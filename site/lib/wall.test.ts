@@ -8,7 +8,7 @@ import { createDb } from "../db.ts";
 import { createDomain } from "./domain.ts";
 import { createCalendarViews } from "../views/calendar.ts";
 import { createTimerViews } from "../views/timer.ts";
-import { bareWallToIso, entryDay, onWallDays, validTz, wallDayParam, wallParts, wallToIso, widenedWindow } from "./wall.ts";
+import { bareWallToIso, entryDay, onWallDays, validTz, wallDayParam, wallParts, wallToIso, widenedWindow, ymdOf } from "./wall.ts";
 
 describe("wall-time helpers", () => {
   test("a wall time resolves with the offset of its own date, across DST", () => {
@@ -59,6 +59,27 @@ describe("wall-time helpers", () => {
     const legacy = { start_time: "2026-11-25T06:30:00.000Z", tz: null };
     expect(entryDay(legacy, "America/New_York")).toBe("2026-11-25");
     expect(onWallDays([lateLa, legacy], "2026-11-24", "2026-11-25", "America/New_York")).toEqual([lateLa]);
+  });
+
+  test("ymdOf pads the year to 4 digits like every other YMD builder (#1544)", () => {
+    expect(ymdOf({ y: 999, m: 1, d: 5 })).toBe("0999-01-05");
+    expect(ymdOf({ y: 0, m: 6, d: 15 })).toBe("0000-06-15");
+    expect(ymdOf({ y: 2026, m: 11, d: 24 })).toBe("2026-11-24");
+    expect(ymdOf({ y: 10000, m: 1, d: 1 })).toBe("10000-01-01");
+  });
+
+  test("an entry in a year under 1000 lands in its own padded day range (#1544)", () => {
+    const old = { start_time: "0999-01-05T16:00:00.000Z", tz: "UTC" };
+    expect(entryDay(old, "America/New_York")).toBe("0999-01-05");
+    expect(onWallDays([old], "0999-01-05", "0999-01-06", "America/New_York")).toEqual([old]);
+    expect(onWallDays([old], "0999-01-04", "0999-01-05", "America/New_York")).toEqual([]);
+  });
+
+  test("a year-0000 entry keeps year 0000 through wallParts (#1544)", () => {
+    const zero = { start_time: "0000-06-15T12:00:00.000Z", tz: "UTC" };
+    expect(wallParts(zero.start_time, zero.tz).y).toBe(0);
+    expect(entryDay(zero, "America/New_York")).toBe("0000-06-15");
+    expect(onWallDays([zero], "0000-06-15", "0000-06-16", "America/New_York")).toEqual([zero]);
   });
 
   test("?day=&tz= parses only a real day with a real zone", () => {

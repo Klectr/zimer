@@ -28,7 +28,7 @@ function fmt(tz: string): Intl.DateTimeFormat {
   let f = fmtCache.get(tz);
   if (!f) {
     f = new Intl.DateTimeFormat("en-US", {
-      timeZone: tz, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit",
+      timeZone: tz, hourCycle: "h23", year: "numeric", era: "short", month: "2-digit", day: "2-digit",
       hour: "2-digit", minute: "2-digit", second: "2-digit",
     });
     fmtCache.set(tz, f);
@@ -45,11 +45,19 @@ export function wallParts(at: Date | string, tz: string | null): WallParts {
   if (!tz) return { y: d.getFullYear(), m: d.getMonth() + 1, d: d.getDate(), hh: d.getHours(), mm: d.getMinutes(), ss: d.getSeconds() };
   const p: Record<string, string> = {};
   for (const x of fmt(tz).formatToParts(d)) p[x.type] = x.value;
-  return { y: +p.year!, m: +p.month!, d: +p.day!, hh: +p.hour! % 24, mm: +p.minute!, ss: +p.second! };
+  /* #1544: Intl reports BC years era-relative (1 BC = year 1 with era
+     "BC"); convert to the astronomical year (1 BC = 0, 2 BC = -1) the
+     rest of the app uses, matching the null-zone branch's getFullYear. */
+  const y = p.era === "BC" ? 1 - +p.year! : +p.year!;
+  return { y, m: +p.month!, d: +p.day!, hh: +p.hour! % 24, mm: +p.minute!, ss: +p.second! };
 }
 
 const pad = (n: number) => String(n).padStart(2, "0");
-export const ymdOf = (p: { y: number; m: number; d: number }) => `${p.y}-${pad(p.m)}-${pad(p.d)}`;
+/* #1544: the year pads to 4 digits like every other YMD builder
+   (format.ts, calendar ymdUTC) — entryDay results are compared
+   lexically against padded bounds, so a raw year under 1000 fell
+   outside its own range. Wider/negative years stay as-is. */
+export const ymdOf = (p: { y: number; m: number; d: number }) => `${p.y >= 0 && p.y <= 9999 ? String(p.y).padStart(4, "0") : p.y}-${pad(p.m)}-${pad(p.d)}`;
 export const hmOf = (p: { hh: number; mm: number }) => `${pad(p.hh)}:${pad(p.mm)}`;
 
 /** The zone an entry is shown in: its own, else the viewer's (legacy rows). */
