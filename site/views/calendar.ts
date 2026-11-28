@@ -1162,12 +1162,13 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       Returns a function that, given a setter, writes the submit values. */
   const EDIT_WALL_JS = `
         var p2=function(n){return String(n).padStart(2,"0");};
+        var y4=function(y){return y>=0&&y<=9999?String(y).padStart(4,"0"):String(y);};
         var BTZ=""; try{ BTZ=Intl.DateTimeFormat().resolvedOptions().timeZone||""; }catch(x){}
         function toLocalInput(iso,zone){var d=new Date(iso);
-          if(zone){try{var p={};new Intl.DateTimeFormat("en-US",{timeZone:zone,hourCycle:"h23",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"})
+          if(zone){try{var p={};new Intl.DateTimeFormat("en-US",{timeZone:zone,hourCycle:"h23",year:"numeric",era:"short",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"})
             .formatToParts(d).forEach(function(x){p[x.type]=x.value;});
-            return String(p.year).padStart(4,"0")+"-"+p.month+"-"+p.day+"T"+p2(+p.hour%24)+":"+p.minute;}catch(x){}}
-          return String(d.getFullYear()).padStart(4,"0")+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate())+"T"+p2(d.getHours())+":"+p2(d.getMinutes());}
+            return y4(p.era==="BC"?1-(+p.year):+p.year)+"-"+p.month+"-"+p.day+"T"+p2(+p.hour%24)+":"+p.minute;}catch(x){}}
+          return y4(d.getFullYear())+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate())+"T"+p2(d.getHours())+":"+p2(d.getMinutes());}
         function suffix(){var o=-new Date().getTimezoneOffset(),s=o<0?"-":"+",a=Math.abs(o);
           return s+p2(Math.floor(a/60))+":"+p2(a%60);}
         function wireWall(form){
