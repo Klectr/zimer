@@ -839,6 +839,31 @@ describe("running entry growth tick (#704, #857)", () => {
   });
 });
 
+/** #1546 follow-up: toLocalInput's Intl branch must convert BC-era years
+ *  back to astronomical years (1 BC = year 0), like wall.ts #1544 — without
+ *  era handling a year-0 entry renders as 0001 in the edit dialog. */
+describe("toLocalInput year handling (#1546)", () => {
+  async function loadToLocalInput() {
+    const src = await Bun.file("site/views/calendar.ts").text();
+    const js = src.slice(src.indexOf("var p2=function"), src.indexOf("function suffix()"));
+    return new Function(`${js}; return toLocalInput;`)() as (iso: string, zone?: string) => string;
+  }
+
+  test("year 0 and sub-1000 years survive the zone branch", async () => {
+    const toLocalInput = await loadToLocalInput();
+    expect(toLocalInput("0000-06-15T12:00:00.000Z", "UTC")).toBe("0000-06-15T12:00");
+    expect(toLocalInput("0099-06-15T12:00:00.000Z", "UTC")).toBe("0099-06-15T12:00");
+    expect(toLocalInput("2026-06-15T12:00:00.000Z", "UTC")).toBe("2026-06-15T12:00");
+  });
+
+  test("the no-zone fallback pads the year too", async () => {
+    const toLocalInput = await loadToLocalInput();
+    const d = new Date(2000, 5, 15, 12, 0);
+    d.setFullYear(99);
+    expect(toLocalInput(d.toISOString())).toBe("0099-06-15T12:00");
+  });
+});
+
 /** #709: the edit-entry page's Description/Project/Start/End fields had
  *  visible floating labels with no for/id wiring and no other accessible
  *  name — screen readers announced nothing and clicking the label did not
