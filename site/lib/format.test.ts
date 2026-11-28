@@ -1,5 +1,19 @@
 import { describe, expect, test } from "bun:test";
-import { addDays, clientColor, clientDay, clientTermsDescription, dayBounds, daysBetween, sundayOf, termsDescription, csvCell, fmtDur, greeting, safeCssColor, schemeColor, shortDateRange, shortDateRangeYear, shortYmd, utcWeekday, validYmd } from "./format.ts";
+import { addDays, clientColor, clientDay, clientTermsDescription, dayBounds, daysBetween, sundayOf, termsDescription, csvCell, fmtDur, greeting, safeCssColor, schemeColor, shortDateRange, shortDateRangeYear, shortYmd, todayStr, utcWeekday, validYmd } from "./format.ts";
+
+describe("todayStr year padding (#1546)", () => {
+  test("years under 1000 are padded to 4 digits", () => {
+    const d = new Date(2000, 5, 15);
+    d.setFullYear(99);
+    expect(todayStr(d)).toBe("0099-06-15");
+    d.setFullYear(5);
+    expect(todayStr(d)).toBe("0005-06-15");
+  });
+
+  test("ordinary years are unchanged", () => {
+    expect(todayStr(new Date(2026, 10, 25))).toBe("2026-11-25");
+  });
+});
 
 describe("addDays", () => {
   test("crosses month and year boundaries", () => {

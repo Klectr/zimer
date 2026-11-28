@@ -4,7 +4,7 @@
  *  projects, and its delete action. */
 
 import type { Database } from "bun:sqlite";
-import { clientColor, durationSeconds, esc, fmtDur, PAYMENT_TERMS, round2, schemeColor, termsDescription, termsKey } from "../lib/format.ts";
+import { clientColor, durationSeconds, esc, fmtDur, PAYMENT_TERMS, round2, schemeColor, termsDescription, termsKey, todayStr } from "../lib/format.ts";
 import type { PaymentTermsKey } from "../lib/format.ts";
 import { icon } from "../lib/icons.ts";
 import { THEMES, themeKey } from "../lib/theme.ts"; /* #884 */
@@ -139,7 +139,7 @@ export function createManageViews(deps: ManageViewDeps) {
        FROM time_entries e JOIN projects p ON p.id = e.project_id
        WHERE p.client_id IS NOT NULL GROUP BY p.client_id`).all() as any[];
     for (const r of lasts) { const ins = byClient.get(r.client_id); if (ins) ins.last = r.last; }
-    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    const today = todayStr(now);
     const overdueRule = deps.isOverdue ?? ((r: { status: string; due_date: string | null }) => r.status === "sent" && !!r.due_date && r.due_date < today);
     const invoices = db.query(
       `SELECT i.number, i.status, i.due_date, i.tax_rate, i.client_id, c.payment_terms AS client_payment_terms,

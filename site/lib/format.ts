@@ -101,9 +101,10 @@ export function shortDateRangeYear(from: string | null | undefined, to: string |
     : `${shortYmd(from)}, ${y1} – ${shortYmd(to)}, ${y2}`;
 }
 
-export function todayStr(): string {
-  const n = new Date();
-  return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`;
+export function todayStr(at: Date = new Date()): string {
+  const yy = at.getFullYear();
+  const yStr = yy >= 0 && yy <= 9999 ? String(yy).padStart(4, "0") : String(yy);
+  return `${yStr}-${String(at.getMonth() + 1).padStart(2, "0")}-${String(at.getDate()).padStart(2, "0")}`;
 }
 
 export function greeting(at: Date = new Date()): string {
