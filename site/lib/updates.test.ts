@@ -6,6 +6,7 @@
  */
 import { describe, expect, test, beforeAll, afterAll } from "bun:test";
 import { checkForUpdates, updateStatusFromFeed, updateSectionHtml } from "./updates.ts";
+import { appVersion } from "./version.ts";
 
 const CURRENT = "1.0.0";
 const MAJOR = 1;
@@ -110,5 +111,22 @@ describe("check-for-updates button progress wiring (#406)", () => {
     expect(html).toContain('hx-disabled-elt="#check-updates-btn"');
     expect(html).toContain('class="btn-spinner"');
     expect(html).toContain("tk-logo-hands");
+  });
+});
+
+describe("merged About & updates card (#1223)", () => {
+  test("about actions merge into one card and the version shows once", () => {
+    const html = updateSectionHtml({ aboutActionsHtml: `<a href="/changelog">Changelog</a>` });
+    expect(html).toContain('id="about"');
+    expect(html).toContain("About &amp; updates");
+    expect(html).toContain('href="/changelog"');
+    expect(html).toContain('id="check-updates-btn"');
+    expect(html.split(appVersion()).length - 1).toBe(1);
+  });
+
+  test("plain section keeps the Updates card shape", () => {
+    const html = updateSectionHtml();
+    expect(html).toContain('id="update-section"');
+    expect(html).toContain("Updates");
   });
 });

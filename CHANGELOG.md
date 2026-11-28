@@ -2,6 +2,27 @@
 
 What's new in Zimer, newest first.
 
+## 2026-11-21
+
+- **Zimer has a new look, everywhere.** Every page follows one design system: calmer surfaces, one type and spacing scale, and a single pumpkin accent for the action that matters most. Icons replace text symbols, and buttons say what they do.
+- **The Zimer page puts your timer and today side by side.** On wide screens the timer card and Today's entries share a row, today, this week, and unbilled sit in one compact strip, and the whole page scrolls as one.
+- **The calendar reads better.** Weeks open on your earliest entry, blocks use your client colors and keep their times visible, runs of empty days fold away in the agenda, this week compares to the same point last week, and phones scroll the page instead of a small box.
+- **Clients is one quiet table.** One row per client: hours this month, unbilled, outstanding, and when you last tracked. Hover a row for its projects and open Zinvoices; click it to manage projects, which now come first in the dialog.
+- **Settings is one ordered column.** Business profile, preferences, your data (backup and CSV exports), and About & updates, centered on wide screens. Saving confirms with a toast.
+- **The Zinvoices list puts dates on the status.** The list is number, client, status, and total. The chip says what's next (Due Dec 14, Overdue 12d) and its tooltip says when it was sent or paid. On phones each row stacks into a clean card.
+- **New Zinvoices keep the billing period you pick.** The From and To dates are saved and printed as the billing period, even when the period starts before your first worked day, and the next Zinvoice picks up the day after it ends. The live total shows thousands separators again.
+- **Zimer remembers when you sent a Zinvoice.** Sending records the date, and it shows in the Zinvoice's timeline and the list.
+- **Zinvoice PDFs are cleaner.** Your logo is back in the header, long descriptions wrap instead of being cut off, dates and dashes print properly, and the due date appears once, right under the total. The badge only appears for Overdue, Paid, or Draft.
+- **PDFs tell your client how to pay.** Your payment instructions print under How to pay, and the link only says Pay online when a card payment is set up.
+- **Your clients see "invoice", not "Zinvoice".** The PDF and the public page use the plain word; Zinvoice stays the name inside Zimer.
+- **The public Zinvoice page is complete.** It shows who it's from and who it's for, hours × rate on each line, your payment instructions when there's no card link, and a PDF download.
+- **Zimer warns before a Zinvoice goes out incomplete.** You'll see a note when your business name isn't set (the Zinvoice wouldn't say who it's from), and when a sent Zinvoice gives your client no way to pay.
+- **Mark time as non-billable.** Every entry has a Billable checkbox. Unchecked time still counts toward your day and week, but it never lands on a Zinvoice and carries no amount in the CSV. On the calendar it's drawn as an outline.
+- **Times stay where you worked them.** Each entry remembers the time zone it was logged in, so 8–5 worked in California still reads 8–5 when you open Zimer in Florida, and it stays on the day you worked it, in the calendar, the timer page, Zinvoice dates, and the CSV.
+- **New Zinvoices follow the client you pick.** Switching clients updates the rate and due date to that client's, and clearing the client removes its time from the form.
+- **Faster and lighter.** Responses are compressed, images are smaller, the Zinvoices list loads less, and the calendar does less work per week.
+- **Privacy and accessibility.** Session recording is off inside the app, secondary text meets WCAG AA contrast, selected rows announce themselves to screen readers, and status chips can be reached with the keyboard.
+
 ## 2026-10-27
 
 - **Zimer can be found now.** The homepage, this changelog, and the legal pages are open to search engines, with a sitemap and crawler rules to match. Searching for a time tracker that turns hours into an invoice can actually land here.

@@ -1,14 +1,21 @@
-/** Calendar views: week grid, day columns, entry blocks, supporting pane,
- *  the entry dialog + inline calendar script, and the edit-entry page.
- *  Week data arrives through injected queries and helpers; every existing
- *  call site keeps working unchanged. */
+/** Calendar views: the week presentations (ui visualizer grid + ui week
+ *  agenda), supporting pane, the entry dialog + inline calendar script,
+ *  and the edit-entry page. Week data arrives through injected queries
+ *  and helpers; every existing call site keeps working unchanged. */
 
 import type { Database, Statement } from "bun:sqlite";
-import { addDays, durationSeconds, entryInvoiceMark, entryIsLocked, esc, fmtDur, schemeColor } from "../lib/format.ts";
-import { icon } from "../lib/icons.ts";
-import { dayTargetSecs } from "../lib/domain.ts"; /* #908: short-day tint follows the user's daily target */
+import { addDays, durationSeconds, entryInvoiceMark, entryIsLocked, esc, fmtDur, schemeColor, utcWeekday, validYmd } from "../lib/format.ts";
 import { workspaceEmpty } from "../lib/demo.ts"; /* #300: first-run hint */
+import { button, linkButton } from "../ui/button.ts";
+import { selectField, textField } from "../ui/field.ts";
+import { checkboxField } from "../ui/choice.ts";
+import { weekView, type WeekDay, type WeekEntry } from "../ui/week-view.ts";
+import { iconButton } from "../ui/icon-button.ts";
+import { visualizer, type VizDay, type VizEntry } from "../ui/visualizer.ts";
+import { calFirstRun, calHint, calLegend, weekClients, weekNav, weekSummary, zinvoiceNudge } from "./calendar-pane.ts";
+import { trendDelta } from "../ui/trend-delta.ts";
 import type { Entry } from "../lib/types.ts";
+import { entryDay, entryZone, onWallDays, validTz, wallParts, widenedWindow, ymdOf } from "../lib/wall.ts";
 
 export interface CalendarViewDeps {
   db: Database;
@@ -16,29 +23,20 @@ export interface CalendarViewDeps {
   qRange: Statement;
   entrySelect: string;
   layout: (title: string, body: string, active?: "timer" | "calendar" | "manage" | "invoices", fixed?: boolean) => string;
-  projectOptions: (selected?: number | null) => string;
+  projectOptionRows: () => { id: number; name: string; client: string | null }[];
   weekTargetBar: (weekTotalSecs: number) => string;
   calHourPx: number;
 }
 
 export function createCalendarViews(deps: CalendarViewDeps) {
-  /** Night = 7 PM – 6 AM. Star scatter per night band, as [left%, top%] pairs. */
-  const NIGHT_STARS_AM = [[12, 8], [68, 20], [34, 40], [82, 58], [50, 78], [22, 90]];
-  const NIGHT_STARS_PM = [[30, 10], [70, 28], [48, 50], [16, 72], [62, 90]];
-  /** Wavy horizon where day meets night: filled with the same translucent
-      purple so it composites seamlessly with the band. */
-  const WAVE_AM = `<svg class="cal-wave cal-wave-am" viewBox="0 0 120 12" preserveAspectRatio="none" aria-hidden="true"><path d="M0 0H120V5Q105 11 90 5T60 5T30 5T0 5Z"/></svg>`;
-  const WAVE_PM = `<svg class="cal-wave cal-wave-pm" viewBox="0 0 120 12" preserveAspectRatio="none" aria-hidden="true"><path d="M0 12H120V7Q105 1 90 7T60 7T30 7T0 7Z"/></svg>`;
-  /** #324: each star gets a random twinkle phase (negative delay) and a
-      slightly varied duration, so the night bands shimmer organically
-      instead of twinkling in lockstep across all 7 day columns. */
-  function nightStars(list: number[][]): string {
-    return list.map(([x, y]) =>
-      `<span class="cal-star" style="left:${x}%;top:${y}%;animation-delay:${(-(Math.random() * 3.2)).toFixed(2)}s;animation-duration:${(2.6 + Math.random() * 1.6).toFixed(2)}s">✦</span>`
-    ).join("");
-  }
+  const { db, qOne, qRange, entrySelect: ENTRY_SELECT, layout, projectOptionRows, weekTargetBar, calHourPx } = deps;
 
-  const { db, qOne, qRange, entrySelect: ENTRY_SELECT, layout, projectOptions, weekTargetBar, calHourPx } = deps;
+  /* #1121: the project pickers' options as data — the same rows and
+     "Name (Client)" labels the Timer panel's picker uses. */
+  function projectSelectOptions() {
+    return [{ value: "", label: "No project" },
+      ...projectOptionRows().map(r => ({ value: String(r.id), label: r.client ? `${r.name} (${r.client})` : r.name }))];
+  }
 
   /* #578: description suggestions for the entry dialog — the 15 most recently
      used non-blank descriptions, deduped. Same pattern as the timer start
@@ -62,50 +60,24 @@ export function createCalendarViews(deps: CalendarViewDeps) {
      ?tz= on week requests. Without a valid tz we keep the legacy server-local
      behavior. */
   const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-  const ymdOf = (p: { y: number; m: number; d: number }) =>
-    `${p.y}-${String(p.m).padStart(2, "0")}-${String(p.d).padStart(2, "0")}`;
-  /** Wall-clock parts of an instant in the client's zone. */
-  function tzParts(d: Date, tz: string | null): { y: number; m: number; d: number; hh: number; mm: number } {
-    if (!tz) return { y: d.getFullYear(), m: d.getMonth() + 1, d: d.getDate(), hh: d.getHours(), mm: d.getMinutes() };
-    const p: Record<string, string> = {};
-    for (const x of new Intl.DateTimeFormat("en-US", { timeZone: tz, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).formatToParts(d)) p[x.type] = x.value;
-    return { y: +p.year, m: +p.month, d: +p.day, hh: +p.hour, mm: +p.minute };
-  }
-  /** Validate an IANA zone string; null when absent or invalid. */
-  function validTz(tz: string | null | undefined): string | null {
-    if (!tz || tz.length > 64 || !/^[A-Za-z0-9_+\-]+(\/[A-Za-z0-9_+\-]+)+$/.test(tz)) return null;
-    try { new Intl.DateTimeFormat("en-US", { timeZone: tz }); return tz; } catch { return null; }
-  }
-  /** UTC offset of a zone at an instant, in minutes (CDT = -300). */
-  function zoneOffsetMin(tz: string, at: Date): number {
-    const p: Record<string, string> = {};
-    for (const x of new Intl.DateTimeFormat("en-US", { timeZone: tz, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }).formatToParts(at)) p[x.type] = x.value;
-    const asUTC = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second);
-    return Math.round((asUTC - at.getTime()) / 60000);
-  }
+  /** Wall-clock parts of an instant in the viewer's zone (framing only:
+      today, the now line). Entries use their own zone (#1081). */
+  const tzParts = (d: Date, tz: string | null) => wallParts(d, tz);
   /** Sunday of the week containing a YYYY-MM-DD, from the calendar date alone
       (weekday-safe in every zone, unlike noon-anchored Date parsing). */
   function sundayOfYmd(dateStr: string): string {
     const [y, m, d] = dateStr.split("-").map(Number);
-    return addDays(dateStr, -new Date(Date.UTC(y, m - 1, d, 12)).getUTCDay());
+    return addDays(dateStr, -utcWeekday(y, m, d));
   }
-  const weekdayOf = (y: number, m: number, d: number) => WEEKDAYS[new Date(Date.UTC(y, m - 1, d, 12)).getUTCDay()];
-  /** [from, to] ISO instants covering the client's week starting Sunday `sun`.
-      Both bounds are computed independently so DST-transition weeks stay
-      contiguous with their neighbors. Falls back to the legacy naive-local
-      strings without a tz. */
-  function weekBoundsISO(sun: string, tz: string | null): [string, string] {
-    if (!tz) return [sun + "T00:00:00", addDays(sun, 7) + "T00:00:00"];
-    return [new Date(localMidnightUTC(tz, sun)).toISOString(),
-            new Date(localMidnightUTC(tz, addDays(sun, 7))).toISOString()];
-  }
-  /** UTC instant of 00:00 local on a YYYY-MM-DD in tz. Iterative: the offset
-      is sampled at the guess and refined, converging across DST transitions. */
-  function localMidnightUTC(tz: string, dateStr: string): number {
-    const [y, m, d] = dateStr.split("-").map(Number);
-    let guess = Date.UTC(y, m - 1, d);
-    for (let i = 0; i < 3; i++) guess = Date.UTC(y, m - 1, d) - zoneOffsetMin(tz, new Date(guess)) * 60000;
-    return guess;
+  const weekdayOf = (y: number, m: number, d: number) => WEEKDAYS[utcWeekday(y, m, d)];
+  /** #1081: a week's entries — every entry whose own-zone wall day is in
+      the week starting Sunday `sun` (legacy NULL-zone rows use the viewer's
+      zone). Fetched over a widened instant window, cut exactly in code. */
+  function weekEntries(sun: string, tz: string | null): Entry[] {
+    const [f, t] = widenedWindow(sun, addDays(sun, 7));
+    const rows = db.query(
+      `${ENTRY_SELECT} WHERE e.start_time >= ? AND e.start_time < ? ORDER BY e.start_time`).all(f, t) as Entry[];
+    return onWallDays(rows, sun, addDays(sun, 7), tz);
   }
 
   /** #572: week-scoped data shared by the carousel strips, the week grid
@@ -122,18 +94,17 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     clientRows: { name: string; color: string | null; secs: number }[];
     uninvoiced: number;
     prevBillable: number;
+    weekPhase: "past" | "current" | "future";
   }
 
   function weekData(sun: string, tz: string | null): CalWeekData {
     /* "today" in the client's zone — the server may be on a different date. */
     const today = ymdOf(tzParts(new Date(), tz));
-    // Fetch the whole week in one query, then bucket entries by the client's local day.
-    const [wFrom, wTo] = weekBoundsISO(sun, tz);
-    const rows = db.query(
-      `${ENTRY_SELECT} WHERE e.start_time >= ? AND e.start_time < ? ORDER BY e.start_time`).all(wFrom, wTo) as Entry[];
+    /* #1081: bucket by each entry's own wall day, not the viewer's. */
+    const rows = weekEntries(sun, tz);
     const byDay = new Map<string, Entry[]>();
     for (const e of rows) {
-      const key = ymdOf(tzParts(new Date(e.start_time), tz));
+      const key = entryDay(e, tz);
       if (!byDay.has(key)) byDay.set(key, []);
       byDay.get(key)!.push(e);
     }
@@ -144,311 +115,225 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     for (const e of rows) {
       const secs = durationSeconds(e.start_time, e.end_time);
       weekTotal += secs;
-      /* Billable = entry has a project (hence a client); non-billable = no project. */
-      if (e.project_id != null) weekBillable += secs;
+      /* Billable = entry has a project (hence a client) and is flagged
+         billable (#1082); no project or flagged off = non-billable. */
+      if (e.project_id != null && e.billable !== 0) weekBillable += secs;
       const key = e.client_name ?? "__none";
       const cur = byClient.get(key) ?? { name: e.client_name ?? "No client", color: e.client_color, secs: 0 };
       cur.secs += secs;
       byClient.set(key, cur);
     }
     const clientRows = [...byClient.values()].sort((a, b) => b.secs - a.secs);
-    /* #351: only invoiceable time counts as "not yet invoiced" — entries with a
-       project. Non-project time can never land on an invoice. */
+    /* #351: only invoiceable time counts as "not yet invoiced" — billable
+       entries with a project. Non-project or non-billable (#1082) time can
+       never land on an invoice. */
     const uninvoiced = rows.reduce(
-      (s, e) => s + (e.invoice_id == null && e.project_id != null ? durationSeconds(e.start_time, e.end_time) : 0), 0);
+      (s, e) => s + (e.invoice_id == null && e.project_id != null && e.billable !== 0 ? durationSeconds(e.start_time, e.end_time) : 0), 0);
     /* #351: week-over-week delta vs the immediately preceding week — billable
        vs billable, since it sits next to the billable figure. */
-    const [pFrom, pTo] = weekBoundsISO(addDays(sun, -7), tz);
-    const prevRows = qRange.all(pFrom, pTo) as Entry[];
-    const prevBillable = prevRows.reduce(
-      (a, e) => a + (e.project_id != null ? durationSeconds(e.start_time, e.end_time) : 0), 0);
-    return { tz, today, sun, rows, byDay, weekTotal, weekBillable, clientRows, uninvoiced, prevBillable };
+    const prevSun = addDays(sun, -7);
+    const prevRows = onWallDays(qRange.all(...widenedWindow(prevSun, sun)) as Entry[], prevSun, sun, tz);
+    /* #1219: on the current week, compare against the previous week only up
+       to the same moment (now − 7 days) — a partial week against a full one
+       always reads as a steep drop early in the week. */
+    const currentSun = sundayOfYmd(today);
+    const weekPhase = sun === currentSun ? "current" : sun > currentSun ? "future" : "past";
+    const cutoff = weekPhase === "current" ? Date.now() - 7 * 86_400_000 : Infinity;
+    const prevBillable = prevRows.reduce((a, e) => {
+      if (e.project_id == null || e.billable === 0) return a;
+      const start = new Date(e.start_time).getTime();
+      if (start >= cutoff) return a;
+      const end = Math.min(e.end_time ? new Date(e.end_time).getTime() : Date.now(), cutoff);
+      return a + Math.max(0, Math.round((end - start) / 1000));
+    }, 0);
+    return { tz, today, sun, rows, byDay, weekTotal, weekBillable, clientRows, uninvoiced, prevBillable, weekPhase };
   }
 
-  /** #521: one .cal-day column. Extracted from weekInner's loop body so the
-      week grid and the day view render identical lanes. */
-  function dayColumnHtml(day: string, data: CalWeekData, animDelay: number): string {
-    const { tz, today } = data;
-    const toMin = (iso: string) => { const p = tzParts(new Date(iso), tz); return p.hh * 60 + p.mm; };
-    const toHM = (mins: number) => `${String(Math.floor(mins / 60)).padStart(2, "0")}:${String(mins % 60).padStart(2, "0")}`;
+  const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const toHM = (mins: number) => `${String(Math.floor(mins / 60)).padStart(2, "0")}:${String(mins % 60).padStart(2, "0")}`;
+  /** 12-hour wall-clock label ("9:02 AM") for agenda rows. */
+  function fmt12(mins: number): string {
+    const h24 = Math.floor(mins / 60);
+    const suffix = h24 >= 12 ? "PM" : "AM";
+    const h = h24 % 12 === 0 ? 12 : h24 % 12;
+    return `${h}:${String(mins % 60).padStart(2, "0")} ${suffix}`;
+  }
 
-    const [y, m, d] = day.split("-").map(Number);
-    const wd = weekdayOf(y, m, d).slice(0, 3);
-    const entries = data.byDay.get(day) ?? [];
-    const total = entries.reduce((a, e) => a + durationSeconds(e.start_time, e.end_time), 0);
-    /* Billable = entry has a project (hence a client); non-billable = no project. */
-    const billable = entries.reduce(
-      (a, e) => a + (e.project_id != null ? durationSeconds(e.start_time, e.end_time) : 0), 0);
-    const isToday = day === today;
-    /* Subtle tint for past days under the daily target; never tint today or
-       future days. #908: follows the user's setting, not the old 8h. */
-    const pastShort = day < today && total < dayTargetSecs(db);
-
-    // Entries render full-width; an entry involved in an overlap gets a top
-    // drop shadow so it reads as elevated above the entry beneath it.
-    const nowP = tzParts(new Date(), tz);
+  /** One day's entries as positioned blocks, shared by both week
+      presentations: client-local start/end minutes, running entries
+      extended to now (never shorter than 15 minutes), sorted by start. */
+  function dayBlocks(day: string, data: CalWeekData): { e: Entry; a: number; b: number }[] {
+    /* #1081: an entry's minutes are its own wall clock. An entry that ends
+       on a later wall day runs to the bottom of its start day. */
+    const nowP = tzParts(new Date(), data.tz);
     const nowMin = nowP.hh * 60 + nowP.mm;
-    const sortedBlocks = entries
+    return (data.byDay.get(day) ?? [])
       .map((e) => {
-        const a = toMin(e.start_time);
-        const b = Math.max(e.end_time ? toMin(e.end_time) : nowMin, a + 15);
+        const zone = entryZone(e, data.tz);
+        const sp = wallParts(e.start_time, zone);
+        const a = sp.hh * 60 + sp.mm;
+        let end = nowMin;
+        if (e.end_time) {
+          const ep = wallParts(e.end_time, zone);
+          end = ymdOf(ep) === day ? ep.hh * 60 + ep.mm : 1440;
+        }
+        const b = Math.max(end, a + 15);
         return { e, a, b };
       })
       .sort((x, y) => x.a - y.a);
-    const entryHtml = sortedBlocks
-      .map(({ e, a, b }, i) => {
-      const top = (a / 60) * calHourPx;
-      const trueH = ((b - a) / 60) * calHourPx;
-      /* #275: sub-30-minute entries would be unreadably thin at true scale,
-         but the old 26px floor read too chunky — floor at 22px with compact
-         styling (tighter padding, smaller text, no duration line). */
-      const compact = trueH < 26;
-      /* #279: a floored short entry overflows its true slot and the next
-         card paints over it, burying the 4px gap — cap the floor at the
-         room before the next entry starts. Back-to-back short entries
-         render at true height (thin but truthful, gap preserved); the
-         floor still applies when there's room. Never shrink below true
-         height, so overlapping entries keep full height. */
-      /* #857: the last entry of the day has no next entry, but the lane still
-         ends at midnight — cap the minimum-height floor there too, so a short
-         entry starting near 24:00 can't poke past the lane's bottom edge.
-         laneRoomPx is a hard clip (the +2 offsets the #273 top inset); it may
-         cut into the a+15 overlap slop but never below the genuine duration,
-         since b <= 1439 < 1440 always. */
-      const nextA = i + 1 < sortedBlocks.length ? sortedBlocks[i + 1].a : 1440;
-      const roomPx = ((nextA - a) / 60) * calHourPx;
-      const laneRoomPx = ((1440 - a) / 60) * calHourPx + 2;
-      const h = Math.min(Math.max(trueH, 22), Math.max(roomPx, trueH), laneRoomPx);
-      /* #273: 2px visual inset top and bottom so stacked cards don't touch.
-         The positioning slot is unchanged; only the painted card shrinks. */
-      const color = schemeColor(e.client_color) || "#9aa0a6"; // no-client: neutral gray, distinct from client colors
-      const running = !e.end_time;
-      const overlap = sortedBlocks.some((o) => o.e !== e && o.a < b && o.b > a);
-      /* #277: resize handles only on entries of 1 hour or more — the 12px
-         hit areas swallow taps on short entries. Shorter entries stay
-         fully tappable and resize via the edit dialog. */
-      const locked = entryIsLocked(e); /* #334: sent/paid time is a frozen record */
-      const resizable = !running && (b - a) >= 60 && !locked;
-      const desc = e.description ? esc(e.description) : "<em>No description</em>";
-      const dur = fmtDur(durationSeconds(e.start_time, e.end_time));
-      /* #332: invoiced time dims instead of a chip — the week grid is too
-         dense for a pill on every card. The invoice number lives in the
-         hover tooltip + aria-label. */
-      const mark = entryInvoiceMark(e);
-      const markA11y = mark ? `, ${mark.label} ${esc(e.invoice_number || "")}` : "";
-      /* #500: house M3 plain tooltip (data-tip) instead of the native title —
-         same mark info the timer page's inv-mark chip shows via #498; hover,
-         450ms touch long-press (site-wide [data-tip] handler), and
-         :focus-visible (the card is keyboard-focusable). */
-      const markTip = mark ? ` data-tip="${esc(mark.title)}"` : "";
-      /* #504: resize handles carry no tooltip at all — they're aria-hidden
-         and gestural (grip + resize cursor on entry hover). This removes
-         the last two native title= tooltips in the app. */
-      const resizeHandles = resizable
-        ? `<div class="cal-resize top" data-resize="start" aria-hidden="true"></div><div class="cal-resize" data-resize="end" aria-hidden="true"></div>`
-        : "";
-      /* #479: the aria-label is a plain-text accessible name — `desc`
-         carries <em> markup for untitled entries, which screen readers
-         would announce as literal tags. */
-      const label = `${esc(e.description || "No description")}, ${dur}${markA11y}`;
-      /* #851: an entry ending at midnight touches the lane's bottom edge — flag
-         it so its bottom corners get the lane's medium radius. Pre-#849 the
-         z-6 bottom cutter stamped that rounding over entries; post-#849 the
-         cutter sits below entries (z-0, no fringe) and edge entries fell back
-         to their small corners, reading as sharp. */
-      const edgeBottom = b >= 1439 && !compact;
-      /* #853: an entry starting at midnight touches the lane's top edge — flag
-         it so its top corners get the lane's medium radius. Mirrors #851's
-         cal-edge-bottom: entries paint above the z-0 top cutter, so without
-         this their small corners would cover the cutter's rounding and read
-         as sharp. */
-      const edgeTop = a <= 0 && !compact;
-      return `<div class="cal-entry${running ? " running" : ""}${overlap ? " overlap" : ""}${compact ? " cal-compact" : ""}${mark ? " invoiced" : ""}${edgeBottom ? " cal-edge-bottom" : ""}${edgeTop ? " cal-edge-top" : ""}"
-          style="top:${(top + 2).toFixed(1)}px;height:${(h - 4).toFixed(1)}px;--c:${esc(color)}"
-          data-id="${e.id}" data-desc="${esc(e.description)}" data-project-id="${e.project_id ?? ""}"
-          data-date="${day}" data-start="${toHM(a)}" data-end="${running ? "" : toHM(Math.min(b, 1439))}"
-          data-locked="${locked ? esc(e.invoice_number || "") : ""}"
-          tabindex="0" role="button" aria-label="${label}"${markTip}>
-        <div class="cal-entry-desc">${e.project_name ? `<strong>${esc(e.project_name)}</strong> · ` : ""}${desc}</div>
-        <div class="cal-entry-dur">${dur}</div>
-        ${resizeHandles}
-      </div>`;
-    }).join("");
-    /* #213: "now" is a client concept (the server may be in another
-       timezone). The line is placed by placeNow() in calScript. */
-    const nowLine = "";
-    // #69: day stats live in an M3 plain tooltip on the header (hover / focus / long-press),
-    // not in the layout — the header stays two lines so time slots sit higher.
-    const tip = total > 0 ? `${fmtDur(total)} total · ${fmtDur(billable)} billable` : "";
-    const headAttrs = tip
-      ? ` tabindex="0" data-tip="${tip}" aria-label="${esc(wd)} ${d}: ${tip}"`
-      : "";
-    return `<div class="cal-day${isToday ? " today" : ""}${pastShort ? " paced-short" : ""}" style="animation-delay:${animDelay}ms">
-      <div class="cal-day-head"${headAttrs}>
-        <div class="md-label-large muted">${esc(wd)}</div>
-        <div class="cal-day-num${isToday ? " today" : ""}">${d}</div>
-      </div>
-      <div class="cal-day-col" data-date="${day}"><div class="cal-night cal-night-am" aria-hidden="true">${WAVE_AM}${nightStars(NIGHT_STARS_AM)}</div><div class="cal-night cal-night-pm" aria-hidden="true">${WAVE_PM}${nightStars(NIGHT_STARS_PM)}</div>${entryHtml}${nowLine}</div>
-    </div>`;
+  }
+
+  function entryTitle(e: Entry): string {
+    return e.project_name
+      ? `${e.project_name} — ${e.description || "No description"}`
+      : (e.description || "No description");
+  }
+
+  function dayTotalSecs(day: string, data: CalWeekData): number {
+    return (data.byDay.get(day) ?? []).reduce((s, e) => s + durationSeconds(e.start_time, e.end_time), 0);
+  }
+
+  /** The week's days as visualizer input — the wide time-grid presentation. */
+  function vizDays(wd: CalWeekData): VizDay[] {
+    const days: VizDay[] = [];
+    for (let i = 0; i < 7; i++) {
+      const day = addDays(wd.sun, i);
+      const [y, m, d] = day.split("-").map(Number);
+      const blocks = dayBlocks(day, wd);
+      const entries: VizEntry[] = blocks.map(({ e, a, b }) => {
+        const locked = entryIsLocked(e); /* #334: sent/paid time is a frozen record */
+        return {
+          id: String(e.id),
+          title: entryTitle(e),
+          desc: e.description || undefined,
+          projectId: e.project_id != null ? String(e.project_id) : undefined,
+          nonBillable: e.billable === 0, /* #1082 */
+          tz: validTz(e.tz) ?? undefined, /* #1081: drag/resize saves in the entry's own zone */
+          startMin: a,
+          endMin: b,
+          running: !e.end_time,
+          invoiced: !!entryInvoiceMark(e),
+          color: schemeColor(e.client_color) ?? undefined,
+          locked,
+          lockedLabel: locked ? (e.invoice_number || "1") : undefined,
+          /* Entries render full-width; an entry involved in an overlap
+             gets the layered shadow so it reads as elevated above the
+             entry beneath it. */
+          overlap: blocks.some((o) => o.e !== e && o.a < b && o.b > a),
+        };
+      });
+      const secs = dayTotalSecs(day, wd);
+      const total = secs > 0 ? fmtDur(secs) : "";
+      const count = entries.length;
+      const invoiced = entries.filter((e) => e.invoiced).length;
+      days.push({
+        date: day,
+        label: `${weekdayOf(y, m, d).slice(0, 1)} ${d}`,
+        total,
+        detail: `${weekdayOf(y, m, d)} ${MONTHS[m - 1]} ${d} · ${secs > 0 ? fmtDur(secs) : "0h"} tracked · ${count} ${count === 1 ? "entry" : "entries"}${invoiced ? ` · ${invoiced} invoiced` : ""}`,
+        isToday: day === wd.today,
+        entries,
+      });
+    }
+    return days;
+  }
+
+  /** The week's days as weekView input — the narrow agenda presentation.
+      Entry rows carry the same data-* attributes as the grid blocks, so
+      the edit dialog opens unchanged. */
+  function agendaDays(wd: CalWeekData): WeekDay[] {
+    const days: WeekDay[] = [];
+    for (let i = 0; i < 7; i++) {
+      const day = addDays(wd.sun, i);
+      const [y, m, d] = day.split("-").map(Number);
+      const wdName = weekdayOf(y, m, d);
+      const totalSecs = dayTotalSecs(day, wd);
+      const entries: WeekEntry[] = dayBlocks(day, wd).map(({ e, a, b }) => {
+        const running = !e.end_time;
+        const locked = entryIsLocked(e); /* #334: sent/paid time is a frozen record */
+        const mark = entryInvoiceMark(e);
+        const markA11y = mark ? `, ${mark.label} ${e.invoice_number || ""}` : "";
+        /* #479: the aria-label is a plain-text accessible name — no markup. */
+        const label = `${e.description || "No description"}, ${fmtDur(durationSeconds(e.start_time, e.end_time))}${markA11y}`;
+        return {
+          title: entryTitle(e),
+          meta: `${fmt12(a)} – ${running ? "now" : fmt12(b)}${e.billable === 0 ? " · Non-billable" : ""}`, /* #1082 */
+          duration: fmtDur(durationSeconds(e.start_time, e.end_time)),
+          running,
+          invoiced: !!mark,
+          dot: schemeColor(e.client_color) ?? undefined,
+          attrs: `data-entry-row data-id="${e.id}" data-desc="${esc(e.description)}" data-project-id="${e.project_id ?? ""}" data-billable="${e.billable === 0 ? "0" : "1"}" data-tz="${esc(validTz(e.tz) ?? "")}" data-date="${day}" data-start="${toHM(a)}" data-end="${running ? "" : toHM(Math.min(b, 1439))}" data-locked="${locked ? esc(e.invoice_number || "") : ""}" tabindex="0" role="button" aria-label="${esc(label)}"`,
+        };
+      });
+      days.push({
+        weekday: wdName.slice(0, 3),
+        dateLabel: `${MONTHS[m - 1]} ${d}`,
+        date: day,
+        total: totalSecs > 0 ? fmtDur(totalSecs) : "",
+        isToday: day === wd.today,
+        addHtml: iconButton({ icon: "add", label: `Log time ${wdName}`, tip: null, attrs: `data-ag-new="${day}"` }),
+        entries,
+      });
+    }
+    return days;
   }
 
   /** #572: the supporting pane's inner HTML for one week. Rendered live in
       the aside and once per carousel strip inside a <template>, so the pane
       swaps instantly (no fetch) when a pan settles on a pre-rendered week. */
-  function paneInner(wd: CalWeekData): string {
-    const { sun, today, weekTotal, weekBillable, clientRows, uninvoiced, prevBillable } = wd;
+  function paneInner(wd: CalWeekData, empty?: boolean): string {
+    const { sun, today, weekTotal, weekBillable, clientRows, uninvoiced, prevBillable, weekPhase } = wd;
     const prev = addDays(sun, -7), next = addDays(sun, 7);
     const isThisWeek = sun === sundayOfYmd(today);
     const weekLabel = new Date(sun + "T12:00:00").toLocaleDateString([], { month: "short", day: "numeric" });
     const navTitle = isThisWeek ? "This week" : `Week of ${weekLabel}`;
-    const navActions = `
-      ${isThisWeek ? "" : `<a class="md-text-button" href="/calendar" hx-get="/partial/week" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar">Today</a>`}
-      <a class="md-icon-button" href="/calendar?week=${prev}" hx-get="/partial/week?week=${prev}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?week=${prev}" data-slide="prev" data-tip="Previous week" aria-label="Previous week">${icon("chevron_left")}</a>
-      <a class="md-icon-button tip-right" href="/calendar?week=${next}" hx-get="/partial/week?week=${next}" hx-target="#week" hx-swap="innerHTML" hx-push-url="/calendar?week=${next}" data-slide="next" data-tip="Next week" aria-label="Next week">${icon("chevron_right")}</a>`;
+    const weekHref = (w: string) => ({ href: `/calendar?week=${w}`, partial: `/partial/week?week=${w}` });
     const showChipAmount = uninvoiced < weekBillable;
-    const nudgeChip = uninvoiced > 0 ? `
-      <a class="nudge-chip${showChipAmount ? "" : " nudge-chip--solo"}" href="/invoices/new?from=${sun}&to=${addDays(sun, 7)}">
-        ${showChipAmount ? `<span class="md-label-large">${fmtDur(uninvoiced)} not yet zinvoiced</span>` : ""}
-        ${/* #592: the link invoices the VIEWED week, so "this week" lies on
-           past/future weeks. Keep it on the current week, "this period"
-           everywhere else. */ ""}
-        <span class="md-label-large nudge-go">${icon("receipt")} ${isThisWeek ? "Zinvoice this week" : "Zinvoice this period"}</span>
-      </a>` : "";
-    const clientStrip = clientRows.length === 0 ? "" : `
-      <div class="week-clients">
-        ${clientRows.map(c => `
-          <span class="week-client">
-            <span class="week-client-dot"${c.color ? ` style="background:${esc(schemeColor(c.color))}"` : ""}></span>
-            <span class="md-label-medium">${esc(c.name)}</span>
-            <span class="md-label-medium muted">${fmtDur(c.secs)}</span>
-          </span>`).join("")}
-      </div>`;
-    const deltaHtml = (() => {
-      /* #524: no previous-week data → omit the delta AND its separator. A
-         dangling "· —" reads like a half-loaded widget. */
-      if (prevBillable <= 0) return "";
-      const pct = Math.round(((weekBillable - prevBillable) / prevBillable) * 100);
-      /* #542: trend icon comes from the icon system, not a text glyph (↑/↓/→)
-         — house rule, see #448. The svg is aria-hidden; the direction word
-         lives in the span's accessible label so the info survives the swap. */
-      const trend = pct > 0 ? "trend_up" : pct < 0 ? "trend_down" : "trend_flat";
-      const dirWord = pct > 0 ? "up" : pct < 0 ? "down" : "unchanged";
-      const abs = Math.abs(pct);
-      /* #590: the direction word belongs in the VISIBLE text, not just the
-         icon and the aria-label — "100% vs prev week" reads ambiguous at a
-         glance (100% of what, which direction?). */
-      return ` · <span class="muted cal-delta" aria-label="${abs}% ${dirWord} vs prev week">${icon(trend)} ${abs}% ${dirWord} vs prev week</span>`;
-    })();
-    return `
-      <div class="week-nav">
-        <h1 class="md-headline-small">${esc(navTitle)}</h1>
-        <div class="week-nav-actions">
-          ${navActions}
-        </div>
-      </div>
-      <div class="cal-summary">
-        <div class="md-headline-small cal-summary-total">${fmtDur(weekTotal)}</div>
-        <div class="md-label-medium muted cal-summary-sub">${fmtDur(weekBillable)} billable${deltaHtml}</div>
-        ${nudgeChip}
-      </div>
-      ${weekTargetBar(weekTotal)}
-      ${clientStrip}
-      ${/* #781: the create gesture differs per presentation — drag-to-create on
-         the 24h grid, the per-day + button on the narrow agenda. Both variants
-         render in place; the client picks by strip width (see syncCalHint). */ ""}
-      <p class="muted tiny cal-hint"><span class="cal-hint-grid">Drag across the calendar to log time. Click an entry to edit it.</span><span class="cal-hint-agenda">Tap + to log time, tap an entry to edit.</span></p>
-      ${workspaceEmpty(db) ? `<div class="cal-first-run">
-        ${icon("info")}
-        <p class="md-label-large"><strong>New here?</strong> Load fictional sample data to explore the calendar.</p>
-        <form method="post" action="/demo/load" class="inline"><button class="md-text-button" type="submit">Load demo data</button></form>
-      </div>` : ""}`;
+    /* #592: the link invoices the VIEWED week, so "this week" is only true
+       on the current week; "this period" everywhere else. */
+    const nudge = (nav: boolean) => uninvoiced > 0 ? zinvoiceNudge({
+      href: `/invoices/new?from=${sun}&to=${addDays(sun, 7)}`,
+      label: isThisWeek ? "Zinvoice this week" : "Zinvoice this period",
+      amount: showChipAmount ? `${fmtDur(uninvoiced)} not yet Zinvoiced` : undefined,
+      nav,
+    }) : "";
+    /* #524: no previous-week data → no delta and no dangling separator. */
+    const deltaHtml = prevBillable <= 0 || weekPhase === "future" ? undefined : trendDelta({
+      pct: Math.round(((weekBillable - prevBillable) / prevBillable) * 100),
+      vs: weekPhase === "current" ? "vs this time last week" : "vs prev week",
+    });
+    /* The intermediate stacked layout (840–1279px) shows the nudge beside
+       the week arrows; CSS hides whichever copy doesn't apply. */
+    return weekNav({
+        title: navTitle,
+        today: isThisWeek ? undefined : { href: "/calendar", partial: "/partial/week" },
+        prev: weekHref(prev), next: weekHref(next),
+        extraHtml: nudge(true),
+      }) +
+      weekSummary({ total: fmtDur(weekTotal), billable: fmtDur(weekBillable), deltaHtml, nudgeHtml: nudge(false) }) +
+      weekTargetBar(weekTotal) +
+      weekClients(clientRows.map(c => ({ name: c.name, color: c.color ? schemeColor(c.color) : null, dur: fmtDur(c.secs) }))) +
+      calHint() +
+      ((empty ?? workspaceEmpty(db)) ? calFirstRun() : "");
   }
 
-  /** #572: the narrow-container week presentation — seven stacked day sections
-      instead of hour lanes. Picked by container query (the strip is the
-      container), so no JS mode-switching. Entry rows carry the same data-*
-      attributes as grid cards, so the edit dialog opens unchanged. */
-  function agendaHtml(wd: CalWeekData): string {
-    const { tz, today } = wd;
-    const toMin = (iso: string) => { const p = tzParts(new Date(iso), tz); return p.hh * 60 + p.mm; };
-    const toHM = (mins: number) => `${String(Math.floor(mins / 60)).padStart(2, "0")}:${String(mins % 60).padStart(2, "0")}`;
+  /** #572: a carousel strip's inner HTML for one week — the visualizer
+      grid, the narrow agenda, and the week's supporting pane in a
+      <template>. */
+  function stripInnerHtml(sun: string, tz: string | null, pre?: { wd?: CalWeekData; empty?: boolean }): string {
+    const wd = pre?.wd && pre.wd.sun === sun && pre.wd.tz === tz ? pre.wd : weekData(sun, tz);
     const nowP = tzParts(new Date(), tz);
     const nowMin = nowP.hh * 60 + nowP.mm;
-    const sections: string[] = [];
-    for (let i = 0; i < 7; i++) {
-      const day = addDays(wd.sun, i);
-      const [y, m, d] = day.split("-").map(Number);
-      const wdName = weekdayOf(y, m, d);
-      const entries = (wd.byDay.get(day) ?? []).slice().sort((a, b) =>
-        a.start_time < b.start_time ? -1 : a.start_time > b.start_time ? 1 : 0);
-      const total = entries.reduce((a, e) => a + durationSeconds(e.start_time, e.end_time), 0);
-      const rows = entries.map((e) => {
-        const a = toMin(e.start_time);
-        const b = e.end_time ? toMin(e.end_time) : nowMin;
-        const color = schemeColor(e.client_color) || "#9aa0a6"; // no-client: neutral gray, distinct from client colors
-        const running = !e.end_time;
-        const locked = entryIsLocked(e); /* #334: sent/paid time is a frozen record */
-        const mark = entryInvoiceMark(e);
-        const markA11y = mark ? `, ${mark.label} ${esc(e.invoice_number || "")}` : "";
-        const label = `${esc(e.description || "No description")}, ${fmtDur(durationSeconds(e.start_time, e.end_time))}${markA11y}`;
-        const desc = e.description ? esc(e.description) : "<em>No description</em>";
-        return `<div class="cal-ag-row${running ? " running" : ""}${mark ? " invoiced" : ""}" style="--c:${esc(color)}"
-            data-id="${e.id}" data-desc="${esc(e.description)}" data-project-id="${e.project_id ?? ""}"
-            data-date="${day}" data-start="${toHM(a)}" data-end="${running ? "" : toHM(Math.min(b, 1439))}"
-            data-locked="${locked ? esc(e.invoice_number || "") : ""}"
-            tabindex="0" role="button" aria-label="${label}">
-          <span class="cal-ag-time md-label-small muted">${toHM(a)}&ndash;${running ? "now" : toHM(Math.min(b, 1439))}</span>
-          <span class="cal-ag-desc md-body-medium">${e.project_name ? `<strong>${esc(e.project_name)}</strong> · ` : ""}${desc}</span>
-          <span class="cal-ag-dur md-label-medium">${fmtDur(durationSeconds(e.start_time, e.end_time))}</span>
-        </div>`;
-      }).join("");
-      sections.push(`<section class="cal-ag-day${day === today ? " today" : ""}" data-date="${day}">
-        <div class="cal-ag-head">
-          <span class="md-title-small">${esc(wdName.slice(0, 3))}</span>
-          <span class="cal-ag-num${day === today ? " today" : ""}">${d}</span>
-          ${total > 0 ? `<span class="md-label-medium muted">${fmtDur(total)}</span>` : ""}
-          <span class="cal-spacer"></span>
-          <button class="md-icon-button cal-ag-new" data-ag-new="${day}" aria-label="Log time ${esc(wdName)}">${icon("add")}</button>
-        </div>
-        ${rows || `<p class="muted tiny cal-ag-empty">No entries</p>`}
-      </section>`);
-    }
-    return `<div class="cal-agenda">${sections.join("")}</div>`;
-  }
-
-  /** #572: a carousel strip's inner HTML for one week — the 24h grid, the
-      narrow agenda, and the week's supporting pane in a <template>. */
-  function stripInnerHtml(sun: string, tz: string | null): string {
-    const wd = weekData(sun, tz);
-    const lanes: string[] = [];
-    for (let i = 0; i < 7; i++) lanes.push(dayColumnHtml(addDays(sun, i), wd, i * 40));
-    const hourLabels = Array.from({ length: 24 }, (_, h) => {
-      const ampm = h === 0 ? "12 AM" : h < 12 ? `${h} AM` : h === 12 ? "12 PM" : `${h - 12} PM`;
-      const night = h < 6 || h >= 19;
-      return `<span class="cal-hour-label${night ? " night" : ""}" style="top:${(h * calHourPx - 8).toFixed(0)}px">${ampm}</span>`;
-    }).join("");
     return `
-      <div class="cal-scroll" data-enter="3">
-        <div class="cal-grid" style="--cal-hour:${calHourPx}px">
-          <div class="cal-gutter-col">
-            <div class="cal-gutter-spacer"></div>
-            <div class="cal-gutter cal-hours">${hourLabels}</div>
-          </div>
-          ${lanes.join("")}
-          <!-- data-now, not id: one line per strip; placeNow() positions each.
-               htmx's settle restores server attributes on swapped nodes whose
-               id already exists in the DOM, which would wipe placeNow()'s
-               positioning ~20ms after every week swap (#215). -->
-          <div class="cal-now" data-now hidden></div>
-        </div>
-      </div>
-      ${agendaHtml(wd)}
-      <template class="cal-pane-tpl">${paneInner(wd)}</template>`;
+      <div class="cal-scroll" data-enter="3">${visualizer({ days: vizDays(wd), startHour: 0, endHour: 24, hourPx: calHourPx, nowMin })}</div>
+      ${calLegend({ exportHref: `/export/entries.csv?from=${sun}&to=${addDays(sun, 7)}` })}
+      ${weekView({ agendaOnly: true, days: agendaDays(wd) })}
+      <template class="cal-pane-tpl">${paneInner(wd, pre?.empty)}</template>`;
   }
 
   /** #572: one carousel strip — a full week, tagged with its Sunday. */
-  function stripHtml(sun: string, tz: string | null): string {
-    return `<div class="cal-strip" data-sun="${sun}">${stripInnerHtml(sun, tz)}</div>`;
+  function stripHtml(sun: string, tz: string | null, pre?: { wd?: CalWeekData; empty?: boolean }): string {
+    return `<div class="cal-strip" data-sun="${sun}">${stripInnerHtml(sun, tz, pre)}</div>`;
   }
 
   /** Inner HTML of the #week section (everything that changes when entries do).
@@ -460,13 +345,15 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     const tz = validTz(tzParam);
     /* "today" in the client's zone — the server may be on a different date. */
     const today = ymdOf(tzParts(new Date(), tz));
-    const sun = weekStr && /^\d{4}-\d{2}-\d{2}$/.test(weekStr) ? weekStr : sundayOfYmd(today);
+    const validWeek = validYmd(weekStr); /* #1501 */
+    const sun = validWeek ? sundayOfYmd(validWeek) : sundayOfYmd(today); /* #1505: snap to Sunday */
     const wd = weekData(sun, tz);
-    const strips = [addDays(sun, -7), sun, addDays(sun, 7)].map((s) => stripHtml(s, tz)).join("");
+    const empty = workspaceEmpty(db);
+    const strips = [addDays(sun, -7), sun, addDays(sun, 7)].map((s) => stripHtml(s, tz, s === sun ? { wd, empty } : { empty })).join("");
     return `
     <div class="cal-pane-layout">
       <aside class="cal-supporting" data-enter="3" aria-label="Week summary">
-        ${paneInner(wd)}
+        ${paneInner(wd, empty)}
       </aside>
       <div class="cal-carousel">
         <div class="cal-track">
@@ -482,7 +369,8 @@ export function createCalendarViews(deps: CalendarViewDeps) {
   function weekStrip(weekStr?: string, tzParam?: string): string {
     const tz = validTz(tzParam);
     const today = ymdOf(tzParts(new Date(), tz));
-    const sun = weekStr && /^\d{4}-\d{2}-\d{2}$/.test(weekStr) ? weekStr : sundayOfYmd(today);
+    const validWeek = validYmd(weekStr); /* #1501 */
+    const sun = validWeek ? sundayOfYmd(validWeek) : sundayOfYmd(today); /* #1505: snap to Sunday */
     return stripInnerHtml(sun, tz);
   }
 
@@ -497,52 +385,41 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       refresh (#65) never destroys its bindings. Rendered once in the page
       skeleton; the carousel strips never include it. */
   function calDialog(): string {
-    return `<div class="cal-scrim" id="cal-scrim" hidden>
-        <div class="cal-dialog" role="dialog" aria-modal="true" aria-labelledby="cal-dialog-title">
+    return `<div class="cal-scrim ui-scrim" id="cal-scrim" hidden>
+        <div class="cal-dialog ui-dialog" role="dialog" aria-modal="true" aria-labelledby="cal-dialog-title">
           <div class="cal-dialog-head">
-            <h2 class="md-headline-small" id="cal-dialog-title">New entry</h2>
-            <button class="md-icon-button" id="cal-close" type="button" aria-label="Close dialog">${icon("close")}</button>
+            <h2 class="ui-dialog-title" id="cal-dialog-title">New entry</h2>
+            ${iconButton({ icon: "close", label: "Close dialog", id: "cal-close", tip: null })}
           </div>
-          <p class="muted md-body-medium" id="cal-dialog-date"></p>
-          <div class="md-text-field">
-            <input type="text" id="cal-desc" placeholder=" " autocomplete="off" list="tk-desc-suggest-dialog">
-            <label for="cal-desc">Description</label>
-          </div>
+          <p class="muted" id="cal-dialog-date"></p>
+          ${textField({ id: "cal-desc", label: "Description", autocomplete: "off", list: "tk-desc-suggest-dialog" })}
           ${descDatalist()}
-          <div class="md-text-field filled">
-            <select id="cal-project" aria-label="Project"><option value="">No project</option>${projectOptions()}</select>
-            <label for="cal-project">Project</label>
-          </div>
+          ${selectField({ id: "cal-project", label: "Project", options: projectSelectOptions() })}
+          ${checkboxField({ id: "cal-billable", label: "Billable", checked: true })}
           <div class="cal-time-row">
-            <div class="md-text-field filled">
-              <input type="time" id="cal-start" required>
-              <label for="cal-start">Start</label>
-            </div>
-            <div class="md-text-field filled">
-              <input type="time" id="cal-end" required>
-              <label for="cal-end">End</label>
-            </div>
-            <span class="md-title-small" id="cal-dur"></span>
+            ${textField({ id: "cal-start", label: "Start", type: "time", required: true })}
+            ${textField({ id: "cal-end", label: "End", type: "time", required: true })}
+            <span id="cal-dur"></span>
           </div>
           <p class="muted tiny" id="cal-locked" hidden></p>
           <p class="error tiny" id="cal-error" hidden></p>
           <div class="cal-dialog-actions">
-            <button class="md-text-button danger" id="cal-delete" hidden>Delete</button>
+            ${button({ label: "Delete entry", variant: "ghost", danger: true, id: "cal-delete", attrs: "hidden" })}
             <span class="cal-spacer"></span>
-            <button class="md-text-button" id="cal-cancel">Cancel</button>
-            <button class="md-filled-button" id="cal-save">Save</button>
+            ${button({ label: "Cancel", variant: "ghost", id: "cal-cancel" })}
+            ${button({ label: "Save entry", variant: "primary", id: "cal-save" })}
           </div>
         </div>
       </div>`;
   }
 
   function weekGrid(weekStr?: string): string {
-    const q = weekStr && /^\d{4}-\d{2}-\d{2}$/.test(weekStr) ? `?week=${weekStr}` : "";
-    /* #322: the skeleton mirrors the carousel pane layout (summary aside with
-       the week-nav skeleton at its top, gutter + day columns with the hour
-       rhythm) so the htmx swap lands without a layout flash. */
-    const skelDay = `<div class="cal-skel-day"><div class="skel cal-skel-head"></div><div class="skel cal-skel-lane"></div></div>`;
-    const skelGrid = `<div class="cal-skel-grid">${skelDay.repeat(8)}</div>`;
+    const validWeek = validYmd(weekStr); /* #1501 */
+    const q = validWeek ? `?week=${sundayOfYmd(validWeek)}` : ""; /* #1505: snap to Sunday */
+    /* #322: the skeleton mirrors the carousel pane layout (summary aside
+       with the week-nav skeleton at its top) so the htmx swap lands
+       without a layout flash. */
+    const skelStrip = `<div class="cal-strip"><div class="cal-scroll" style="padding:4px"><div class="skel" style="height:100%"></div></div></div>`;
     return `<div id="week" hx-get="/partial/week${q}" hx-trigger="load" hx-swap="innerHTML">
       <div class="cal-pane-layout" style="--i:3">
         <aside class="cal-supporting">
@@ -554,9 +431,9 @@ export function createCalendarViews(deps: CalendarViewDeps) {
         </aside>
         <div class="cal-carousel">
           <div class="cal-track">
-            <div class="cal-strip"><div class="cal-scroll" style="padding:4px">${skelGrid}</div></div>
-            <div class="cal-strip"><div class="cal-scroll" style="padding:4px">${skelGrid}</div></div>
-            <div class="cal-strip"><div class="cal-scroll" style="padding:4px">${skelGrid}</div></div>
+            ${skelStrip}
+            ${skelStrip}
+            ${skelStrip}
           </div>
         </div>
       </div>
@@ -569,7 +446,21 @@ export function createCalendarViews(deps: CalendarViewDeps) {
   /** Inline script: drag-to-create, click-to-edit, now-line ticking. No htmx needed. */
   function calScript(): string {
     return `(function(){
-    var HOUR=${calHourPx};
+    var HOUR=${calHourPx}, START=0;
+    /* The visualizer root carries the same geometry in its dataset; prefer
+       it when a grid is already in the DOM, fall back to the injected
+       constants. All strips share one geometry. */
+    (function(){
+      var v=document.querySelector('.ui-viz');
+      if(v){ HOUR=parseFloat(v.getAttribute('data-hour-px'))||HOUR;
+        START=parseFloat(v.getAttribute('data-start-min'))||0; }
+    })();
+    function hourOf(el){ var v=el&&el.closest?el.closest('.ui-viz'):null;
+      var h=v?parseFloat(v.getAttribute('data-hour-px')):NaN; return isNaN(h)?HOUR:h; }
+    function startOf(el){ var v=el&&el.closest?el.closest('.ui-viz'):null;
+      var s=v?parseFloat(v.getAttribute('data-start-min')):NaN; return isNaN(s)?START:s; }
+    function endOf(el){ var v=el&&el.closest?el.closest('.ui-viz'):null;
+      var s=v?parseFloat(v.getAttribute('data-end-min')):NaN; return isNaN(s)?1440:s; }
     /* #256: the client's IANA zone. Appended to every /partial/week request
        (htmx:configRequest covers nav links; refreshWeek appends it to fetch),
        and as a ±HH:MM suffix on posted datetimes so the server stores the
@@ -577,6 +468,14 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     var TZ=""; try{ TZ=Intl.DateTimeFormat().resolvedOptions().timeZone||""; }catch(e){}
     function tzSuffix(){var o=-new Date().getTimezoneOffset();var s=o<0?"-":"+",a=Math.abs(o);
       return s+String(Math.floor(a/60)).padStart(2,"0")+":"+String(a%60).padStart(2,"0");}
+    /* #1081: send wall times as typed plus the zone they're in — the entry's
+       own zone when editing, the browser's for new time — and the server
+       resolves the instant (DST-correct for any date). Without a zone, fall
+       back to today's offset. */
+    function setTimes(fd,date,start,end,zone){
+      if(zone){ fd.set('start_time',date+'T'+start); fd.set('end_time',date+'T'+end); fd.set('entry_tz',zone); }
+      else{ fd.set('start_time',date+'T'+start+tzSuffix()); fd.set('end_time',date+'T'+end+tzSuffix()); }
+    }
     document.body.addEventListener("htmx:configRequest",function(e){
       if(e.detail&&e.detail.path&&e.detail.path.indexOf("/partial/week")===0&&TZ)
         e.detail.parameters.tz=TZ;});
@@ -596,9 +495,10 @@ export function createCalendarViews(deps: CalendarViewDeps) {
         void trackEl.offsetWidth; trackEl.classList.remove('no-anim'); }
     }
     function ymdUTC(d){var p=function(x){return String(x).padStart(2,"0");};
-      return d.getUTCFullYear()+"-"+p(d.getUTCMonth()+1)+"-"+p(d.getUTCDate());}
+      return String(d.getUTCFullYear()).padStart(4,"0")+"-"+p(d.getUTCMonth()+1)+"-"+p(d.getUTCDate());}
     function shiftYmd(ymd,n){var p=ymd.split("-");
-      return ymdUTC(new Date(Date.UTC(+p[0],+p[1]-1,+p[2])+n*864e5));}
+      var dt=new Date(Date.UTC(2000,+p[1]-1,+p[2])); dt.setUTCFullYear(+p[0]);
+      return ymdUTC(new Date(dt.getTime()+n*864e5));}
     function stripUrl(sun){
       var u='/partial/week?week='+encodeURIComponent(sun)+'&strip=1';
       return u+(TZ?'&tz='+encodeURIComponent(TZ):'');
@@ -606,7 +506,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
 
     var scrim=document.getElementById('cal-scrim');
     var dialog=scrim.querySelector('.cal-dialog');
-    /* M3 dialog motion: .open drives scrim fade + dialog scale/fade.
+    /* Dialog motion: .open drives scrim fade + dialog scale/fade.
        Generation counter keeps rapid open/close/open sequences sane. */
     var scrimGen=0;
     function showScrim(){
@@ -632,6 +532,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     var dateLine=document.getElementById('cal-dialog-date');
     var desc=document.getElementById('cal-desc');
     var project=document.getElementById('cal-project');
+    var billable=document.getElementById('cal-billable'); /* #1082 */
     var startI=document.getElementById('cal-start');
     var endI=document.getElementById('cal-end');
     var dur=document.getElementById('cal-dur');
@@ -648,7 +549,13 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       scroller.scrollTop=Math.max(0,r.top-s.top+scroller.scrollTop-scroller.clientHeight*0.35);}
     function toMin(t){var p=t.split(':');return (+p[0])*60+(+p[1]);}
     function toHM(m){m=((m%1440)+1440)%1440;return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');}
-    function fmtD(mins){var h=Math.floor(mins/60),m=mins%60;return (h?h+'h ':'')+m+'m';}
+    function fmtD(mins){if(mins<=0)return '';var h=Math.floor(mins/60),m=mins%60;if(h)return m?h+'h '+String(m).padStart(2,'0')+'m':h+'h';return m+'m';}
+    function fmt12(mins){var h24=Math.floor(mins/60),m=mins%60,s=h24>=12?'PM':'AM',
+      h=h24%12===0?12:h24%12;return h+':'+String(m).padStart(2,'0')+' '+s;}
+    function fmtCompact(mins,withMer){var h24=Math.floor(mins/60),m=mins%60,
+      h=h24%12===0?12:h24%12;return h+(m?':'+String(m).padStart(2,'0'):'')+(withMer?(h24>=12?' PM':' AM'):'');}
+    function fmtRangeC(a,b){var same=Math.floor(a/720)===Math.floor(b/720);
+      return fmtCompact(a,!same)+'\u2013'+fmtCompact(b,true);}
     function updDur(){var s=toMin(startI.value||'00:00'),e=toMin(endI.value||'00:00');
       dur.textContent=e>s?fmtD(e-s):'';}
     startI.addEventListener('input',updDur); endI.addEventListener('input',updDur);
@@ -658,10 +565,10 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       title.textContent='New entry'; delBtn.hidden=true; err.hidden=true;
       var d=new Date(date+'T12:00:00');
       dateLine.textContent=d.toLocaleDateString([],{weekday:'long',month:'long',day:'numeric'});
-      desc.value=''; project.value='';
+      desc.value=''; project.value=''; billable.checked=true; /* #1082: new time is billable */
       startI.value=toHM(a); endI.value=toHM(b); updDur();
       lockNote.hidden=true; /* #334: the dialog is reused — clear locked state */
-      desc.disabled=false; project.disabled=false; startI.disabled=false; endI.disabled=false;
+      desc.disabled=false; project.disabled=false; billable.disabled=false; startI.disabled=false; endI.disabled=false;
       saveBtn.hidden=false;
       showScrim(); desc.focus();
     }
@@ -669,22 +576,23 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       mode='edit'; editId=el.dataset.id; dayStr=el.dataset.date; opener=el;
       saving=false; saveBtn.disabled=false; /* #930 */
       var locked=el.dataset.locked||''; /* #334: sent/paid time opens read-only */
-      var running=el.classList.contains('running'); /* #462: the timer card owns
+      var running=el.classList.contains('is-running'); /* #462: the timer card owns
         the running entry — deleting it here orphaned the card. */
-      title.textContent=locked?'Entry (zinvoiced)':'Edit entry';
+      title.textContent=locked?'Entry (Zinvoiced)':'Edit entry';
       delBtn.hidden=!!locked||running; err.hidden=true;
       var d=new Date(dayStr+'T12:00:00');
       dateLine.textContent=d.toLocaleDateString([],{weekday:'long',month:'long',day:'numeric'});
       desc.value=el.dataset.desc||''; project.value=el.dataset.projectId||'';
+      billable.checked=el.dataset.billable!=='0'; /* #1082 */
       startI.value=el.dataset.start||'09:00'; endI.value=el.dataset.end||toHM(toMin(startI.value)+60); updDur();
       if(locked){
         lockNote.textContent='Zinvoiced on '+locked+' — this time can\u2019t be edited.';
         lockNote.hidden=false;
-        desc.disabled=true; project.disabled=true; startI.disabled=true; endI.disabled=true;
+        desc.disabled=true; project.disabled=true; billable.disabled=true; startI.disabled=true; endI.disabled=true;
         saveBtn.hidden=true;
       }else{
         lockNote.hidden=true;
-        desc.disabled=false; project.disabled=false; startI.disabled=false; endI.disabled=false;
+        desc.disabled=false; project.disabled=false; billable.disabled=false; startI.disabled=false; endI.disabled=false;
         saveBtn.hidden=false;
       }
       showScrim(); if(!locked) desc.focus();
@@ -710,12 +618,40 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     document.addEventListener('keydown',function(e){
       if(e.key==='Escape'&&!scrim.hidden) close();
       else if(e.key==='Tab'&&!scrim.hidden&&window.tkTrapTab) window.tkTrapTab(scrim,e);
-      /* #530: entry cards are tabindex="0" role="button" — Enter/Space must
-         activate them like real buttons. openEdit sets the focus-return
+      /* #530: entry blocks/rows are tabindex="0" role="button" — Enter/Space
+         must activate them like real buttons. openEdit sets the focus-return
          opener, and preventDefault stops Space from scrolling the page. */
       else if(e.key==='Enter'||e.key===' '){
-        var card=e.target&&e.target.closest?e.target.closest('.cal-entry,.cal-ag-row'):null;
+        var card=e.target&&e.target.closest?e.target.closest('.ui-viz-block,[data-entry-row]'):null;
         if(card){ e.preventDefault(); openEdit(card); }
+      }
+      /* Arrow keys move an unlocked, finished block in 15-minute steps
+         (Shift resizes its end); paint is live, the save lands on keyup. */
+      else if(e.key.indexOf('Arrow')===0){
+        var block=e.target&&e.target.closest?e.target.closest('.ui-viz-block'):null;
+        if(!block||block.dataset.locked||block.classList.contains('is-running')) return;
+        var s=toMin(block.dataset.start||'00:00'),en=toMin(block.dataset.end||'00:00'),used=true;
+        var S=startOf(block),E=endOf(block);
+        if(e.key==='ArrowDown'&&e.shiftKey) en=Math.min(Math.max(en+15,s+15),E);
+        else if(e.key==='ArrowUp'&&e.shiftKey) en=Math.min(Math.max(en-15,s+15),E);
+        else if(e.key==='ArrowDown'){ var d=Math.min(s+15,E-(en-s)); en+=d-s; s=d; }
+        else if(e.key==='ArrowUp'){ var u=Math.max(s-15,S); en+=u-s; s=u; }
+        else used=false;
+        if(used){ e.preventDefault(); paint(block,s,en); }
+      }
+    });
+    /* Keyboard edits persist on keyup when the focused block's times moved
+       since focus landed (originals tracked on focusin). */
+    var kbBlock=null,kbStart='',kbEnd='';
+    document.addEventListener('focusin',function(e){
+      var b=e.target&&e.target.closest?e.target.closest('.ui-viz-block'):null;
+      kbBlock=b; if(b){ kbStart=b.dataset.start; kbEnd=b.dataset.end; }
+    });
+    document.addEventListener('keyup',function(e){
+      if(!kbBlock||e.target!==kbBlock) return;
+      if(kbBlock.dataset.start!==kbStart||kbBlock.dataset.end!==kbEnd){
+        kbStart=kbBlock.dataset.start; kbEnd=kbBlock.dataset.end;
+        persistBlock(kbBlock,true);
       }
     });
     function fail(msg){ err.textContent=msg; err.hidden=false; }
@@ -736,7 +672,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
        animations are suppressed for the swap (no-enter); the visible strip
        keeps its scroll position, and the new/updated entry gets a one-time
        highlight. */
-    function refreshWeek(highlightId){
+    function refreshWeek(highlightId,refocus){
       var weekEl=document.getElementById('week');
       var mid=trackStrips()[1];
       var sc=mid&&mid.querySelector('.cal-scroll');
@@ -752,8 +688,11 @@ export function createCalendarViews(deps: CalendarViewDeps) {
         var sc2=mid2&&mid2.querySelector('.cal-scroll');
         if(sc2) sc2.scrollTop=st;
         if(highlightId){
-          var el=weekEl.querySelector('.cal-entry[data-id="'+highlightId+'"]');
-          if(el) el.classList.add('cal-flash');
+          var el=weekEl.querySelector('.ui-viz-block[data-id="'+highlightId+'"]');
+          if(el){ el.classList.add('cal-flash');
+            /* Keyboard saves replace the focused block — hand focus back
+               to its re-rendered twin so arrow-key editing can continue. */
+            if(refocus) el.focus(); }
         }
         placeNow();
       }).catch(function(){ location.reload(); /* last resort: never leave stale data */ });
@@ -775,6 +714,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     },true);
     function pan(dir){
       panning=true;
+      trackEl.classList.add('is-panning'); /* #1219: phones collapse neighbour strips at rest */
       if(panReduce){ settlePan(dir); return; }
       trackEl.style.transform=dir>0?'translateX(-200%)':'translateX(0)';
       var done=false;
@@ -798,6 +738,7 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       trackEl.style.transform='translateX(-100%)';
       void trackEl.offsetWidth;
       trackEl.classList.remove('no-anim');
+      trackEl.classList.remove('is-panning');
       /* The pane is week-scoped: swap it instantly from the incoming
          (middle) strip's pre-rendered template. */
       var mid=trackStrips()[1];
@@ -830,8 +771,8 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       var fd=new URLSearchParams();
       fd.set('description',desc.value);
       fd.set('project_id',project.value);
-      fd.set('start_time',dayStr+'T'+startI.value+tzSuffix());
-      fd.set('end_time',dayStr+'T'+endI.value+tzSuffix());
+      fd.set('billable',billable.checked?'1':'0'); /* #1082 */
+      setTimes(fd,dayStr,startI.value,endI.value,(mode==='edit'&&opener&&opener.dataset.tz)||TZ);
       var url=mode==='create'?'/entries':'/entries/'+editId;
       var hid=mode==='edit'?editId:null;
       fetch(url,{method:'POST',body:fd}).then(function(r){
@@ -844,126 +785,190 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       }).catch(function(ex){ saving=false; saveBtn.disabled=false; fail(ex.message); });
     });
     delBtn.addEventListener('click',function(){
-      /* #464: native confirm() replaced by the shared M3 confirm dialog. */
-      window.tkConfirm('Delete this entry? This cannot be undone.').then(function(ok){
+      /* #464: native confirm() replaced by the shared confirm dialog. */
+      window.tkConfirm('Delete this entry? This cannot be undone.', 'Delete entry').then(function(ok){
         if(!ok) return;
         fetch('/entries/'+editId,{method:'DELETE'}).then(function(r){
+          if(r.status===404){ close(); refreshWeek(null); return; } /* #1478: already gone — the delete's end state */
           if(!r.ok) throw new Error('delete failed'); /* #334: locked entries 403 */
           close(); refreshWeek(null);
         }).catch(function(ex){ fail(ex.message); });
       });
     });
-    // drag-to-create on empty grid space
-    var drag=null;
-    function minsAt(ev,col){
+    /* Pointer interactions on the visualizer grid, delegated on document
+       so they survive in-place #week refreshes: resize handles drag an
+       edge, blocks drag to move (a plain tap opens the editor), empty
+       column space drags to create. */
+    function minsRaw(ev,col){
       var r=col.getBoundingClientRect();
-      var y=Math.max(0,Math.min(r.height,ev.clientY-r.top));
-      return Math.floor(y/HOUR*(60/15))*(15);
+      return startOf(col)+(ev.clientY-r.top)/hourOf(col)*60;
     }
-    function place(el,a,b){
-      /* #273: same 2px inset as the server render, so resize/drag-preview
-         cards match the painted cards. #275: keep the compact class in sync
-         while resizing. */
-      el.style.top=(a/60*HOUR+2)+'px';
-      el.style.height=Math.max((b-a)/60*HOUR,22)-4+'px';
-      el.classList.toggle('cal-compact',(b-a)/60*HOUR<26);
+    function minsAt(ev,col){
+      var S=startOf(col);
+      var m=S+Math.round((minsRaw(ev,col)-S)/15)*15;
+      return Math.max(0,Math.min(1439,m));
     }
-    /* Milestone 17: drag the bottom edge of a finished entry to resize it.
-       Delegated on document so it survives in-place #week refreshes. */
-    var resize=null;
+    function paintGeo(el,a,b){
+      var H=hourOf(el),S=startOf(el);
+      var h=Math.max((b-a)/60*H-4,22);
+      /* Same bottom clamp as the component: a floored short block near the
+         window's end shifts up instead of painting past the column. */
+      el.style.top=Math.min((a-S)/60*H+2,(endOf(el)-S)/60*H-h)+'px';
+      el.style.height=h+'px';
+    }
+    function paint(block,a,b){
+      paintGeo(block,a,b);
+      block.dataset.start=toHM(a); block.dataset.end=toHM(b);
+      var meta=block.querySelector('.ui-viz-block-meta');
+      if(meta){ meta.textContent=block.classList.contains('is-running')
+        ? fmt12(a)+' \u2013 now' : fmtRangeC(a,b);
+        meta.style.display=parseFloat(block.style.height)>=40?'':'none'; }
+      block.classList.toggle('is-tall',(b-a)>=60&&parseFloat(block.style.height)>=64);
+      var col=block.closest('.ui-viz-col'), viz=block.closest('.ui-viz');
+      if(!col||!viz) return;
+      var cols=Array.prototype.slice.call(viz.querySelectorAll('.ui-viz-col'));
+      var totalEl=viz.querySelectorAll('[data-day-total]')[cols.indexOf(col)];
+      if(!totalEl) return;
+      var sum=0, blocks=col.querySelectorAll('.ui-viz-block');
+      for(var i=0;i<blocks.length;i++)
+        sum+=toMin(blocks[i].dataset.end||'00:00')-toMin(blocks[i].dataset.start||'00:00');
+      totalEl.textContent=fmtD(sum);
+    }
+    /* Move/resize persistence — the same POST shape the dialog save uses;
+       the week re-renders with the entry highlighted, or reverts on failure. */
+    function persistBlock(block,refocus){
+      var id=block.dataset.id;
+      var fd=new URLSearchParams();
+      fd.set('description',block.dataset.desc||'');
+      fd.set('project_id',block.dataset.projectId||'');
+      setTimes(fd,block.dataset.date,block.dataset.start,block.dataset.end,block.dataset.tz||TZ);
+      fetch('/entries/'+id,{method:'POST',body:fd}).then(function(resp){
+        if(!resp.ok) throw new Error('save failed');
+        refreshWeek(id,refocus);
+      }).catch(function(){ refreshWeek(null); /* revert on failure */ });
+    }
+    /* #946: on touch, starting a scroll with the finger on an entry opened
+       the editor — pointerdown fired before the browser knew it was a
+       scroll. Distinguish tap from scroll: only open the editor on
+       pointerup if the pointer barely moved; a drift past 10px or a
+       browser-takeover (pointercancel) cancels the pending tap. */
+    function startTap(e,tapEl){
+      var tapX=e.clientX,tapY=e.clientY,tapId=e.pointerId;
+      function tapMove(ev){
+        if(ev.pointerId!==tapId) return;
+        if(Math.abs(ev.clientX-tapX)>10||Math.abs(ev.clientY-tapY)>10) tapCancel();
+      }
+      function tapUp(ev){
+        if(ev.pointerId!==tapId) return;
+        tapCancel(); openEdit(tapEl);
+      }
+      function tapCancel(){
+        window.removeEventListener('pointermove',tapMove);
+        window.removeEventListener('pointerup',tapUp);
+        window.removeEventListener('pointercancel',tapCancel);
+      }
+      window.addEventListener('pointermove',tapMove);
+      window.addEventListener('pointerup',tapUp);
+      window.addEventListener('pointercancel',tapCancel);
+    }
     document.addEventListener('pointerdown',function(e){
+      if(!e.target||!e.target.closest) return;
       var handle=e.target.closest('[data-resize]');
       if(handle){
-        var entryEl=handle.closest('.cal-entry');
-        var col=entryEl.closest('.cal-day-col');
+        var block=handle.closest('.ui-viz-block');
+        if(!block) return;
+        var col=block.closest('.ui-viz-col');
         var edge=handle.getAttribute('data-resize'); /* "start" or "end" */
         e.preventDefault(); e.stopPropagation();
-        resize={entry:entryEl,col:col,edge:edge,
-          start:toMin(entryEl.dataset.start||'00:00'),
-          end:toMin(entryEl.dataset.end||'00:00'),
-          date:entryEl.dataset.date, id:entryEl.dataset.id,
-          desc:entryEl.dataset.desc||'', projectId:entryEl.dataset.projectId||''};
-        entryEl.classList.add('resizing');
+        var start0=toMin(block.dataset.start||'00:00'), end0=toMin(block.dataset.end||'00:00');
+        block.classList.add('is-selected');
         function rmove(ev){
           var m=minsAt(ev,col);
-          if(resize.edge==='start'){
-            var a=Math.min(resize.end-15,Math.max(m,0));
-            resize.newStart=a;
-            place(entryEl,a,resize.end);
-          } else {
-            var b=Math.max(resize.start+15,Math.min(m,1439));
-            resize.newEnd=b;
-            place(entryEl,resize.start,b);
-          }
+          if(edge==='start') paint(block,Math.max(startOf(block),Math.min(m,end0-15)),end0);
+          else paint(block,start0,Math.min(Math.max(m,start0+15),1439));
         }
         function rup(){
           window.removeEventListener('pointermove',rmove);
           window.removeEventListener('pointerup',rup);
-          entryEl.classList.remove('resizing');
-          var r=resize; resize=null;
-          var ns=r.newStart!=null?r.newStart:r.start, ne=r.newEnd!=null?r.newEnd:r.end;
-          if(ns===r.start&&ne===r.end) return; /* no change */
-          var fd=new URLSearchParams();
-          fd.set('description',r.desc);
-          fd.set('project_id',r.projectId);
-          fd.set('start_time',r.date+'T'+toHM(ns)+tzSuffix());
-          fd.set('end_time',r.date+'T'+toHM(ne)+tzSuffix());
-          fetch('/entries/'+r.id,{method:'POST',body:fd}).then(function(resp){
-            if(!resp.ok) throw new Error('resize failed');
-            refreshWeek(r.id);
-          }).catch(function(){ refreshWeek(null); /* revert on failure */ });
+          window.removeEventListener('pointercancel',rup);
+          block.classList.remove('is-selected');
+          if(toMin(block.dataset.start)!==start0||toMin(block.dataset.end)!==end0) persistBlock(block);
         }
         window.addEventListener('pointermove',rmove);
         window.addEventListener('pointerup',rup);
+        window.addEventListener('pointercancel',rup);
         return;
       }
-      var entryEl=e.target.closest('.cal-entry,.cal-ag-row');
-      if(entryEl){
-        /* #946: on touch, starting a scroll with the finger on an entry opened
-           the editor — pointerdown fired before the browser knew it was a
-           scroll. Distinguish tap from scroll: only open the editor on
-           pointerup if the pointer barely moved; a drift past 10px or a
-           browser-takeover (pointercancel) cancels the pending tap. */
-        var tapX=e.clientX,tapY=e.clientY,tapId=e.pointerId,tapEl=entryEl;
-        function tapMove(ev){
-          if(ev.pointerId!==tapId) return;
-          if(Math.abs(ev.clientX-tapX)>10||Math.abs(ev.clientY-tapY)>10) tapCancel();
+      var block=e.target.closest('.ui-viz-block');
+      if(block){
+        /* Locked and running blocks never drag — a tap opens the editor
+           (read-only for locked, delete-less for running). */
+        if(block.dataset.locked||block.classList.contains('is-running')){ startTap(e,block); return; }
+        var col=block.closest('.ui-viz-col');
+        var start0=toMin(block.dataset.start||'00:00'), end0=toMin(block.dataset.end||'00:00');
+        var dur=end0-start0, grabOffset=minsRaw(e,col)-start0;
+        var downX=e.clientX, downY=e.clientY, moved=false;
+        e.preventDefault();
+        function mvmove(ev){
+          if(!moved){
+            if(Math.abs(ev.clientX-downX)<=6&&Math.abs(ev.clientY-downY)<=6) return;
+            moved=true; block.classList.add('is-selected');
+          }
+          var s=Math.round((minsRaw(ev,col)-grabOffset)/15)*15;
+          s=Math.max(startOf(block),Math.min(s,endOf(block)-dur));
+          paint(block,s,s+dur);
         }
-        function tapUp(ev){
-          if(ev.pointerId!==tapId) return;
-          tapCancel(); openEdit(tapEl);
+        function mvup(){
+          window.removeEventListener('pointermove',mvmove);
+          window.removeEventListener('pointerup',mvup);
+          window.removeEventListener('pointercancel',mvcancel);
+          block.classList.remove('is-selected');
+          if(!moved){ openEdit(block); return; }
+          if(toMin(block.dataset.start)!==start0||toMin(block.dataset.end)!==end0) persistBlock(block);
         }
-        function tapCancel(){
-          window.removeEventListener('pointermove',tapMove);
-          window.removeEventListener('pointerup',tapUp);
-          window.removeEventListener('pointercancel',tapCancel);
+        function mvcancel(){
+          window.removeEventListener('pointermove',mvmove);
+          window.removeEventListener('pointerup',mvup);
+          window.removeEventListener('pointercancel',mvcancel);
+          block.classList.remove('is-selected');
+          if(moved) paint(block,start0,end0); /* revert the preview */
         }
-        window.addEventListener('pointermove',tapMove);
-        window.addEventListener('pointerup',tapUp);
-        window.addEventListener('pointercancel',tapCancel);
+        window.addEventListener('pointermove',mvmove);
+        window.addEventListener('pointerup',mvup);
+        window.addEventListener('pointercancel',mvcancel);
         return;
       }
-      var col=e.target.closest('.cal-day-col');
+      var row=e.target.closest('[data-entry-row]');
+      if(row){ startTap(e,row); return; }
+      var col=e.target.closest('.ui-viz-col');
       if(!col) return;
       e.preventDefault();
       var a=minsAt(e,col);
       var pv=document.createElement('div');
-      pv.className='cal-drag-preview';
-      col.appendChild(pv); place(pv,a,a+15);
-      drag={col:col,a:a,pv:pv,moved:false};
-      function move(ev){ drag.moved=true; var m=minsAt(ev,col);
-        var x=Math.min(drag.a,m),y=Math.max(drag.a,m); place(pv,x,Math.max(y,x+15)); }
-      function up(ev){
-        window.removeEventListener('pointermove',move);
-        window.removeEventListener('pointerup',up);
-        var m=drag.moved?minsAt(ev,col):drag.a+60;
-        var x=Math.min(drag.a,m),y=Math.max(drag.a,m);
+      pv.className='ui-viz-block is-preview'; pv.style.setProperty('--entry','var(--color-primary)');
+      col.appendChild(pv); paintGeo(pv,a,a+15);
+      var dragMoved=false;
+      function cmove(ev){ dragMoved=true; var m=minsAt(ev,col);
+        var x=Math.min(a,m),y=Math.max(a,m); paintGeo(pv,x,Math.max(y,x+15)); }
+      function cup(ev){
+        window.removeEventListener('pointermove',cmove);
+        window.removeEventListener('pointerup',cup);
+        window.removeEventListener('pointercancel',ccancel);
+        var m=dragMoved?minsAt(ev,col):a+60;
+        var x=Math.min(a,m),y=Math.max(a,m);
         if(y-x<15) y=x+15;
-        drag.pv.remove(); var d={col:drag.col,x:x,y:y}; drag=null;
-        openCreate(d.col.dataset.date,d.x,Math.min(d.y,1439));
+        pv.remove();
+        openCreate(col.dataset.date,x,Math.min(y,1439));
       }
-      window.addEventListener('pointermove',move);
-      window.addEventListener('pointerup',up);
+      function ccancel(){
+        window.removeEventListener('pointermove',cmove);
+        window.removeEventListener('pointerup',cup);
+        window.removeEventListener('pointercancel',ccancel);
+        pv.remove();
+      }
+      window.addEventListener('pointermove',cmove);
+      window.addEventListener('pointerup',cup);
+      window.addEventListener('pointercancel',ccancel);
     });
     /* #213: the server's clock may be in another timezone (e.g. a UTC VPS),
        so every "right now" presentation follows the viewer's local time:
@@ -972,51 +977,52 @@ export function createCalendarViews(deps: CalendarViewDeps) {
        week refresh. */
     function clientToday(){
       var n=new Date();var p=function(x){return String(x).padStart(2,'0');};
-      return n.getFullYear()+'-'+p(n.getMonth()+1)+'-'+p(n.getDate());
+      return String(n.getFullYear()).padStart(4,'0')+'-'+p(n.getMonth()+1)+'-'+p(n.getDate());
     }
     /* Position every strip's now-line; strips whose week has no today
-       column keep theirs hidden. */
+       column hide theirs. The line is a client concept (the server may
+       be in another timezone), so it is created/moved here rather than
+       trusting the server-rendered column. */
     function placeNow(){
       var today=clientToday();
       var n=new Date();var nowMin=n.getHours()*60+n.getMinutes();
-      var t=document.querySelectorAll('.cal-day.today');
-      for(var i=0;i<t.length;i++) t[i].classList.remove('today');
-      var nm=document.querySelectorAll('.cal-day-num.today');
-      for(var i=0;i<nm.length;i++) nm[i].classList.remove('today');
-      var ag=document.querySelectorAll('.cal-ag-day.today');
-      for(var j=0;j<ag.length;j++) ag[j].classList.remove('today');
       var strips=document.querySelectorAll('#week .cal-strip');
       for(var s=0;s<strips.length;s++){
         (function(strip){
+          var col=strip.querySelector('.ui-viz-col[data-date="'+today+'"]');
           var line=strip.querySelector('[data-now]');
-          var col=strip.querySelector('.cal-day-col[data-date="'+today+'"]');
-          var agd=strip.querySelector('.cal-ag-day[data-date="'+today+'"]');
-          if(agd) agd.classList.add('today');
-          if(!col){ if(line) line.hidden=true; return; }
-          var day=col.closest('.cal-day');
-          day.classList.add('today');
-          var num=day.querySelector('.cal-day-num'); if(num) num.classList.add('today');
-          day.classList.remove('paced-short'); /* the viewer's today is never "past" */
-          if(line){ col.appendChild(line);
-            line.style.top=((nowMin/60)*HOUR).toFixed(1)+'px'; line.hidden=false; }
-          var run=col.querySelectorAll('.cal-entry.running');
-          for(var i=0;i<run.length;i++){
-            var st=run[i].getAttribute('data-start'); if(!st) continue;
-            var pp=st.split(':'),sm=(+pp[0])*60+(+pp[1]);
-            /* #704: the 30s tick grows the running card but never synced the
-               compact pill class, so a timer started short kept its 999px
-               radius and stretched into an oval. Toggle it on the true
-               height, like the server render and the resize path do. */
-            var trueH=((nowMin-sm)/60)*HOUR;
-            /* #857: same midnight cap as the server geometry — the 26px floor
-               must not push a late-night running entry past the lane's bottom
-               edge. The -2 offsets the card's +2 top inset (the tick sets raw
-               height, unlike the server's -4 inset); the max() never shrinks
-               below true height. */
-            var capH=((1440-sm)/60)*HOUR-2;
-            run[i].style.height=Math.min(Math.max(trueH,26),Math.max(capH,trueH)).toFixed(1)+'px';
-            run[i].classList.toggle('cal-compact',trueH<26);
+          if(!col){ if(line) line.hidden=true; }
+          else {
+            if(!line){
+              line=document.createElement('div');
+              line.className='ui-viz-now'; line.setAttribute('data-now','');
+            }
+            if(line.parentNode!==col) col.appendChild(line);
+            line.style.top=((nowMin-START)/60*HOUR).toFixed(1)+'px'; line.hidden=false;
+            var run=col.querySelectorAll('.ui-viz-block.is-running');
+            for(var i=0;i<run.length;i++){
+              var st=run[i].getAttribute('data-start'); if(!st) continue;
+              var pp=st.split(':'),sm=(+pp[0])*60+(+pp[1]);
+              var trueH=((nowMin-sm)/60)*HOUR-4;
+              /* the growth is capped at the lane's midnight edge */
+              var capH=((1440-sm)/60)*HOUR-2;
+              run[i].style.height=Math.min(Math.max(trueH,22),Math.max(capH,trueH)).toFixed(1)+'px';
+              var grownH=parseFloat(run[i].style.height);
+              var rmeta=run[i].querySelector('.ui-viz-block-meta');
+              if(rmeta) rmeta.style.display=grownH>=40?'':'none';
+              run[i].classList.toggle('is-tall',(nowMin-sm)>=60&&grownH>=64);
+            }
           }
+          /* The today highlight follows the viewer, not the server: the
+             server-rendered is-today can name the wrong day. Heads are
+             offset by one — the first head cell is the hour gutter. */
+          var cols=strip.querySelectorAll('.ui-viz-col');
+          for(var c=0;c<cols.length;c++)
+            cols[c].classList.toggle('is-today',cols[c].getAttribute('data-date')===today);
+          var heads=strip.querySelector('.ui-viz-heads');
+          if(heads){ var kids=heads.children;
+            for(var k=1;k<kids.length;k++)
+              kids[k].classList.toggle('is-today',!!cols[k-1]&&cols[k-1].getAttribute('data-date')===today); }
         })(strips[s]);
       }
     }
@@ -1032,10 +1038,47 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       if(!strip) return;
       document.body.classList.toggle('cal-agenda-hint',strip.clientWidth<=639);
     }
+    /* #1219: the week's entry range (minutes), from the blocks' own
+       data-start/data-end — null when the week has no entries. */
+    function stripEntryRange(strip){
+      var first=null,last=null,blocks=strip.querySelectorAll('.ui-viz-block');
+      var nowD=new Date(),nowMin=nowD.getHours()*60+nowD.getMinutes();
+      for(var i=0;i<blocks.length;i++){
+        var s=blocks[i].getAttribute('data-start'),e=blocks[i].getAttribute('data-end');
+        if(!s) continue;
+        var sm=toMin(s),em=e?toMin(e):sm;
+        /* A running block's data-end is a render-time snapshot (start+15);
+           the entry actually runs to now — placeNow grows it on that basis,
+           and the range must agree or the now-line gate reads it as stale. */
+        if(blocks[i].classList.contains('is-running')&&nowMin>em) em=nowMin;
+        if(first===null||sm<first) first=sm;
+        if(last===null||em>last) last=em;
+      }
+      return first===null?null:{first:first,last:last};
+    }
+    /* #1219: where a strip with no usable now-line should open — the
+       earliest entry with 30 minutes of headroom, or 8 AM (480) when the
+       week is empty. Past/future weeks used to open at midnight, hours of
+       empty grid above the first entry. */
+    function stripOpenMin(range){ return range?Math.max(0,range.first-30):480; }
+    /* #1219: the now-line keeps its centring only while now sits inside
+       the week's entry range — an evening view of a morning-only week
+       opens on the work, not on the empty evening. */
+    function nowOutsideRange(line,range){
+      if(!range) return false;
+      var top=parseFloat(line.style.top);
+      if(isNaN(top)) return false;
+      var nowMin=START+top/HOUR*60;
+      return nowMin<range.first-30||nowMin>range.last+30;
+    }
     function initStripScroll(strip){
       var sc=strip.querySelector('.cal-scroll'); if(!sc) return;
       var line=strip.querySelector('[data-now]');
-      if(!line||line.hidden){ sc.scrollTop=0; return; }
+      var range=stripEntryRange(strip);
+      if(!line||line.hidden||nowOutsideRange(line,range)){
+        sc.scrollTop=Math.max(0,(stripOpenMin(range)-START)/60*HOUR);
+        return;
+      }
       var lr=line.getBoundingClientRect(),sr=sc.getBoundingClientRect();
       sc.scrollTop=Math.max(0,sc.scrollTop+(lr.top-sr.top)-sr.height/2);
     }
@@ -1046,9 +1089,15 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       var strip=strips[1];
       var line=strip.querySelector('[data-now]');
       var sc=strip.querySelector('.cal-scroll');
-      if(!line||line.hidden||!sc) return;
-      var lr=line.getBoundingClientRect(),sr=sc.getBoundingClientRect();
-      var target=Math.max(0,sc.scrollTop+(lr.top-sr.top)-sr.height/2);
+      if(!sc) return;
+      var range=stripEntryRange(strip);
+      var target;
+      if(!line||line.hidden||nowOutsideRange(line,range)){
+        target=Math.max(0,(stripOpenMin(range)-START)/60*HOUR);
+      } else {
+        var lr=line.getBoundingClientRect(),sr=sc.getBoundingClientRect();
+        target=Math.max(0,sc.scrollTop+(lr.top-sr.top)-sr.height/2);
+      }
       if(!smooth||panReduce){ sc.scrollTop=target; return; }
       /* eased scrollTop animation; user input (wheel/touch) cancels it so the
          page never fights an in-progress gesture */
@@ -1068,12 +1117,12 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     }
     initCarousel();
     placeNow();
-    /* Side strips settle instantly; the visible strip smooth-glides to the
-       now-line after the entrance animations finish (~590ms) — measuring
+    /* Side strips settle instantly; the visible strip smooth-glides to its
+       open target after the entrance animations finish (~590ms) — measuring
        mid-animation lands the scroll ~12px off. */
     (function initScroll(){
       var strips=trackStrips();
-      for(var i=0;i<strips.length;i++) if(i!==1) initStripScroll(strips[i]);
+      for(var i=0;i<strips.length;i++) initStripScroll(strips[i]);
       setTimeout(function(){ centerVisible(true); }, 650);
     })();
     setInterval(placeNow,30000);
@@ -1095,23 +1144,41 @@ export function createCalendarViews(deps: CalendarViewDeps) {
       timer-page edit dialog, so both stay in sync (#709 label wiring). */
   function editEntryFields(e: Entry, dis: string): string {
     return `
-        <div class="md-text-field">
-          <input type="text" id="ee-desc" name="description" value="${esc(e.description)}" placeholder=" "${dis}>
-          <label for="ee-desc">Description</label>
-        </div>
-        <div class="md-text-field filled">
-          <select id="ee-project" name="project_id"${dis}><option value="">No project</option>${projectOptions(e.project_id)}</select>
-          <label for="ee-project">Project</label>
-        </div>
-        <div class="md-text-field filled">
-          <input type="datetime-local" id="ee-start" name="start_time" data-iso="${esc(e.start_time)}" required placeholder=" "${dis}>
-          <label for="ee-start">Start</label>
-        </div>
-        <div class="md-text-field filled">
-          <input type="datetime-local" id="ee-end" name="end_time" data-iso="${esc(e.end_time || "")}" placeholder=" "${dis}>
-          <label for="ee-end">End (blank = still running)</label>
-        </div>`;
+        ${textField({ id: "ee-desc", label: "Description", name: "description", value: e.description, attrs: dis ? "disabled" : undefined })}
+        ${selectField({ id: "ee-project", label: "Project", name: "project_id", value: e.project_id ? String(e.project_id) : "", disabled: !!dis, options: projectSelectOptions() })}
+        ${dis ? "" : `<input type="hidden" name="billable" value="0">`}${checkboxField({ id: "ee-billable", label: "Billable", name: "billable", value: "1", checked: e.billable !== 0, disabled: !!dis })}
+        ${textField({ id: "ee-start", label: "Start", name: "start_time", type: "datetime-local", required: true, attrs: `data-iso="${esc(e.start_time)}"${dis}` })}
+        ${textField({ id: "ee-end", label: "End (blank = still running)", name: "end_time", type: "datetime-local", attrs: `data-iso="${esc(e.end_time || "")}"${dis}` })}
+        <input type="hidden" name="entry_tz" value="${esc(validTz(e.tz) ?? "")}">`;
   }
+
+  /** #1081: the edit forms' wall-time behavior, shared by the page and the
+      dialog. Prefill shows the entry's own wall clock (its zone, else the
+      browser's for legacy rows). On save the typed wall times go as-is with
+      entry_tz naming their zone, and the server resolves the instant — so an
+      8am entry logged in California saves as 8am California from anywhere,
+      and a July date edited in November keeps July's offset. Without any
+      zone (very old browsers) it falls back to today's offset suffix.
+      Returns a function that, given a setter, writes the submit values. */
+  const EDIT_WALL_JS = `
+        var p2=function(n){return String(n).padStart(2,"0");};
+        var y4=function(y){return y>=0&&y<=9999?String(y).padStart(4,"0"):String(y);};
+        var BTZ=""; try{ BTZ=Intl.DateTimeFormat().resolvedOptions().timeZone||""; }catch(x){}
+        function toLocalInput(iso,zone){var d=new Date(iso);
+          if(zone){try{var p={};new Intl.DateTimeFormat("en-US",{timeZone:zone,hourCycle:"h23",year:"numeric",era:"short",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"})
+            .formatToParts(d).forEach(function(x){p[x.type]=x.value;});
+            return y4(p.era==="BC"?1-(+p.year):+p.year)+"-"+p.month+"-"+p.day+"T"+p2(+p.hour%24)+":"+p.minute;}catch(x){}}
+          return y4(d.getFullYear())+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate())+"T"+p2(d.getHours())+":"+p2(d.getMinutes());}
+        function suffix(){var o=-new Date().getTimezoneOffset(),s=o<0?"-":"+",a=Math.abs(o);
+          return s+p2(Math.floor(a/60))+":"+p2(a%60);}
+        function wireWall(form){
+          var tzIn=form.querySelector('input[name="entry_tz"]');
+          var zone=(tzIn&&tzIn.value)||BTZ;
+          if(tzIn) tzIn.value=zone;
+          var els=form.querySelectorAll('input[type=datetime-local][data-iso]');
+          for(var i=0;i<els.length;i++){var iso=els[i].getAttribute("data-iso");if(iso)els[i].value=toLocalInput(iso,zone);}
+          return function(set){for(var j=0;j<els.length;j++){if(els[j].value) set(els[j],zone?els[j].value:els[j].value+suffix());}};
+        }`;
 
   /** #256: datetime-local inputs are prefilled client-side from the ISO instant
       (data-iso) — the server can't know the client's zone on a full page load.
@@ -1123,29 +1190,23 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     const locked = entryIsLocked(e); /* #334: sent/paid time opens read-only */
     const dis = locked ? " disabled" : "";
     return layout(locked ? "Entry" : "Edit entry", `
-      <h2 class="md-headline-small" data-enter="2">${locked ? "Entry" : "Edit entry"}</h2>
-      ${locked ? `<p class="muted md-body-medium">Zinvoiced on ${esc(e.invoice_number || "")} — this time can\u2019t be edited.</p>` : ""}
+      <h2 class="ui-page-title" data-enter="2">${locked ? "Entry" : "Edit entry"}</h2>
+      ${locked ? `<p class="muted">Zinvoiced on ${esc(e.invoice_number || "")} — this time can\u2019t be edited.</p>` : ""}
       <form method="post" action="/entries/${e.id}" class="form" id="edit-entry-form">
         ${editEntryFields(e, dis)}
         <div class="row">
-          ${locked ? "" : `<button class="md-filled-button" type="submit">Save</button>`}
-          <a class="md-text-button" href="/calendar">${locked ? "Back" : "Cancel"}</a>
+          ${locked ? "" : button({ label: "Save entry", variant: "primary", type: "submit" })}
+          ${linkButton({ label: locked ? "Back" : "Cancel", href: "/calendar", variant: "ghost" })}
         </div>
       </form>
-      <script>(function(){
-        var p2=function(n){return String(n).padStart(2,"0");};
-        function toLocalInput(iso){var d=new Date(iso);
-          return d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate())+"T"+p2(d.getHours())+":"+p2(d.getMinutes());}
-        var els=document.querySelectorAll('input[type=datetime-local][data-iso]');
-        for(var i=0;i<els.length;i++){var iso=els[i].getAttribute("data-iso");if(iso)els[i].value=toLocalInput(iso);}
+      <script>(function(){${EDIT_WALL_JS}
         var form=document.getElementById("edit-entry-form");
+        var values=wireWall(form);
         form.addEventListener("submit",function(ev){
           ev.preventDefault();
-          var o=-new Date().getTimezoneOffset(),s=o<0?"-":"+",a=Math.abs(o);
-          var suf=s+p2(Math.floor(a/60))+":"+p2(a%60);
-          for(var j=0;j<els.length;j++){if(els[j].value){
-            var h=document.createElement("input");h.type="hidden";h.name=els[j].name;h.value=els[j].value+suf;
-            form.appendChild(h);els[j].disabled=true;}}
+          values(function(el,v){
+            var h=document.createElement("input");h.type="hidden";h.name=el.name;h.value=v;
+            form.appendChild(h);el.disabled=true;});
           form.submit();
         });
       })();</script>`);
@@ -1162,36 +1223,26 @@ export function createCalendarViews(deps: CalendarViewDeps) {
     const dis = locked ? " disabled" : "";
     return `
       <div class="cal-dialog-head">
-        <h2 class="md-headline-small" id="entry-dialog-title">${locked ? "Entry" : "Edit entry"}</h2>
-        <button class="md-icon-button" data-close-entry type="button" aria-label="Close dialog">${icon("close")}</button>
+        <h2 class="ui-dialog-title" id="entry-dialog-title">${locked ? "Entry" : "Edit entry"}</h2>
+        ${iconButton({ icon: "close", label: "Close dialog", tip: null, attrs: "data-close-entry" })}
       </div>
-      ${locked ? `<p class="muted md-body-medium">Zinvoiced on ${esc(e.invoice_number || "")} — this time can\u2019t be edited.</p>` : ""}
+      ${locked ? `<p class="muted">Zinvoiced on ${esc(e.invoice_number || "")} — this time can\u2019t be edited.</p>` : ""}
       <form hx-post="/entries/${e.id}" hx-swap="none" class="form" id="edit-entry-form">
         ${editEntryFields(e, dis)}
         <div class="cal-dialog-actions">
           <span class="cal-spacer"></span>
-          <button class="md-text-button" type="button" data-close-entry>${locked ? "Back" : "Cancel"}</button>
-          ${locked ? "" : `<button class="md-filled-button" type="submit">Save</button>`}
+          ${button({ label: locked ? "Back" : "Cancel", variant: "ghost", attrs: "data-close-entry" })}
+          ${locked ? "" : button({ label: "Save entry", variant: "primary", type: "submit" })}
         </div>
       </form>
-      <script>(function(){
-        var p2=function(n){return String(n).padStart(2,"0");};
-        function toLocalInput(iso){var d=new Date(iso);
-          return d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate())+"T"+p2(d.getHours())+":"+p2(d.getMinutes());}
+      <script>(function(){${EDIT_WALL_JS}
         var form=document.getElementById("edit-entry-form");
-        var els=form.querySelectorAll('input[type=datetime-local][data-iso]');
-        for(var i=0;i<els.length;i++){var iso=els[i].getAttribute("data-iso");if(iso)els[i].value=toLocalInput(iso);}
-        /* htmx posts the form — rewrite the datetime params with the client
-           tz offset before htmx gathers them (same suffix rule as the page).
-           #975: assign unconditionally — detail.parameters is a Proxy over
-           FormData with no has trap, so an in-membership check is always
-           false and the suffix silently never landed (bare datetimes then
-           hit the #964 400 guard and the dialog could not save at all). */
+        var values=wireWall(form);
+        /* htmx posts the form — write the datetime params before htmx
+           gathers them. #975: assign unconditionally — detail.parameters is
+           a Proxy over FormData with no has trap. */
         form.addEventListener("htmx:configRequest",function(ev){
-          var o=-new Date().getTimezoneOffset(),s=o<0?"-":"+",a=Math.abs(o);
-          var suf=s+p2(Math.floor(a/60))+":"+p2(a%60);
-          for(var j=0;j<els.length;j++){if(els[j].value){
-            ev.detail.parameters[els[j].name]=els[j].value+suf;}}
+          values(function(el,v){ ev.detail.parameters[el.name]=v; });
         });
       })();</script>`;
   }

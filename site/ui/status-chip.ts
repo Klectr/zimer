@@ -1,13 +1,33 @@
 import { esc } from "../lib/format";
+import { icon } from "../lib/icons";
 
 export type ZinvoiceStatus = "draft" | "sent" | "paid";
 
 const STATUSES: readonly ZinvoiceStatus[] = ["draft", "sent", "paid"];
 
-export function statusChip(status: ZinvoiceStatus): string {
+export interface StatusChipOptions {
+  overdue?: boolean;
+  /** Replaces the status word, e.g. "Due Dec 14" on a sent chip. */
+  label?: string;
+  suffix?: string;
+  icon?: Parameters<typeof icon>[0];
+}
+
+export function statusChip(status: ZinvoiceStatus, opts: StatusChipOptions = {}): string {
   if (!STATUSES.includes(status)) {
     throw new Error(`statusChip: unknown status ${JSON.stringify(status)} (expected ${STATUSES.join(", ")})`);
   }
-  const label = status[0].toUpperCase() + status.slice(1);
-  return `<span class="pill pill-${esc(status)}">${esc(label)}</span>`;
+  if (opts.overdue && status !== "sent") {
+    throw new Error(`statusChip: overdue applies to sent Zinvoices only (got ${JSON.stringify(status)})`);
+  }
+  const tone = opts.overdue ? "overdue" : status;
+  const word = opts.overdue ? "Overdue" : status[0].toUpperCase() + status.slice(1);
+  const base = opts.label ?? word;
+  const label = opts.suffix ? `${base} ${opts.suffix}` : base;
+  const lead = opts.icon ? icon(opts.icon) : "";
+  return `<span class="ui-chip ui-chip-${tone}">${lead}${esc(label)}</span>`;
 }
+
+/** "Paid via Stripe" beside a paid chip (#448: bolt from the icon system). */
+export const stripePaidChip = (): string =>
+  ` <span class="stripe-paid-chip">${icon("bolt")}<span>Paid via Stripe</span></span>`;

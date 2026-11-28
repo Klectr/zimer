@@ -29,11 +29,11 @@ const baseDeps = {
   layout: (_t: string, b: string) => b,
   demoBanner: () => "",
   projectOptions: () => "",
+  projectOptionRows: () => [],
   revenueTotals: () => ({ invoiced: 0, paid: 0, outstanding: 0 }),
   revenueMonthly: () => [],
   revenueByClient: () => [],
   revenueOverdue: () => [],
-  m3ProgressBar: () => "",
   dayTargetSecs: () => 8 * 3600, /* #908: per-request getter */
 };
 
@@ -147,7 +147,7 @@ describe("running entry row delete guard (#462)", () => {
   });
   test("Edit opens the dialog instead of navigating (#903)", () => {
     const html = row(stoppedEntry);
-    expect(html).toContain('<button class="md-icon-button" type="button" data-edit-entry="1"');
+    expect(html).toContain('<button type="button" class="ui-icon-btn" data-edit-entry="1"');
     expect(html).toContain('aria-label="Edit entry" data-tip="Edit"');
     expect(html).not.toContain("/entries/1/edit");
   });
@@ -158,15 +158,15 @@ describe("running entry row live duration (#469)", () => {
   function row(entry: typeof runningEntry) {
     return createTimerViews({ ...baseDeps, qRunning: stubQuery() } as any).entryRow(entry as any);
   }
-  test("running entry row carries data-live-start for the card ticker", () => {
-    expect(row(runningEntry)).toContain('data-live-start="2026-09-23T10:00:00.000Z"');
+  test("running entry row carries data-live-duration for the card ticker", () => {
+    expect(row(runningEntry)).toContain("data-live-duration");
   });
   test("finished entry row has no live duration hook", () => {
-    expect(row(stoppedEntry)).not.toContain("data-live-start");
+    expect(row(stoppedEntry)).not.toContain("data-live-duration");
   });
   test("card tick script updates the live row with a fmtDur mirror", () => {
     const html = partial(true);
-    expect(html).toContain("querySelector('#today-list [data-live-start]')");
+    expect(html).toContain("querySelector('#today-list [data-live-duration]')");
     // mirror of site/lib/format.ts fmtDur: "1h" / "1h 02m" / "3m 24s" / "3m" / "45s"
     expect(html).toContain("return m>0?h+'h '+String(m).padStart(2,'0')+'m':h+'h'");
     expect(html).toContain("return m+'m'+(sec>0?' '+String(sec).padStart(2,'0')+'s':'')");
@@ -174,7 +174,7 @@ describe("running entry row live duration (#469)", () => {
   });
   test("stopped card renders no live ticker", () => {
     // the stopped card only retires the old interval — no row-ticking logic
-    expect(partial(false)).not.toContain("data-live-start");
+    expect(partial(false)).not.toContain("data-live-duration");
   });
 });
 
@@ -245,7 +245,7 @@ describe("timer card stop button (#475)", () => {
     const html = partial(true);
     // .timer-top-row .stop positions the button top-right; without the
     // class it drops below the TRACKING label in normal flow.
-    expect(html).toContain('class="md-filled-button stop" hx-post="/timer/stop"');
+    expect(html).toContain('class="ui-btn ui-btn-primary" hx-post="/timer/stop"');
   });
   test("idle card has no stop button", () => {
     expect(partial(false)).not.toContain("/timer/stop");
@@ -261,33 +261,33 @@ describe("tracking label project name (#718)", () => {
     };
     return createTimerViews(deps as any).timerPartial();
   }
-  test("project name rides in a no-wrap span, never bare text", () => {
-    // the span keeps the label from splitting the name mid-phrase on narrow
-    // screens — style.css ellipsizes it instead. The "·" separator rides
-    // inside the span so it can't detach from the name.
+  test("project name rides in the no-wrap context span, never bare text", () => {
+    // the context span keeps the label from splitting the name mid-phrase
+    // on narrow screens — style.css ellipsizes .ui-timer-context instead.
     expect(partialWithProject("Brand refresh")).toContain(
-      '<span class="timer-state-proj">· Brand refresh</span>');
+      '<span class="ui-timer-context">Brand refresh · deep work</span>');
   });
-  test("no project renders no span", () => {
-    expect(partialWithProject(null)).not.toContain("timer-state-proj");
+  test("no project leaves the context to the description alone", () => {
+    expect(partialWithProject(null)).toContain(
+      '<span class="ui-timer-context">deep work</span>');
   });
 });
 
 describe("running card description ellipsis (#761)", () => {
-  test("description carries timer-desc so it ellipsizes clear of the Stop button", () => {
-    // the Stop button is absolutely positioned — without the class a long
-    // description slides under it and clips mid-word on narrow screens.
+  test("description rides in the ellipsizing context span", () => {
+    // .ui-timer-context is one no-wrap line with an ellipsis, so a long
+    // description truncates cleanly instead of wrapping the panel.
     expect(partial(true)).toContain(
-      '<div class="md-title-medium timer-desc">deep work</div>');
+      '<span class="ui-timer-context">deep work</span>');
   });
-  test("blank description still gets the class", () => {
+  test("blank description still gets the context span", () => {
     const entry = { ...runningEntry, description: "" };
     const deps = {
       ...baseDeps,
       qRunning: { get: () => entry } as unknown as Statement,
     };
     expect(createTimerViews(deps as any).timerPartial()).toContain(
-      '<div class="md-title-medium timer-desc">No description</div>');
+      '<span class="ui-timer-context">No description</span>');
   });
 });
 
@@ -316,14 +316,14 @@ describe("entry row tooltips (#484)", () => {
   }
   test("edit uses the house data-tip tooltip, not the native title", () => {
     const html = row(finished);
-    // the native OS tooltip renders differently from the M3 plain tooltips
+    // the native OS tooltip renders differently from the app's plain tooltips
     // the invoice action buttons use — one house system for all of them.
     expect(html).toContain('data-tip="Edit"');
     expect(html).not.toContain('title="Edit"');
   });
   test("delete gets a data-tip tooltip", () => {
     const html = row(finished);
-    expect(html).toContain('data-tip="Delete"');
+    expect(html).toContain('data-tip="Delete entry"');
     expect(html).not.toContain('title="Delete"');
   });
   test("running row's edit keeps the tooltip; no delete on running rows", () => {
@@ -335,8 +335,8 @@ describe("entry row tooltips (#484)", () => {
   test("inv-mark chip uses the house data-tip tooltip, not the native title (#498)", () => {
     const html = row({ ...finished, invoice_number: "INV-0042", invoice_status: "sent" } as any);
     // native title shows an OS-styled tooltip and never fires on touch —
-    // the chip joins the M3 plain tooltip system (450ms long-press, #496).
-    expect(html).toContain('class="inv-mark "');
+    // the chip joins the plain tooltip system (450ms long-press, #496).
+    expect(html).toContain('class="ui-inv-mark"');
     expect(html).toContain('data-tip="Zinvoiced on INV-0042"');
     expect(html).not.toContain('title="Zinvoiced on INV-0042"');
   });
@@ -370,11 +370,11 @@ describe("timer shortcut hint (#532)", () => {
     expect(html).toContain('data-tip="Stop (t)"');
     expect(html).toContain('aria-keyshortcuts="t"');
   });
-  test("filled-button tooltip styles exist in the house data-tip system", async () => {
+  test("button tooltip styles exist in the house data-tip system", async () => {
     const css = await Bun.file("site/static/style.css").text();
-    expect(css).toContain(".md-filled-button[data-tip]");
-    expect(css).toContain(".md-filled-button[data-tip]:focus-visible::before");
-    expect(css).toContain(".md-filled-button[data-tip].tip-show::before");
+    expect(css).toContain(".ui-btn[data-tip]");
+    expect(css).toContain(".ui-btn[data-tip]:focus-visible::before");
+    expect(css).toContain(".ui-btn[data-tip].tip-show::before");
   });
 });
 
@@ -462,7 +462,7 @@ describe("dashboard document title (#798)", () => {
       layout: (t: string, b: string) => { captured = t; return b; },
     };
     createTimerViews(deps as any).dashboardPage();
-    expect(captured).toBe("Today");
+    expect(captured).toMatch(/^Good (morning|afternoon|evening)$/);
     expect(captured).not.toBe("Zimer");
   });
 });
@@ -474,7 +474,7 @@ describe("start-form labels (#827)", () => {
     const html = partial(false);
     for (const id of ["tm-desc", "tm-project"]) {
       expect(html).toContain(`id="${id}"`);
-      expect(html).toContain(`<label for="${id}">`);
+      expect(html).toContain(`<label class="ui-field-label" for="${id}"`);
     }
   });
 });
@@ -484,16 +484,151 @@ describe("today pacing bar follows the daily target (#908)", () => {
     const deps = {
       ...baseDeps,
       dayTargetSecs: () => targetSecs,
-      m3ProgressBar: (_p: number, _m: boolean, label: string) => label,
     };
     return createTimerViews(deps as any).todayPartial();
   }
   test("label reflects the custom target", () => {
     const html = todayHtml(6 * 3600);
     expect(html).toContain("Today · 0s / 6h");
-    expect(html).toContain("Today's hours target, 6 hours");
+    expect(html).toContain("hours target, 6 hours");
   });
   test("default label is unchanged at 8h", () => {
     expect(todayHtml(8 * 3600)).toContain("Today · 0s / 8h");
+  });
+});
+
+describe("timer mock parity (#1121)", () => {
+  test("running panel shows the started line, rate tag, and live worth tag", () => {
+    const entry = {
+      ...runningEntry, client_rate: 85,
+      project_name: "Website rebuild", client_name: "Acme Studio",
+    };
+    const deps = {
+      ...baseDeps,
+      qRunning: { get: () => entry } as unknown as Statement,
+    };
+    const html = createTimerViews(deps as any).timerPartial();
+    expect(html).toContain('Started <time data-ts="2026-09-23T10:00:00.000Z"></time>');
+    expect(html).toContain("$85 / hr");
+    expect(html).toContain('id="timer-worth" data-rate="85"');
+    expect(html).toContain("Worth $");
+  });
+
+  test("running panel without a rate renders no meta tags", () => {
+    expect(partial(true)).not.toContain('id="timer-worth"');
+    expect(partial(true)).not.toContain("ui-timer-meta");
+  });
+
+  test("finished rows carry the amount (duration x client rate)", () => {
+    const entry = { ...runningEntry, end_time: "2026-09-23T11:30:00.000Z", client_rate: 85 };
+    const html = createTimerViews({ ...baseDeps, qRunning: stubQuery() } as any).entryRow(entry as any);
+    expect(html).toContain('<div class="ui-row-meta">$127.50</div>');
+  });
+
+  test("rows without a rate carry no amount", () => {
+    const entry = { ...runningEntry, end_time: "2026-09-23T11:30:00.000Z" };
+    const html = createTimerViews({ ...baseDeps, qRunning: stubQuery() } as any).entryRow(entry as any);
+    expect(html).not.toContain('ui-row-meta">$');
+  });
+
+  test("dashboard composes the mock header, stat row, and entries card", () => {
+    const deps = { ...baseDeps, qRunning: { get: () => null } as unknown as Statement };
+    const html = createTimerViews(deps as any).dashboardPage();
+    expect(html).toContain('<header class="ui-app-head">');
+    expect(html).toMatch(/<h1 class="ui-app-title">Good (morning|afternoon|evening)<\/h1>/);
+    expect(html).toContain("here's your day so far.");
+    expect(html).not.toContain('id="invoice-week"');
+    expect(html).not.toContain("Zinvoice this week");
+    /* #1273: the header carries no Zinvoice path; the Unbilled stat's
+       "Create Zinvoice" is the one link. (The demo banner, stubbed ""
+       here, adds its own sample-week link in production by design.) */
+    expect(html.split('<div id="today-stats"')[0]).not.toContain("/invoices/new");
+    expect(html.split('href="/invoices/new"').length - 1).toBe(1);
+    expect(html).toContain('<div id="today-stats" hx-get="/partial/today-stats" hx-trigger="load, timer-updated from:body">');
+    expect(html).toContain('<div class="ui-stat-strip">');
+    for (const label of ["Today", "This week", "Unbilled"]) {
+      expect(html).toContain(`<span class="ui-stat-label">${label}</span>`);
+    }
+    expect(html).toContain("Create Zinvoice");
+    expect(html).toContain('<div class="ui-block-title">Today\'s entries</div>');
+    expect(html).not.toContain("page-head");
+  });
+
+  test("dashboard is the mock's single column: no supporting revenue rail", () => {
+    const deps = { ...baseDeps, qRunning: { get: () => null } as unknown as Statement };
+    const html = createTimerViews(deps as any).dashboardPage();
+    expect(html).toContain('class="timer-home"');
+    /* The whole page scrolls; no pinned viewport or inner scroll region. */
+    expect(html).not.toContain("scroll-region");
+    expect(html).not.toContain("pane-supporting");
+    expect(html).not.toContain(">Revenue</h2>");
+  });
+
+  test("stat partial values: today, week window, and rounded unbilled", () => {
+    const mk = (start: string, end: string, client: string) => ({
+      start_time: start, end_time: end, client_name: client,
+      project_name: null, client_color: null, client_rate: null,
+      invoice_id: null, invoice_number: null, invoice_status: null,
+      id: 1, project_id: 1, description: "",
+    });
+    const todayEntries = [mk("2026-11-09T09:00:00.000Z", "2026-11-09T10:00:00.000Z", "Acme")];
+    const weekEntries = [...todayEntries, mk("2026-11-04T09:00:00.000Z", "2026-11-04T11:00:00.000Z", "Beta")];
+    let call = 0;
+    const deps = {
+      ...baseDeps,
+      qRange: { all: () => (++call === 1 ? todayEntries : weekEntries) } as unknown as Statement,
+      db: { query: () => ({ all: () => [
+        { cid: 1, rate: 100, start_time: "2026-11-02T09:00:00.000Z", end_time: "2026-11-02T09:30:00.000Z" },
+        { cid: 1, rate: 100, start_time: "2026-11-03T09:00:00.000Z", end_time: "2026-11-03T09:01:00.000Z" },
+      ] }) } as unknown as Database,
+    };
+    const html = createTimerViews(deps as any).todayStatsPartial(
+      "2026-11-09T06:00:00.000Z", "2026-11-10T06:00:00.000Z",
+      "2026-11-08T06:00:00.000Z", "2026-11-15T06:00:00.000Z");
+    expect(html).toContain('<div class="ui-stat-cell-value">1h');
+    expect(html).toContain('<div class="ui-stat-cell-value">3h');
+    expect(html).toContain("· 2 clients");
+    expect(html).toContain("of 40h");
+    /* 30m at rate 100 = $50; the 1-minute entry rounds up to 5m = $8.33 */
+    expect(html).toContain('<div class="ui-stat-cell-value">$58.33');
+    expect(html).toContain("35m · 1 client");
+  });
+});
+
+/** #1342: the Zimer card and Today's entries share a grid wrapper so wide
+ *  content can lay them side by side (container query on .timer-home). */
+describe("timer home side-by-side grid (#1342)", () => {
+  /* Checked on the rendered page (the cards are site/views/timer-home.ts
+     components now, not literal markup in the view). */
+  test("both cards sit inside .timer-home-grid; the inline script stays outside", () => {
+    const deps = { ...baseDeps, qRunning: { get: () => null } as unknown as Statement };
+    const html = createTimerViews(deps as any).dashboardPage();
+    const grid = html.indexOf('<div class="timer-home-grid">');
+    const timer = html.indexOf('id="timer-card"', grid);
+    const entries = html.indexOf("Today's entries</div>", grid);
+    const close = html.indexOf("</section>\n        </div>", grid);
+    const script = html.indexOf("<script>(function(){/* #255", grid);
+    expect(grid).toBeGreaterThan(-1);
+    expect(timer).toBeGreaterThan(grid);
+    expect(entries).toBeGreaterThan(timer);
+    expect(close).toBeGreaterThan(entries);
+    expect(script).toBeGreaterThan(close);
+  });
+
+  test("the grid goes two-column only on wide content", async () => {
+    const css = await Bun.file("site/static/style.css").text();
+    expect(css).toContain(".timer-home { display: flex; flex-direction: column; gap: var(--spacing); container-type: inline-size; }");
+    expect(css).toMatch(/@container \(min-width: 960px\) \{\s*\.timer-home-grid \{ display: grid; grid-template-columns: minmax\(0, 5fr\) minmax\(0, 7fr\); align-items: start; \}/);
+  });
+});
+
+/** The Zimer page scrolls as one page: layout() is not asked for the fixed
+ *  viewport (that left a short inner scroll area under pinned stats). */
+describe("Zimer page scrolls the document", () => {
+  test("dashboardPage does not request the fixed viewport", () => {
+    let fixedArg: unknown = "unset";
+    const deps = { ...baseDeps, qRunning: { get: () => null } as unknown as Statement, layout: (_t: string, b: string, _a?: string, fixed?: boolean) => { fixedArg = fixed; return b; } };
+    createTimerViews(deps as any).dashboardPage();
+    expect(fixedArg).toBeFalsy();
   });
 });

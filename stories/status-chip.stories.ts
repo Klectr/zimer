@@ -8,7 +8,7 @@ export const statusChipStories: Story[] = [
     title: "All statuses",
     render: () =>
       `<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">` +
-      STATUSES.map((s) => statusChip(s)).join("") +
+      (["draft", "sent", "paid"] as const).map((s) => statusChip(s)).join("") +
       `</div>`,
   },
   {

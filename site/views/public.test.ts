@@ -6,7 +6,7 @@ import { createPublicViews } from "./public.ts";
 const views = createPublicViews({
   getInvoice: () => null,
   invoiceTotals: () => ({}),
-  invoiceDocumentHtml: () => "",
+  businessName: () => "",
   ensurePublicToken: () => "",
 } as any);
 
@@ -14,14 +14,14 @@ describe("auth labels (#827)", () => {
   test("token login label is wired", () => {
     const html = views.loginPage();
     expect(html).toContain('id="login-token"');
-    expect(html).toContain('<label for="login-token">');
+    expect(html).toContain('<label class="ui-field-label" for="login-token">');
   });
 
   test("signup labels are wired", () => {
     const html = views.signupPage();
     for (const id of ["su-email", "su-password"]) {
       expect(html).toContain(`id="${id}"`);
-      expect(html).toContain(`<label for="${id}">`);
+      expect(html).toContain(`<label class="ui-field-label" for="${id}">`);
     }
   });
 
@@ -29,7 +29,7 @@ describe("auth labels (#827)", () => {
     const html = views.hostedLoginPage();
     for (const id of ["li-email", "li-password"]) {
       expect(html).toContain(`id="${id}"`);
-      expect(html).toContain(`<label for="${id}">`);
+      expect(html).toContain(`<label class="ui-field-label" for="${id}">`);
     }
   });
 
@@ -48,13 +48,23 @@ describe("social meta tags (#924)", () => {
   test("public invoice page has generic OG tags, no PII", () => {
     const html = (views as any).publicInvoicePage(inv, "https://zimer.klectr.dev", "/i/abc123");
     for (const tag of [
-      'property="og:title" content="Zinvoice · Zimer"',
+      'property="og:title" content="Invoice · Zimer"',
       'property="og:url" content="https://zimer.klectr.dev/i/abc123"',
-      'property="og:image" content="https://zimer.klectr.dev/static/og-image.png"',
-      'property="og:image:width" content="2240"',
+      'property="og:image" content="https://zimer.klectr.dev/static/og-image-v3.png"',
+      'property="og:image:width" content="1200"',
+      'property="og:image:height" content="630"',
       'name="twitter:card" content="summary_large_image"',
     ]) expect(html).toContain(tag);
     expect(html).not.toContain("Acme"); // client names never leak
+  });
+  /* Client-facing pages say "invoice" (Zinvoice is the user's product word);
+     the tab title still matches the heading and OG tags (#1217). */
+  test("#1217: public invoice tab title says Invoice, matching the heading and OG tags", () => {
+    const html = (views as any).publicInvoicePage(inv, "https://zimer.klectr.dev", "/i/abc123");
+    expect(html).toContain("<title>Invoice INV-0001 · Zimer</title>");
+    /* Only the brand image's alt text (it describes the artwork's words)
+       may still say Zinvoice; no title, heading, meta or terms line does. */
+    expect(html.replace(/alt="[^"]*"|content="Klectr[^"]*"/g, "")).not.toMatch(/Zinvoice(?! is your)/);
   });
   test("changelog page has OG tags", () => {
     const html = (views as any).changelogPage([], "https://zimer.klectr.dev");
@@ -100,8 +110,10 @@ describe("privacy analytics disclosure (#1069)", () => {
     expect(html).toContain("Analytics");
     expect(html).toContain('<a href="https://posthog.com" target="_blank" rel="noopener">PostHog</a>');
     expect(html).toContain('<a href="https://posthog.com/privacy" target="_blank" rel="noopener">posthog.com/privacy</a>');
-    expect(html).toContain("On the landing page it records page views and clicks.");
-    expect(html).toContain("On the landing page and inside the app it records sessions (a replay of the visit)");
+    expect(html).toContain("On the landing page and inside the app it records errors when something breaks");
+    expect(html).toContain("On the landing page it records page views, clicks, and sessions (a replay of the visit).");
+    expect(html).toContain("Inside the app it does not record sessions.");
+    expect(html).not.toContain("inside the app it records sessions");
     expect(html).toContain("tied to your account ID, never your email");
     expect(html).toContain("Self-hosted instances send us nothing.");
     expect(html).toContain("The analytics we run on this site is described under Analytics above.");
@@ -127,5 +139,306 @@ describe("indexing split (#1050)", () => {
     expect(v.hostedLoginPage()).toContain('content="noindex"');
     const inv: any = { id: 1, number: "INV-0001", tax_rate: 0, stripe_payment_link: "", items: [], public_token: "abc123" };
     expect(v.publicInvoicePage(inv, "https://example.com", "/i/abc123")).toContain('content="noindex"');
+  });
+});
+
+/** #1121: public surfaces follow the page mocks — ui pay CTA on the public
+ *  invoice, ui title/entry pattern on the changelog, ui headings on the
+ *  legal pages. */
+describe("public page-mock parity (#1121)", () => {
+  test("pay CTA is the ui primary lg block link button with the secure-payment note", () => {
+    const v = createPublicViews({
+      getInvoice: () => null,
+      invoiceTotals: () => ({ total: 120 }),
+      businessName: () => "Acme Studio",
+      ensurePublicToken: () => "",
+    } as any) as any;
+    const inv: any = { id: 1, number: "INV-0001", tax_rate: 0, stripe_payment_link: "https://pay.example/x", items: [], public_token: "abc123" };
+    const html = v.publicInvoicePage(inv, "https://example.com", "/i/abc123");
+    expect(html).toContain('class="ui-btn ui-btn-primary ui-btn-lg ui-btn-block"');
+    expect(html).toContain('href="https://pay.example/x"');
+    expect(html).toContain("Pay $120.00");
+    expect(html).toContain("Secure payment by card.");
+    expect(html).toContain("Sent with Zimer. We&#39;ll never ask you to log in or enter a password here.");
+    expect(html).not.toContain("Zimer password");
+    expect(html).not.toContain("md-filled-button");
+  });
+
+  test("changelog uses the mock title and the ui entry pattern", () => {
+    const v = views as any;
+    const html = v.changelogPage([{ date: "Nov 9, 2026", items: ["Shipped <code>x</code>"] }], "https://example.com");
+    expect(html).toContain('<h1 class="ui-page-title">What&rsquo;s new in Zimer</h1>');
+    expect(html).toContain("Small, finished changes. Shipped means live, not announced.");
+    expect(html).toContain('class="ui-changelog-entry"');
+    expect(html).toContain('<span class="ui-changelog-date">Nov 9, 2026</span>');
+    expect(html).not.toContain("md-title-large");
+    expect(html).not.toContain("md-headline-small");
+  });
+
+  test("legal pages use ui title classes", () => {
+    const v = views as any;
+    for (const html of [v.termsPage([], "https://example.com"), v.privacyPage("https://example.com")]) {
+      expect(html).toContain('class="ui-page-title changelog-title"');
+      expect(html).not.toContain("md-headline-small");
+    }
+    expect(v.termsPage([{ heading: "H", body: "B" }], "https://example.com")).toContain('<h2 class="ui-app-title">H</h2>');
+  });
+});
+
+/** #1136: the public invoice page is the mocked summary card fed from the
+ *  stored invoice — business title, status tag, per-item lines, tax lines,
+ *  sender notes. */
+describe("public invoice summary (#1136)", () => {
+  const v = createPublicViews({
+    getInvoice: () => null,
+    invoiceTotals: (items: any[], rate: number) => {
+      const subtotal = items.reduce((s: number, i: any) => s + i.amount, 0);
+      const tax = Math.round(subtotal * rate) / 100;
+      return { subtotal, tax, total: subtotal + tax };
+    },
+    businessName: () => "Studio — Triston Armstrong",
+    ensurePublicToken: () => "",
+  } as any) as any;
+  const inv: any = {
+    id: 7, number: "INV-2001", status: "sent", tax_rate: 0,
+    issue_date: "2026-11-05", due_date: "2099-11-19", notes: "Thanks for your business.",
+    stripe_payment_link: "https://pay.example/x", public_token: "abc123",
+    items: [
+      { description: "Intake form fixes", hours: 9.5, rate: 95, amount: 902.5 },
+      { description: "Review call", hours: 1.5, rate: 95, amount: 142.5 },
+    ],
+  };
+  test("renders the mocked card with business, meta, due tag, lines, total, notes", () => {
+    const html = v.publicInvoicePage(inv, "https://example.com", "/i/abc123");
+    expect(html).toContain('class="ui-public-sheet"');
+    expect(html).toContain("Studio — Triston Armstrong");
+    expect(html).toContain("Invoice INV-2001 · Issued Nov 5, 2026");
+    expect(html).toContain("Due Nov 19");
+    /* #1224: the description stays clean and the billing math sits under it. */
+    expect(html).toContain('<span class="ui-summary-label">Intake form fixes<span class="ui-summary-detail">9.50 h × $95.00</span></span>');
+    expect(html).toContain('<span class="ui-summary-detail">1.50 h × $95.00</span>');
+    expect(html).not.toContain("Intake form fixes — 9.50 h");
+    expect(html).not.toContain("9.5h");
+    expect(html).toContain("$902.50");
+    expect(html).toContain("Total due");
+    expect(html).toContain("$1,045.00");
+    expect(html).toContain("Thanks for your business.");
+    expect(html).not.toContain("invoice-sheet");
+  });
+  test("tax adds Subtotal and Tax lines; paid swaps the tag and total label", () => {
+    const taxed: any = { ...inv, tax_rate: 10, status: "paid", stripe_payment_link: "" };
+    const html = v.publicInvoicePage(taxed, "https://example.com", "/i/abc123");
+    expect(html).toContain("Subtotal");
+    expect(html).toContain("Tax (10%)");
+    expect(html).toContain("$104.50");
+    expect(html).toContain("Paid");
+    expect(html).toContain("Total paid");
+    expect(html).not.toContain("ui-btn-primary");
+  });
+  test("an elapsed due date reads Overdue", () => {
+    const late: any = { ...inv, due_date: "2020-01-15" };
+    const html = v.publicInvoicePage(late, "https://example.com", "/i/abc123");
+    expect(html).toContain("Overdue");
+    expect(html).toContain("ui-tag-error");
+  });
+  test("a year-0000 issue date formats instead of printing raw YMD (#1542)", () => {
+    const html = v.publicInvoicePage({ ...inv, issue_date: "0000-01-15" }, "https://example.com", "/i/abc123");
+    expect(html).toContain("Issued Jan 15, 0");
+    expect(html).not.toContain("0000-01-15");
+  });
+});
+
+describe("public invoice due chip tone (#1253)", () => {
+  const v = createPublicViews({
+    getInvoice: () => null,
+    invoiceTotals: (items: any[]) => {
+      const total = items.reduce((s: number, i: any) => s + i.amount, 0);
+      return { subtotal: total, tax: 0, total };
+    },
+    businessName: () => "Studio",
+    paymentTerms: () => "net_30",
+    ensurePublicToken: () => "",
+  } as any) as any;
+  const inv: any = {
+    id: 7, number: "INV-2001", status: "sent", tax_rate: 0,
+    issue_date: "2026-11-05", notes: "", stripe_payment_link: "",
+    public_token: "abc123", client_payment_terms: null,
+    items: [{ description: "Work", hours: 2, rate: 50, amount: 100 }],
+  };
+  const ymdIn = (days: number): string => {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+  const dueHtml = (days: number) =>
+    v.publicInvoicePage({ ...inv, due_date: ymdIn(days) }, "https://example.com", "/i/abc123");
+  test("due more than 7 days out is neutral, not warning", () => {
+    const html = dueHtml(30);
+    expect(html).toContain("ui-tag-neutral");
+    expect(html).not.toContain("ui-tag-warning");
+  });
+  test("due within 7 days is warning", () => {
+    const html = dueHtml(3);
+    expect(html).toContain("ui-tag-warning");
+  });
+  test("the cutover is exactly 7 days: 7 warns, 8 is neutral", () => {
+    expect(dueHtml(7)).toContain("ui-tag-warning");
+    const html8 = dueHtml(8);
+    expect(html8).toContain("ui-tag-neutral");
+    expect(html8).not.toContain("ui-tag-warning");
+  });
+  test("due today is warning, not overdue", () => {
+    const html = dueHtml(0);
+    expect(html).toContain("ui-tag-warning");
+    expect(html).not.toContain("Overdue");
+  });
+});
+
+describe("public invoice PDF download (#1291)", () => {
+  const v = createPublicViews({
+    getInvoice: () => null,
+    invoiceTotals: (items: any[]) => {
+      const total = items.reduce((s: number, i: any) => s + i.amount, 0);
+      return { subtotal: total, tax: 0, total };
+    },
+    businessName: () => "Studio",
+    ensurePublicToken: () => "",
+  } as any) as any;
+  const inv: any = {
+    id: 7, number: "INV-2001", status: "sent", tax_rate: 0,
+    issue_date: "2026-11-05", due_date: "2099-11-19", notes: "",
+    stripe_payment_link: "", public_token: "abc123",
+    items: [{ description: "Work", hours: 2, rate: 50, amount: 100 }],
+  };
+  test("the sheet always offers Download PDF at <token>.pdf, never as the primary", () => {
+    const html = v.publicInvoicePage(inv, "https://example.com", "/i/abc123");
+    expect(html).toContain('href="/i/abc123.pdf"');
+    expect(html).toContain("Download PDF");
+    expect(html).toContain(" download>");
+    expect(html).not.toContain("ui-btn-primary");
+  });
+  test("with Stripe on, Pay stays the single primary and Download PDF is default", () => {
+    const html = v.publicInvoicePage({ ...inv, stripe_payment_link: "https://pay.example/x" }, "https://example.com", "/i/abc123");
+    expect(html).toContain('href="/i/abc123.pdf"');
+    expect(html.split("ui-btn-primary").length - 1).toBe(1);
+  });
+});
+
+describe("public invoice payment instructions (#1296)", () => {
+  const v = createPublicViews({
+    getInvoice: () => null,
+    invoiceTotals: (items: any[]) => {
+      const total = items.reduce((s: number, i: any) => s + i.amount, 0);
+      return { subtotal: total, tax: 0, total };
+    },
+    businessName: () => "Studio",
+    paymentInstructions: () => "Bank transfer to <b>Acct 123</b>\nRef: invoice number",
+    ensurePublicToken: () => "",
+  } as any) as any;
+  const inv: any = {
+    id: 7, number: "INV-2001", status: "sent", tax_rate: 0,
+    issue_date: "2026-11-05", due_date: "2099-11-19", notes: "",
+    stripe_payment_link: "", public_token: "abc123",
+    items: [{ description: "Work", hours: 2, rate: 50, amount: 100 }],
+  };
+  test("unpaid with no card link shows How to pay, escaped, line breaks kept", () => {
+    const html = v.publicInvoicePage(inv, "https://example.com", "/i/abc123");
+    expect(html).toContain("How to pay");
+    expect(html).toContain("Bank transfer to &lt;b&gt;Acct 123&lt;/b&gt;");
+    expect(html).not.toContain("<b>Acct 123</b>");
+    expect(html).toContain("ui-public-howtopay-text");
+  });
+  test("hidden when a card payment link exists", () => {
+    const html = v.publicInvoicePage({ ...inv, stripe_payment_link: "https://pay.example/x" }, "https://example.com", "/i/abc123");
+    expect(html).not.toContain("How to pay");
+  });
+  test("hidden once paid", () => {
+    const html = v.publicInvoicePage({ ...inv, status: "paid" }, "https://example.com", "/i/abc123");
+    expect(html).not.toContain("How to pay");
+  });
+  test("hidden on a draft — a draft never reads as money due", () => {
+    const html = v.publicInvoicePage({ ...inv, status: "draft" }, "https://example.com", "/i/abc123");
+    expect(html).not.toContain("How to pay");
+  });
+});
+
+describe("public invoice status edges (#1136 review)", () => {
+  const mk = (globalTerms: string) => createPublicViews({
+    getInvoice: () => null,
+    invoiceTotals: (items: any[]) => {
+      const total = items.reduce((s: number, i: any) => s + i.amount, 0);
+      return { subtotal: total, tax: 0, total };
+    },
+    businessName: () => "Studio",
+    paymentTerms: () => globalTerms,
+    ensurePublicToken: () => "",
+  } as any) as any;
+  const base: any = {
+    id: 9, number: "INV-2009", tax_rate: 0, issue_date: "2026-11-05",
+    due_date: "2020-01-15", notes: "", stripe_payment_link: "", public_token: "tok",
+    client_payment_terms: null,
+    items: [{ description: "Work", hours: 2, rate: 50, amount: 100 }],
+  };
+  test("a draft never reads as money due", () => {
+    const html = mk("net_30").publicInvoicePage({ ...base, status: "draft" }, "https://example.com", "/i/tok");
+    expect(html).toContain("Draft");
+    expect(html).toContain("Total");
+    expect(html).not.toContain("Total due");
+    expect(html).not.toContain("Overdue");
+  });
+  test("pay-when-paid terms never flag overdue (#291)", () => {
+    const html = mk("pay_when_paid").publicInvoicePage({ ...base, status: "sent" }, "https://example.com", "/i/tok");
+    expect(html).not.toContain("Overdue");
+    expect(html).not.toContain("Due Jan 15");
+    expect(html).toContain("Sent");
+  });
+  test("numeric terms keep the overdue flag; a client override wins", () => {
+    const v = mk("pay_when_paid");
+    const html = v.publicInvoicePage({ ...base, status: "sent", client_payment_terms: "net_15" }, "https://example.com", "/i/tok");
+    expect(html).toContain("Overdue");
+  });
+});
+
+describe("public invoice parties (#1224)", () => {
+  const mk = (biz: Record<string, string>) => createPublicViews({
+    getInvoice: () => null,
+    invoiceTotals: (items: any[]) => {
+      const total = items.reduce((s: number, i: any) => s + i.amount, 0);
+      return { subtotal: total, tax: 0, total };
+    },
+    businessName: () => biz.name || "",
+    businessEmail: () => biz.email || "",
+    businessAddress: () => biz.address || "",
+    ensurePublicToken: () => "",
+  } as any) as any;
+  const inv: any = {
+    id: 11, number: "INV-2011", status: "sent", tax_rate: 0,
+    issue_date: "2026-11-05", due_date: "2099-11-19", notes: "",
+    stripe_payment_link: "", public_token: "abc123",
+    client_name: "Acme Studio", client_email: "ap@acme.example", client_address: "9 Client Rd",
+    items: [{ description: "Work", hours: 2, rate: 50, amount: 100 }],
+  };
+  test("shows From from the business profile and Bill to from the client", () => {
+    const html = mk({ name: "Studio", email: "billing@studio.example", address: "1 Main St\nSpringfield" })
+      .publicInvoicePage(inv, "https://example.com", "/i/abc123");
+    expect(html).toContain(">From<");
+    expect(html).toContain("billing@studio.example");
+    expect(html).toContain("Springfield");
+    expect(html).toContain(">Bill to<");
+    expect(html).toContain("Acme Studio");
+    expect(html).toContain("ap@acme.example");
+    expect(html).toContain("9 Client Rd");
+  });
+  test("empty business profile hides From; Bill to still shows", () => {
+    const html = mk({}).publicInvoicePage(inv, "https://example.com", "/i/abc123");
+    expect(html).not.toContain(">From<");
+    expect(html).toContain(">Bill to<");
+    expect(html).toContain("Acme Studio");
+  });
+  test("no client on the invoice hides Bill to", () => {
+    const html = mk({ name: "Studio", email: "billing@studio.example" })
+      .publicInvoicePage({ ...inv, client_name: null, client_email: null, client_address: null }, "https://example.com", "/i/abc123");
+    expect(html).toContain(">From<");
+    expect(html).not.toContain(">Bill to<");
   });
 });

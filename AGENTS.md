@@ -35,7 +35,7 @@ This is the most violated thing by new agents, so it's up front, not linked:
 - **Accent:** pumpkin `#fb923c` (primary). Use sparingly: the single most
   important action per view, the running-timer state, and links.
 - **Scales, no exceptions.** Type 12/14/16 with headings 38/30/24/20 (no
-  off-scale sizes), radius 4/6/8/12, spacing on the 4px scale, control
+  off-scale sizes), radius 4/6/8/14/20, spacing on the 4px scale, control
   heights 28/36/40. Components read semantic tokens, never hard-code hex.
 - **Icons, never emoji/glyphs.** Actions use the `icon(name)` system in
   `site/lib/icons.ts` (inline SVG, no icon font). Never use emoji or text
@@ -44,6 +44,17 @@ This is the most violated thing by new agents, so it's up front, not linked:
   (`$` … `/hr`), never crammed into the label.
 - **Selects are custom.** Native `<select>` keeps its OS arrow, which ignores
   our radius — always `appearance: none` + the custom chevron.
+- **Zandbox is for small, reusable components — not pages.** A new
+  reusable piece (a chip, row, bar, field, card, table, dialog…) is a
+  presentational component in `site/ui/*.ts` with a story in
+  `stories/<name>.stories.ts`: one component per story, shown alone in its
+  states, fictional data, registered in `zandbox.config.ts`. Build and check
+  it in Zandbox (`bun run zandbox`, port 8935) before the view uses it.
+  Reuse an existing component before adding one (check `site/ui/` first).
+  **Page sections stay in views:** a single-use composition (a wizard step,
+  a page header, a pane) is a plain function in `site/views/` built from
+  `site/ui` components — no story, and never a "component" just to move
+  markup out of a view.
 - **No horizontal scrolling, ever.** Layouts fit their container or change
   pattern (see the calendar rule in DESIGN.md).
 - **Calendar conventions:** single-lane days showing tracked time only;

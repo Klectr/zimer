@@ -4,8 +4,14 @@
  * asset requests: navigations, API calls, and auth flows pass straight
  * through untouched. Network-first: normal loads behave exactly as today
  * (ETag revalidation still applies), and a cached copy covers flaky or
- * offline moments. Only successful GETs are cached; nothing else. */
-const CACHE = "zimer-static-v1";
+ * offline moments. Only successful GETs are cached; nothing else.
+ * #1416: versioned (?v=) URLs are never intercepted — the server already
+ * serves a matching hash as immutable, so the HTTP cache owns them. The
+ * SW must not store them: each deploy mints new URLs that would pile up
+ * in Cache Storage forever, and a stale page's old ?v= can return current
+ * bytes, which the SW would then bind to the wrong hash with no expiry.
+ * The v2 cache name evicts the accumulated v1 entries on activate. */
+const CACHE = "zimer-static-v2";
 
 self.addEventListener("install", () => {
   self.skipWaiting();
@@ -27,6 +33,7 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
   if (!url.pathname.startsWith("/static/")) return;
+  if (url.searchParams.has("v")) return;
   event.respondWith(
     fetch(event.request)
       .then((res) => {

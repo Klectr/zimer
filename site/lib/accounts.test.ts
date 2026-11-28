@@ -12,6 +12,22 @@ function accountsDb() {
 }
 
 describe("hosted accounts (#732)", () => {
+  test("accounts DB is created with a 5000ms busy timeout (#1319)", () => {
+    const a = accountsDb();
+    const row = a.db.query("PRAGMA busy_timeout").get() as { timeout: number };
+    expect(row.timeout).toBe(5000);
+  });
+
+  test("accounts DB uses the cache/temp profile but keeps FULL sync (#996)", () => {
+    const a = accountsDb();
+    const sync = a.db.query("PRAGMA synchronous").get() as { synchronous: number };
+    expect(sync.synchronous).toBe(2);
+    const cache = a.db.query("PRAGMA cache_size").get() as { cache_size: number };
+    expect(cache.cache_size).toBe(-8000);
+    const temp = a.db.query("PRAGMA temp_store").get() as { temp_store: number };
+    expect(temp.temp_store).toBe(2);
+  });
+
   test("signup stores an argon2 hash, never the plaintext password", async () => {
     const a = accountsDb();
     const { user, error } = await a.signup("Ada@example.com", "correct-horse-8");
@@ -183,5 +199,74 @@ CREATE INDEX idx_sessions_user ON sessions(user_id);`);
     a.db.query("UPDATE users SET deleted_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?").run(user!.id);
     const { error } = await a.signup("taken@example.com", "another-pass-9");
     expect(error).toBe("Couldn't create your account. If you already have one, log in instead.");
+  });
+});
+
+describe("change password (#987)", () => {
+  test("wrong current password is rejected and the old password still works", async () => {
+    const a = accountsDb();
+    const { user } = await a.signup("ada@example.com", "correct-horse-8");
+    const existing = a.createSession(user!.id);
+    const r = await a.changePassword(user!.id, "not-the-password", "brand-new-pass-1");
+    expect(r.error).toBe("Current password is wrong.");
+    expect(r.token).toBeUndefined();
+    expect(a.sessionUser(existing)).not.toBeNull();
+    const { token } = await a.login("ada@example.com", "correct-horse-8");
+    expect(token).toBeDefined();
+  });
+
+  test("short or unchanged new passwords are rejected", async () => {
+    const a = accountsDb();
+    const { user } = await a.signup("ada@example.com", "correct-horse-8");
+    expect((await a.changePassword(user!.id, "correct-horse-8", "short")).error)
+      .toBe("New password must be at least 8 characters.");
+    expect((await a.changePassword(user!.id, "correct-horse-8", "correct-horse-8")).error)
+      .toBe("New password must be different from your current password.");
+  });
+
+  test("success rotates the password and every old session, returning a fresh one", async () => {
+    const a = accountsDb();
+    const { user } = await a.signup("ada@example.com", "correct-horse-8");
+    const keep = a.createSession(user!.id);
+    const other = a.createSession(user!.id);
+    const r = await a.changePassword(user!.id, "correct-horse-8", "brand-new-pass-1");
+    expect(r.error).toBeUndefined();
+    expect(r.token).toBeDefined();
+    expect(r.token).not.toBe(keep);
+    expect(a.sessionUser(keep)).toBeNull();
+    expect(a.sessionUser(other)).toBeNull();
+    expect(a.sessionUser(r.token!)).not.toBeNull();
+    expect(a.sessionUser(r.token!)!.id).toBe(user!.id);
+    expect((await a.login("ada@example.com", "correct-horse-8")).error).toBe("Wrong email or password.");
+    expect((await a.login("ada@example.com", "brand-new-pass-1")).token).toBeDefined();
+  });
+
+  test("every prior session is revoked on success", async () => {
+    const a = accountsDb();
+    const { user } = await a.signup("ada@example.com", "correct-horse-8");
+    const t = a.createSession(user!.id);
+    const r = await a.changePassword(user!.id, "correct-horse-8", "brand-new-pass-1");
+    expect(r.error).toBeUndefined();
+    expect(a.sessionUser(t)).toBeNull();
+    expect(a.sessionUser(r.token!)).not.toBeNull();
+  });
+
+  test("revocation is scoped to the user — another user's sessions survive", async () => {
+    const a = accountsDb();
+    const ada = (await a.signup("ada@example.com", "correct-horse-8")).user!;
+    const bob = (await a.signup("bob@example.com", "correct-horse-8")).user!;
+    const bobSession = a.createSession(bob.id);
+    const r = await a.changePassword(ada.id, "correct-horse-8", "brand-new-pass-1");
+    expect(r.error).toBeUndefined();
+    expect(a.sessionUser(bobSession)).not.toBeNull();
+    expect(a.sessionUser(bobSession)!.email).toBe("bob@example.com");
+  });
+
+  test("soft-deleted users cannot change password", async () => {
+    const a = accountsDb();
+    const { user } = await a.signup("gone@example.com", "correct-horse-8");
+    a.db.query("UPDATE users SET deleted_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?").run(user!.id);
+    const r = await a.changePassword(user!.id, "correct-horse-8", "brand-new-pass-1");
+    expect(r.error).toBe("Account not found.");
   });
 });

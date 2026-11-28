@@ -2,8 +2,9 @@
  *  revenue) plus the unauthenticated Stripe webhook. Returns null when the
  *  path is not an API path so the caller falls through to web routes. */
 
+import { bareWallToIso, validTz } from "../lib/wall.ts";
 import type { Database, Statement } from "bun:sqlite";
-import { clientColor, entryIsLocked, round2, todayStr } from "../lib/format.ts";
+import { clientColor, clientDay, dayBounds, durationSeconds, entryIsLocked, round2, todayStr, validYmd } from "../lib/format.ts";
 import type { Entry, Invoice, InvoiceItem } from "../lib/types.ts";
 import { findTenantByPaymentLinkId } from "../lib/tenants.ts"; /* #741 */
 import { authedApi as bearerAuthedApi } from "../lib/auth.ts"; /* #984 */
@@ -31,6 +32,7 @@ export interface ApiTenant {
   revenueMonthly: () => any[];
   revenueByClient: () => any[];
   revenueOverdue: () => any[];
+  revenueSnapshot: () => { totals: any; by_month: any[]; by_client: any[]; overdue: any[] }; /* #1367 */
   freezeInvoiceSnapshots: (id: number, origin: string) => void; /* #301 */
 }
 
@@ -53,6 +55,146 @@ export interface ApiDeps {
      is authenticated but past entitlement. Optional so older callers keep
      compiling; server.ts always passes it in hosted mode. */
   inactiveAuthedUser?: (req: Request) => boolean;
+}
+
+export function normalizeEntryTimestamp(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d+))?)?(Z|[+-]\d{2}:?\d{2})$/);
+  if (!m) return null;
+  const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+  const h = Number(m[4]), mi = Number(m[5]), s = Number(m[6] || 0);
+  /* Base year 2000 (a leap year) + setUTCFullYear: Date.UTC maps years
+     0-99 to 1900-1999, which would reject 0000-0099 outright (#1434). */
+  const wall = new Date(Date.UTC(2000, mo - 1, d, h, mi, s));
+  wall.setUTCFullYear(y);
+  if (wall.getUTCFullYear() !== y || wall.getUTCMonth() !== mo - 1 || wall.getUTCDate() !== d
+    || wall.getUTCHours() !== h || wall.getUTCMinutes() !== mi || wall.getUTCSeconds() !== s)
+    return null;
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return null;
+  const iso = parsed.toISOString();
+  /* #1532: an offset can push the UTC instant past year 9999 or below
+     0000, where toISOString switches to the extended signed-year form.
+     Stored in that form an entry can never be matched by the lexical
+     range queries, so reject it here — the caller-supplied write paths
+     (API PATCH, entry forms) funnel through this normalizer, mirroring
+     the read-side guards (#1516, #1530); the one server-generated store,
+     timer stop, clamps at the same boundary in stopEndTime. */
+  return /^\d{4}-/.test(iso) ? iso : null;
+}
+
+/* #1440: a money rate as the web UI accepts it — absent or blank means 0,
+   anything provided must be a finite number at or above 0 (null = invalid). */
+export function nonNegativeRate(raw: unknown): number | null {
+  if (raw === undefined || raw === null || raw === "") return 0;
+  if (typeof raw !== "number" && typeof raw !== "string") return null;
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
+/* #1516: a caller-supplied day/week bound pair (#255), strictly validated:
+   both bounds must be real instants in order. The normalized forms must
+   keep a 4-digit year — an offset that pushes the UTC instant across the
+   9999 boundary yields the extended signed-year form, which neither
+   compares chronologically as a string nor matches stored timestamps in
+   the range query's lexical comparison. The order check itself is
+   numeric for the same reason. Null = invalid, callers fall back. */
+export function validDayBounds(a: unknown, b: unknown): [string, string] | null {
+  const fa = normalizeEntryTimestamp(a), fb = normalizeEntryTimestamp(b);
+  if (!fa || !fb || !/^\d{4}-/.test(fa) || !/^\d{4}-/.test(fb)) return null;
+  return Date.parse(fa) < Date.parse(fb) ? [fa, fb] : null;
+}
+
+/* #1450: a finished entry must end after it starts — an end at or before
+   the start saves a duration that clamps to 0 everywhere downstream. */
+export function endAfterStart(startIso: string, endIso: string | null): boolean {
+  return endIso === null || new Date(endIso).getTime() > new Date(startIso).getTime();
+}
+
+/* #1452: the end a timer stop stores — never at or before the start, even
+   when the running entry's start was edited into the future or the stop
+   lands in the start's own millisecond. */
+export function stopEndTime(startIso: string): string {
+  const now = Date.now();
+  const start = new Date(startIso).getTime();
+  const candidate = new Date(Number.isFinite(start) && now <= start ? start + 1000 : now).toISOString();
+  /* #1532: a start in the last second of 9999 would push the +1s end into
+     extended-year form — clamp to the last 4-digit instant instead of
+     storing an unaddressable end. */
+  return /^\d{4}-/.test(candidate) ? candidate : "9999-12-31T23:59:59.999Z";
+}
+
+/* #1458: a provided project_id must name a real project — a dangling id
+   stores an entry that counts as billable (project_id IS NOT NULL) in
+   calendar totals but can never be invoiced, because invoicing reaches
+   entries through project → client. A non-numeric id coerces to NaN and
+   would silently store NULL instead of the project the caller named.
+   Returns the id when it exists, null otherwise. */
+export function existingProjectId(db: Database, raw: unknown): number | null {
+  if (typeof raw !== "number" && typeof raw !== "string") return null;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n <= 0) return null;
+  return db.query("SELECT 1 FROM projects WHERE id = ?").get(n) ? n : null;
+}
+
+/* #1464: sibling of existingProjectId for project create — a provided
+   client_id must name a real client, or the project renders client-less
+   via LEFT JOIN and its time can never be invoiced. */
+export function existingClientId(db: Database, raw: unknown): number | null {
+  if (typeof raw !== "number" && typeof raw !== "string") return null;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n <= 0) return null;
+  return db.query("SELECT 1 FROM clients WHERE id = ?").get(n) ? n : null;
+}
+
+/* #1081: an entry form's times. The forms send bare wall times
+   ("2026-11-24T08:00") with entry_tz naming their zone; the instant is
+   resolved in that zone (DST-correct for the date itself). Offset-bearing
+   values (older pages, scripts) still parse as before. A bare value with no
+   zone stays invalid (#964). `zone` is what the entry records: entry_tz,
+   else the page's client_tz. */
+export function entryFormTimes(form: { get(name: string): unknown }): {
+  zone: string | null; toIso: (raw: unknown) => string | null;
+} {
+  const wallZone = validTz(form.get("entry_tz"));
+  const zone = wallZone ?? validTz(form.get("client_tz"));
+  return {
+    zone,
+    toIso: (raw) => (wallZone ? bareWallToIso(raw, wallZone) : null) ?? normalizeEntryTimestamp(raw),
+  };
+}
+
+/* #1082: the billable flag from a form post. The entry forms send a hidden
+   billable=0 before the checkbox (billable=1), so a checked box wins and an
+   unchecked one still says 0. Absent entirely (the calendar's drag/resize
+   posts) keeps `fallback` — the entry's current flag, or 1 on create. */
+export function billableFromForm(form: { getAll(name: string): unknown[] }, fallback: 0 | 1): 0 | 1 {
+  const vals = form.getAll("billable").map(String);
+  if (!vals.length) return fallback;
+  return vals.some((v) => v === "1" || v === "on" || v === "true") ? 1 : 0;
+}
+
+/* #1082: the JSON API's billable field — booleans (or 0/1). Anything else
+   is invalid; undefined keeps `fallback`. */
+export function billableFromJson(raw: unknown, fallback: 0 | 1): 0 | 1 | null {
+  if (raw === undefined) return fallback;
+  if (raw === true || raw === 1) return 1;
+  if (raw === false || raw === 0) return 0;
+  return null;
+}
+
+/* #1470: a caller-supplied entry_id on invoice create must name an entry
+   that can actually be billed to this invoice: it exists, is finished, is
+   not already on an invoice, and belongs to the invoice's client through
+   its project (the same reach unbilledEntries uses). */
+export function entryLinkable(db: Database, id: number, clientId: number | null): boolean {
+  const row = db.query(
+    `SELECT e.end_time AS end_time, e.invoice_id AS invoice_id, e.billable AS billable, p.id AS project_id, p.client_id AS entry_client_id
+     FROM time_entries e LEFT JOIN projects p ON p.id = e.project_id WHERE e.id = ?`).get(id) as any;
+  if (!row || !row.end_time || row.invoice_id !== null) return false;
+  if (row.billable === 0) return false; /* #1082: non-billable time is never invoiced */
+  if (row.project_id === null || row.entry_client_id === null) return false;
+  return row.entry_client_id === clientId;
 }
 
 export function createApiRouter(deps: ApiDeps) {
@@ -163,33 +305,114 @@ export function createApiRouter(deps: ApiDeps) {
               db, qRunning, qOne, qRange, qInvoice, qInvoices,
               groupToLineItems, unbilledEntries, getInvoice,
               invoiceTotals, nextInvoiceNumber, mintPublicToken, stripeLinkFor,
-              revenueTotals, revenueMonthly, revenueByClient, revenueOverdue,
+              revenueSnapshot,
               freezeInvoiceSnapshots,
             } = tenant;
             const body = (await req.json().catch(() => ({}))) as any;
+            /* #1281: detail projection — more than the #1279 list (items,
+               notes, client contact fields, template, paid flag) but never
+               internal_notes, the frozen snapshots, the Stripe link/id, or
+               the public token. Shared by GET, POST and PATCH responses. */
+            const invoiceDetail = (full: Invoice & { items: InvoiceItem[] }) => ({
+              id: full.id,
+              client_id: full.client_id,
+              number: full.number,
+              issue_date: full.issue_date,
+              due_date: full.due_date,
+              status: full.status,
+              tax_rate: full.tax_rate,
+              notes: full.notes,
+              template: full.template,
+              created_at: full.created_at,
+              paid_at: full.paid_at,
+              sent_at: full.sent_at ?? null,
+              period_from: full.period_from ?? null,
+              period_to: full.period_to ?? null,
+              paid_via_stripe: full.paid_via_stripe,
+              client_name: full.client_name,
+              client_color: full.client_color,
+              client_payment_terms: full.client_payment_terms,
+              client_email: full.client_email,
+              client_phone: full.client_phone,
+              client_website: full.client_website,
+              client_address: full.client_address,
+              items: full.items,
+              ...invoiceTotals(full.items, full.tax_rate),
+            });
 
             if (path === "/api/status" && method === "GET") {
               const running = qRunning.get() as Entry | null;
-              return json({ running: running ? entryToJson(running) : null });
+              if (!running) return json({ running: null });
+              /* #1516: validDayBounds rejects impossible dates (Date.parse
+                 rolls 2026-02-30 to Mar 2) and reversed pairs — both fall
+                 back to the server day. */
+              const [f, t] = validDayBounds(url.searchParams.get("from") || "", url.searchParams.get("to") || "")
+                ?? dayBounds(todayStr());
+              const todaySeconds = (qRange.all(f, t) as Entry[])
+                .reduce((a, e) => a + durationSeconds(e.start_time, e.end_time), 0);
+              return json({
+                running: { ...entryToJson(running), client_rate: running.client_rate ?? null },
+                today_seconds: todaySeconds,
+              });
             }
             if (path === "/api/timer/start" && method === "POST") {
               if (qRunning.get()) return json({ error: "a timer is already running" }, 409);
-              const projectId = body.project_id ? Number(body.project_id) : null;
+              const projectId = body.project_id ? existingProjectId(db, body.project_id) : null;
+              if (body.project_id && projectId === null)
+                return json({ error: "project_id not found" }, 400);
+              /* #1081: callers (the extension) send their IANA zone as tz. */
+              if (body.tz !== undefined && body.tz !== null && validTz(body.tz) === null)
+                return json({ error: "tz must be an IANA time zone, e.g. America/Chicago" }, 400);
               const r = db.query(
-                "INSERT INTO time_entries (project_id, description, start_time) VALUES (?, ?, ?) RETURNING id")
-                .get(projectId, String(body.description || ""), new Date().toISOString()) as any;
+                "INSERT INTO time_entries (project_id, description, start_time, tz) VALUES (?, ?, ?, ?) RETURNING id")
+                .get(projectId, String(body.description || ""), new Date().toISOString(), validTz(body.tz)) as any;
               return json(entryToJson(qOne.get(r.id) as Entry), 201);
             }
             if (path === "/api/timer/stop" && method === "POST") {
               const running = qRunning.get() as Entry | null;
               if (!running) return json({ error: "no timer running" }, 404);
               db.query("UPDATE time_entries SET end_time = ? WHERE id = ?")
-                .run(new Date().toISOString(), running.id);
+                .run(stopEndTime(running.start_time), running.id);
               return json(entryToJson(qOne.get(running.id) as Entry));
             }
             if (path === "/api/entries" && method === "GET") {
-              const from = url.searchParams.get("from") || new Date(0).toISOString();
-              const to = url.searchParams.get("to") || new Date().toISOString();
+              /* #1494: provided bounds are validated and normalized to
+                 canonical ISO instants before they reach the range query —
+                 raw strings compare lexicographically, so an invalid `to`
+                 ("garbage" sorts after every timestamp) silently returned
+                 an unbounded list and a reversed range read as "no
+                 entries". A date-only `from` means that day's UTC midnight;
+                 a date-only `to` means the NEXT midnight, so a same-day
+                 date-only range covers that day (the inclusive-date
+                 convention invoice ranges use). Absent bounds keep the
+                 epoch → now defaults. */
+              const bound = (raw: string | null, isTo: boolean): string | null => {
+                if (raw === null) return null;
+                const ymd = validYmd(raw);
+                let normalized: string | null;
+                if (ymd) {
+                  if (!isTo) return `${ymd}T00:00:00.000Z`;
+                  const next = new Date(`${ymd}T00:00:00.000Z`);
+                  next.setUTCDate(next.getUTCDate() + 1);
+                  normalized = next.toISOString();
+                } else {
+                  normalized = normalizeEntryTimestamp(raw);
+                }
+                /* #1530: mirror the validDayBounds guard (#1516) — a bound
+                   that normalizes outside the 4-digit-year form (a date-only
+                   to of 9999-12-31 becomes +010000-01-01, an offset can push
+                   a timestamp across the 9999/0000 boundary) neither compares
+                   chronologically as a string nor matches stored timestamps
+                   in the range query's lexical comparison, so it silently
+                   returned an empty list. Invalid, like any other bad bound. */
+                return normalized !== null && /^\d{4}-/.test(normalized) ? normalized : null;
+              };
+              const rawFrom = url.searchParams.get("from");
+              const rawTo = url.searchParams.get("to");
+              const from = rawFrom === null ? new Date(0).toISOString() : bound(rawFrom, false);
+              const to = rawTo === null ? new Date().toISOString() : bound(rawTo, true);
+              if (from === null || to === null || from > to)
+                return json({ error: "from/to must be valid timestamps with from on or before to" }, 400);
               return json((qRange.all(from, to) as Entry[]).map(entryToJson));
             }
             let m = path.match(/^\/api\/entries\/(\d+)$/);
@@ -200,18 +423,57 @@ export function createApiRouter(deps: ApiDeps) {
                 if (!cur) return json({ error: "not found" }, 404);
                 if (entryIsLocked(cur)) /* #334 */
                   return json({ error: "This time is invoiced and can't be edited." }, 403);
-                db.query(`UPDATE time_entries SET description = ?, project_id = ?, start_time = ?, end_time = ? WHERE id = ?`)
+                let startTime = cur.start_time;
+                if (body.start_time !== undefined) {
+                  const normalized = normalizeEntryTimestamp(body.start_time);
+                  if (!normalized)
+                    return json({ error: "start_time/end_time must be a valid timestamp with a timezone offset" }, 400);
+                  startTime = normalized;
+                }
+                let endTime = cur.end_time;
+                if (body.end_time !== undefined) {
+                  if (body.end_time === null) {
+                    endTime = null;
+                  } else {
+                    const normalized = normalizeEntryTimestamp(body.end_time);
+                    if (!normalized)
+                      return json({ error: "start_time/end_time must be a valid timestamp with a timezone offset" }, 400);
+                    endTime = normalized;
+                  }
+                }
+                if (!endAfterStart(startTime, endTime))
+                  return json({ error: "end_time must be after start_time" }, 400);
+                let projectId = cur.project_id;
+                if (body.project_id !== undefined) {
+                  if (!body.project_id) projectId = null;
+                  else {
+                    const pid = existingProjectId(db, body.project_id);
+                    if (pid === null)
+                      return json({ error: "project_id not found" }, 400);
+                    projectId = pid;
+                  }
+                }
+                const billable = billableFromJson(body.billable, cur.billable === 0 ? 0 : 1); /* #1082 */
+                if (billable === null) return json({ error: "billable must be true or false" }, 400);
+                /* #1081: tz, when given, is the zone the entry was worked in. */
+                if (body.tz !== undefined && body.tz !== null && validTz(body.tz) === null)
+                  return json({ error: "tz must be an IANA time zone, e.g. America/Chicago" }, 400);
+                const tz = body.tz === undefined ? cur.tz ?? null : validTz(body.tz);
+                db.query(`UPDATE time_entries SET description = ?, project_id = ?, start_time = ?, end_time = ?, billable = ?, tz = ? WHERE id = ?`)
                   .run(
                     body.description !== undefined ? String(body.description) : cur.description,
-                    body.project_id !== undefined ? (body.project_id ? Number(body.project_id) : null) : cur.project_id,
-                    body.start_time || cur.start_time,
-                    body.end_time !== undefined ? (body.end_time || null) : cur.end_time,
+                    projectId,
+                    startTime,
+                    endTime,
+                    billable,
+                    tz,
                     id);
                 return json(entryToJson(qOne.get(id) as Entry));
               }
               if (method === "DELETE") {
                 const cur = qOne.get(id) as Entry | null; /* #334 */
-                if (cur && entryIsLocked(cur))
+                if (!cur) return json({ error: "not found" }, 404); /* #1482 */
+                if (entryIsLocked(cur))
                   return json({ error: "This time is invoiced and can't be deleted." }, 403);
                 db.query("DELETE FROM time_entries WHERE id = ?").run(id);
                 return new Response(null, { status: 204 });
@@ -220,13 +482,18 @@ export function createApiRouter(deps: ApiDeps) {
             if (path === "/api/clients" && method === "GET")
               return json(db.query("SELECT * FROM clients ORDER BY name").all());
             if (path === "/api/clients" && method === "POST") {
-              if (!body.name) return json({ error: "name required" }, 400);
+              const name = typeof body.name === "string" ? body.name.trim() : "";
+              if (!name) return json({ error: "name required" }, 400);
+              const rate = nonNegativeRate(body.rate);
+              if (rate === null || !Number.isFinite(round2(rate))) return json({ error: "rate must be a number at or above 0" }, 400);
               const r = db.query("INSERT INTO clients (name, color, rate) VALUES (?, ?, ?) RETURNING *")
-                .get(String(body.name), clientColor(body.color), Number(body.rate) || 0) as any;
+                .get(name, clientColor(body.color), rate) as any;
               return json(r, 201);
             }
             m = path.match(/^\/api\/clients\/(\d+)$/);
             if (m && method === "DELETE") {
+              if (!db.query("SELECT 1 FROM clients WHERE id = ?").get(Number(m[1])))
+                return json({ error: "not found" }, 404); /* #1482 */
               /* Schema FK actions are not enforced (no PRAGMA foreign_keys):
                  null these out explicitly so nothing dangles. */
               db.transaction(() => {
@@ -241,13 +508,20 @@ export function createApiRouter(deps: ApiDeps) {
                 `SELECT p.id, p.name, p.client_id, c.name AS client_name, c.color AS client_color
                  FROM projects p LEFT JOIN clients c ON c.id = p.client_id ORDER BY p.name`).all());
             if (path === "/api/projects" && method === "POST") {
-              if (!body.name) return json({ error: "name required" }, 400);
+              const name = typeof body.name === "string" ? body.name.trim() : "";
+              if (!name) return json({ error: "name required" }, 400);
+              const hasClient = body.client_id !== undefined && body.client_id !== null && body.client_id !== "";
+              const clientId = hasClient ? existingClientId(db, body.client_id) : null;
+              if (hasClient && clientId === null)
+                return json({ error: "client_id not found" }, 400);
               const r = db.query("INSERT INTO projects (name, client_id) VALUES (?, ?) RETURNING *")
-                .get(String(body.name), body.client_id ? Number(body.client_id) : null) as any;
+                .get(name, clientId) as any;
               return json(r, 201);
             }
             m = path.match(/^\/api\/projects\/(\d+)$/);
             if (m && method === "DELETE") {
+              if (!db.query("SELECT 1 FROM projects WHERE id = ?").get(Number(m[1])))
+                return json({ error: "not found" }, 404); /* #1482 */
               /* Schema FK is not enforced: null entries explicitly. */
               db.transaction(() => {
                 db.query("UPDATE time_entries SET project_id = NULL WHERE project_id = ?").run(Number(m[1]));
@@ -257,9 +531,28 @@ export function createApiRouter(deps: ApiDeps) {
             }
             /* ---- invoicing API ---- */
             if (path === "/api/invoices" && method === "GET") {
+              /* #1279: list projection only — the full row carries
+                 internal_notes, the frozen HTML/PDF snapshots, the Stripe
+                 link id and the public token, none of which belong in a
+                 list response. */
               const rows = qInvoices.all() as any[];
               return json(rows.map(r => ({
-                ...r,
+                id: r.id,
+                client_id: r.client_id,
+                number: r.number,
+                issue_date: r.issue_date,
+                due_date: r.due_date,
+                status: r.status,
+                tax_rate: r.tax_rate,
+                paid_at: r.paid_at,
+                sent_at: r.sent_at ?? null,
+                period_from: r.period_from ?? null,
+                period_to: r.period_to ?? null,
+                client_name: r.client_name,
+                client_color: r.client_color,
+                client_payment_terms: r.client_payment_terms,
+                project_name: r.project_name,
+                subtotal: r.subtotal,
                 total: round2(r.subtotal * (1 + (r.tax_rate || 0) / 100)),
               })));
             }
@@ -267,15 +560,104 @@ export function createApiRouter(deps: ApiDeps) {
               const number = String(body.number || nextInvoiceNumber());
               if (db.query("SELECT 1 FROM invoices WHERE number = ?").get(number))
                 return json({ error: "invoice number already exists" }, 400);
+              /* #1468: a provided client_id must name a real client, as on
+                 project create (#1464) — a dangling or non-numeric id would
+                 store an invoice that renders client-less and can never be
+                 tied back to a client. Absent/empty stays client-less,
+                 which client deletes already produce by nulling the FK. */
+              const hasClient = body.client_id !== undefined && body.client_id !== null && body.client_id !== "";
+              const clientId = hasClient ? existingClientId(db, body.client_id) : null;
+              if (hasClient && clientId === null)
+                return json({ error: "client_id not found" }, 400);
+              /* #1436: issue/due are stored dates — an explicitly provided
+                 one must be a real calendar day (validYmd, as #1429);
+                 verbatim garbage would feed ordering, overdue math, the
+                 PDF and the CSV export. Absent issue_date defaults to
+                 today; absent due_date stays null. */
+              const issueDate = body.issue_date ? validYmd(body.issue_date) : todayStr();
+              if (!issueDate)
+                return json({ error: "issue_date must be a valid date (YYYY-MM-DD)" }, 400);
+              const dueDate = body.due_date ? validYmd(body.due_date) : null;
+              if (body.due_date && !dueDate)
+                return json({ error: "due_date must be a valid date (YYYY-MM-DD)" }, 400);
+              const taxRate = nonNegativeRate(body.tax_rate);
+              if (taxRate === null || !Number.isFinite(round2(taxRate)))
+                return json({ error: "tax_rate must be a number at or above 0" }, 400);
               let items: { description: string; hours: number; rate: number; entry_ids?: number[] }[];
-              if (Array.isArray(body.items)) {
+              const callerItems = Array.isArray(body.items);
+              /* #1514: mirror the web wizard's groups bound (#1512) — a
+                 caller-supplied items[] is looped over several times and
+                 then inserted row by row, so an unbounded array ties up
+                 the single-threaded server. 1000 is far above any real
+                 invoice (one line per project plus manual lines). */
+              if (callerItems && body.items.length > 1000)
+                return json({ error: "items must contain at most 1000 line items" }, 400);
+              /* #1514: entry_ids get the same aggregate bound — each id is
+                 checked with its own query and updated on insert, so one
+                 item carrying an unbounded id list would defeat the items
+                 bound above. Lengths only here; no per-id work yet. */
+              if (callerItems) {
+                let idCount = 0;
+                for (const it of body.items) {
+                  const ids = (it as any)?.entry_ids;
+                  if (Array.isArray(ids)) idCount += ids.length;
+                }
+                if (idCount > 1000)
+                  return json({ error: "entry_ids must contain at most 1000 entries in total" }, 400);
+              }
+              if (callerItems) {
                 items = body.items;
               } else {
                 if (!body.client_id || !body.from || !body.to)
                   return json({ error: "client_id, from, to required (or items[])" }, 400);
+                const rate = nonNegativeRate(body.rate);
+                if (rate === null)
+                  return json({ error: "rate must be a number at or above 0" }, 400);
+                /* #1492: the range is a stored period and the billing
+                   query's window — an impossible date is silently shifted
+                   by SQLite date(?, '+1 day') (Feb 30 → Mar 3), billing
+                   the wrong window, and a reversed range reads as "no
+                   billable items". Validate like the web preview (#1490). */
+                const rangeFrom = validYmd(body.from), rangeTo = validYmd(body.to);
+                if (!rangeFrom || !rangeTo)
+                  return json({ error: "from/to must be valid dates (YYYY-MM-DD)" }, 400);
+                if (rangeFrom > rangeTo)
+                  return json({ error: "from must be on or before to" }, 400);
                 items = groupToLineItems(
-                  unbilledEntries(Number(body.client_id), String(body.from), String(body.to)),
-                  Number(body.rate) || 0);
+                  unbilledEntries(clientId!, rangeFrom, rangeTo),
+                  rate);
+              }
+              /* #1436: per-line billing dates are stored dates too —
+                 validate caller-supplied ones the same way. */
+              if (Array.isArray(body.items)) {
+                for (const it of items) {
+                  /* Rows the clean step drops (hours <= 0) store nothing —
+                     their dates are not validated. */
+                  if (round2(Number((it as any).hours) || 0) <= 0) continue;
+                  for (const k of ["date_from", "date_to"] as const) {
+                    const v = (it as any)[k];
+                    if (v !== undefined && v !== null && v !== "" && !validYmd(v))
+                      return json({ error: `${k} must be a valid date (YYYY-MM-DD)` }, 400);
+                  }
+                }
+              }
+              /* #1440: every surviving row's rate, whichever path built
+                 it — the clean step rounds with round2, whose product can
+                 overflow to Infinity for huge finite rates, so the rounded
+                 value must stay finite too. */
+              for (const it of items) {
+                if (round2(Number((it as any).hours) || 0) <= 0) continue;
+                const r = nonNegativeRate((it as any).rate);
+                if (r === null || !Number.isFinite(round2(r)))
+                  return json({ error: "rate must be a number at or above 0" }, 400);
+                /* #1446: hours get the same treatment — round2 of a huge
+                   finite value overflows to Infinity, and finite hours x
+                   rate can overflow the amount the same way. */
+                const h = round2(Number((it as any).hours) || 0);
+                if (!Number.isFinite(h))
+                  return json({ error: "hours must be a finite number above 0" }, 400);
+                if (!Number.isFinite(round2(h * round2(r))))
+                  return json({ error: "line amount (hours x rate) is too large" }, 400);
               }
               const clean = items
                 .map(it => ({
@@ -284,22 +666,50 @@ export function createApiRouter(deps: ApiDeps) {
                   rate: round2(Number(it.rate) || 0),
                   entry_ids: Array.isArray(it.entry_ids) ? it.entry_ids.map(Number).filter(n => n > 0) : [],
                   /* #243: optional per-line billing dates */
-                  date_from: typeof it.date_from === "string" && it.date_from ? it.date_from : null,
-                  date_to: typeof it.date_to === "string" && it.date_to ? it.date_to : null,
+                  date_from: validYmd(it.date_from),
+                  date_to: validYmd(it.date_to),
                 }))
                 .filter(it => it.hours > 0);
+              /* #1470: caller-supplied entry_ids are linked verbatim below —
+                 each one must be billable to this invoice, or the create
+                 would steal an entry off another invoice, invoice a running
+                 entry, or tie another client's time to this invoice. The
+                 from/to path's ids come from unbilledEntries and are
+                 linkable by construction. */
+              if (callerItems) {
+                for (const it of clean) {
+                  for (const eid of it.entry_ids) {
+                    if (!entryLinkable(db, eid, clientId))
+                      return json({ error: "entry_id is not billable to this invoice" }, 400);
+                  }
+                }
+              }
               if (!clean.length) return json({ error: "no billable line items" }, 400);
+              /* #1448: per-row checks keep each amount finite, but the
+                 derived totals can still overflow — rows summing past the
+                 finite range, or a finite subtotal x tax_rate. Reject
+                 before insert so detail/list never project null totals. */
+              const subtotal = round2(clean.reduce((a, it) => a + round2(it.hours * it.rate), 0));
+              const tax = round2(subtotal * taxRate / 100);
+              if (!Number.isFinite(subtotal) || !Number.isFinite(tax) || !Number.isFinite(round2(subtotal + tax)))
+                return json({ error: "invoice total is too large" }, 400);
+              /* #1429: keep from/to as the billing period, like the web
+                 wizard (#1350). Only a well-formed, ordered pair is stored;
+                 anything else stays NULL and surfaces fall back to line dates. */
+              const pFrom = validYmd(body.from), pTo = validYmd(body.to);
+              const [periodFrom, periodTo] = pFrom && pTo && pFrom <= pTo ? [pFrom, pTo] : [null, null];
               const inv = db.query(
-                `INSERT INTO invoices (client_id, number, issue_date, due_date, tax_rate, notes, internal_notes)
-                 VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id`)
+                `INSERT INTO invoices (client_id, number, issue_date, due_date, tax_rate, notes, internal_notes, period_from, period_to)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`)
                 .get(
-                  body.client_id ? Number(body.client_id) : null,
+                  clientId,
                   number,
-                  String(body.issue_date || todayStr()),
-                  body.due_date ? String(body.due_date) : null,
-                  Number(body.tax_rate) || 0,
+                  issueDate,
+                  dueDate,
+                  taxRate,
                   String(body.notes || ""),
-                  String(body.internal_notes || "")) as any; /* #302 */
+                  String(body.internal_notes || ""),
+                  periodFrom, periodTo) as any; /* #302 */
               const insItem = db.query(
                 "INSERT INTO invoice_items (invoice_id, description, hours, rate, amount, date_from, date_to) VALUES (?, ?, ?, ?, ?, ?, ?)");
               const linkEntry = db.query("UPDATE time_entries SET invoice_id = ? WHERE id = ?");
@@ -311,7 +721,7 @@ export function createApiRouter(deps: ApiDeps) {
               })();
               mintPublicToken(inv.id); /* #227: client link exists from birth */
               const full = getInvoice(inv.id)!;
-              return json({ ...full, ...invoiceTotals(full.items, full.tax_rate) }, 201);
+              return json(invoiceDetail(full), 201);
             }
             m = path.match(/^\/api\/invoices\/(\d+)$/);
             if (m) {
@@ -319,7 +729,7 @@ export function createApiRouter(deps: ApiDeps) {
               if (method === "GET") {
                 const inv = getInvoice(id);
                 if (!inv) return json({ error: "not found" }, 404);
-                return json({ ...inv, ...invoiceTotals(inv.items, inv.tax_rate) });
+                return json(invoiceDetail(inv));
               }
               if (method === "PATCH") {
                 const inv = qInvoice.get(id) as Invoice | null;
@@ -332,14 +742,14 @@ export function createApiRouter(deps: ApiDeps) {
                   /* Marking paid stamps the paid date, like the web route and the
                      Stripe webhook do (#552) — the list/detail/CSV all read it. */
                   if (want === "paid")
-                    db.query("UPDATE invoices SET status = 'paid', paid_at = date('now') WHERE id = ?").run(id);
+                    db.query("UPDATE invoices SET status = 'paid', paid_at = COALESCE(?, date('now')) WHERE id = ?").run(clientDay(body.client_day), id);
                   else
-                    db.query("UPDATE invoices SET status = ? WHERE id = ?").run(want, id);
+                    db.query("UPDATE invoices SET status = 'sent', sent_at = COALESCE(?, date('now')) WHERE id = ?").run(clientDay(body.client_day), id);
                   /* #301: freeze at send, re-freeze at paid for the status badge. */
                   freezeInvoiceSnapshots(id, shareOrigin(req));
                 }
                 const full = getInvoice(id)!;
-                return json({ ...full, ...invoiceTotals(full.items, full.tax_rate) });
+                return json(invoiceDetail(full));
               }
               if (method === "DELETE") {
                 const inv = qInvoice.get(id) as Invoice | null;
@@ -360,7 +770,7 @@ export function createApiRouter(deps: ApiDeps) {
             }
             /* ---- revenue API (milestone 1) ---- */
             if (path === "/api/revenue" && method === "GET")
-              return json({ totals: revenueTotals(), by_month: revenueMonthly(), by_client: revenueByClient(), overdue: revenueOverdue() });
+              return json(revenueSnapshot()); /* #1367: one row fetch for all four figures */
             return json({ error: "not found" }, 404);
           } catch (err) {
             console.error(`[zimer] API ${method} ${path} threw:`, err);

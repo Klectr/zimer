@@ -10,11 +10,6 @@ export function esc(s: string | null | undefined): string {
     .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 
-export function statusPill(status: string): string {
-  const label = status[0].toUpperCase() + status.slice(1);
-  return `<span class="pill pill-${esc(status)}">${esc(label)}</span>`;
-}
-
 /** #330: "Invoiced" / "Draft" mark for time entries attached to an invoice.
  *  Returns null when the entry isn't on any invoice. Draft-attached time can
  *  still be freed (deleting the draft), so it gets the quieter treatment. */
@@ -51,10 +46,11 @@ export function clientColor(v: unknown): string {
 /** Milestone 10: quote a CSV cell when it contains a comma, quote, or newline.
  * #914: a cell whose first non-whitespace char is =, +, - or @ executes as a
  * formula when the CSV is opened in Excel/Sheets. Prefix it with a single
- * quote so spreadsheet apps treat the whole cell as text. */
+ * quote so spreadsheet apps treat the whole cell as text.
+ * #1526: a lone \r is a row terminator to CSV parsers too — quote it like \n. */
 export function csvCell(v: string): string {
   const safe = /^[=+\-@]/.test(v.trimStart()) ? "'" + v : v;
-  return /[",\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
+  return /[",\n\r]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
 }
 
 export function csvResponse(body: string, filename: string): Response {
@@ -83,7 +79,7 @@ const SHORT_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 export function shortYmd(ymd: string): string {
   const [y, m, d] = ymd.split("-").map(Number);
-  if (!y || !m || !d) return ymd;
+  if (Number.isNaN(y) || !m || !d || m < 1 || m > 12) return ymd;
   return `${SHORT_MONTHS[m - 1]} ${d}`;
 }
 export function shortDateRange(from: string | null | undefined, to: string | null | undefined): string {
@@ -105,16 +101,27 @@ export function shortDateRangeYear(from: string | null | undefined, to: string |
     : `${shortYmd(from)}, ${y1} – ${shortYmd(to)}, ${y2}`;
 }
 
-export function todayStr(): string {
-  const n = new Date();
-  return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`;
+export function todayStr(at: Date = new Date()): string {
+  const yy = at.getFullYear();
+  const yStr = yy >= 0 && yy <= 9999 ? String(yy).padStart(4, "0") : String(yy);
+  return `${yStr}-${String(at.getMonth() + 1).padStart(2, "0")}-${String(at.getDate()).padStart(2, "0")}`;
+}
+
+export function greeting(at: Date = new Date()): string {
+  const h = at.getHours();
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  return "Good evening";
 }
 
 /** Local-day bounds as ISO strings: YYYY-MM-DD in server-local time. */
 export function dayBounds(dateStr: string): [string, string] {
   const [y, m, d] = dateStr.split("-").map(Number);
-  const start = new Date(y, m - 1, d, 0, 0, 0);
-  const end = new Date(y, m - 1, d + 1, 0, 0, 0);
+  const start = new Date(2000, m - 1, d, 0, 0, 0);
+  start.setFullYear(y);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start.getTime());
+  end.setDate(end.getDate() + 1);
   return [start.toISOString(), end.toISOString()];
 }
 
@@ -122,19 +129,32 @@ export function dayBounds(dateStr: string): [string, string] {
 export function sundayOf(dateStr?: string): string {
   const base = dateStr ? new Date(dateStr + "T12:00:00") : new Date();
   const day = base.getDay(); // 0 = Sunday
-  const sun = new Date(base.getFullYear(), base.getMonth(), base.getDate() - day);
-  return `${sun.getFullYear()}-${String(sun.getMonth() + 1).padStart(2, "0")}-${String(sun.getDate()).padStart(2, "0")}`;
+  const sun = new Date(base.getTime());
+  sun.setDate(sun.getDate() - day);
+  const yy = sun.getFullYear();
+  const yStr = yy >= 0 && yy <= 9999 ? String(yy).padStart(4, "0") : String(yy);
+  return `${yStr}-${String(sun.getMonth() + 1).padStart(2, "0")}-${String(sun.getDate()).padStart(2, "0")}`;
+}
+
+export function utcWeekday(y: number, m: number, d: number): number {
+  const dt = new Date(Date.UTC(2000, m - 1, d, 12));
+  dt.setUTCFullYear(y);
+  return dt.getUTCDay();
 }
 
 export function addDays(dateStr: string, n: number): string {
   const [y, m, d] = dateStr.split("-").map(Number);
-  const dt = new Date(y, m - 1, d + n);
-  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+  const dt = new Date(2000, m - 1, d);
+  dt.setFullYear(y);
+  dt.setDate(dt.getDate() + n);
+  const yy = dt.getFullYear();
+  const yStr = yy >= 0 && yy <= 9999 ? String(yy).padStart(4, "0") : String(yy);
+  return `${yStr}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
 }
 
 /** Whole days between two YYYY-MM-DD dates (local). */
 export function daysBetween(a: string, b: string): number {
-  const p = (s: string) => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
+  const p = (s: string) => { const [y, m, d] = s.split("-").map(Number); const dt = new Date(2000, m - 1, d); dt.setFullYear(y); dt.setHours(0, 0, 0, 0); return dt; };
   return Math.round((p(b).getTime() - p(a).getTime()) / 86400000);
 }
 
@@ -142,12 +162,12 @@ export function daysBetween(a: string, b: string): number {
  *  of truth: key → { label, days (null = no fixed window), description
  *  printed on invoices }. */
 export const PAYMENT_TERMS = {
-  due_on_receipt: { label: "Due on receipt", days: 0, description: "Payment is due upon receipt of this zinvoice." },
-  net_7: { label: "Net 7", days: 7, description: "Payment is due within 7 days of the zinvoice date." },
-  net_15: { label: "Net 15", days: 15, description: "Payment is due within 15 days of the zinvoice date." },
-  net_30: { label: "Net 30", days: 30, description: "Payment is due within 30 days of the zinvoice date." },
-  net_45: { label: "Net 45", days: 45, description: "Payment is due within 45 days of the zinvoice date." },
-  net_60: { label: "Net 60", days: 60, description: "Payment is due within 60 days of the zinvoice date." },
+  due_on_receipt: { label: "Due on receipt", days: 0, description: "Payment is due upon receipt of this Zinvoice." },
+  net_7: { label: "Net 7", days: 7, description: "Payment is due within 7 days of the Zinvoice date." },
+  net_15: { label: "Net 15", days: 15, description: "Payment is due within 15 days of the Zinvoice date." },
+  net_30: { label: "Net 30", days: 30, description: "Payment is due within 30 days of the Zinvoice date." },
+  net_45: { label: "Net 45", days: 45, description: "Payment is due within 45 days of the Zinvoice date." },
+  net_60: { label: "Net 60", days: 60, description: "Payment is due within 60 days of the Zinvoice date." },
   pay_when_paid: { label: "Pay-when-paid", days: null, description: "Due within 5 business days after the client receives customer payment." },
 } as const;
 export type PaymentTermsKey = keyof typeof PAYMENT_TERMS;
@@ -175,6 +195,13 @@ export function termsDays(terms: string | null | undefined): number | null {
 export function termsDescription(terms: string | null | undefined): string {
   const t = (terms ?? "").trim();
   return isPaymentTermsKey(t) ? PAYMENT_TERMS[t as PaymentTermsKey].description : PAYMENT_TERMS[DEFAULT_PAYMENT_TERMS].description;
+}
+
+/** The terms sentence as a client reads it (PDF, sheet, public page).
+ *  "Zinvoice" is our product word for the user; a client's document just
+ *  says "invoice". */
+export function clientTermsDescription(terms: string | null | undefined): string {
+  return termsDescription(terms).replace(/Zinvoice/g, "invoice");
 }
 
 /* ---------------- durations ---------------- */
@@ -205,6 +232,8 @@ export function entryToJson(e: Entry) {
     start_time: e.start_time,
     end_time: e.end_time,
     duration_seconds: durationSeconds(e.start_time, e.end_time),
+    billable: e.billable !== 0, /* #1082 */
+    tz: e.tz ?? null, /* #1081 */
     project_name: e.project_name,
     client_name: e.client_name,
     client_color: e.client_color,
@@ -214,10 +243,44 @@ export function entryToJson(e: Entry) {
 /** #841: rows stored under the legacy gold default (#f2c14e) render with the
  *  current theme primary, so a scheme change needs no data migration.
  *  Explicitly chosen colors pass through untouched. The returned
- *  var(--md-sys-color-primary) is safe in inline style attributes and in
+ *  var(--color-primary) is safe in inline style attributes and in
  *  --c custom properties (both resolve at use time). */
 export function schemeColor(color: string | null | undefined): string | null | undefined {
   if (typeof color === "string" && color.toLowerCase() === "#f2c14e")
-    return "var(--md-sys-color-primary)";
-  return color;
+    return "var(--color-primary)";
+  if (color == null) return color;
+  return safeCssColor(color);
+}
+
+export function safeCssColor(color: string | null | undefined): string | undefined {
+  if (typeof color !== "string") return undefined;
+  const c = color.trim();
+  if (c === "var(--color-primary)") return c;
+  return /^#[0-9a-f]{6}$/i.test(c) ? c : undefined;
+}
+
+/** The user's local calendar day, as sent by their browser ("client_day"),
+ *  for dates stamped on an action (sent_at, paid_at). SQLite's date('now')
+ *  is the UTC day, which is tomorrow in the evening across the Americas.
+ *  Accepts a well-formed YYYY-MM-DD within one day of the UTC date (the most
+ *  any timezone differs); anything else returns null, and the caller falls
+ *  back to UTC. */
+export function clientDay(value: unknown, now: Date = new Date()): string | null {
+  const v = typeof value === "string" ? value.trim() : "";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return null;
+  const t = Date.parse(`${v}T00:00:00Z`);
+  if (Number.isNaN(t) || new Date(t).toISOString().slice(0, 10) !== v) return null;
+  const utc = Date.parse(`${now.toISOString().slice(0, 10)}T00:00:00Z`);
+  return Math.abs(t - utc) <= 86_400_000 ? v : null;
+}
+
+/** A real calendar day in YYYY-MM-DD form, else null. Like clientDay but
+ *  with no proximity window — for stored dates such as a billing period,
+ *  where any genuine day is acceptable and impossible ones (2026-02-30,
+ *  month 13) must not slip through on shape alone. */
+export function validYmd(value: unknown): string | null {
+  const v = typeof value === "string" ? value.trim() : "";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return null;
+  const t = Date.parse(`${v}T00:00:00Z`);
+  return Number.isNaN(t) || new Date(t).toISOString().slice(0, 10) !== v ? null : v;
 }

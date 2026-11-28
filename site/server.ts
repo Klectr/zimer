@@ -13,8 +13,8 @@ import { basename, join, resolve } from "node:path";
 import type { Statement } from "bun:sqlite";
 import { invoicePdf } from "./pdf.ts";
 import { stripeConfigured, verifyWebhookSignature } from "./stripe.ts";
-import { entryToJson, csvResponse, statusPill } from "./lib/format.ts";
-import { json, html, isHtmx, publicOrigin, secureResponse } from "./lib/http.ts";
+import { entryToJson, csvResponse } from "./lib/format.ts";
+import { json, html, isHtmx, publicOrigin, secureResponse, compressResponse } from "./lib/http.ts";
 import { getToken, tokensEqual, authedApi, authedPage } from "./lib/auth.ts";
 import { createAccountsDb } from "./lib/accounts.ts"; /* #732 */
 import { createTenantStore } from "./lib/tenants.ts"; /* #733 */
@@ -34,7 +34,7 @@ import { createCalendarViews } from "./views/calendar.ts";
 import { createManageViews } from "./views/manage.ts";
 import { createInvoiceViews } from "./views/invoices.ts";
 import { createApiRouter, type ApiTenant } from "./routes/api.ts"; /* #733: +ApiTenant */
-import { createBillingRouter, createSubscriptionGate } from "./routes/billing.ts"; /* #728, #736 */
+import { createBillingRouter, createSubscriptionGate, createBillingSection } from "./routes/billing.ts"; /* #728, #736 */
 import { createLandingRouter } from "./routes/landing.ts"; /* #731 */
 import { createWebRouter, type WebTenant } from "./routes/web.ts"; /* #733: +WebTenant */
 
@@ -68,7 +68,7 @@ function buildTenantTree(bundle: DbBundle, dbPath: string): WebTenant & ApiTenan
     db, ENTRY_SELECT,
     qRunning, qOne, qRange, qInvoice, qInvoiceItems, qInvoices, qRevenueRows,
   } = bundle;
-  const { revenueTotals, revenueMonthly, revenueByClient, isOverdue, revenueOverdue } =
+  const { revenueTotals, revenueMonthly, revenueByClient, isOverdue, revenueOverdue, revenueSnapshot } =
     createRevenue(qRevenueRows, () => getMeta(db, "business_payment_terms"));
   const { layout, notFoundPage, errorPage } = createLayoutViews(qRunning,
     /* #884: per-database accent theme; the tenant db owns the meta table. */
@@ -112,28 +112,27 @@ function buildTenantTree(bundle: DbBundle, dbPath: string): WebTenant & ApiTenan
   const {
     getInvoice, invoiceTotals, nextInvoiceNumber, stripeLinkFor,
     unbilledEntries, groupToLineItems, clientRestFrom, unbilledByClient,
-    projectOptions, m3ProgressBar, weekTargetBar,
+    projectOptions, projectOptionRows, weekTargetBar,
     ensurePublicToken, getPublicToken, mintPublicToken,
   } = createDomain({ db, qInvoice, qInvoiceItems, TOKEN });
 
-  const { timerPartial, todayPartial, dashboardPage } = createTimerViews({
-    db, qRunning, qRange, layout, demoBanner, projectOptions,
-    revenueTotals, revenueMonthly, revenueByClient, revenueOverdue, m3ProgressBar,
+  const { timerPartial, todayPartial, todayStatsPartial, dashboardPage } = createTimerViews({
+    db, qRunning, qRange, layout, demoBanner, projectOptions, projectOptionRows,
     dayTargetSecs: () => dayTargetSecs(db), /* #908: per-request read of the user's setting */
   });
   const { weekInner, weekStrip, weekGrid, calendarPage, editPage, editEntryDialog } = createCalendarViews({
-    db, qOne, qRange, entrySelect: ENTRY_SELECT, layout, projectOptions, weekTargetBar,
+    db, qOne, qRange, entrySelect: ENTRY_SELECT, layout, projectOptionRows, weekTargetBar,
     calHourPx: CAL_HOUR_PX,
   });
-  const { managePage, clientSelection, clientDetailBody, clientListOob, clientOptions, bizProfileSection, dailyTargetSection, clientSettingsForm, settingsPage, themeSectionHtml } =
-    createManageViews({ db, layout });
+  const { managePage, clientSelection, clientDialogBody, clientDialogProjects, manageListsOob, bizProfileSection, dailyTargetSection, dailyTargetControl, preferencesSection, clientSettingsForm, settingsPage, themeSectionHtml, themeDotsHtml } =
+    createManageViews({ db, layout, unbilledByClient, isOverdue });
   const {
     invoicesPage, defaultNewInvParams, invoiceNewPage, invoiceStep2, invoiceSheet,
-    invoiceDoc, invoiceDetailBody, invoiceListOob,
+    invoiceDoc, invoiceDetailBody, invoiceListOob, invoiceListRegion,
     invoiceDocumentHtml, invoicePdfInput, /* #301 */
   } = createInvoiceViews({
-    db, qInvoices, layout, clientOptions,
-    getPublicToken, stripeConfigured, nextInvoiceNumber, invoiceTotals, statusPill, isOverdue,
+    db, qInvoices, layout,
+    getPublicToken, stripeConfigured, nextInvoiceNumber, invoiceTotals, isOverdue,
     unbilledByClient,
   });
   /* #301: freeze the rendered HTML document at send time (re-frozen at the paid
@@ -146,22 +145,27 @@ function buildTenantTree(bundle: DbBundle, dbPath: string): WebTenant & ApiTenan
       .run(invoiceSheet(inv), id);
   };
   const { publicInvoicePage } = createPublicViews({
-    getInvoice, invoiceTotals, invoiceDocumentHtml, ensurePublicToken,
+    getInvoice, invoiceTotals, ensurePublicToken,
+    businessName: () => getMeta(db, "business_name"),
+    businessEmail: () => getMeta(db, "business_email"),
+    businessAddress: () => getMeta(db, "business_address"),
+    paymentInstructions: () => getMeta(db, "business_payment_instructions"),
+    paymentTerms: () => getMeta(db, "business_payment_terms"),
   });
 
   return {
     db, dbPath,
     qRunning, qOne, qRange, qInvoice, qInvoices,
     notFoundPage, errorPage,
-    dashboardPage, timerPartial, todayPartial, weekInner, weekStrip,
+    dashboardPage, timerPartial, todayPartial, todayStatsPartial, weekInner, weekStrip,
     calendarPage, editPage, editEntryDialog,
-    managePage, clientSelection, clientDetailBody, clientListOob, bizProfileSection, dailyTargetSection, clientSettingsForm, settingsPage, themeSectionHtml,
-    invoicesPage, invoiceNewPage, defaultNewInvParams, invoiceStep2, invoiceDetailBody, invoiceListOob, invoiceDoc, publicInvoicePage,
+    managePage, clientSelection, clientDialogBody, clientDialogProjects, manageListsOob, bizProfileSection, dailyTargetSection, dailyTargetControl, preferencesSection, clientSettingsForm, settingsPage, themeSectionHtml, themeDotsHtml,
+    invoicesPage, invoiceNewPage, defaultNewInvParams, invoiceStep2, invoiceDetailBody, invoiceListOob, invoiceListRegion, invoiceDoc, publicInvoicePage,
     getInvoice, invoiceTotals,
     nextInvoiceNumber, stripeLinkFor, unbilledEntries,
     groupToLineItems, clientRestFrom, ensurePublicToken, getPublicToken, mintPublicToken,
     invoicePdfInput, freezeInvoiceSnapshots, /* #301 */
-    revenueTotals, revenueMonthly, revenueByClient, revenueOverdue,
+    revenueTotals, revenueMonthly, revenueByClient, revenueOverdue, revenueSnapshot,
   };
 }
 
@@ -194,7 +198,6 @@ const unreachableDomain = (name: string) => () => {
 const { loginPage, signupPage, hostedLoginPage, changelogPage, termsPage, privacyPage } = createPublicViews({
   getInvoice: unreachableDomain("getInvoice"),
   invoiceTotals: unreachableDomain("invoiceTotals"),
-  invoiceDocumentHtml: unreachableDomain("invoiceDocumentHtml"),
   ensurePublicToken: unreachableDomain("ensurePublicToken"),
 });
 /* #733: public-chrome 404/500 + invoice-link dead-ends for the pre-auth
@@ -208,6 +211,7 @@ const { handleBilling, billing } = createBillingRouter({ /* #728: before handleW
 });
 /* #736: hosted subscription gate — shared by the page and API routers. */
 const { inactiveAuthedUser } = createSubscriptionGate({ HOSTED, accounts, billing });
+const billingSectionHtml = createBillingSection({ HOSTED, accounts, billing }); /* #1121 */
 const { handleApi } = createApiRouter({
   getTenant, TOKEN,
   /* #732: hosted API calls also accept a valid account session cookie. */
@@ -240,6 +244,7 @@ const { handleWeb } = createWebRouter({
   invoicePdf, stripeConfigured,
   workspaceEmpty, demoIds, seedDemoData, removeDemoData, entryToJson,
   inactiveAuthedUser, /* #736 */
+  billingSectionHtml, /* #1121 */
   dataDir: hostedDataDir, tenantById, /* #741 */
 });
 
@@ -256,7 +261,7 @@ Bun.serve({
       ?? await handleWeb(req, url, path, method)
       /* #733: tenant's app-layout 404 when there is one, else public chrome. */
       ?? html((getTenant(req)?.notFoundPage ?? publicNotFound)(authedPage(req, TOKEN)), 404);
-    return secureResponse(res, req); /* #910: security headers on every response */
+    return compressResponse(secureResponse(res, req), req); /* #910 + #993: security headers, then gzip, on every response */
   },
   /* #1023: unhandled route errors are logged (a custom error handler
      silences Bun's own logging) and reported to PostHog error tracking

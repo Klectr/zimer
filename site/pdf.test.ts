@@ -52,6 +52,17 @@ describe("#637: PDF From block prints email below the address", () => {
     expect(text).toContain("triston@klectr.dev");
     expect(text.indexOf("Holladay Tn, 38341")).toBeLessThan(text.indexOf("triston@klectr.dev"));
   });
+
+  test("a five-line From address prints every line (#1259)", () => {
+    const text = pdfText({
+      ...base,
+      fromName: "Test Studio",
+      fromAddress: "123 Main St\nSuite 200\nBuilding B\nSpringfield, IL 62701\nUSA",
+    });
+    for (const line of ["123 Main St", "Suite 200", "Building B", "Springfield, IL 62701", "USA"]) {
+      expect(text).toContain(line);
+    }
+  });
 });
 
 /** #687: paid invoices have nothing left due — the grand-total row reads
@@ -86,9 +97,25 @@ describe("#831: PDF status badge reads DRAFT for drafts", () => {
     expect(text).not.toContain("UNPAID");
   });
 
-  test("sent invoice still prints UNPAID", () => {
+  /* The badge only adds what the page doesn't say: no badge on a sent,
+     not-late invoice (its due date is under the total); OVERDUE when late;
+     UNPAID only with no due date. */
+  test("sent invoice: no badge until late, OVERDUE when late, UNPAID with no due date", () => {
+    const sent = pdfText({ ...base, status: "sent" });
+    expect(sent).not.toMatch(/\((?:DUE [A-Z]{3} \d+|UNPAID|OVERDUE)\) Tj/);
+    expect(pdfText({ ...base, status: "sent", overdue: true })).toContain("(OVERDUE) Tj");
+    expect(pdfText({ ...base, status: "sent", dueDate: null })).toContain("(UNPAID) Tj");
+  });
+
+  test("a sent invoice states its due date exactly once, under the total", () => {
     const text = pdfText({ ...base, status: "sent" });
-    expect(text).toContain("UNPAID");
+    expect(text).toContain("(Due by Sep 30, 2026) Tj");
+    expect(text.match(/Sep 30/g)!.length).toBe(1);
+  });
+
+  test("drafts and paid invoices keep Due in the dates line (they have no Due by line)", () => {
+    expect(pdfText({ ...base, status: "draft" })).toContain("Due Sep 30, 2026");
+    expect(pdfText({ ...base, status: "paid" })).toContain("Due Sep 30, 2026");
   });
 
   test("paid invoice still prints PAID", () => {
@@ -126,9 +153,20 @@ describe("#899: PDF second page shows the time-breakdown chart", () => {
     const text = pdfText({ ...base, timeBreakdown: days });
     expect(text).toContain("/Count 2");
     expect(text).toContain("Page 2 of 2");
-    expect(text).toContain("T I M E   B R E A K D O W N");
+    expect(text).toContain("(TIME BREAKDOWN) Tj");
     expect(text).toContain("Tracked time by day");
     expect(text).toContain("Sep 8");
+  });
+
+  test("#1049: timeBreakdownTotal overrides the per-day sum in the header", () => {
+    const text = pdfText({ ...base, timeBreakdown: days, timeBreakdownTotal: 16.49 });
+    expect(text).toContain("16h 29m total");
+    expect(text).not.toContain("16h 30m total");
+  });
+
+  test("#1265: billing HOURS column prints decimal hours at 2dp", () => {
+    const text = pdfText({ ...base, items: [{ description: "Work", hours: 2.5, rate: 40, amount: 100 }] });
+    expect(text).toContain("2.50");
   });
 
   test("no second page without breakdown data", () => {
@@ -142,5 +180,92 @@ describe("#899: PDF second page shows the time-breakdown chart", () => {
     const text = pdfText({ ...base, timeBreakdown: [] });
     expect(text).toContain("/Count 1");
     expect(text).not.toContain("TIME BREAKDOWN");
+  });
+});
+
+/** Client-facing PDF content: the pay link is labelled by what it can do,
+ *  the business's payment instructions are printed, descriptions wrap
+ *  instead of truncating, and caps labels are real words (tracked with Tc). */
+describe("PDF content fixes", () => {
+  const sent = { ...base, payUrl: "https://zimer.example/i/tok", terms: "Payment is due within 30 days of the invoice date." };
+
+  test("no card link: the URL is labelled VIEW ONLINE, never PAY ONLINE", () => {
+    const text = pdfText(sent);
+    expect(text).toContain("(VIEW ONLINE) Tj");
+    expect(text).not.toContain("PAY ONLINE");
+  });
+
+  test("with a card link the label is PAY ONLINE", () => {
+    expect(pdfText({ ...sent, payByCard: true })).toContain("(PAY ONLINE) Tj");
+  });
+
+  test("payment instructions print under HOW TO PAY, line by line, on unpaid invoices only", () => {
+    const withHow = { ...sent, paymentInstructions: "Bank transfer to Northstar Studio, acct ending 4821.\nOr mail a check to 1 Main St." };
+    const text = pdfText(withHow);
+    expect(text).toContain("(HOW TO PAY) Tj");
+    expect(text).toContain("acct ending 4821.");
+    expect(text).toContain("Or mail a check to 1 Main St.");
+    expect(pdfText({ ...withHow, status: "paid" })).not.toContain("HOW TO PAY");
+  });
+
+  test("long descriptions wrap onto more lines — every word survives, no ellipsis", () => {
+    const desc = "Brand refresh — logo exploration, type system, colour palette and usage guidelines";
+    const text = pdfText({ ...base, items: [{ description: desc, hours: 12.25, rate: 120, amount: 1470, dateFrom: null, dateTo: null }] });
+    for (const w of ["exploration,", "palette", "usage", "guidelines"]) expect(text).toContain(w);
+    expect(text).not.toContain("...)");
+  });
+
+  test("caps labels are whole words with character spacing, not letters separated by spaces", () => {
+    const text = pdfText({ ...sent, items: [{ description: "x", hours: 1, rate: 1, amount: 1, dateFrom: null, dateTo: null }], notes: "n", fromName: "Northstar" });
+    for (const l of ["BILL TO", "FROM", "DATE", "DESCRIPTION", "HOURS", "RATE", "AMOUNT", "PAYMENT TERMS", "NOTES"]) expect(text).toContain(`(${l}) Tj 0 Tc`);
+    expect(text).not.toMatch(/\((?:[A-Z] ){3,}/);
+  });
+});
+
+/** Layout polish: logo, shorter band, real dashes, aligned totals, due line. */
+describe("PDF layout polish", () => {
+  const sent = { ...base, items: [{ description: "Website rebuild — homepage", hours: 2, rate: 100, amount: 200, dateFrom: "2026-09-08", dateTo: "2026-09-12" }], subtotal: 200, total: 200 };
+
+  test("the brand logo is drawn in the header (resolve was never imported)", () => {
+    expect(pdfText(sent)).toMatch(/ RG [\d.]+ w 1 J 1 j/);
+  });
+
+  test("the header band is 104pt, not 148pt", () => {
+    expect(pdfText(sent)).toContain("0.0 688.0 612.0 104.0 re f");
+  });
+
+  test("fonts are WinAnsi and dashes print as dashes", () => {
+    const text = pdfText(sent);
+    expect(text).toContain("/BaseFont /Helvetica /Encoding /WinAnsiEncoding");
+    expect(text).toContain("(Sep 8 \\226 Sep 12) Tj");
+    expect(text).toContain("(Website rebuild \\227 homepage) Tj");
+    expect(text).toContain("\\267 Generated by Zimer");
+  });
+
+  test("the total's tint stops at the table edge and its value sits in the AMOUNT column", () => {
+    const text = pdfText({ ...sent, status: "sent" });
+    const tint = text.match(/1\.000 0\.961 0\.882 rg ([\d.]+) [\d.]+ ([\d.]+) [\d.]+ re f/)!;
+    expect(Number(tint[1]) + Number(tint[2])).toBeCloseTo(556, 0);
+  });
+
+  test("'Due by' sits under the amount due on sent invoices", () => {
+    expect(pdfText({ ...sent, status: "sent" })).toContain("(Due by Sep 30, 2026) Tj");
+    expect(pdfText({ ...sent, status: "sent", overdue: true })).toContain("(Was due Sep 30, 2026) Tj");
+    expect(pdfText({ ...sent, status: "paid" })).not.toContain("Due by");
+  });
+});
+
+/** #1542: year 0000 is a real year (validYmd accepts 0000-02-29) — the PDF
+ *  date helpers must format it, not fall back to the raw YMD string. */
+describe("#1542: PDF dates in year 0000", () => {
+  test("issue/due dates and line dates format instead of printing raw YMD", () => {
+    const text = pdfText({
+      ...base, issueDate: "0000-01-15", dueDate: "0000-01-30",
+      items: [{ description: "Work", hours: 1, rate: 10, amount: 10, dateFrom: "0000-01-15", dateTo: "0000-01-15" }],
+    });
+    expect(text).toContain("Jan 15, 0");
+    expect(text).toContain("Jan 30, 0");
+    expect(text).not.toContain("0000-01-15");
+    expect(text).not.toContain("0000-01-30");
   });
 });

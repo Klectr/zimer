@@ -9,6 +9,7 @@
 import { describe, expect, test } from "bun:test";
 
 const html = await Bun.file(new URL("popup.html", import.meta.url)).text();
+const js = await Bun.file(new URL("popup.js", import.meta.url)).text();
 
 describe("extension popup label wiring (#515)", () => {
   test("every visible <label> has a for= matching an existing id", () => {
@@ -40,5 +41,24 @@ describe("extension popup label wiring (#515)", () => {
       expect(tag, `#${id} missing`).not.toBeNull();
       expect(tag![0]).toContain('role="alert"');
     }
+  });
+});
+
+/** #1185: the running view renders the story's rate + today tags from the
+ *  /api/status payload (running.client_rate, today_seconds). popup.html
+ *  carries the tags row and the primary tag style; popup.js asks for its
+ *  own day bounds (#255) and reads both fields. */
+describe("extension popup running tags (#1185)", () => {
+  test("popup.html carries the tags row and the primary tag rule", () => {
+    expect(html).toContain('id="run-tags"');
+    expect(html).toContain(".ui-tag-primary { background: var(--color-primary-bg); color: var(--color-primary); }");
+  });
+
+  test("popup.js renders the tags from the payload and passes its day bounds", () => {
+    expect(js).toContain('"/api/status?from="');
+    expect(js).toContain("running.client_rate");
+    expect(js).toContain("today_seconds");
+    expect(js).toContain("ui-tag-primary");
+    expect(js).toContain("ui-tag-neutral");
   });
 });

@@ -34,7 +34,7 @@
     }
   };
 
-  /* #464: one shared M3 confirm dialog, replacing every native confirm() /
+  /* #464: one shared confirm dialog, replacing every native confirm() /
      hx-confirm in the app (delete entry x2, delete draft invoice, delete
      client, delete project, revoke client link). Returns a promise that
      resolves true on the confirm action, false on Cancel / Escape / scrim
@@ -57,7 +57,7 @@
       box.setAttribute("role", "alertdialog");
       box.setAttribute("aria-modal", "true");
       var title = doc.createElement("h2");
-      title.className = "md-headline-small";
+      title.className = "ui-dialog-title";
       title.id = "tk-confirm-title";
       title.textContent = message || "";
       box.setAttribute("aria-labelledby", "tk-confirm-title");
@@ -67,11 +67,11 @@
       spacer.className = "cal-spacer";
       var cancelBtn = doc.createElement("button");
       cancelBtn.type = "button";
-      cancelBtn.className = "md-text-button";
+      cancelBtn.className = "ui-btn ui-btn-ghost";
       cancelBtn.textContent = "Cancel";
       var okBtn = doc.createElement("button");
       okBtn.type = "button";
-      okBtn.className = "md-text-button danger";
+      okBtn.className = "ui-btn ui-btn-primary ui-btn-danger";
       okBtn.textContent = confirmLabel || "Delete";
       actions.appendChild(spacer);
       actions.appendChild(cancelBtn);

@@ -1,9 +1,8 @@
-/** #654: the account menu is gone — Triston wanted its four actions (Settings,
- *  Export entries CSV, Download backup, Log out) visible as icons in the top
- *  app bar instead of two taps deep. The old #395 locked spec (menu geometry)
- *  is retired; the replacement lock is the .app-bar-actions row that carries
- *  the four .md-icon-buttons: inline-flex, 4px gap, never wrapping. The four
- *  buttons reuse the shared .md-icon-button (48dp, tooltips via data-tip).
+/** #654 → #1223: the sidebar footer's .ui-shell-actions row (#1119) now
+ *  carries only Log out — Settings is a primary nav item and the exports
+ *  live labelled in Settings → Your data. The row keeps its geometry: flex,
+ *  4px gap, on the shared .ui-icon-button (36px control height, tooltips
+ *  via data-tip).
  *
  *  Red here means the change needs a GitHub issue and a spec update —
  *  never a silent restyle.
@@ -11,6 +10,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { themeCss } from "./theme.ts";
 
 const css = readFileSync(
   join(import.meta.dir, "..", "static", "style.css"),
@@ -49,33 +49,53 @@ function paddingSides(value: string): string[] {
   throw new Error(`locked-spec: unexpected padding: ${value}`);
 }
 
-describe("app-bar actions locked spec (#654)", () => {
-  test("actions row is an inline-flex strip with a 4px gap; buttons are the shared 48dp icon buttons", () => {
-    const row = declarations(ruleBlock(".app-bar-actions"));
-    expect(row.get("display")).toBe("inline-flex");
+describe("shell actions locked spec (#654)", () => {
+  test("actions row is a flex strip with a 4px gap; buttons are the shared ui icon buttons", () => {
+    const row = declarations(ruleBlock(".ui-shell-actions"));
+    expect(row.get("display")).toBe("flex");
     expect(row.get("gap")).toBe("4px");
 
-    const btn = declarations(ruleBlock(".md-icon-button"));
-    expect(btn.get("width")).toBe("48px");
-    expect(btn.get("height")).toBe("48px");
-    expect(btn.get("border-radius")).toBe("var(--md-sys-shape-corner-full)");
+    const btn = declarations(ruleBlock(".ui-icon-btn"));
+    expect(btn.get("width")).toBe("var(--control-height)");
+    expect(btn.get("height")).toBe("var(--control-height)");
+    expect(btn.get("border-radius")).toBe("var(--radius)");
   });
 });
 
-describe("navigation rail width (#397)", () => {
-  test("72px rail — documented deviation from the M3 80dp default", () => {
-    // :root is split across two blocks; take the one carrying the nav token
-    const hits = [...css.matchAll(/^:root\s*\{([^}]*)\}/gm)];
-    const hit = hits.find((m) => m[1].includes("--md-nav-rail-width"));
-    if (!hit)
-      throw new Error(
-        "locked-spec: --md-nav-rail-width not found in any :root block",
-      );
-    const root = declarations(hit[1]);
-    expect(root.get("--md-nav-rail-width")).toBe("72px");
+describe("zinvoices detail layout (#1202)", () => {
+  /* Keyed to the grid's container (container query), not the viewport:
+     the sidebar made 1024–1280px windows too tight for two columns. */
+  test("the detail and wizard grids collapse to one column when their container is narrow", () => {
+    expect(css).toContain(".inv-new-form, #invoice-detail, .ui-card.form-card { container-type: inline-size; }");
+    expect(css).toContain("@container (max-width: 959px) {\n  .inv-new-grid, .inv-detail-grid { grid-template-columns: minmax(0, 1fr); }\n}");
+  });
 
-    const rail = declarations(ruleBlock(".md-nav-rail"));
-    expect(rail.get("width")).toBe("var(--md-nav-rail-width)");
+});
+
+describe("ui button anchors (#1121)", () => {
+  test("link buttons never render with the UA underline", () => {
+    const btn = declarations(ruleBlock(".ui-btn"));
+    expect(btn.get("text-decoration")).toBe("none");
+  });
+});
+
+describe("sidebar width (#1119)", () => {
+  test("the mocked sidebar is 208px on the translucent panel surface", () => {
+    const side = declarations(ruleBlock(".ui-side"));
+    expect(side.get("width")).toBe("208px");
+    expect(side.get("background")).toBe("var(--color-fill-quaternary)");
+  });
+
+  test("sidebar footer tooltips open upward, inside the viewport", () => {
+    expect(css).toContain(".ui-side-foot .ui-icon-btn[data-tip]::before");
+    const decls = declarations(ruleBlock(".ui-side-foot .ui-btn[data-tip]::before, .ui-side-foot .ui-icon-btn[data-tip]::before"));
+    expect(decls.get("top")).toBe("auto");
+    expect(decls.get("bottom")).toBe("calc(100% + var(--spacing-xs))");
+    expect(decls.get("left")).toBe("0");
+  });
+
+  test("the trial banner never prints", () => {
+    expect(css).toMatch(/@media print\s*\{\s*[^}]*\.trial-banner[^}]*display: none !important/);
   });
 });
 
@@ -109,8 +129,9 @@ describe("update-check progress state (#406)", () => {
 });
 
 /** #841: the theme scheme has one source of truth — :root defines the short
- *  aliases once, the M3 primary tokens reference them, and no rule hardcodes
- *  the primary hexes. A scheme change is one edit in :root. */
+ *  aliases once, the semantic --color-primary token references the primary
+ *  alias, themeCss overrides the alias family per theme, and no rule
+ *  hardcodes the primary hexes. A scheme change is one edit in :root. */
 describe("theme scheme single source of truth (#841)", () => {
   const rootBlock = (() => {
     const m = css.match(/:root\s*\{[^}]*\}/);
@@ -130,41 +151,30 @@ describe("theme scheme single source of truth (#841)", () => {
     }
   });
 
-  test("the M3 primary tokens reference the short aliases", () => {
-    for (const [token, alias] of [
-      ["--md-sys-color-primary", "--primary"],
-      ["--md-sys-color-on-primary", "--on-primary"],
-      ["--md-sys-color-primary-container", "--primary-container"],
-      ["--md-sys-color-on-primary-container", "--on-primary-container"],
+  test("style.css defines no legacy system tokens", () => {
+    expect(css).not.toMatch(/--md[-]sys[-]/);
+  });
+
+  test("--color-primary references the short --primary alias", () => {
+    expect(css).toMatch(/--color-primary:\s*var\(--primary\);/);
+  });
+
+  test("themeCss overrides the --primary family per theme", () => {
+    const out = themeCss("crimson");
+    for (const name of [
+      "--primary",
+      "--on-primary",
+      "--primary-container",
+      "--on-primary-container",
     ]) {
-      expect(rootBlock).toMatch(
-        new RegExp(`${token}:\\s*var\\(${alias}\\);`),
-      );
+      expect(out).toContain(`${name}:`);
     }
+    expect(out).not.toContain("#fb923c");
   });
 
   test("no primary hex is hardcoded outside :root", () => {
     expect(outsideRoot).not.toMatch(/#fb923c/i);
     expect(outsideRoot).not.toMatch(/#f2c14e/i);
-  });
-});
-
-/** #871: the label type scale is complete — large (14sp/20sp/0.1 tracking),
- *  medium (12sp/16sp/0.5), small (11sp/16sp/0.5), all weight 500. The small
- *  rule was referenced by the calendar agenda but never defined. */
-describe("label type scale (#871)", () => {
-  test("all three label rules exist with M3 spec values", () => {
-    for (const [selector, size, lh, tracking] of [
-      [".md-label-large", "0.875rem", "20px", "0.1px"],
-      [".md-label-medium", "0.75rem", "16px", "0.5px"],
-      [".md-label-small", "0.6875rem", "16px", "0.5px"],
-    ]) {
-      const rule = declarations(ruleBlock(selector));
-      expect(rule.get("font-size")).toBe(size);
-      expect(rule.get("line-height")).toBe(lh);
-      expect(rule.get("font-weight")).toBe("500");
-      expect(rule.get("letter-spacing")).toBe(tracking);
-    }
   });
 });
 
@@ -176,5 +186,195 @@ describe("changelog code spans (#873)", () => {
   test("code spans are nowrap so identifiers stay on one line", () => {
     const rule = declarations(ruleBlock(".page-changelog code"));
     expect(rule.get("white-space")).toBe("nowrap");
+  });
+});
+
+describe("DESIGN.md token layer (#1092)", () => {
+  function rootTokens(): Map<string, string> {
+    const merged = new Map<string, string>();
+    for (const block of css.matchAll(/:root\s*\{([^}]*)\}/g)) {
+      for (const [name, value] of declarations(block[1])) merged.set(name, value);
+    }
+    return merged;
+  }
+
+  test("every semantic token is defined with its DESIGN.md value", () => {
+    const tokens = rootTokens();
+    const expected: Record<string, string> = {
+      "--color-primary": "var(--primary)",
+      "--color-success": "#34d399",
+      "--color-warning": "#fbbf24",
+      "--color-error": "#f87171",
+      "--color-info": "#60a5fa",
+      "--color-text": "#f5f5f4",
+      "--color-text-secondary": "#a1a1aa",
+      "--color-text-tertiary": "#81818a",
+      "--color-text-quaternary": "#52525b",
+      "--color-text-on-filled": "#08090a",
+      "--color-bg-layout": "#08090a",
+      "--color-bg-container": "#0d0d0f",
+      "--color-bg-container-secondary": "#0a0b0c",
+      "--color-bg-elevated": "#16171a",
+      "--color-primary-bg": "color-mix(in srgb, var(--color-primary) 16%, transparent)",
+      "--color-success-bg": "color-mix(in srgb, var(--color-success) 16%, transparent)",
+      "--color-warning-bg": "color-mix(in srgb, var(--color-warning) 16%, transparent)",
+      "--color-error-bg": "color-mix(in srgb, var(--color-error) 16%, transparent)",
+      "--color-info-bg": "color-mix(in srgb, var(--color-info) 16%, transparent)",
+      "--color-primary-hover": "color-mix(in srgb, var(--color-primary) 85%, white)",
+      "--color-primary-active": "color-mix(in srgb, var(--color-primary) 85%, black)",
+      "--color-primary-border": "color-mix(in srgb, var(--color-primary) 45%, transparent)",
+      "--color-error-hover": "color-mix(in srgb, var(--color-error) 85%, white)",
+      "--color-error-active": "color-mix(in srgb, var(--color-error) 85%, black)",
+      "--color-error-border": "color-mix(in srgb, var(--color-error) 45%, transparent)",
+      "--color-error-bg-hover": "color-mix(in srgb, var(--color-error) 24%, transparent)",
+      "--color-success-hover": "color-mix(in srgb, var(--color-success) 85%, white)",
+      "--color-success-active": "color-mix(in srgb, var(--color-success) 85%, black)",
+      "--color-success-border": "color-mix(in srgb, var(--color-success) 45%, transparent)",
+      "--color-warning-hover": "color-mix(in srgb, var(--color-warning) 85%, white)",
+      "--color-warning-active": "color-mix(in srgb, var(--color-warning) 85%, black)",
+      "--color-warning-border": "color-mix(in srgb, var(--color-warning) 45%, transparent)",
+      "--color-info-hover": "color-mix(in srgb, var(--color-info) 85%, white)",
+      "--color-info-active": "color-mix(in srgb, var(--color-info) 85%, black)",
+      "--color-info-border": "color-mix(in srgb, var(--color-info) 45%, transparent)",
+      "--color-bg-spotlight": "#1e1f23",
+      "--color-border": "rgba(255, 255, 255, 0.14)",
+      "--color-border-secondary": "rgba(255, 255, 255, 0.08)",
+      "--color-fill": "rgba(255, 255, 255, 0.10)",
+      "--color-fill-secondary": "rgba(255, 255, 255, 0.06)",
+      "--color-fill-tertiary": "rgba(255, 255, 255, 0.04)",
+      "--color-fill-quaternary": "rgba(255, 255, 255, 0.02)",
+      "--font-size-sm": "12px",
+      "--font-size": "14px",
+      "--font-size-lg": "16px",
+      "--font-size-xl": "20px",
+      "--font-size-heading-1": "38px",
+      "--font-size-heading-2": "30px",
+      "--font-size-heading-3": "24px",
+      "--font-size-heading-4": "20px",
+      "--font-size-heading-5": "16px",
+      "--font-weight-strong": "600",
+      "--spacing-xxs": "4px",
+      "--spacing-xs": "8px",
+      "--spacing-sm": "12px",
+      "--spacing": "16px",
+      "--spacing-md": "20px",
+      "--spacing-lg": "24px",
+      "--spacing-xl": "32px",
+      "--radius-xs": "4px",
+      "--radius-sm": "6px",
+      "--radius": "8px",
+      "--radius-lg": "14px",
+      "--radius-xl": "20px",
+      "--control-height-sm": "28px",
+      "--control-height": "36px",
+      "--control-height-lg": "40px",
+      "--line-height": "1.5714",
+      "--line-height-sm": "1.6667",
+      "--box-shadow-tertiary": "0 3px 1px -1px rgba(26, 26, 26, 0.06)",
+      "--box-shadow-secondary": "0 8px 16px -4px rgba(0, 0, 0, 0.2)",
+      "--box-shadow": "0 20px 20px -8px rgba(0, 0, 0, 0.24)",
+    };
+    for (const [name, value] of Object.entries(expected)) {
+      expect(tokens.get(name)).toBe(value);
+    }
+    expect(tokens.get("--font-family")).toContain("Geist");
+    expect(tokens.get("--font-family-code")).toContain("Geist Mono");
+  });
+
+  test("the layer is complete: no DESIGN.md color is missing from the pins", () => {
+    const tokens = rootTokens();
+    const colorNames = [...tokens.keys()].filter((k) => k.startsWith("--color-"));
+    expect(colorNames.length).toBe(42);
+  });
+});
+
+describe("new-zinvoice layout (#1202 parity)", () => {
+  test("the create form is not capped at the 480px edit-form width", () => {
+    expect(css).toContain(".form.inv-new-form { max-width: none; }");
+  });
+  test("client, period, and rate share one row on wide cards and go 2-up, then 1-up, as the card narrows", () => {
+    expect(css).toContain(".inv-step1-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.5fr) minmax(0, .8fr);");
+    expect(css).toContain("@container (max-width: 639px) {\n  .inv-step1-grid { grid-template-columns: 1fr 1fr; }");
+    expect(css).toContain("@container (max-width: 399px) {\n  .inv-step1-grid { grid-template-columns: 1fr; }");
+  });
+
+  test("editable lines stack on a narrow card instead of scrolling sideways", () => {
+    expect(css).toMatch(/@container \(max-width: 479px\) \{[^]*?\.inv-lines-edit tr \{ display: grid;/);
+  });
+});
+
+describe("settings layout (#1202 parity)", () => {
+  test("the page is one column of full-width sections (the settings modal is gone, #1223)", () => {
+    expect(css).toContain(".ui-settings-stack { display: flex; flex-direction: column; gap: var(--spacing-sm); max-width: 760px;");
+    expect(css).not.toContain(".ui-settings-grid");
+    expect(css).not.toContain(".ui-settings-col");
+    expect(css).toContain(".ui-settings-page { max-width: 760px; margin-inline: auto; }");
+    /* #1338: tracks can shrink (minmax(0, 1fr)), inputs fill their field,
+       and the form drops to one column by its CARD's width, not the
+       viewport's — a half-width card at 1024 overflowed by 26px. */
+    expect(css).toContain(".ui-settings-form-2col { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));");
+    expect(css).toContain(".ui-settings-stack .ui-card { container-type: inline-size; min-width: 0; }");
+    expect(css).toContain(".ui-settings-form .ui-input { width: 100%; min-width: 0; box-sizing: border-box; }");
+    expect(css).toContain("@container (max-width: 459px) { .ui-settings-form-2col { grid-template-columns: minmax(0, 1fr); } }");
+    expect(css).toContain(".ui-settings-form textarea.ui-input { resize: vertical; }");
+    expect(css).not.toContain("@media (max-width: 639px) { .ui-settings-form-2col");
+  });
+});
+
+describe("tertiary text contrast (#1213)", () => {
+  function rootToken(name: string): string {
+    for (const block of css.matchAll(/:root\s*\{([^}]*)\}/g)) {
+      const value = declarations(block[1]).get(name);
+      if (value) return value;
+    }
+    throw new Error(`token not found: ${name}`);
+  }
+
+  function luminance(hex: string): number {
+    const f = (c: number) =>
+      c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    const [r, g, b] = [1, 3, 5].map((i) =>
+      f(parseInt(hex.slice(i, i + 2), 16) / 255),
+    );
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  }
+
+  function contrast(a: string, b: string): number {
+    const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+    return (hi + 0.05) / (lo + 0.05);
+  }
+
+  test("colorTextTertiary clears WCAG AA on every background it sits on", () => {
+    const tertiary = rootToken("--color-text-tertiary");
+    for (const bg of [
+      "--color-bg-layout",
+      "--color-bg-container",
+      "--color-bg-container-secondary",
+      "--color-bg-elevated",
+    ]) {
+      expect(contrast(tertiary, rootToken(bg))).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  test("the text ramp still reads as distinct steps", () => {
+    const secondary = luminance(rootToken("--color-text-secondary"));
+    const tertiary = luminance(rootToken("--color-text-tertiary"));
+    const quaternary = luminance(rootToken("--color-text-quaternary"));
+    expect(secondary).toBeGreaterThan(tertiary);
+    expect(tertiary).toBeGreaterThan(quaternary);
+  });
+});
+
+describe("radius scale (#1215)", () => {
+  test("no border-radius in style.css uses the off-scale 12px", () => {
+    const radii = css.match(/border-radius:[^;]+;/g) ?? [];
+    expect(radii.length).toBeGreaterThan(0);
+    expect(radii.filter((r) => r.includes("12px"))).toEqual([]);
+  });
+
+  test("card surfaces that used 12px now read the radius-lg token", () => {
+    for (const sel of [".cal-first-run", ".internal-notes", ".payment-proof", ".form-info"]) {
+      expect(declarations(ruleBlock(sel)).get("border-radius")).toBe("var(--radius-lg)");
+    }
   });
 });

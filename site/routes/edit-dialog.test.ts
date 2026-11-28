@@ -11,7 +11,7 @@ import { createWebRouter } from "./web.ts";
 import { createCalendarViews } from "../views/calendar.ts";
 
 const ENTRY_SELECT = `
-  SELECT e.id, e.project_id, e.description, e.start_time, e.end_time, e.invoice_id,
+  SELECT e.id, e.project_id, e.description, e.start_time, e.end_time, e.invoice_id, e.billable, e.tz,
          p.name AS project_name, c.name AS client_name, c.color AS client_color,
          i.number AS invoice_number, i.status AS invoice_status
   FROM time_entries e
@@ -29,7 +29,7 @@ function setup() {
     qRange: { all: () => [] } as any,
     entrySelect: ENTRY_SELECT,
     layout: (t: string, b: string) => `<!DOCTYPE html><title>${t}</title>${b}`,
-    projectOptions: () => "",
+    projectOptionRows: () => [],
     weekTargetBar: () => "",
     calHourPx: 64,
   } as any);
@@ -45,8 +45,8 @@ function setup() {
     dashboardPage: noop,
     timerPartial: noop, todayPartial: noop, weekInner: noop, weekStrip: noop,
     calendarPage: noop, editPage: views.editPage, editEntryDialog: views.editEntryDialog,
-    managePage: noop, clientSelection: () => null, clientDetailBody: noop, clientListOob: noop,
-    bizProfileSection: noop, clientSettingsForm: noop, themeSectionHtml: noop, settingsPage: noop,
+    managePage: noop, clientSelection: () => null, clientDialogBody: noop, clientDialogProjects: noop, manageListsOob: noop,
+    bizProfileSection: noop, dailyTargetControl: noop, preferencesSection: noop, clientSettingsForm: noop, themeSectionHtml: noop, themeDotsHtml: noop, settingsPage: noop,
     invoicesPage: noop, invoiceNewPage: noop,
     defaultNewInvParams: () => ({}), invoiceStep2: noop,
     invoiceDetailBody: noop, invoiceListOob: noop, invoiceDoc: noop, publicInvoicePage: noop,
@@ -196,12 +196,50 @@ describe("bare datetimes are rejected (#964)", () => {
  *  false, the suffix never landed, and every dialog save hit the #964 400.
  *  The handler must assign unconditionally (the proxy's set trap writes
  *  through to the FormData). */
-describe("dialog tz-suffix handler shape (#975)", () => {
-  test("configRequest handler assigns parameters without an `in` guard", async () => {
+/** #1081 (and #975): run the dialog's real script against a minimal stand-in
+ *  for the form (no DOM in the test runner) and fire htmx:configRequest the
+ *  way htmx does — assigning into detail.parameters without an `in` check. */
+async function runDialog(handleWeb: any, id: number) {
+  const body = await (await getEdit(handleWeb, id, true))!.text();
+  const script = body.match(/<script>\(function\(\)\{([\s\S]*)\}\)\(\);<\/script>/)![1]!;
+  const tzIn = { value: body.match(/name="entry_tz" value="([^"]*)"/)![1]! };
+  const inputs = [...body.matchAll(/name="(start_time|end_time)"[^>]*data-iso="([^"]*)"/g)].map((m) => ({
+    name: m[1]!, value: "", iso: m[2]!, getAttribute(a: string) { return a === "data-iso" ? this.iso : null; },
+  }));
+  let onConfig: ((ev: any) => void) | null = null;
+  const form = {
+    querySelector: (q: string) => (q.includes("entry_tz") ? tzIn : null),
+    querySelectorAll: () => inputs,
+    addEventListener: (t: string, f: (ev: any) => void) => { if (t === "htmx:configRequest") onConfig = f; },
+  };
+  new Function("document", script)({ getElementById: () => form });
+  const params: Record<string, string> = {};
+  onConfig!({ detail: { parameters: params } });
+  return { inputs, tzIn, params };
+}
+
+describe("edit dialog keeps the entry's wall clock (#1081)", () => {
+  test("an entry logged in Los Angeles prefills and saves 8:00 Los Angeles, from any zone", async () => {
+    const { db, entry, handleWeb } = setup();
+    db.query("UPDATE time_entries SET tz = 'America/Los_Angeles' WHERE id = ?").run(entry.id);
+    const { inputs, tzIn, params } = await runDialog(handleWeb, entry.id);
+    /* 14:00Z on Oct 7 is 7:00 PDT, 15:00Z is 8:00 PDT — whatever zone this test runs in. */
+    expect(inputs.map((i) => i.value)).toEqual(["2026-10-07T07:00", "2026-10-07T08:00"]);
+    expect(tzIn.value).toBe("America/Los_Angeles");
+    expect(params).toEqual({ start_time: "2026-10-07T07:00", end_time: "2026-10-07T08:00" });
+    /* saving what the dialog sends keeps the same instants and zone */
+    const r = await postEdit(handleWeb, entry.id, { description: "Deep work", project_id: "", entry_tz: tzIn.value, ...params }, true);
+    expect(r!.status).toBe(200);
+    expect(db.query("SELECT start_time, end_time, tz FROM time_entries WHERE id = ?").get(entry.id)).toEqual({
+      start_time: "2026-10-07T14:00:00.000Z", end_time: "2026-10-07T15:00:00.000Z", tz: "America/Los_Angeles",
+    });
+  });
+
+  test("a legacy entry (no zone) prefills in the browser's zone and is anchored to it on save", async () => {
     const { entry, handleWeb } = setup();
-    const res = await getEdit(handleWeb, entry.id, true);
-    const body = await res!.text();
-    expect(body).toContain("ev.detail.parameters[els[j].name]=els[j].value+suf;");
-    expect(body).not.toContain("in ev.detail.parameters");
+    const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const { tzIn, params } = await runDialog(handleWeb, entry.id);
+    expect(tzIn.value).toBe(browserTz);
+    expect(params.start_time).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/); /* bare wall time, no stale offset */
   });
 });

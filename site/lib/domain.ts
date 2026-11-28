@@ -3,12 +3,18 @@
  *  options and progress bars. Wired once in
  *  server.ts and injected into the route and view factories that need them. */
 
+import { targetBar } from "../ui/target-bar.ts";
 import { randomBytes } from "node:crypto";
 import type { Database, Statement } from "bun:sqlite";
 import { addDays, durationSeconds, esc, fmtDur, round2 } from "./format.ts";
-import type { Entry, Invoice, InvoiceItem } from "./types.ts";
+import type { Invoice, InvoiceItem } from "./types.ts";
 import { createPaymentLink, stripeConfigured } from "../stripe.ts";
 import { getMeta } from "../db.ts";
+import { entryDay, onWallDays, widenedWindow } from "./wall.ts";
+
+/** #1081: invoicing has no viewer, so legacy entries with no recorded zone
+    keep the UTC day they always had. Entries with a zone use their own. */
+export const INVOICE_ZONE = "UTC";
 
 export interface DomainDeps {
   db: Database;
@@ -19,11 +25,6 @@ export interface DomainDeps {
 
 /** Pixels per hour in the calendar time grid. */
 export const CAL_HOUR_PX = 80;
-
-/** Weekly hours target: 40h matches the ~80h biweekly invoicing pace.
-    Kept as the default; #908 made the target configurable via Settings —
-    the week bar uses five days at the user's daily target. */
-export const WEEK_TARGET_SECS = 40 * 3600;
 
 /** Daily hours target: 8h, matching the calendar's under-8h-day pacing (#22).
     The default only — #908 reads the user's setting from the meta table. */
@@ -124,49 +125,80 @@ export function createDomain(deps: DomainDeps) {
   /** Unbilled, finished entries for a client's projects inside [from, to] (#598:
       the end date is inclusive — entries starting on the to-date count). */
   function unbilledEntries(clientId: number, from: string, to: string) {
-    return db.query(
-      `SELECT e.id, e.project_id, e.description, e.start_time, e.end_time,
+    /* #1081: the range is wall days — an entry counts on the day it was
+       worked in its own zone (legacy NULL-zone rows: UTC, as before). */
+    const fromDay = from.slice(0, 10), toNext = addDays(to.slice(0, 10), 1);
+    const [f, t] = widenedWindow(fromDay, toNext);
+    const rows = db.query(
+      `SELECT e.id, e.project_id, e.description, e.start_time, e.end_time, e.tz,
               p.name AS project_name
        FROM time_entries e
        JOIN projects p ON p.id = e.project_id
-       WHERE e.invoice_id IS NULL AND e.end_time IS NOT NULL
-         AND p.client_id = ? AND e.start_time >= ? AND e.start_time < date(?, '+1 day')
-       ORDER BY e.start_time`).all(clientId, from, to) as any[];
+       WHERE e.invoice_id IS NULL AND e.end_time IS NOT NULL AND e.billable = 1
+         AND p.client_id = ? AND e.start_time >= ? AND e.start_time < ?
+       ORDER BY e.start_time`).all(clientId, f, t) as any[];
+    return onWallDays(rows, fromDay, toNext, INVOICE_ZONE);
+  }
+
+  /** #1081: first and last wall day of a client's unbilled, billable,
+      finished time; null when there is none. */
+  function clientUnbilledSpan(clientId: number): { first: string; last: string } | null {
+    const rows = db.query(
+      `SELECT e.start_time, e.tz FROM time_entries e
+       JOIN projects p ON p.id = e.project_id
+       WHERE p.client_id = ? AND e.invoice_id IS NULL AND e.end_time IS NOT NULL AND e.billable = 1`
+    ).all(clientId) as { start_time: string; tz: string | null }[];
+    if (!rows.length) return null;
+    const days = rows.map((r) => entryDay(r, INVOICE_ZONE)).sort();
+    return { first: days[0]!, last: days[days.length - 1]! };
   }
 
   /** "Invoice the rest" (#328): the from-date for a client's next invoice —
-      the day after its last invoice's through-date (MAX invoice_items.date_to,
+      the day after its last invoice's through-date (its stored period end,
+      #1350, else MAX invoice_items.date_to,
       all statuses — a draft's entries are attached too). First invoice: the
       earliest finished, unbilled entry date. Null when the client has neither. */
   function clientRestFrom(clientId: number): string | null {
+    /* #1350: an invoice's stored period end wins over its last line date —
+       a period ending Friday continues Saturday, not the day after the last
+       worked day. */
     const last = db.query(
-      `SELECT MAX(ii.date_to) AS last_to FROM invoice_items ii
+      `SELECT MAX(COALESCE(i.period_to, ii.date_to)) AS last_to FROM invoice_items ii
        JOIN invoices i ON i.id = ii.invoice_id
        WHERE i.client_id = ?`).get(clientId) as any;
     if (last?.last_to) return addDays(String(last.last_to), 1);
-    const first = db.query(
-      `SELECT MIN(substr(e.start_time, 1, 10)) AS first_day FROM time_entries e
-       JOIN projects p ON p.id = e.project_id
-       WHERE p.client_id = ? AND e.invoice_id IS NULL AND e.end_time IS NOT NULL`
-    ).get(clientId) as any;
-    return first?.first_day ? String(first.first_day) : null;
+    return clientUnbilledSpan(clientId)?.first ?? null; /* #1081: wall day */
   }
 
-  /** Per-client finished, unbilled time with invoice rounding applied (#328). */
+  /** Per-client finished, unbilled time with invoice rounding applied (#328).
+      #992: aggregated in SQL instead of loading every unbilled entry into JS.
+      The per-entry math mirrors durationSeconds + roundUpSeconds for the
+      canonical toISOString() timestamps the app stores: whole milliseconds,
+      rounded to the nearest second (clamped at 0), then rounded UP to the
+      increment with integer division — a .5s remainder rounds up, an exact
+      multiple stays. */
   function unbilledByClient(): { id: number; name: string; secs: number }[] {
+    const inc = ROUNDING_MINUTES * 60;
     const rows = db.query(
-      `SELECT c.id, c.name, e.start_time, e.end_time FROM time_entries e
-       JOIN projects p ON p.id = e.project_id
-       JOIN clients c ON c.id = p.client_id
-       WHERE e.invoice_id IS NULL AND e.end_time IS NOT NULL
-       ORDER BY c.name`).all() as any[];
-    const map = new Map<number, { id: number; name: string; secs: number }>();
-    for (const r of rows) {
-      const g = map.get(r.id) ?? { id: r.id, name: r.name, secs: 0 };
-      g.secs += roundUpSeconds(durationSeconds(r.start_time, r.end_time), ROUNDING_MINUTES);
-      map.set(r.id, g);
-    }
-    return [...map.values()].filter(g => g.secs > 0);
+      `SELECT c.id, c.name, SUM(
+         CASE WHEN d.secs <= 0 THEN d.secs
+              ELSE ((d.secs + ${inc - 1}) / ${inc}) * ${inc} END
+       ) AS secs
+       FROM (
+         SELECT p.client_id AS client_id,
+                MAX(0, CAST(ROUND(
+                  (CAST(ROUND(unixepoch(e.end_time, 'subsec') * 1000) AS INTEGER)
+                   - CAST(ROUND(unixepoch(e.start_time, 'subsec') * 1000) AS INTEGER)) / 1000.0
+                ) AS INTEGER)) AS secs
+         FROM time_entries e
+         JOIN projects p ON p.id = e.project_id
+         WHERE e.invoice_id IS NULL AND e.end_time IS NOT NULL AND e.billable = 1
+       ) d
+       JOIN clients c ON c.id = d.client_id
+       GROUP BY c.id, c.name
+       HAVING secs > 0
+       ORDER BY c.name, c.id`).all() as any[];
+    return rows.map(r => ({ id: r.id, name: r.name, secs: r.secs }));
   }
 
   /** Fixed billable rounding, minutes. Every invoice rounds each entry's
@@ -179,7 +211,7 @@ export function createDomain(deps: DomainDeps) {
        billing dates (Date | Description | Hours | Rate | Amount). */
     const groups = new Map<number, { project: string; ids: number[]; secs: number; from: string; to: string }>();
     for (const e of entries) {
-      const day = String(e.start_time).slice(0, 10);
+      const day = entryDay(e, INVOICE_ZONE); /* #1081: the day it was worked */
       const g = groups.get(e.project_id) ?? { project: e.project_name, ids: [], secs: 0, from: day, to: day };
       g.ids.push(e.id);
       g.secs += roundUpSeconds(durationSeconds(e.start_time, e.end_time), ROUNDING_MINUTES);
@@ -193,16 +225,19 @@ export function createDomain(deps: DomainDeps) {
     });
   }
 
-  /* Milestone 20: statusPill lives in lib/format.ts. */
+  /* Milestone 20: the invoice status chip lives in ui/status-chip.ts. */
 
   /* Milestone 20: auth lives in lib/auth.ts. */
 
   /* ---------------- views ---------------- */
-  function projectOptions(selected: number | null = null): string {
-    const rows = db.query(
+  function projectOptionRows(): { id: number; name: string; client: string | null }[] {
+    return db.query(
       `SELECT p.id, p.name, c.name AS client FROM projects p
        LEFT JOIN clients c ON c.id = p.client_id ORDER BY p.name`).all() as any[];
-    return rows.map(r =>
+  }
+
+  function projectOptions(selected: number | null = null): string {
+    return projectOptionRows().map(r =>
       `<option value="${r.id}"${r.id === selected ? " selected" : ""}>${esc(r.name)}${r.client ? ` (${esc(r.client)})` : ""}</option>`
     ).join("");
   }
@@ -218,32 +253,17 @@ export function createDomain(deps: DomainDeps) {
 
   /* Milestone 20: sundayOf/addDays live in lib/format.ts. */
 
-  /** Shared M3 Expressive determinate progress track (#87). Under target: a
-      wave-masked pumpkin fill that ripples while motion is allowed, a tonal
-      remainder track, and a small pumpkin gap dot. At/over target: settles to a
-      flat full-width pumpkin fill with a one-pass completion sheen. `pct` is
-      clamped 0..100; `met` selects the settled state. */
-  function m3ProgressBar(pct: number, met: boolean, ariaLabel: string): string {
-    const bar = met
-      ? `<div class="m3-progress-fill" style="width:${pct.toFixed(1)}%" aria-hidden="true"></div>`
-      : `${pct > 0 ? `<div class="m3-progress-fill-wrap" style="width:calc((100% - 4px) * ${(pct / 100).toFixed(3)})" aria-hidden="true"><div class="m3-progress-fill-wave"></div></div>` : ""}
-         <div class="m3-progress-remainder" aria-hidden="true"></div>
-         <div class="m3-progress-dot" aria-hidden="true"></div>`;
-    return `<div class="m3-progress-track${met ? " complete" : ""}" role="progressbar" aria-valuenow="${Math.round(pct)}"
-        aria-valuemin="0" aria-valuemax="100" aria-label="${ariaLabel}">${bar}</div>`;
-  }
-
   /** Slim pacing bar under the week header: tracked hours vs the week target
       (five days at the user's daily target, #908). */
   function weekTargetBar(weekTotalSecs: number): string {
     const target = 5 * dayTargetSecs(db);
-    const pct = Math.min(100, (weekTotalSecs / target) * 100);
-    const over = weekTotalSecs >= target;
-    return `
-      <div class="m3-progress week-target">
-        ${m3ProgressBar(pct, over, `Weekly hours target, ${target / 3600} hours`)}
-        <div class="md-label-medium muted m3-progress-label">${fmtDur(weekTotalSecs)} / ${fmtDur(target)}${over ? ` · <span class="tiny">over target</span>` : ""}</div>
-      </div>`;
+    return targetBar({
+      inline: true,
+      pct: (weekTotalSecs / target) * 100,
+      label: `${fmtDur(weekTotalSecs)} / ${fmtDur(target)}`,
+      over: weekTotalSecs >= target,
+      ariaLabel: `Weekly hours target, ${target / 3600} hours`,
+    });
   }
 
 
@@ -269,8 +289,8 @@ export function createDomain(deps: DomainDeps) {
 
   return {
     getInvoice, invoiceTotals, nextInvoiceNumber, stripeLinkFor,
-    unbilledEntries, groupToLineItems, clientRestFrom, unbilledByClient,
-    projectOptions, m3ProgressBar, weekTargetBar,
+    unbilledEntries, groupToLineItems, clientRestFrom, clientUnbilledSpan, unbilledByClient,
+    projectOptions, projectOptionRows, weekTargetBar,
     newPublicToken, ensurePublicToken, getPublicToken, mintPublicToken,
   };
 }

@@ -7,7 +7,7 @@
 import { describe, expect, test } from "bun:test";
 import type { Database, Statement } from "bun:sqlite";
 import { createInvoiceViews } from "./invoices.ts";
-import { daysBetween } from "../lib/format.ts";
+import { addDays, daysBetween, todayStr } from "../lib/format.ts";
 
 const stubQuery = () => ({
   get: (..._a: unknown[]) => ({ n: 0 }),
@@ -16,12 +16,11 @@ const stubQuery = () => ({
 });
 const stubDb = { query: (_sql: string) => stubQuery() } as unknown as Database;
 
-function views(rows: any[], opts: { publicToken?: string | null; db?: Database } = {}) {
+function views(rows: any[], opts: { publicToken?: string | null; db?: Database; isOverdue?: (r: any) => boolean } = {}) {
   return createInvoiceViews({
     db: opts.db ?? stubDb,
     qInvoices: { all: () => rows } as unknown as Statement,
     layout: (_t: string, b: string) => b,
-    clientOptions: () => "",
     getPublicToken: () => opts.publicToken ?? null,
     stripeConfigured: () => false,
     nextInvoiceNumber: () => "INV-0001",
@@ -30,8 +29,7 @@ function views(rows: any[], opts: { publicToken?: string | null; db?: Database }
       const tax = subtotal * taxRate / 100;
       return { subtotal, tax, total: subtotal + tax };
     },
-    statusPill: (s: string) => `<span class="pill">${s}</span>`,
-    isOverdue: () => false,
+    isOverdue: opts.isOverdue ?? (() => false),
     unbilledByClient: () => [],
   });
 }
@@ -51,61 +49,99 @@ function detailInv(status: string, paid_at: string | null) {
   };
 }
 
+describe("public link copy (#1296)", () => {
+  const metaDb = (instructions: string) => ({
+    query: (_sql: string) => ({
+      get: (..._a: unknown[]) => ({ value: instructions }),
+      all: (..._a: unknown[]) => [],
+      run: (..._a: unknown[]) => {},
+    }),
+  }) as unknown as Database;
+  test("sent with no pay channel says view only", () => {
+    const html = views([]).invoiceDetailBody(detailInv("sent", null) as any, "http://x");
+    expect(html).toContain("Anyone with the link can view —");
+    expect(html).not.toContain("can view and pay");
+  });
+  test("sent with payment instructions set says view and pay", () => {
+    const html = views([], { db: metaDb("Bank transfer to Acct 123") }).invoiceDetailBody(detailInv("sent", null) as any, "http://x");
+    expect(html).toContain("Anyone with the link can view and pay —");
+  });
+  test("sent with a Stripe payment link says view and pay", () => {
+    const inv = { ...detailInv("sent", null), stripe_payment_link: "https://pay.example/x" };
+    const html = views([]).invoiceDetailBody(inv as any, "http://x");
+    expect(html).toContain("Anyone with the link can view and pay —");
+  });
+  test("draft with instructions set still says view only", () => {
+    const html = views([], { db: metaDb("Bank transfer to Acct 123") }).invoiceDetailBody(detailInv("draft", null) as any, "http://x");
+    expect(html).toContain("Anyone with the link can view —");
+    expect(html).not.toContain("can view and pay");
+  });
+});
+
 describe("paid-on date", () => {
-  test("list row shows the paid date when present", () => {
+  test("list row shows the paid date in the status chip", () => {
     const html = views([{ ...baseRow, status: "paid", paid_at: "2026-09-21" }]).invoiceListOob(7);
-    expect(html).toContain("paid Sep 21");
+    expect(html).toContain("Paid Sep 21");
   });
 
   test("list row shows no paid date for unpaid invoices", () => {
     const html = views([{ ...baseRow, status: "sent", paid_at: null }]).invoiceListOob(0);
-    expect(html).not.toContain("paid ");
+    expect(html).not.toContain("Paid Sep");
   });
 
-  test("list row shows no paid date when a paid invoice predates the column", () => {
+  test("paid row without a paid_at falls back to the plain Paid chip", () => {
     const html = views([{ ...baseRow, status: "paid", paid_at: null }]).invoiceListOob(7);
-    expect(html).not.toContain("paid ");
+    expect(html).toContain(">Paid</span>");
+    expect(html).not.toContain("Paid Sep");
   });
 
-  test("#770: paid row shows only the paid date, not issued/due", () => {
-    const html = views([{ ...baseRow, status: "paid", paid_at: "2026-09-21" }]).invoiceListOob(7);
-    expect(html).toContain("paid Sep 21");
-    expect(html).not.toContain("issued ");
-    expect(html).not.toContain("due ");
-  });
-
-  test("#432: detail actions are icon buttons with M3 tooltips", () => {
+  test("#432: detail secondary actions are icon buttons with tooltips", () => {
     const html = views([]).invoiceDetailBody(detailInv("draft", null) as any, "http://x");
     const row = html.match(/<div class="page-head no-print">[\s\S]*?<div class="row">([\s\S]*?)<\/div>\s*<\/div>/)?.[1] || "";
     expect(row).toContain('data-tip="Download PDF"');
-    expect(row).toContain('data-tip="Mark sent"');
     expect(row).toContain('data-tip="Delete draft"');
     expect(row).toContain('aria-label="Download PDF"');
-    expect(row).not.toContain("md-filled-button");
-    expect(row).not.toContain("md-text-button");
     expect(row).not.toContain("inv-overflow-menu-");
-    const iconBtns = row.match(/md-icon-button/g) || [];
-    expect(iconBtns.length).toBe(3);
-    expect(row.match(/tip-right/g)?.length).toBe(3); // #434: tooltips anchor right
+    const iconBtns = row.match(/class="ui-icon-btn/g) || [];
+    expect(iconBtns.length).toBe(2);
+    expect(row.match(/tip-right/g)?.length).toBe(2); // #434: tooltips anchor right
+  });
+
+  test("#1250: back link renders above the title, before it in DOM order", () => {
+    const html = views([]).invoiceDetailBody(detailInv("sent", null) as any, "http://x");
+    expect(html.indexOf("detail-back")).toBeGreaterThan(-1);
+    expect(html.indexOf("detail-back")).toBeLessThan(html.indexOf("detail-title"));
+  });
+
+  test("#1250: next lifecycle step is a labeled primary button, not an icon", () => {
+    const draft = views([]).invoiceDetailBody(detailInv("draft", null) as any, "http://x");
+    expect(draft).toContain('<button type="submit" class="ui-btn ui-btn-primary" data-confirm="Mark this Zinvoice as sent? Sent Zinvoices can\'t be edited." data-confirm-label="Mark sent">');
+    expect(draft).toContain("Mark Zinvoice sent");
+    const sent = views([]).invoiceDetailBody(detailInv("sent", null) as any, "http://x");
+    expect(sent).toContain('<button type="submit" class="ui-btn ui-btn-primary" data-confirm="Mark this Zinvoice as paid?" data-confirm-label="Mark paid">');
+    expect(sent).toContain("Mark Zinvoice paid");
+    expect(sent).not.toContain('aria-label="Mark paid"');
+    const paid = views([]).invoiceDetailBody(detailInv("paid", "2026-09-21") as any, "http://x");
+    expect(paid).not.toContain("Mark Zinvoice");
   });
 
   test("#432: paid invoice shows only the download icon button", () => {
     const html = views([]).invoiceDetailBody(detailInv("paid", "2026-09-21") as any, "http://x");
     const row = html.match(/<div class="page-head no-print">[\s\S]*?<div class="row">([\s\S]*?)<\/div>\s*<\/div>/)?.[1] || "";
-    const iconBtns = row.match(/md-icon-button/g) || [];
+    const iconBtns = row.match(/class="ui-icon-btn/g) || [];
     expect(iconBtns.length).toBe(1);
     expect(row).not.toContain("inv-overflow-menu-");
   });
 
-  test("#424: paid label is an M3 chip first in the detail actions row", () => {
+  test("#424: paid label is a badge first in the detail actions row", () => {
     const html = views([]).invoiceDetailBody(detailInv("paid", "2026-09-21") as any, "http://x");
     const actionsRow = html.match(/<div class="page-head no-print">[\s\S]*?<div class="row">([\s\S]*?)<\/div>\s*<\/div>/)?.[1] || "";
-    expect(actionsRow).toContain("md-chip");
+    expect(actionsRow).toContain("ui-chip ui-chip-paid");
     expect(actionsRow).toContain("Paid Sep 21");
     // chip leads the actions row, ahead of Download PDF
-    expect(actionsRow.indexOf("md-chip")).toBeLessThan(actionsRow.indexOf("Download PDF"));
+    expect(actionsRow.indexOf("ui-chip")).toBeLessThan(actionsRow.indexOf("Download PDF"));
     // title block untouched: back link only, no paid date
-    const headBlock = html.match(/<div class="invoice-detail-head">[\s\S]*?<\/div>/)?.[0] || "";
+    const headBlock = html.match(/<div class="invoice-detail-head[^"]*">[\s\S]*?<\/div>/)?.[0] || "";
     expect(headBlock).not.toContain("Paid Sep 21");
     // no caption element anywhere
     expect(html).not.toContain("paid-meta");
@@ -116,45 +152,38 @@ describe("paid-on date", () => {
     expect(html).not.toContain("Paid ");
   });
 
-  test("#442: list row keeps date phrases on one line", () => {
-    /* #770: a paid row shows only the paid date — issued/due live in the
-       detail pane now, so nothing can wrap onto a second line. #772:
-       unpaid rows get the same treatment — one segment ("due", or
-       "issued" when there is no due date yet). */
+  /* Columns are Number, Client, Status, Total: the chip says what's next and
+     its tooltip says when the status happened. */
+  test("paid rows: Paid chip, tooltip with the paid date", () => {
     const html = views([{ ...baseRow, status: "paid", paid_at: "2026-09-21" }]).invoiceListOob(7);
-    expect(html).toContain('<span class="inv-date">· paid Sep 21</span>');
-    expect(html).not.toContain('<span class="inv-date">· issued');
-    expect(html).not.toContain('<span class="inv-date">· due');
-    const html2 = views([{ ...baseRow, status: "sent", paid_at: null }]).invoiceListOob(0);
-    expect(html2).toContain('<span class="inv-date">· due Sep 30</span>');
-    expect(html2).not.toContain('<span class="inv-date">· issued');
-    expect(html2).not.toContain('inv-date">· paid');
+    expect(html).toContain('<a class="inv-num-link" href="/invoices?invoice=7">INV-0007</a>');
+    expect(html).toContain("<td>Acme</td>");
+    expect(html).toContain("ui-chip-paid");
+    expect(html).toContain('role="tooltip" id="inv-tip-INV-0007">Paid Sep 21</span>');
+    expect(html).not.toContain("col-issued");
   });
 
-  test("#481: no middot dangles in raw text between the date spans", () => {
-    const html = views([{ ...baseRow, status: "paid", paid_at: "2026-09-21" }]).invoiceListOob(7);
-    const supporting = html.match(/<div class="md-list-item-supporting">([\s\S]*?)<\/div>/)?.[1] || "";
-    /* The middot is a leading separator inside each nowrap span, so a wrap
-       breaks before a middot, never after one — no " · " in raw text.
-       #770: a paid row has just one segment, so there is nothing to dangle. */
-    expect(supporting).toContain('Acme <span class="inv-dates"><span class="inv-date">· paid Sep 21</span></span>');
-    expect(supporting).not.toMatch(/ · </);
+  test("sent rows: the chip reads Due …, the tooltip says when it was sent (Issued before sent_at existed)", () => {
+    const withSent = views([{ ...baseRow, status: "sent", paid_at: null, sent_at: "2026-09-02" }]).invoiceListOob(0);
+    expect(withSent).toContain(">Due Sep 30</span>");
+    expect(withSent).toContain(">Sent Sep 2</span>");
+    const legacy = views([{ ...baseRow, status: "sent", paid_at: null, sent_at: null }]).invoiceListOob(0);
+    expect(legacy).toContain(">Issued Sep 1</span>");
+    expect(legacy).not.toContain(">Sent Sep");
   });
 
-  test("#772: unpaid row shows only the due date segment", () => {
-    const html = views([{ ...baseRow, status: "sent", paid_at: null }]).invoiceListOob(0);
-    const supporting = html.match(/<div class="md-list-item-supporting">([\s\S]*?)<\/div>/)?.[1] || "";
-    /* One segment per row: the .inv-dates group can't wrap whole onto a
-       second line with a dangling leading middot on narrow list panes. */
-    expect(supporting).toContain('<span class="inv-dates"><span class="inv-date">· due Sep 30</span></span>');
-    expect(supporting).not.toContain('inv-date">· issued');
+  test("overdue rows: Overdue chip with its age, tooltip adds the missed due date", () => {
+    const html = views([{ ...baseRow, status: "sent", paid_at: null, sent_at: "2026-09-02" }], { isOverdue: () => true }).invoiceListOob(0);
+    expect(html).toContain("ui-chip-overdue");
+    expect(html).toContain(">Sent Sep 2 · was due Sep 30</span>");
   });
 
-  test("#772: unpaid row with no due date falls back to the issued date", () => {
-    const html = views([{ ...baseRow, status: "draft", paid_at: null, due_date: null }]).invoiceListOob(0);
-    const supporting = html.match(/<div class="md-list-item-supporting">([\s\S]*?)<\/div>/)?.[1] || "";
-    expect(supporting).toContain('<span class="inv-dates"><span class="inv-date">· issued Sep 1</span></span>');
-    expect(supporting).not.toContain('inv-date">· due');
+  test("draft rows: Draft chip, 'Not sent yet'; the number links to the detail", () => {
+    const html = views([{ ...baseRow, status: "draft", paid_at: null }]).invoiceListOob(0);
+    expect(html).toContain('href="/invoices?invoice=7"');
+    expect(html).not.toContain(">View</a>");
+    expect(html).toContain("ui-chip-draft");
+    expect(html).toContain(">Not sent yet</span>");
   });
 
   test("#448: stripe-paid chip uses the icon system, not an emoji", () => {
@@ -174,44 +203,42 @@ describe("paid-on date", () => {
   test("#471: new-invoice rate/tax use affixes, not label-crammed units", () => {
     const html = views([]).invoiceNewPage(views([]).defaultNewInvParams());
     // rate: $ prefix affix, label is just "Hourly rate"
-    expect(html).toContain('class="md-text-field filled has-prefix"');
-    expect(html).toContain('<span class="affix prefix" aria-hidden="true">$</span>');
-    expect(html).toContain('aria-label="Hourly rate"><label for="inv-rate">Hourly rate</label>');
+    expect(html).toContain('<span class="ui-affix ui-affix-prefix">$</span>');
+    expect(html).toContain('<label class="ui-field-label" for="inv-rate">Hourly rate</label>');
     expect(html).not.toContain("Hourly rate ($)");
     // tax: % suffix affix, label is just "Tax"
-    expect(html).toContain('class="md-text-field filled has-suffix"');
-    expect(html).toContain('<span class="affix suffix" aria-hidden="true">%</span>');
-    expect(html).toContain('aria-label="Tax"><label for="inv-tax">Tax</label>');
+    expect(html).toContain('<span class="ui-affix ui-affix-suffix">%</span>');
+    expect(html).toContain('<label class="ui-field-label" for="inv-tax">Tax</label>');
     expect(html).not.toContain("Tax %");
   });
 
   test("#703: new-invoice Notes/Internal notes inputs have accessible names", () => {
     const html = views([]).invoiceNewPage(views([]).defaultNewInvParams());
-    expect(html).toContain('aria-label="Notes (optional)"><label for="inv-notes">Notes (optional)</label>');
-    expect(html).toContain('aria-label="Internal notes (only you see this)"><label for="inv-internal">Internal notes (only you see this)</label>');
+    expect(html).toContain('<label class="ui-field-label" for="inv-notes">Notes (optional)</label>');
+    expect(html).toContain('<label class="ui-field-label" for="inv-internal">Internal notes (only you see this)</label>');
   });
 
   test("#709/#827: new-invoice step-1 labels are wired via matching id/for", () => {
     const html = views([]).invoiceNewPage(views([]).defaultNewInvParams());
     for (const id of ["inv-from", "inv-to", "inv-number", "inv-issue", "inv-due", "inv-client", "inv-rate", "inv-tax", "inv-notes", "inv-internal"]) {
       expect(html).toContain(`id="${id}"`);
-      expect(html).toContain(`<label for="${id}">`);
+      expect(html).toContain(`<label class="ui-field-label" for="${id}">`);
     }
   });
 });
 
 /** #486: finish the data-tip sweep — the invoice share-section buttons
  *  (copy link, regenerate/revoke) used the OS-native title= tooltip while the
- *  detail header actions already show M3 plain tooltips. */
+ *  detail header actions already show plain tooltips. */
 describe("#947: destructive invoice actions carry data-confirm", () => {
   test("Mark sent has a confirm (sent zinvoices can't be edited)", () => {
     const html = views([]).invoiceDetailBody(detailInv("draft", null) as any, "http://x");
-    expect(html).toContain('data-confirm="Mark this zinvoice as sent? Sent zinvoices can\'t be edited."');
+    expect(html).toContain('data-confirm="Mark this Zinvoice as sent? Sent Zinvoices can\'t be edited."');
     expect(html).toContain('data-confirm-label="Mark sent"');
   });
   test("Mark paid has a confirm", () => {
     const html = views([]).invoiceDetailBody(detailInv("sent", null) as any, "http://x");
-    expect(html).toContain('data-confirm="Mark this zinvoice as paid?"');
+    expect(html).toContain('data-confirm="Mark this Zinvoice as paid?"');
     expect(html).toContain('data-confirm-label="Mark paid"');
   });
   test("Regenerate link has a confirm (old URL stops working)", () => {
@@ -228,7 +255,7 @@ describe("share-section tooltips (#486)", () => {
     expect(html).not.toContain('title="Copy link"');
   });
   test("regenerate keeps the full accessible name; tip stays short", () => {
-    // the M3 tooltip caps at 200px nowrap — the long label would overflow it
+    // the tooltip caps at 200px nowrap — the long label would overflow it
     expect(html).toContain('data-tip="Regenerate link"');
     expect(html).toContain('aria-label="Regenerate link (invalidates the old one)"');
     expect(html).not.toContain('title="Regenerate link');
@@ -353,7 +380,6 @@ describe("#560: date phrases stay together", () => {
       db: metaDb,
       qInvoices: { all: () => [] } as unknown as Statement,
       layout: (_t: string, b: string) => b,
-      clientOptions: () => "",
       getPublicToken: () => null,
       stripeConfigured: () => false,
       nextInvoiceNumber: () => "INV-0001",
@@ -362,7 +388,6 @@ describe("#560: date phrases stay together", () => {
         const tax = subtotal * taxRate / 100;
         return { subtotal, tax, total: subtotal + tax };
       },
-      statusPill: (s: string) => `<span class="pill">${s}</span>`,
       isOverdue: () => false,
       unbilledByClient: () => [],
     }).invoiceSheet({ ...detailInv("sent", null), items } as any);
@@ -460,14 +485,17 @@ describe("#639: PDF input omits payUrl once paid", () => {
   });
 });
 
-/** #643: switching invoices while scrolled down left the new detail rendered
- *  mid-sheet — the innerHTML fragment swap preserves the pane's scrollTop.
- *  The row-click swap spec must reset the detail pane to the top so every
- *  invoice opens on its header band. */
-describe("#643: detail pane scrolls to top on invoice switch", () => {
-  test("fragment swap spec includes scroll:top", () => {
+/** The list is the mock's table now: rows navigate to the standalone
+ *  detail view, which opens at the top of its own page — the two-pane
+ *  fragment swap (#364/#643) retired with the pane. */
+describe("list rows navigate to the detail view", () => {
+  test("the number links to /invoices?invoice=<id> and no pane renders", () => {
     const html = views([{ ...baseRow, status: "sent", paid_at: null }]).invoicesPage(null, "http://x");
-    expect(html).toContain('swap: "innerHTML scroll:top"');
+    expect(html).toContain('href="/invoices?invoice=7"');
+    expect(html).toContain("inv-num-link");
+    expect(html).not.toContain(">View</a>");
+    expect(html).not.toContain("invoice-detail-pane");
+    expect(html).not.toContain("invoice-list-detail");
   });
 });
 
@@ -482,10 +510,10 @@ describe("#679: singular hour marker", () => {
   const sheet = (hours: number) =>
     views([]).invoiceSheet({ ...detailInv("sent", null), items: mkItems(hours) } as any);
   test("1-hour line item gets the inv-hours-1 marker", () => {
-    expect(sheet(1)).toContain(`<td class="num inv-hours inv-hours-1">1</td>`);
+    expect(sheet(1)).toContain(`<td class="num inv-hours inv-hours-1">1.00</td>`);
   });
   test("other hours keep the plain inv-hours cell", () => {
-    expect(sheet(2.5)).toContain(`<td class="num inv-hours">2.5</td>`);
+    expect(sheet(2.5)).toContain(`<td class="num inv-hours">2.50</td>`);
     expect(sheet(2.5)).not.toContain(`inv-hours-1`);
   });
 });
@@ -500,16 +528,33 @@ describe("#668: manual line items on step 2", () => {
     tax_rate: "0", notes: "", internal_notes: "",
   };
 
-  test("empty preview renders the manual-item form, not a dead end", () => {
+  test("empty preview renders the manual-item path, not a dead end", () => {
     const html = views([]).invoiceStep2(p as any, {
       items: [], emptyMsg: "No unbilled, finished entries on this client's projects in that range.",
     });
     expect(html).toContain("No unbilled, finished entries");
-    expect(html).toContain('action="/invoices"');
     expect(html).toContain('name="groups" value="0"');
     expect(html).toContain("data-add-item");
-    expect(html).toContain("Add line item");
-    expect(html).toContain("Create zinvoice");
+    expect(html).toContain("Add manual line");
+  });
+
+  test("the page opens on both steps with a client prompt and no 480px form cap", () => {
+    const html = views([]).invoiceNewPage(p as any);
+    expect(html).toContain('<form method="post" action="/invoices" class="form inv-new-form" id="inv-create-form">');
+    expect(html).toContain('id="invoice-step2"');
+    expect(html).toContain("Pick a client to load unbilled time");
+    expect(html).toContain("Add manual line");
+    expect(html).toContain("Pick a client and period");
+  });
+
+  test("the page carries the one create form and the summary actions", () => {
+    const html = views([]).invoiceNewPage(p as any, { items: [] });
+    expect(html).toContain('<form method="post" action="/invoices" class="form inv-new-form" id="inv-create-form">');
+    expect(html).toContain("Live preview — INV-0001");
+    expect(html).toContain("Save draft");
+    expect(html).toContain("Send Zinvoice");
+    expect(html).toContain('name="intent" value="send"');
+    expect(html).toContain("Sending creates the public pay link.");
   });
 
   test("preview with items also gets the add button", () => {
@@ -520,6 +565,30 @@ describe("#668: manual line items on step 2", () => {
     expect(html).toContain("Website");
     expect(html).toContain('name="groups" value="1"');
     expect(html).toContain("data-add-item");
+  });
+
+  test("a zero-item preview disables both create actions in the fragment", () => {
+    const html = views([]).invoiceStep2(p as any, {
+      items: [], emptyMsg: "No unbilled, finished entries on this client's projects in that range.",
+    });
+    expect(html).toContain('id="inv-preview" hx-swap-oob="true"');
+    expect(html).toContain("disabled>Save draft");
+    expect(html).toContain('disabled name="intent" value="send"');
+  });
+
+  test("a preview with items leaves both create actions enabled", () => {
+    const html = views([]).invoiceStep2(p as any, {
+      items: [{ description: "Website", hours: 2.5, rate: 40, amount: 100, entry_ids: [1], date_from: "2026-09-20", date_to: "2026-09-20" }],
+      rounding: 5,
+    });
+    expect(html).not.toContain("disabled>Save draft");
+    expect(html).not.toContain('disabled name="intent"');
+  });
+
+  test("the full page with a zero-item preview also disables the actions", () => {
+    const html = views([]).invoiceNewPage(p as any, { items: [] });
+    expect(html).toContain("disabled>Save draft");
+    expect(html).toContain('disabled name="intent" value="send"');
   });
 
   test("no preview renders nothing", () => {
@@ -549,26 +618,46 @@ describe("#687/#859: invoice sheet grand-total label", () => {
   });
 });
 
-/** #805: first-zinvoice preselect — the route defaults the two-pane detail
- *  to the first zinvoice so the pane has content on desktop load. The view
- *  marks that fallback with isDefault: the detail renders, but has-selection
- *  stays unset so the single-pane (mobile) layout still opens on the list. */
-describe("#805: list-detail default selection", () => {
+/** The two-pane default-selection model (#364/#805) retired with the
+ *  pane: no selection renders the mock list (stat cards, filter chips,
+ *  search, table); an explicit selection renders the standalone detail. */
+describe("list vs detail selection", () => {
   const sel = { ...detailInv("sent", null), items: [] } as any;
   const rows = [{ ...baseRow, status: "sent", paid_at: null }];
-  test("explicit selection sets has-selection and renders the detail", () => {
+  test("explicit selection renders the detail view", () => {
     const html = views(rows).invoicesPage(sel, "http://x");
-    expect(html).toContain("has-selection");
-    expect(html).not.toContain("Select a zinvoice to preview it here.");
+    expect(html).toContain('id="invoice-detail"');
+    expect(html).not.toContain("ui-filter-chips");
+    expect(html).not.toContain('id="inv-stats"');
   });
-  test("default selection renders the detail but no has-selection", () => {
-    const html = views(rows).invoicesPage(sel, "http://x", true);
-    expect(html).not.toContain("has-selection");
-    expect(html).not.toContain("Select a zinvoice to preview it here.");
-  });
-  test("no selection still shows the placeholder", () => {
+  test("no selection renders the list table", () => {
     const html = views(rows).invoicesPage(null, "http://x");
-    expect(html).toContain("Select a zinvoice to preview it here.");
+    expect(html).toContain("ui-filter-chips");
+    expect(html).toContain('id="inv-list-region"');
+    expect(html).toContain('hx-get="/invoices?status=paid" hx-target="#inv-list-region" hx-swap="innerHTML" hx-push-url="true"');
+    expect(html).toContain('<th scope="col">Number</th>');
+    expect(html).toContain('<th scope="col">Client</th>');
+    expect(html).toContain('<th scope="col">Status</th>');
+    expect(html).not.toContain(">Issued</th>");
+    expect(html).not.toContain(">Due</th>");
+    expect(html).not.toContain('id="invoice-detail"');
+  });
+  test("the htmx list region returns stats, chips, and rows without the shell", () => {
+    const html = views(rows).invoiceListRegion({ status: "sent" });
+    expect(html).toContain('id="inv-list-region"');
+    expect(html).not.toContain("ui-app-head");
+    expect(html).not.toContain("<!DOCTYPE");
+    expect(html).toContain('class="ui-filter-chip is-active" hx-get="/invoices?status=sent"');
+    expect(html).toContain('aria-current="true"');
+  });
+
+  test("the status filter narrows the table", () => {
+    expect(views(rows).invoicesPage(null, "http://x", { status: "paid" })).toContain("No Zinvoices match this filter.");
+    expect(views(rows).invoicesPage(null, "http://x", { status: "sent" })).toContain("INV-0007");
+  });
+  test("search matches client or number", () => {
+    expect(views(rows).invoicesPage(null, "http://x", { q: "acme" })).toContain("INV-0007");
+    expect(views(rows).invoicesPage(null, "http://x", { q: "zzz" })).toContain("No Zinvoices match this filter.");
   });
 });
 
@@ -590,12 +679,10 @@ describe("#829: new-zinvoice due-date prefill follows global payment terms", () 
       db,
       qInvoices: { all: () => [] } as unknown as Statement,
       layout: (_t: string, b: string) => b,
-      clientOptions: () => "",
       getPublicToken: () => null,
       stripeConfigured: () => false,
       nextInvoiceNumber: () => "INV-0001",
       invoiceTotals: () => ({ subtotal: 0, tax: 0, total: 0 }),
-      statusPill: (s: string) => s,
       isOverdue: () => false,
       unbilledByClient: () => [],
     });
@@ -618,24 +705,24 @@ describe("#829: new-zinvoice due-date prefill follows global payment terms", () 
   });
 });
 
-/** #831: the detail header badge agrees with the list's status pill — a draft
- *  was never sent, so it reads "Draft" in the neutral tonal treatment instead
- *  of the amber "Unpaid" reserved for sent invoices awaiting payment. */
-describe("#831: detail badge labels drafts Draft, not Unpaid", () => {
-  test("draft badge reads Draft with the draft (neutral) treatment", () => {
+/** #831: the detail's status badge is the status card's chip now — the
+ *  same tinted ui chip family as the list table, so a draft reads "Draft"
+ *  in the neutral treatment, never the sheet's old amber "Unpaid". */
+describe("#831: detail status chip labels drafts Draft, not Unpaid", () => {
+  test("draft chip reads Draft with the draft (neutral) treatment", () => {
     const html = views([]).invoiceDetailBody(detailInv("draft", null) as any, "http://x");
-    expect(html).toContain('<span class="inv-modern-badge draft">Draft</span>');
+    expect(html).toContain('<span class="ui-chip ui-chip-draft">Draft</span>');
     expect(html).not.toContain("Unpaid");
   });
 
-  test("sent badge still reads Unpaid with the amber treatment", () => {
+  test("sent chip reads Sent with the info treatment", () => {
     const html = views([]).invoiceDetailBody(detailInv("sent", null) as any, "http://x");
-    expect(html).toContain('<span class="inv-modern-badge">Unpaid</span>');
+    expect(html).toContain('<span class="ui-chip ui-chip-sent">Sent</span>');
   });
 
-  test("paid badge still reads Paid with the paid treatment", () => {
+  test("paid chip reads Paid with the paid treatment", () => {
     const html = views([]).invoiceDetailBody(detailInv("paid", "2026-09-21") as any, "http://x");
-    expect(html).toContain('<span class="inv-modern-badge paid">Paid</span>');
+    expect(html).toContain('<span class="ui-chip ui-chip-paid">');
   });
 });
 
@@ -682,8 +769,9 @@ describe("#899: time breakdown chart on the zinvoices sheet", () => {
     expect(html).toContain("tb-chart");
     expect(html).toContain("Sep 8");
     expect(html).toContain("Sep 9");
-    // 3.5 + 3.5 + 0.92 (rounded up) = 7.92 hrs total
-    expect(html).toContain("7.92 hrs total");
+    // 3.5 + 3.5 + 0.92 (rounded up) = 7.92h, read as a duration: 7h 55m
+    expect(html).toContain("7h 55m total");
+    expect(html).toContain("Sep 8: 7h tracked");
   });
 
   test("sheet shows no chart when no time entries are linked", () => {
@@ -697,31 +785,363 @@ describe("#899: time breakdown chart on the zinvoices sheet", () => {
       { ...detailInv("sent", null), client_payment_terms: null, public_token: null } as any,
       "http://x",
     );
-    expect(input.timeBreakdown).toEqual([
-      { date: "2026-09-08", hours: 7 },
-      { date: "2026-09-09", hours: 0.92 },
-    ]);
+    expect(input.timeBreakdown?.[0]).toEqual({ date: "2026-09-08", hours: 7 });
+    expect(input.timeBreakdown?.[1].date).toBe("2026-09-09");
+    expect(input.timeBreakdown?.[1].hours).toBeCloseTo(3300 / 3600, 10);
+  });
+
+  test("#1049: breakdown total rounds once, agreeing with the billed hours", () => {
+    const rows1049 = [
+      { day: "2026-09-08", start_time: "2026-09-08T09:00:00", end_time: "2026-09-08T10:20:00" },
+      { day: "2026-09-09", start_time: "2026-09-09T09:00:00", end_time: "2026-09-09T10:20:00" },
+    ];
+    const db1049 = {
+      query: (sql: string) =>
+        sql.includes("time_entries")
+          ? { get: () => null, all: () => rows1049, run: () => ({}) }
+          : stubQuery(),
+    } as unknown as Database;
+    const item = (hours: number) => ({
+      description: "Work", hours, rate: 95, amount: Math.round(hours * 95 * 100) / 100,
+      date_from: "2026-09-08", date_to: "2026-09-09",
+    });
+    const oneProject = { ...detailInv("sent", null), items: [item(2.67)] };
+    const html = views([], { db: db1049 }).invoiceSheet(oneProject as any);
+    expect(html).toContain("2h 40m total");
+    expect(html).not.toContain("2h 39m total");
+    const input = views([], { db: db1049 }).invoicePdfInput(
+      { ...oneProject, client_payment_terms: null, public_token: null } as any,
+      "http://x",
+    );
+    expect(input.timeBreakdownTotal).toBe(2.67);
+    const twoProjects = { ...detailInv("sent", null), items: [item(1.33), item(1.33)] };
+    const html2 = views([], { db: db1049 }).invoiceSheet(twoProjects as any);
+    expect(html2).toContain("2h 39m total");
+    expect(html2).not.toContain("2h 40m total");
+    const input2 = views([], { db: db1049 }).invoicePdfInput(
+      { ...twoProjects, client_payment_terms: null, public_token: null } as any,
+      "http://x",
+    );
+    expect(input2.timeBreakdownTotal).toBe(2.66);
   });
 });
 
-/** #948: mobile header compaction hooks — the list page-head carries a
- *  dedicated class for the phone media query, and the Export CSV label is
- *  wrapped so CSS can swap it for the short "CSV" label on narrow viewports
- *  (never icon-only, per #949 review). */
-describe("#948: mobile zinvoices header", () => {
-  test("list page-head has the page-head-invoices scoping class", () => {
+/** #948's intent, carried into the appHeader structure (#1121): the
+ *  header actions keep their full text labels at every width (the old
+ *  page-head hid them on phones behind label-swap spans) and always
+ *  carry an accessible name. */
+describe("#948: zinvoices header actions stay labeled", () => {
+  test("list head is the ui app header", () => {
     const html = views([{ ...baseRow, status: "sent", paid_at: null }]).invoicesPage(null, "http://x");
-    expect(html).toContain('class="page-head page-head-invoices"');
+    expect(html).toContain('<header class="ui-app-head">');
+    expect(html).toContain('<h1 class="ui-app-title">Zinvoices</h1>');
   });
-  test("Export CSV label is wrapped in .btn-label with a short mobile label and aria-label", () => {
+  test("Export CSV is a labeled link button with download and aria-label", () => {
     const html = views([{ ...baseRow, status: "sent", paid_at: null }]).invoicesPage(null, "http://x");
-    expect(html).toContain('<span class="btn-label">Export CSV</span>');
-    expect(html).toContain('<span class="btn-label-short">CSV</span>');
+    expect(html).toContain('href="/export/invoices.csv"');
+    expect(html).toContain(" download ");
     expect(html).toContain('aria-label="Export CSV"');
+    expect(html).toContain(">Export CSV</a>");
+    expect(html).not.toContain("btn-label");
   });
-  test("New zinvoice label is wrapped in .btn-label (hidden on phones) with an aria-label", () => {
+  test("New Zinvoice is a labeled primary link button", () => {
     const html = views([{ ...baseRow, status: "sent", paid_at: null }]).invoicesPage(null, "http://x");
-    expect(html).toContain('<span class="btn-label">New zinvoice</span>');
-    expect(html).toContain('aria-label="New zinvoice"');
+    expect(html).toContain('class="ui-btn ui-btn-primary" href="/invoices/new"');
+    expect(html).toContain('aria-label="New Zinvoice"');
+    expect(html).toContain(">New Zinvoice</a>");
+  });
+});
+
+/** #1121: the list page's summary figures follow the page-zinvoices
+ *  mock — a stat-card row (Outstanding excludes drafts) under an
+ *  appHeader, and the OOB refresh re-emits both so detail actions never
+ *  leave them stale. #1222: the header sub carries counts instead of
+ *  repeating the cards' outstanding / paid-this-month figures. */
+describe("zinvoices stat cards (#1121)", () => {
+  const statRows = () => [
+    { ...baseRow, id: 1, status: "sent", subtotal: 2090, paid_at: null },
+    { ...baseRow, id: 2, status: "sent", subtotal: 640, paid_at: null },
+    { ...baseRow, id: 3, status: "draft", subtotal: 1827.5, paid_at: null },
+    { ...baseRow, id: 4, status: "paid", subtotal: 425, paid_at: `${(() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-15`; })()}` },
+    { ...baseRow, id: 5, status: "paid", subtotal: 900, paid_at: "2020-01-15" },
+  ];
+  test("cards split outstanding (sent only), drafts, and paid this month", () => {
+    const html = views(statRows()).invoicesPage(null, "http://x");
+    expect(html).toContain('<div class="ui-stat-row" id="inv-stats">');
+    expect(html).toContain('<div class="ui-stat-value">$2,730.00</div>');
+    expect(html).toContain("2 open invoices");
+    expect(html).toContain('<div class="ui-stat-value">1</div>');
+    expect(html).toContain("$1,827.50 not yet sent");
+    expect(html).toContain('<div class="ui-stat-value">$425.00</div>');
+    const n = new Date();
+    const paidAt = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-15`;
+    expect(html).toContain("1 invoice paid");
+    expect(html).toContain("5 Zinvoices · 1 draft");
+    expect(html).not.toContain("Outstanding $2,730.00 · Paid this month $425.00");
+    expect(html).not.toContain("inv-outstanding");
+  });
+  test("OOB refresh re-emits the stat row and the header sub", () => {
+    const html = views(statRows()).invoiceListOob(1);
+    expect(html).toContain('<div class="ui-stat-row" id="inv-stats" hx-swap-oob="true">');
+    expect(html).toContain('<p class="ui-app-sub" id="inv-sub" hx-swap-oob="true">5 Zinvoices · 1 draft</p>');
+  });
+  test("header sub counts overdue sent invoices", () => {
+    const rows = [
+      { ...baseRow, id: 1, status: "sent", paid_at: null },
+      { ...baseRow, id: 2, status: "sent", paid_at: null },
+      { ...baseRow, id: 3, status: "draft", paid_at: null },
+    ];
+    const html = views(rows, { isOverdue: (r: any) => r.id === 2 }).invoicesPage(null, "http://x");
+    expect(html).toContain('<p class="ui-app-sub" id="inv-sub">3 Zinvoices · 1 draft · 1 overdue</p>');
+  });
+  test("header sub singularizes and omits zero counts", () => {
+    const html = views([{ ...baseRow, status: "sent", paid_at: null }]).invoicesPage(null, "http://x");
+    expect(html).toContain('<p class="ui-app-sub" id="inv-sub">1 Zinvoice</p>');
+  });
+});
+
+/** #1121: the wizard and detail pane follow their mocks — the steps
+ *  indicator (advancing out-of-band when the preview loads), the client
+ *  picker as selectField with the rate/terms data the form script
+ *  reads, and the detail title head above the document. */
+describe("wizard + detail parity (#1121)", () => {
+  const clientsDb = {
+    query: (sql: string) => ({
+      all: () => sql.includes("FROM clients")
+        ? [{ id: 3, name: "Acme", rate: 85, payment_terms: "net_15" }, { id: 4, name: "Beta", rate: 0, payment_terms: null }]
+        : [],
+      get: () => undefined,
+      run: () => {},
+    }),
+  } as unknown as Database;
+
+  test("wizard opens on step 1 with the steps indicator", () => {
+    const v = views([], { db: clientsDb });
+    const html = v.invoiceNewPage(v.defaultNewInvParams());
+    expect(html).toContain('<div id="inv-steps">');
+    expect(html).toContain('<div class="ui-step is-current" aria-current="step"><div class="ui-step-bar"></div><span class="ui-step-label">Client &amp; period</span></div>');
+    expect(html).toContain('<span class="ui-step-label">Pick time</span>');
+    expect(html).toContain('<span class="ui-step-label">Review &amp; send</span>');
+  });
+
+  test("client picker is selectField with rate and terms-days data attributes", () => {
+    const v = views([], { db: clientsDb });
+    const html = v.invoiceNewPage(v.defaultNewInvParams());
+    expect(html).toContain('<select class="ui-input ui-select" id="inv-client" name="client_id" required>');
+    expect(html).toContain('<option value="3" data-rate="85" data-terms-days="15">Acme</option>');
+    expect(html).toContain('<option value="4" data-rate="0" data-terms-days="30">Beta</option>');
+  });
+
+  test("step-2 fragment advances the steps indicator out-of-band", () => {
+    const v = views([], { db: clientsDb });
+    const html = v.invoiceStep2(v.defaultNewInvParams(), { items: [{ description: "Work", hours: 1, rate: 85, amount: 85, entry_ids: [1], date_from: "2026-11-01", date_to: "2026-11-01" }] });
+    expect(html).toContain('<div id="inv-steps" hx-swap-oob="true">');
+    expect(html).toContain('<div class="ui-step is-done"><div class="ui-step-bar"></div><span class="ui-step-label">Client &amp; period</span></div>');
+    expect(html).toContain('<div class="ui-step is-current" aria-current="step"><div class="ui-step-bar"></div><span class="ui-step-label">Pick time</span></div>');
+  });
+
+  test("full-page preview renders exactly one steps indicator", () => {
+    const v = views([], { db: clientsDb });
+    const preview = { items: [{ description: "Work", hours: 1, rate: 85, amount: 85, entry_ids: [1], date_from: "2026-11-01", date_to: "2026-11-01" }] };
+    const html = v.invoiceNewPage(v.defaultNewInvParams(), preview);
+    expect(html.match(/id="inv-steps"/g)).toHaveLength(1);
+    expect(html).not.toContain('id="inv-steps" hx-swap-oob="true"');
+    expect(html).toContain('<div class="ui-step is-current" aria-current="step"><div class="ui-step-bar"></div><span class="ui-step-label">Pick time</span></div>');
+  });
+
+  test("detail pane opens with the mock's title head", () => {
+    const inv = { ...detailInv("sent", null), client_payment_terms: "net_15" };
+    const html = views([]).invoiceDetailBody(inv as any, "http://x");
+    expect(html).toContain('<h2 class="ui-section-title">Zinvoice INV-0007 — Acme</h2>');
+    expect(html).toContain("Issued Sep 1 · Due Sep 30 · Net 15");
+  });
+});
+
+describe("#1257: list search field", () => {
+  test("search carries a hidden label, a leading icon and the client-or-number placeholder", () => {
+    const html = views([{ ...baseRow, status: "sent", paid_at: null }]).invoicesPage(null, "http://x");
+    expect(html).toContain('<label class="ui-field-label ui-sr-only" for="inv-q">Search Zinvoices</label>');
+    expect(html).not.toContain('<label class="ui-field-label" for="inv-q">');
+    expect(html).toContain('placeholder="Search client or number"');
+    expect(html).toContain('<span class="ui-affix ui-affix-prefix"><svg');
+  });
+});
+
+/* #1263: one hours format per meaning — decimal 2dp where hours bill
+   (they multiply by the rate), h/m durations where time is read out. */
+describe("#1263: hours format by context", () => {
+  test("step-2 inline JS recompute uses the same billing format as the server", () => {
+    const html = views([]).invoiceNewPage(views([]).defaultNewInvParams());
+    expect(html).toContain("toFixed(2)+' h'");
+    expect(html).not.toContain("+'h';}");
+  });
+
+  const items = [{
+    description: "Design work", hours: 2.5, rate: 40, amount: 100, entry_ids: [1],
+    date_from: "2026-09-21", date_to: "2026-09-26",
+  }];
+  test("detail billing table shows decimal hours at 2dp", () => {
+    const html = views([]).invoiceDetailBody({ ...detailInv("sent", null), items } as any, "http://x");
+    expect(html).toContain("<td class=\"num\">2.50</td>");
+    expect(html).not.toContain("<td class=\"num\">2.5</td>");
+  });
+  test("detail time-breakdown total reads as a duration", () => {
+    const html = views([]).invoiceDetailBody({ ...detailInv("sent", null), items } as any, "http://x");
+    expect(html).toContain("Time breakdown total");
+    expect(html).toContain("2h 30m");
+    expect(html).not.toContain("2.5h");
+  });
+});
+
+/* #1269 (slice of #1221): the detail Status bar is a status readout, not
+   the primary action — its fill tone carries the due state. */
+describe("#1269: detail Status bar tone reflects due state", () => {
+  const sentDueIn = (days: number) => ({ ...detailInv("sent", null), due_date: addDays(todayStr(), days) });
+  test("draft and paid render the neutral fill", () => {
+    expect(views([]).invoiceDetailBody(detailInv("draft", null) as any, "http://x"))
+      .toContain("ui-progress-fill ui-progress-fill-neutral");
+    expect(views([]).invoiceDetailBody(detailInv("paid", "2026-09-21") as any, "http://x"))
+      .toContain("ui-progress-fill ui-progress-fill-neutral");
+  });
+  test("sent with more than 7 days to the due date renders neutral", () => {
+    const html = views([]).invoiceDetailBody(sentDueIn(30) as any, "http://x");
+    expect(html).toContain("ui-progress-fill ui-progress-fill-neutral");
+    expect(html).not.toContain("ui-progress-fill-warning");
+    expect(html).not.toContain("ui-progress-fill-error");
+  });
+  test("sent due within 7 days renders the warning fill", () => {
+    const html = views([]).invoiceDetailBody(sentDueIn(3) as any, "http://x");
+    expect(html).toContain("ui-progress-fill ui-progress-fill-warning");
+  });
+  test("sent due today renders the warning fill", () => {
+    const html = views([]).invoiceDetailBody(sentDueIn(0) as any, "http://x");
+    expect(html).toContain("ui-progress-fill ui-progress-fill-warning");
+  });
+  test("overdue sent renders the error fill", () => {
+    const html = views([], { isOverdue: () => true })
+      .invoiceDetailBody(sentDueIn(-3) as any, "http://x");
+    expect(html).toContain("ui-progress-fill ui-progress-fill-error");
+  });
+  test("the 7-day boundary: due in 7 warns, due in 8 is neutral", () => {
+    expect(views([]).invoiceDetailBody(sentDueIn(7) as any, "http://x"))
+      .toContain("ui-progress-fill ui-progress-fill-warning");
+    const html = views([]).invoiceDetailBody(sentDueIn(8) as any, "http://x");
+    expect(html).toContain("ui-progress-fill ui-progress-fill-neutral");
+    expect(html).not.toContain("ui-progress-fill-warning");
+  });
+  test("past due but not flagged overdue (pay-when-paid) stays neutral", () => {
+    const html = views([]).invoiceDetailBody(sentDueIn(-3) as any, "http://x");
+    expect(html).toContain("ui-progress-fill ui-progress-fill-neutral");
+    expect(html).not.toContain("ui-progress-fill-error");
+    expect(html).not.toContain("ui-progress-fill-warning");
+  });
+  test("sent with no due date renders neutral", () => {
+    const html = views([]).invoiceDetailBody({ ...detailInv("sent", null), due_date: null } as any, "http://x");
+    expect(html).toContain("ui-progress-fill ui-progress-fill-neutral");
+  });
+  test("paid with a due date inside the warning window still renders neutral", () => {
+    const html = views([]).invoiceDetailBody({ ...detailInv("paid", "2026-09-21"), due_date: addDays(todayStr(), 3) } as any, "http://x");
+    expect(html).toContain("ui-progress-fill ui-progress-fill-neutral");
+    expect(html).not.toContain("ui-progress-fill-warning");
+  });
+  test("the Status bar never uses the plain primary fill", () => {
+    const html = views([]).invoiceDetailBody(sentDueIn(30) as any, "http://x");
+    expect(html).not.toContain('<span class="ui-progress-fill" style="width:50%"></span>');
+  });
+});
+
+/** #1214: the Zinvoices pages render status with the shared ui-chip family
+ *  only; the retired .inv-badge (solid Paid, hard-coded hex, 11px/650) must
+ *  not come back. */
+describe("#1214: one status-chip system", () => {
+  test("list and detail markup never emit inv-badge", () => {
+    const list = views([{ ...baseRow, status: "sent", paid_at: null }]).invoiceListOob(0);
+    const paid = views([]).invoiceDetailBody(detailInv("paid", "2026-09-21") as any, "http://x");
+    const draft = views([]).invoiceDetailBody(detailInv("draft", null) as any, "http://x");
+    for (const html of [list, paid, draft]) expect(html).not.toContain("inv-badge");
+  });
+
+  test("style.css has no .inv-badge rules left", async () => {
+    const css = await Bun.file(new URL("../static/style.css", import.meta.url)).text();
+    expect(css).not.toContain(".inv-badge");
+  });
+});
+
+/** #1224: a sent Zinvoice with no card link and no saved payment
+ *  instructions gives the client no way to pay; the in-app Public link card
+ *  says so (the public page itself never shows this nudge). */
+describe("#1224: no-pay-path warning on the Public link card", () => {
+  const dbWith = (instructions: string) => ({
+    query: (sql: string) => ({
+      get: (key?: string) => (sql.includes("FROM meta") && key === "business_payment_instructions" ? { value: instructions } : null),
+      all: () => [],
+      run: () => ({}),
+    }),
+  }) as unknown as Database;
+
+  test("sent, no card link, no instructions → warning with a Settings link", () => {
+    const html = views([], { db: dbWith("") }).invoiceDetailBody(detailInv("sent", null) as any, "http://x");
+    expect(html).toContain("Your client won&#39;t see how to pay.");
+    expect(html).toContain('href="/settings"');
+    expect(html).toContain("Add payment instructions");
+    expect(html).toContain("Anyone with the link can view — no login");
+  });
+
+  test("saved instructions remove the warning", () => {
+    const html = views([], { db: dbWith("Bank transfer to 12-34") }).invoiceDetailBody(detailInv("sent", null) as any, "http://x");
+    expect(html).not.toContain("won't see how to pay");
+    expect(html).toContain("Anyone with the link can view and pay");
+  });
+
+  test("a card payment link removes the warning", () => {
+    const inv = { ...detailInv("sent", null), stripe_payment_link: "https://pay.example/x" };
+    const html = views([], { db: dbWith("") }).invoiceDetailBody(inv as any, "http://x");
+    expect(html).not.toContain("won't see how to pay");
+  });
+
+  test("drafts and paid Zinvoices never show it", () => {
+    for (const status of ["draft", "paid"]) {
+      const html = views([], { db: dbWith("") }).invoiceDetailBody(detailInv(status, status === "paid" ? "2026-09-21" : null) as any, "http://x");
+      expect(html).not.toContain("won't see how to pay");
+    }
+  });
+});
+
+/** No business name → the Zinvoice would go out with no sender. Warn (never
+ *  block) in the wizard's preview card and on a draft's detail page. */
+describe("no-sender warning", () => {
+  const metaDb = (businessName: string) => ({
+    query: (_sql: string) => ({
+      get: (key?: unknown) => ({ value: key === "business_name" ? businessName : "" }),
+      all: () => [],
+      run: () => {},
+    }),
+  }) as unknown as Database;
+  const p = { client_id: "", from: "2026-11-01", to: "2026-11-21", rate: "", number: "INV-0001", issue_date: "2026-11-21", due_date: "", tax_rate: "0", notes: "", internal_notes: "" };
+
+  test("the wizard warns above Save/Send when the business name is empty", () => {
+    const html = views([], { db: metaDb("") }).invoiceNewPage(p as any);
+    expect(html).toContain('id="no-sender-alert"');
+    expect(html).toContain("Your business name isn&#39;t set");
+    expect(html).toContain('href="/settings"');
+    expect(html.indexOf('id="no-sender-alert"')).toBeLessThan(html.indexOf('class="inv-summary-actions"'));
+  });
+
+  test("no warning once the business name is set", () => {
+    expect(views([], { db: metaDb("Northstar Studio") }).invoiceNewPage(p as any)).not.toContain("no-sender-alert");
+  });
+
+  test("a draft's detail page warns; a sent one doesn't (its copy is frozen)", () => {
+    const v = views([], { db: metaDb("") });
+    expect(v.invoiceDetailBody(detailInv("draft", null) as any, "http://x")).toContain('id="no-sender-alert"');
+    expect(v.invoiceDetailBody(detailInv("sent", null) as any, "http://x")).not.toContain("no-sender-alert");
+  });
+});
+
+describe("detail timeline records the send", () => {
+  test("a Sent event appears when sent_at is recorded, and never otherwise", () => {
+    const sent = { ...detailInv("sent", null), sent_at: "2026-09-02" };
+    expect(views([]).invoiceDetailBody(sent as any, "http://x")).toContain("Sep 2 — Sent");
+    expect(views([]).invoiceDetailBody(detailInv("sent", null) as any, "http://x")).not.toContain("— Sent");
   });
 });

@@ -18,7 +18,7 @@ function setup(authed = true) {
   const views = createPublicViews({
     getInvoice: () => null,
     invoiceTotals: () => ({ subtotal: 0, tax: 0, total: 0 }),
-    invoiceDocumentHtml: () => "",
+    businessName: () => "Acme Studio",
     ensurePublicToken: () => "",
   });
   /* #733: data deps resolve per request through getTenant now. */
@@ -34,10 +34,10 @@ function setup(authed = true) {
     timerPartial: noop, todayPartial: noop, weekInner: noop, weekStrip: noop,
     calendarPage: noop, editPage: () => null,
     managePage: noop, clientSelection: () => null,
-    clientDetailBody: noop, clientListOob: noop,
+    clientDialogBody: noop, clientDialogProjects: noop, manageListsOob: noop,
     bizProfileSection: () => "<section>profile</section>",
     dailyTargetSection: () => "<section>target</section>", /* #908 */
-    themeSectionHtml: () => "<section>theme</section>", /* #884 */
+    themeSectionHtml: () => "<section>theme</section>", preferencesSection: () => "", dailyTargetControl: () => "", themeDotsHtml: () => "", /* #884 */
     clientSettingsForm: noop, settingsPage: (b: string) => b,
     invoicesPage: noop, invoiceNewPage: noop,
     defaultNewInvParams: () => ({}), invoiceStep2: noop,
@@ -169,7 +169,7 @@ describe("public dead ends, hosted (#1060)", () => {
     const views = createPublicViews({
       getInvoice: () => null,
       invoiceTotals: () => ({ subtotal: 0, tax: 0, total: 0 }),
-      invoiceDocumentHtml: () => "",
+      businessName: () => "Acme Studio",
       ensurePublicToken: () => "",
     });
     const { handleWeb } = createWebRouter({

@@ -1,5 +1,76 @@
 import { describe, expect, test } from "bun:test";
-import { clientColor, csvCell, fmtDur, schemeColor, shortDateRange, shortDateRangeYear, shortYmd } from "./format.ts";
+import { addDays, clientColor, clientDay, clientTermsDescription, dayBounds, daysBetween, sundayOf, termsDescription, csvCell, fmtDur, greeting, safeCssColor, schemeColor, shortDateRange, shortDateRangeYear, shortYmd, todayStr, utcWeekday, validYmd } from "./format.ts";
+
+describe("todayStr year padding (#1546)", () => {
+  test("years under 1000 are padded to 4 digits", () => {
+    const d = new Date(2000, 5, 15);
+    d.setFullYear(99);
+    expect(todayStr(d)).toBe("0099-06-15");
+    d.setFullYear(5);
+    expect(todayStr(d)).toBe("0005-06-15");
+  });
+
+  test("ordinary years are unchanged", () => {
+    expect(todayStr(new Date(2026, 10, 25))).toBe("2026-11-25");
+  });
+});
+
+describe("addDays", () => {
+  test("crosses month and year boundaries", () => {
+    expect(addDays("2026-11-24", 1)).toBe("2026-11-25");
+    expect(addDays("2026-12-31", 1)).toBe("2027-01-01");
+    expect(addDays("2026-03-01", -1)).toBe("2026-02-28");
+  });
+
+  test("years 0-99 stay their own years, not 1900-1999 (#1534)", () => {
+    expect(addDays("0000-02-29", 1)).toBe("0000-03-01");
+    expect(addDays("0099-03-01", 1)).toBe("0099-03-02");
+    expect(addDays("9999-12-31", 1)).toBe("10000-01-01");
+  });
+});
+
+describe("utcWeekday year edges (#1538)", () => {
+  test("years 0-99 keep their own weekday, matching sundayOf", () => {
+    expect(utcWeekday(99, 6, 15)).toBe(1);
+    expect(utcWeekday(0, 2, 29)).toBe(2);
+    expect(addDays("0099-06-15", -utcWeekday(99, 6, 15))).toBe(sundayOf("0099-06-15"));
+    expect(addDays("0000-02-29", -utcWeekday(0, 2, 29))).toBe("0000-02-27");
+  });
+
+  test("ordinary years are unchanged", () => {
+    expect(utcWeekday(2026, 11, 25)).toBe(3);
+    expect(utcWeekday(2026, 11, 22)).toBe(0);
+  });
+});
+
+describe("daysBetween / dayBounds / sundayOf year edges (#1536)", () => {
+  test("daysBetween counts across the 0099 to 0100 boundary", () => {
+    expect(daysBetween("0099-12-31", "0100-01-01")).toBe(1);
+    expect(daysBetween("0099-01-01", "0099-01-02")).toBe(1);
+    expect(daysBetween("0000-02-28", "0000-03-01")).toBe(2);
+    expect(daysBetween("2026-01-01", "2026-01-02")).toBe(1);
+  });
+
+  test("dayBounds stay in the requested year and span one day", () => {
+    const [from, to] = dayBounds("0099-06-15");
+    expect(from).toContain("0099-");
+    expect(new Date(to).getTime() - new Date(from).getTime()).toBe(86_400_000);
+  });
+
+  test("sundayOf stays in the requested year", () => {
+    expect(sundayOf("0099-06-15")).toBe("0099-06-14");
+    expect(sundayOf("2026-11-25")).toBe("2026-11-22");
+  });
+
+  test("dayBounds starts at local midnight in a midnight-transition zone", () => {
+    const child = Bun.spawnSync({
+      cmd: ["bun", "-e", `import("./site/lib/format.ts").then(m => console.log(new Date(m.dayBounds("2026-10-15")[0]).getHours()))`],
+      cwd: process.cwd(),
+      env: { ...process.env, TZ: "America/Santiago" },
+    });
+    expect(child.stdout.toString().trim()).toBe("0");
+  });
+});
 
 /* #914: CSV formula injection — cells starting with =, +, - or @ (after
    leading whitespace) get a single-quote prefix so Excel/Sheets open them
@@ -20,6 +91,7 @@ describe("csvCell", () => {
     expect(csvCell("a,b")).toBe("\"a,b\"");
     expect(csvCell("he said \"hi\"")).toBe("\"he said \"\"hi\"\"\"");
     expect(csvCell("x\ny")).toBe("\"x\ny\"");
+    expect(csvCell("x\ry")).toBe("\"x\ry\"");
     expect(csvCell("no trigger at start: = sign")).toBe("no trigger at start: = sign");
   });
 });
@@ -57,6 +129,13 @@ describe("shortYmd", () => {
     expect(shortYmd("2026-09-01")).toBe("Sep 1");
     expect(shortYmd("nope")).toBe("nope");
   });
+  test("year 0000 is a real year, not a missing date (#1542)", () => {
+    expect(shortYmd("0000-01-15")).toBe("Jan 15");
+    expect(shortDateRangeYear("0000-01-15", "0000-01-20")).toBe("Jan 15 – Jan 20, 0000");
+  });
+  test("an impossible month passes through instead of rendering undefined (#1542)", () => {
+    expect(shortYmd("2026-13-01")).toBe("2026-13-01");
+  });
 });
 
 /* #596: whole-minute durations drop the pointless 00s; #817: whole-hour
@@ -80,8 +159,8 @@ describe("fmtDur", () => {
 /* #841: rows stored under the legacy gold default track the theme primary. */
 describe("schemeColor", () => {
   test("legacy gold maps to the theme primary variable", () => {
-    expect(schemeColor("#f2c14e")).toBe("var(--md-sys-color-primary)");
-    expect(schemeColor("#F2C14E")).toBe("var(--md-sys-color-primary)");
+    expect(schemeColor("#f2c14e")).toBe("var(--color-primary)");
+    expect(schemeColor("#F2C14E")).toBe("var(--color-primary)");
   });
   test("explicitly chosen colors pass through untouched", () => {
     expect(schemeColor("#9050f2")).toBe("#9050f2");
@@ -91,6 +170,9 @@ describe("schemeColor", () => {
   test("nullish colors pass through for call-site fallbacks", () => {
     expect(schemeColor(null)).toBeNull();
     expect(schemeColor(undefined)).toBeUndefined();
+    expect(schemeColor("#60a5fa;position:fixed;inset:0")).toBeUndefined();
+    expect(schemeColor("red")).toBeUndefined();
+    expect(schemeColor("var(--color-primary)")).toBe("var(--color-primary)");
   });
 });
 
@@ -107,5 +189,53 @@ describe("clientColor (#990)", () => {
     expect(clientColor("")).toBe("#fb923c");
     expect(clientColor(null)).toBe("#fb923c");
     expect(clientColor(undefined)).toBe("#fb923c");
+  });
+});
+
+describe("greeting", () => {
+  const at = (h: number) => new Date(2026, 10, 9, h, 0, 0);
+  test("morning before noon", () => {
+    expect(greeting(at(0))).toBe("Good morning");
+    expect(greeting(at(5))).toBe("Good morning");
+    expect(greeting(at(11))).toBe("Good morning");
+  });
+  test("afternoon from noon to 17:00", () => {
+    expect(greeting(at(12))).toBe("Good afternoon");
+    expect(greeting(at(16))).toBe("Good afternoon");
+  });
+  test("evening from 17:00", () => {
+    expect(greeting(at(17))).toBe("Good evening");
+    expect(greeting(at(23))).toBe("Good evening");
+  });
+});
+
+describe("client-facing terms wording", () => {
+  test("clientTermsDescription says invoice, never Zinvoice", () => {
+    expect(clientTermsDescription("net_30")).toBe("Payment is due within 30 days of the invoice date.");
+    expect(clientTermsDescription("due_on_receipt")).toBe("Payment is due upon receipt of this invoice.");
+    expect(termsDescription("net_30")).toContain("Zinvoice"); // in-app text keeps the product word
+  });
+});
+
+describe("clientDay", () => {
+  const now = new Date("2026-11-22T02:30:00Z"); // 8:30pm Nov 21 in Chicago
+  test("accepts the user's day within one day of UTC", () => {
+    expect(clientDay("2026-11-21", now)).toBe("2026-11-21");
+    expect(clientDay("2026-11-22", now)).toBe("2026-11-22");
+    expect(clientDay("2026-11-23", now)).toBe("2026-11-23");
+  });
+  test("rejects malformed, impossible, or far-off days", () => {
+    for (const v of ["", "11/21/2026", "2026-11-2", "2026-02-30", "2026-11-19", "2026-11-25", null, 20261121]) expect(clientDay(v as any, now)).toBeNull();
+  });
+});
+
+describe("validYmd", () => {
+  test("accepts any real calendar day, however far off", () => {
+    expect(validYmd("2026-11-07")).toBe("2026-11-07");
+    expect(validYmd("1999-01-31")).toBe("1999-01-31");
+    expect(validYmd(" 2026-02-28 ")).toBe("2026-02-28");
+  });
+  test("rejects malformed and impossible days", () => {
+    for (const v of ["", "11/07/2026", "2026-11-7", "2026-02-30", "2026-13-01", "2026-00-10", null, undefined, 20261107]) expect(validYmd(v as any)).toBeNull();
   });
 });

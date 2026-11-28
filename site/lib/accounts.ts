@@ -26,6 +26,9 @@ export interface AccountUser {
 export function createAccountsDb(dataDir: string) {
   const db = new Database(join(dataDir, "accounts.db"), { create: true });
   db.exec("PRAGMA journal_mode = WAL;");
+  db.exec("PRAGMA busy_timeout = 5000;");
+  db.exec("PRAGMA cache_size = -8000;");
+  db.exec("PRAGMA temp_store = MEMORY;");
   db.exec(`
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -157,9 +160,57 @@ CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
     db.query("DELETE FROM sessions WHERE token = ?").run(hashSessionToken(token));
   }
 
+  /** #987/#1421: change a live user's password. Verifies the current
+   *  password, applies the signup length rule to the new one, revokes
+   *  every session, and mints a fresh one returned to the caller — so a
+   *  copied copy of the old token cannot survive the change. */
+  async function changePassword(
+    userId: number,
+    currentPassword: string,
+    newPassword: string
+  ): Promise<{ token?: string; error?: string }> {
+    if (newPassword.length < 8)
+      return { error: "New password must be at least 8 characters." };
+    if (newPassword.length > 4096)
+      return { error: "New password is too long." };
+    if (newPassword === currentPassword)
+      return { error: "New password must be different from your current password." };
+    const row = db
+      .query("SELECT password_hash FROM users WHERE id = ? AND deleted_at IS NULL")
+      .get(userId) as { password_hash: string } | null;
+    if (!row) return { error: "Account not found." };
+    /* An over-long candidate can never match a real password; reject it
+       without paying the argon2 verify on megabytes of input. */
+    if (currentPassword.length > 4096)
+      return { error: "Current password is wrong." };
+    const ok = await Bun.password.verify(currentPassword, row.password_hash);
+    if (!ok) return { error: "Current password is wrong." };
+    const password_hash = await Bun.password.hash(newPassword);
+    const token = randomBytes(32).toString("hex");
+    const expires_at = new Date(Date.now() + SESSION_MAX_AGE_SEC * 1000).toISOString();
+    const stale = new Error("stale password change");
+    try {
+      db.transaction(() => {
+        const upd = db.query("UPDATE users SET password_hash = ? WHERE id = ? AND deleted_at IS NULL AND password_hash = ?")
+          .run(password_hash, userId, row.password_hash);
+        if (upd.changes !== 1) throw stale;
+        db.query("DELETE FROM sessions WHERE user_id = ?").run(userId);
+        db.query("INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)").run(
+          hashSessionToken(token),
+          userId,
+          expires_at
+        );
+      })();
+    } catch (e) {
+      if (e === stale) return { error: "Current password is wrong." };
+      throw e;
+    }
+    return { token };
+  }
+
   /** Extract the session token from a request's cookies. */
   function sessionTokenFromRequest(req: Request): string | null {
-    const m = (req.headers.get("cookie") || "").match(/(?:^|;\s*)tksession=([^;]+)/);
+    const m = (req.headers.get("cookie") || "").match(new RegExp(`(?:^|;\\s*)${SESSION_COOKIE}=([^;]+)`));
     if (!m) return null;
     try {
       return decodeURIComponent(m[1]);
@@ -178,9 +229,9 @@ CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
      (hosted site behind the proxy). Omitted on plain-HTTP origins so
      local-dev and Tailscale logins keep working. */
   const sessionCookie = (req: Request, token: string): string =>
-    `tksession=${encodeURIComponent(token)}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${SESSION_MAX_AGE_SEC}${secureCookieAttr(req)}`;
+    `${SESSION_COOKIE}=${encodeURIComponent(token)}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${SESSION_MAX_AGE_SEC}${secureCookieAttr(req)}`;
   const clearSessionCookie = (req: Request): string =>
-    `tksession=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0${secureCookieAttr(req)}`;
+    `${SESSION_COOKIE}=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0${secureCookieAttr(req)}`;
 
   return {
     db,
@@ -189,6 +240,7 @@ CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
     createSession,
     sessionUser,
     destroySession,
+    changePassword,
     sessionTokenFromRequest,
     sessionUserFromRequest,
     sessionCookie,

@@ -11,9 +11,9 @@ export const cardStories: Story[] = [
     render: () =>
       card({
         content:
-          `<h3 class="md-title-medium" style="margin-top:0">Northwind Legal</h3>` +
+          `<h3 style="margin-top:0;font-size:var(--font-size-heading-5);font-weight:600">Northwind Legal</h3>` +
           `<p class="muted">3 projects · $4,120.00 unbilled</p>` +
-          button({ label: "New Zinvoice", variant: "tonal" }),
+          button({ label: "New Zinvoice" }),
       }),
   },
   {
@@ -24,7 +24,7 @@ export const cardStories: Story[] = [
       card({
         tracking: true,
         content:
-          `<p class="md-label-large" style="margin-top:0">Tracking</p>` +
+          `<p style="margin-top:0;font-weight:600">Tracking</p>` +
           `<p>Website redesign — homepage pass</p>` +
           `<p class="muted">Started 9:02 AM · 1h 24m</p>`,
       }),

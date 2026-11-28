@@ -1,7 +1,7 @@
 /** #884: app theme — the accent color family behind the :root --primary vars
  *  (site/static/style.css). Stored per-database in meta ("theme"); pumpkin is
- *  the default. Tones are dark-scheme M3 palettes: crimson is the M3 error
- *  palette, blue the M3 blue palette; green and yellow follow the same
+ *  the default. Tones are dark-scheme palettes: crimson is the error
+ *  palette, blue the blue palette; green and yellow follow the same
  *  light-on-dark contrast shape. */
 
 export interface ThemeDef {

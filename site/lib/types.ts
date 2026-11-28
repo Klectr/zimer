@@ -9,7 +9,10 @@ export type Entry = {
   project_name: string | null;
   client_name: string | null;
   client_color: string | null;
+  client_rate: number | null;
   invoice_id: number | null;
+  billable: number; /* #1082: 1 = billable (default), 0 = not */
+  tz: string | null; /* #1081: IANA zone the entry was logged in; NULL = legacy */
   invoice_number: string | null; /* #330: LEFT JOIN invoices in ENTRY_SELECT */
   invoice_status: string | null; /* #330: "draft" | "sent" | "paid" | null */
 };
@@ -26,6 +29,9 @@ export type Invoice = {
   client_email: string | null; client_phone: string | null; /* #627 */
   client_website: string | null; client_address: string | null; /* #627 */
   internal_notes: string; /* #302: internal-only, never on client surfaces */
+  sent_at?: string | null; /* day it was sent; NULL before it was recorded */
+  period_from?: string | null; /* #1350: the wizard's billing period (inclusive) */
+  period_to?: string | null;
   pdf_snapshot: Uint8Array | null; /* #609: legacy, no longer written; downloads render fresh */
   html_snapshot: string | null; /* #301: frozen at send, served verbatim */
 };

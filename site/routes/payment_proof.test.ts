@@ -31,7 +31,7 @@ function setup() {
     notFoundPage: noop, errorPage: noop,
     dashboardPage: noop, timerPartial: noop, todayPartial: noop, weekInner: noop, weekStrip: noop,
     calendarPage: noop, editPage: () => null, managePage: noop, clientSelection: noop,
-    clientDetailBody: noop, clientListOob: noop, bizProfileSection: noop, dailyTargetSection: noop,
+    clientDialogBody: noop, clientDialogProjects: noop, manageListsOob: noop, bizProfileSection: noop, dailyTargetSection: noop,
     clientSettingsForm: noop, themeSectionHtml: noop, settingsPage: noop,
     invoicesPage: noop, invoiceNewPage: noop, defaultNewInvParams: () => ({}), invoiceStep2: noop,
     invoiceDetailBody: noop, invoiceListOob: noop, invoiceDoc: noop, publicInvoicePage: noop,
@@ -205,12 +205,10 @@ describe("invoice detail proof section (#956)", () => {
       db,
       qInvoices: { all: () => [] } as unknown as Statement,
       layout: (_t: string, b: string) => b,
-      clientOptions: () => "",
       getPublicToken: () => null,
       stripeConfigured: () => false,
       nextInvoiceNumber: () => "INV-0001",
       invoiceTotals: () => ({ subtotal: 3200, tax: 0, total: 3200 }),
-      statusPill: (s: string) => `<span>${s}</span>`,
       isOverdue: () => false,
       unbilledByClient: () => [],
     });
@@ -228,6 +226,18 @@ describe("invoice detail proof section (#956)", () => {
     expect(html).toContain("No proof attached");
     expect(html).toContain('action="/invoices/1/payment-proof"');
     expect(html).toContain('type="file"');
+  });
+  test("proof title is a sentence-case block title and the picker is an Attach proof button (#1261)", () => {
+    const html = views(stubDb).invoiceDetailBody(invRow("paid") as any, "");
+    expect(html).toContain('<div class="ui-block-title">');
+    expect(html).toContain("Proof of payment");
+    expect(html).not.toContain('class="internal-notes-label"><svg');
+    expect(html).toContain("Attach proof");
+    expect(html).not.toContain("Choose file");
+    expect(html).toContain('class="ui-btn proof-file-label"');
+    expect(html).toContain('for="proof-file-1"');
+    expect(html).toMatch(/<div class="ui-block-title"><svg[\s\S]*?Proof of payment<\/div>/);
+    expect(html).toContain('<polyline points="17 8 12 3 7 8"/>');
   });
   test("paid invoice with proof lists it with view + delete", () => {
     const db = createDb(mkdtempSync(join(tmpdir(), "tk-ppv-"))).db;

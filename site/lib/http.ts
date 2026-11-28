@@ -68,6 +68,67 @@ export function secureResponse(res: Response, req?: Request): Response {
   return res;
 }
 
+/* #993: gzip text responses at the origin. Compression otherwise exists only
+   where Cloudflare provides it — Tailnet, direct, and self-host traffic got
+   raw bytes (CSS 121 KB vs 29 KB gzipped). Applied at the same server fetch
+   boundary as secureResponse so every route is covered in one place. Only
+   responses a client asked to gzip, with a text-like content type and a body
+   big enough to benefit; anything already encoded, ranged, or bodyless
+   passes through untouched. */
+const COMPRESSIBLE_TYPE = /^(?:text\/|application\/(?:json|javascript|xml|xhtml\+xml)|image\/svg\+xml)/;
+const GZIP_MIN_BYTES = 1024;
+
+function acceptsGzip(req: Request): boolean {
+  let wildcard: boolean | null = null;
+  for (const part of (req.headers.get("accept-encoding") || "").split(",")) {
+    const [token, ...params] = part.split(";").map((s) => s.trim().toLowerCase());
+    if (token !== "gzip" && token !== "*") continue;
+    const q = params.find((p) => p.startsWith("q="));
+    const ok = !q || parseFloat(q.slice(2)) > 0;
+    if (token === "gzip") return ok; /* an explicit entry beats the wildcard */
+    wildcard = ok;
+  }
+  return wildcard === true;
+}
+
+function withVary(headers: Headers): void {
+  const vary = (headers.get("vary") || "").split(",").map((s) => s.trim().toLowerCase());
+  if (!vary.includes("accept-encoding") && !vary.includes("*")) {
+    headers.set("Vary", [...vary.filter(Boolean), "Accept-Encoding"].join(", "));
+  }
+}
+
+export async function compressResponse(res: Response, req: Request): Promise<Response> {
+  if (req.method === "HEAD" || res.status === 204 || res.status === 304) return res;
+  if (res.headers.has("content-encoding") || res.headers.has("content-range")) return res;
+  /* Bun.serve synthesizes 206 responses from the request's Range header and
+     a file body after the handler returns — buffering the body here would
+     silently turn them into full 200s, so range requests pass through. */
+  if (req.headers.has("range")) return res;
+  if (!COMPRESSIBLE_TYPE.test(res.headers.get("content-type") || "")) return res;
+  if (!acceptsGzip(req)) { withVary(res.headers); return res; }
+  const declaredHeader = res.headers.get("content-length");
+  const declared = declaredHeader === null ? NaN : Number(declaredHeader);
+  if (Number.isFinite(declared) && declared < GZIP_MIN_BYTES) { withVary(res.headers); return res; }
+  const body = new Uint8Array(await res.arrayBuffer());
+  const rebuild = (bytes: Uint8Array, encoded: boolean) => {
+    const headers = new Headers(res.headers);
+    withVary(headers);
+    if (encoded) {
+      headers.set("Content-Encoding", "gzip");
+      headers.delete("Content-Length");
+      /* The gzipped bytes are a different representation, so the identity
+         body's strong ETag must not ride along verbatim — weaken it. */
+      const etag = headers.get("etag");
+      if (etag && !etag.startsWith("W/")) headers.set("ETag", `W/${etag}`);
+    }
+    return new Response(bytes, { status: res.status, statusText: res.statusText, headers });
+  };
+  if (body.byteLength < GZIP_MIN_BYTES) return rebuild(body, false);
+  const gz = Bun.gzipSync(body);
+  return gz.byteLength < body.byteLength ? rebuild(gz, true) : rebuild(body, false);
+}
+
 /* #916: X-Forwarded-Host/Proto are attacker-controlled input. Only values that
    can form a sane URL are honored — a syntactically valid host (no
    whitespace, @, /, ?, #) and http/https only. Anything else falls back to

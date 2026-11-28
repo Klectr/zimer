@@ -1,7 +1,7 @@
 ---
 version: alpha
 name: Zimer (Dark)
-description: Zimer's design system — dark theme. This IS LobeHub's design system (token model, typography, spacing, radius, controls, motion, component and voice rules, from LobeHub's DESIGN.md) with Zimer's selected colors swapped in — pumpkin primary and Zimer's semantic palette. Components must read semantic tokens, never hard-code hex. Canonical spec for all Zimer UI work; supersedes the Material 3 system previously documented in docs/design-system.md.
+description: Zimer's design system — dark theme. The suite mock's Chinese-style surface layer (glass cards, pill chips, 8/14/20 radius) sits on the LobeHub token model (typography, spacing, controls, motion, component and voice rules) with Zimer's colors: pumpkin primary and Zimer's semantic palette. Components must read semantic tokens, never hard-code hex. Canonical spec for all Zimer UI work; supersedes the Material 3 system previously documented in docs/design-system.md.
 colors:
   colorPrimary: "#fb923c"
   colorSuccess: "#34d399"
@@ -10,10 +10,12 @@ colors:
   colorInfo: "#60a5fa"
   colorText: "#f5f5f4"
   colorTextSecondary: "#a1a1aa"
-  colorTextTertiary: "#71717a"
+  colorTextTertiary: "#81818a"
   colorTextQuaternary: "#52525b"
+  colorTextOnFilled: "#08090a"
   colorBgLayout: "#08090a"
   colorBgContainer: "#0d0d0f"
+  colorBgContainerSecondary: "#0a0b0c"
   colorBgElevated: "#16171a"
   colorBgSpotlight: "#1e1f23"
   colorBorder: "rgba(255, 255, 255, 0.14)"
@@ -23,12 +25,14 @@ colors:
   colorFillTertiary: "rgba(255, 255, 255, 0.04)"
   colorFillQuaternary: "rgba(255, 255, 255, 0.02)"
 typography:
-  fontFamily: Geist, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif
-  fontFamilyCode: "Geist Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace
+  fontFamily: Geist, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Roboto, "Helvetica Neue", Arial, "HarmonyOS Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif
+  fontFamilyCode: "Geist Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, "Cascadia Code", Consolas, "HarmonyOS Sans SC", monospace
   fontSizeSM: 12
   fontSize: 14
   fontSizeLG: 16
   fontSizeXL: 20
+  lineHeight: 1.5714
+  lineHeightSM: 1.6667
   fontSizeHeading1: 38
   fontSizeHeading2: 30
   fontSizeHeading3: 24
@@ -36,39 +40,41 @@ typography:
   fontSizeHeading5: 16
   fontWeightStrong: 600
 spacing: { XXS: 4, XS: 8, SM: 12, base: 16, MD: 20, LG: 24, XL: 32 }
-radius: { borderRadiusXS: 4, borderRadiusSM: 6, borderRadius: 8, borderRadiusLG: 12 }
+radius: { borderRadiusXS: 4, borderRadiusSM: 6, borderRadius: 8, borderRadiusLG: 14, borderRadiusXL: 20 }
 controls: { controlHeightSM: 28, controlHeight: 36, controlHeightLG: 40 }
 elevation:
-  boxShadowTertiary: "0 3px 1px -1px rgba(0,0,0,0.2)"
-  boxShadowSecondary: "0 8px 16px -4px rgba(0,0,0,0.35)"
-  boxShadow: "0 20px 20px -8px rgba(0,0,0,0.45)"
+  boxShadowTertiary: "0 3px 1px -1px rgba(26,26,26,0.06)"
+  boxShadowSecondary: "0 8px 16px -4px rgba(0,0,0,0.2)"
+  boxShadow: "0 20px 20px -8px rgba(0,0,0,0.24)"
 ---
 
 # Zimer
 
 Zimer is a solo time tracker: timer to invoice in two clicks. Calm, dense where density helps, content-first. The user's work — timers, hours, invoices — stays in focus; the interface carries state and hierarchy, not decoration.
 
-Design values (from Ant Design, via LobeHub): **Natural · Certain · Meaningful · Growing.**
+Design values (LobeHub's, adopted from Ant Design): **Natural · Meaningful · Certainty · Growth.**
 
 - Natural — follow how people scan; the running timer is always the most prominent thing on its page.
-- Certain — same problem, same pattern, every surface including the extension popup. Explicit states, never guessed.
 - Meaningful — every element names its job or gets cut. Color carries meaning, not decoration.
-- Growing — start simple (two pricing options, one job), reveal depth as the user needs it.
+- Certainty — same problem, same pattern, every surface including the extension popup. Explicit states, never guessed.
+- Growth — start simple (two pricing options, one job), reveal depth as the user needs it.
 
 ## Colors
 
 Consume tokens by name (`--color-text`, `--color-bg-container`, …). Never hard-code the hex above in a component.
 
 - Text ranks with the neutral ramp: `colorText` → `colorTextSecondary` → `colorTextTertiary` → `colorTextQuaternary` (disabled). Rank information with this ramp before reaching for color.
-- Surfaces get lighter as they rise in dark: `colorBgLayout` (canvas) → `colorBgContainer` → `colorBgElevated` (popovers, menus, modals) → `colorBgSpotlight` (tooltips). Don't flatten the stack.
+- Text on a saturated semantic fill (the solid-error button) uses `colorTextOnFilled` — dark text on the fill (white on the error fill is ~2.8:1; dark is ~7.2:1). The primary fill is the exception: it keeps the per-theme `--on-primary`. Never use a `colorBg*` surface token as a text color.
+- Surfaces get lighter as they rise in dark: `colorBgLayout` (canvas) → `colorBgContainer` → `colorBgElevated` (popovers, menus, modals) → `colorBgSpotlight` (tooltips). `colorBgContainerSecondary` gives subtle separation within a container. Don't flatten the stack.
 - Borders and fills are translucent white so they layer over any surface. `colorBorderSecondary` is the everyday divider; `colorBorder` is the stronger edge.
 - `colorPrimary` is pumpkin `#fb923c` — Zimer's deliberate brand exception to LobeHub's monochrome default. It is reserved for the single most important action per view, the running-timer state, and links. Don't spread it as decoration.
-- One ambient glow is permitted, behind the product panel on the landing hero only, in `colorPrimary` at low opacity. Nowhere else.
-- Status is a filled chip + a word, never color alone: Draft (neutral), Sent (info), Paid (success), Overdue (error), Running (success, with dot).
+- No ambient glow or decorative color wash anywhere. Color carries state and hierarchy, not decoration.
+- Status is a tinted chip + a word, never color alone: the functional color's derived Bg tint behind its own hue as text — Draft (neutral), Sent (info), Paid (success), Overdue (error), Running (success, with dot).
+- Each functional color exposes derived ramp tokens (`--color-*-bg` tints for chips and washes, `--color-*-hover` / `--color-*-active` for solid fills, `--color-*-border`); consume the tokens instead of hand-mixing.
 
 ## Typography
 
-Geist sets UI and prose (LobeHub's stack, Chinese fallbacks included); Geist Mono sets numbers, always tabular so totals align. Scale is 12 / 14 / 16 / 20 — there is no 13px; off-scale sizes are drift, round to the nearest step and rank with the text ramp instead. Headings 38 → 16 at weight 600, tight tracking (-0.02em to -0.045em) on large sizes only.
+Geist sets UI and prose (LobeHub's stack verbatim, Chinese fallbacks included); Geist Mono sets numbers, always tabular so totals align. Scale is 12 / 14 / 16 / 20 — there is no 13px; off-scale sizes are drift, round to the nearest step and rank with the text ramp instead. Headings 38 → 16 at weight 600, tight tracking (-0.02em to -0.045em) on large sizes only. Line height is 1.5714 for body text, 1.6667 for small text.
 
 ## Layout
 
@@ -84,7 +90,7 @@ Spacing follows the 4px scale (4 / 8 / 12 / 16 / 20 / 24 / 32) for gaps, padding
 
 ## Elevation & Depth
 
-Borders first, shadows last, exactly as LobeHub: translucent 1px borders are the primary separator between content (this repeals the former no-borders rule). Hierarchy comes from tonal surfaces and borders, so most cards need no shadow — a `colorBorderSecondary` edge is enough. Lift only what genuinely floats, using the three tiers: panels `boxShadowTertiary`, popovers/menus `boxShadowSecondary`, modals `boxShadow`. Surfaces are solid and tonal, not glass washes; translucency lives in borders and fills, where LobeHub puts it.
+Borders first, shadows last, exactly as LobeHub: translucent 1px borders are the primary separator between content (this repeals the former no-borders rule). Hierarchy comes from tonal surfaces and borders, so most cards need no shadow — a `colorBorderSecondary` edge is enough. Lift only what genuinely floats, using the three tiers: panels `boxShadowTertiary`, popovers/menus `boxShadowSecondary`, modals `boxShadow`. Surfaces are a translucent white wash over the canvas (the suite's glass cards); hierarchy still comes from borders and tonal steps, and translucency stays in surfaces, borders, and fills.
 
 ## Motion
 
@@ -92,7 +98,7 @@ Motion clarifies change; it is never decoration. 100–200ms for state changes a
 
 ## Shapes
 
-One radius family per view, LobeHub's scale with no exceptions: 4 (chips, tags), 6 (inputs, small controls), 8 (buttons, cards — the default), 12 (menus, modals, large surfaces). Fully round only for pills, avatars, and the selected accent dot (white ring on the selected dot).
+One radius family per view, the suite's scale with no exceptions: 4 (small inner details), 6 (small controls), 8 (buttons, inputs — the default), 14 (cards), 20 (auth cards, public sheets, modals). Fully round only for pills, avatars, and circular icon buttons.
 
 ## Components
 
@@ -109,7 +115,9 @@ Use Zimer's existing shared components and server templates; don't hand-roll a n
 Canonical terms, never synonym drift: **Zimer** (a timer), **Zinvoice** (an invoice), Client, Project, Entry. In user-facing copy "timer" is written Zimer and "invoice" is written Zinvoice; code identifiers and routes stay plain.
 
 - Buttons are verb + noun (`Send Zinvoice`, `Add client`), never bare Confirm / OK / Submit.
+- The public Zinvoice page uses the same term everywhere: heading, browser tab, and OG tags all say Zinvoice.
 - An action keeps the same name through its flow: Send produces "Zinvoice #1041 sent to Northwind Legal."
+- Hours carry one format per meaning: decimal at two places (`18.50`) in the billing table, where hours multiply by the rate; a duration (`18h 30m`) everywhere time is read out (calendar, time breakdown, tracked-time totals).
 - In-progress states use a present participle with an ellipsis (`Saving…`, `Sending…`).
 - Plain words, sentence case, no hype, no filler. 80% information, 20% warmth; warmth is at most one sentence and always followed by the next step.
 - Errors explain what happened and how to fix it, in place, without apologizing.

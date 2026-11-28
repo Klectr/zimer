@@ -1,0 +1,139 @@
+import type { Story } from "../.zandbox/story";
+import { inlineAlert } from "../site/ui/alert";
+import { dialog, confirmDialog } from "../site/ui/dialog";
+import { toast } from "../site/ui/toast";
+import { emptyState } from "../site/ui/empty-state";
+import { button, linkButton } from "../site/ui/button";
+import { iconButton } from "../site/ui/icon-button";
+import { tooltip } from "../site/ui/tooltip";
+
+const DEMO_SCRIPT = `<script>
+(function () {
+  if (window.__zbDialogDemo) return;
+  window.__zbDialogDemo = true;
+  var lastOpener = null;
+  function openDialog(scrim, opener) {
+    lastOpener = opener;
+    scrim.hidden = false;
+    var target = scrim.querySelector("[data-autofocus]") || scrim.querySelector("button, a[href], input, select, textarea");
+    if (target) target.focus();
+  }
+  function closeDialog(scrim) {
+    scrim.hidden = true;
+    if (lastOpener) lastOpener.focus();
+  }
+  document.addEventListener("click", function (e) {
+    var opener = e.target.closest("[data-open-dialog]");
+    if (opener) {
+      openDialog(document.getElementById(opener.getAttribute("data-open-dialog")), opener);
+      return;
+    }
+    var scrim = e.target.closest(".ui-scrim");
+    if (scrim && (e.target === scrim || e.target.closest("[data-close]"))) closeDialog(scrim);
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") document.querySelectorAll(".ui-scrim:not([hidden])").forEach(closeDialog);
+  });
+})();
+</script>`;
+
+export const feedbackStories: Story[] = [
+  {
+    id: "feedback-dialog",
+    group: "Feedback",
+    title: "Dialog (click to open)",
+    render: () =>
+      `<button type="button" class="ui-btn" data-open-dialog="demo-dialog">Open dialog</button>` +
+      `<button type="button" class="ui-btn ui-btn-danger" data-open-dialog="demo-confirm" style="margin-left:8px">Delete something…</button>` +
+      dialog({
+        id: "demo-dialog",
+        title: "Edit entry",
+        body: "<p>The dialog body is a raw slot: forms and fields render here. Escape closes it, and clicking the scrim or the close button dismisses it in this demo wiring.</p>",
+        actions: button({ label: "Cancel", variant: "ghost", attrs: "data-close" }) + button({ label: "Save entry", variant: "primary" }),
+      }) +
+      confirmDialog({
+        id: "demo-confirm",
+        title: "Delete this entry?",
+        body: "This removes the 2h 05m entry for Northwind Legal. Zinvoices that already include it are not changed.",
+        confirmLabel: "Delete entry",
+        danger: true,
+      }) +
+      DEMO_SCRIPT,
+  },
+  {
+    id: "feedback-dialog-open",
+    group: "Feedback",
+    title: "Confirm dialog (trigger + closable)",
+    render: () =>
+      `<button type="button" class="ui-btn ui-btn-danger" data-open-dialog="demo-confirm-open">Delete draft…</button>` +
+      confirmDialog({
+        id: "demo-confirm-open",
+        title: "Delete draft Zinvoice?",
+        body: "INV-0043 for Harbor Dental ($1,827.00) will be permanently deleted.",
+        confirmLabel: "Delete draft",
+        danger: true,
+      }) +
+      DEMO_SCRIPT,
+  },
+  {
+    id: "feedback-toasts",
+    group: "Feedback",
+    title: "Toasts — tinted icon chip, no side border",
+    render: () =>
+      `<div style="display:grid;gap:12px">` +
+      toast({ tone: "success", title: "Zinvoice sent", body: "Zinvoice #1042 sent to Northwind Legal." }) +
+      toast({ tone: "error", title: "Payment failed", body: "Your card was declined. Update billing to keep the hosted plan active." }) +
+      toast({ tone: "info", title: "Timer already running", body: "Starting a new one stops the current entry." }) +
+      `</div>`,
+  },
+  {
+    id: "feedback-tooltip",
+    group: "Feedback",
+    title: "Tooltip",
+    render: () =>
+      `<div style="display:flex;gap:12px;align-items:center;padding:28px 8px">` +
+      iconButton({ icon: "edit", label: "Edit entry", id: "tip-edit", tooltip: true }) +
+      iconButton({ icon: "copy", label: "Copy pay link", id: "tip-copy", tooltip: true }) +
+      iconButton({ icon: "delete", label: "Delete entry", id: "tip-delete", danger: true, tooltip: true }) +
+      tooltip({
+        id: "tip-pause-tip",
+        label: "Pause keeps the entry open",
+        placement: "bottom",
+        contentHtml: button({ label: "Pause", attrs: 'aria-describedby="tip-pause-tip"' }),
+      }) +
+      `</div>` +
+      `<p style="color:var(--color-text-secondary)">Hover or tab to a control — the label appears above it (below, for the Pause button). Icon buttons with tooltips drop the browser's native title so the two never stack.</p>`,
+  },
+  {
+    id: "feedback-empty",
+    group: "Feedback",
+    title: "Empty states",
+    render: () =>
+      `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px">` +
+      emptyState({
+        icon: "timer",
+        title: "No entries yet",
+        body: "Start the timer and your first entry lands here.",
+        action: button({ label: "Start timer", variant: "primary" }),
+      }) +
+      emptyState({
+        icon: "group",
+        title: "No clients yet",
+        body: "Add a client to organize projects and Zinvoices.",
+        action: button({ label: "Add client" }),
+      }) +
+      emptyState({ icon: "receipt", title: "Nothing overdue", body: "Every sent Zinvoice is paid or still within terms." }) +
+      `</div>`,
+  },
+  {
+    id: "feedback-inline-alert",
+    group: "Feedback",
+    title: "Inline alert — info, warning with action, error",
+    render: () =>
+      `<div style="max-width:420px;display:flex;flex-direction:column;gap:12px">` +
+      inlineAlert({ tone: "info", text: "Entry durations are rounded up to 5-minute increments." }) +
+      inlineAlert({ tone: "warning", text: "Your business name isn't set, so this Zinvoice won't say who it's from.", actionHtml: linkButton({ label: "Set business name", href: "#", size: "sm" }) }) +
+      inlineAlert({ tone: "error", text: "Couldn't reach the payment provider. Try again in a moment." }) +
+      `</div>`,
+  },
+];

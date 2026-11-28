@@ -2,44 +2,59 @@
  *  template picker + invoice sheet, detail body fragment, and detail page.
  *  invoiceSheet is also returned so the public-views factory can reuse it. */
 
+import { entryDay } from "../lib/wall.ts";
+import { INVOICE_ZONE } from "../lib/domain.ts";
 import type { Database, Statement } from "bun:sqlite";
-import { addDays, daysBetween, durationSeconds, esc, fmtDur, money, round2, shortDateRange, shortDateRangeYear, shortYmd, termsDays, termsDescription, termsKey, todayStr } from "../lib/format.ts";
+import { addDays, daysBetween, durationSeconds, esc, fmtDur, money, round2, shortDateRange, shortDateRangeYear, shortYmd, clientTermsDescription, termsDays, termsKey, todayStr } from "../lib/format.ts";
 import { icon } from "../lib/icons.ts";
+import { staticUrl } from "../lib/static-assets.ts";
 import { getMeta } from "../db.ts";
 import { workspaceEmpty } from "../lib/demo.ts"; /* #300: empty-state CTA */
 import type { Invoice, InvoiceItem, NewInvParams } from "../lib/types.ts";
 import type { PdfInvoice } from "../pdf.ts";
 import { listProofs } from "../lib/payment_proofs.ts"; /* #956 */
+import { button, linkButton } from "../ui/button.ts";
+import { card } from "../ui/card.ts";
+import { appHeader } from "../ui/app-header.ts";
+import { iconButton } from "../ui/icon-button.ts";
+import { emptyState } from "../ui/empty-state.ts";
+import { statBlock } from "../ui/stat.ts";
+import { statusChip, stripePaidChip } from "../ui/status-chip.ts";
+import { zinvoiceTable, zinvoiceTableRows, type ZinvoiceTableRow } from "../ui/zinvoice-table.ts";
+import { filterChips } from "../ui/filter-chips.ts";
+import { textField } from "../ui/field.ts";
+import { inlineAlert } from "../ui/alert.ts";
+import { lineItemsHeadRow, wizardLayout, wizardLinesSection, wizardPreviewCard, wizardStep1, ZINVOICE_WIZARD_SCRIPT } from "./zinvoice-wizard.ts";
+import { internalNotes, paymentProofSection, zinvoiceDetailHead, zinvoiceShareCard, zinvoiceStatusCard, ZINVOICE_COPY_SCRIPT } from "./zinvoice-detail.ts";
+import { shareLine } from "../ui/share-line.ts";
+import { timeBreakdownChart } from "../ui/time-breakdown.ts";
+import { lineItemsTable } from "../ui/line-items.ts";
+import { steps } from "../ui/steps.ts";
+import { PAYMENT_TERMS } from "../lib/format.ts";
 
 export interface InvoiceViewDeps {
   db: Database;
   qInvoices: Statement;
   layout: (title: string, body: string, active?: "timer" | "calendar" | "manage" | "invoices", fixed?: boolean) => string;
-  clientOptions: (selected?: number | null) => string;
   getPublicToken: (id: number) => string | null;
   stripeConfigured: () => boolean;
   nextInvoiceNumber: () => string;
   invoiceTotals: (items: InvoiceItem[], taxRate: number) => { subtotal: number; tax: number; total: number };
-  statusPill: (status: string) => string;
   isOverdue: (row: { status: string; due_date?: string | null; client_payment_terms?: string | null }) => boolean;
   unbilledByClient: () => { id: number; name: string; secs: number }[];
 }
 
 export function createInvoiceViews(deps: InvoiceViewDeps) {
   const {
-    db, qInvoices, layout, clientOptions,
-    getPublicToken, stripeConfigured, nextInvoiceNumber, invoiceTotals, statusPill, isOverdue,
+    db, qInvoices, layout,
+    getPublicToken, stripeConfigured, nextInvoiceNumber, invoiceTotals, isOverdue,
     unbilledByClient,
   } = deps;
 
   /* #526: both line-item tables (the new-invoice preview and the rendered
      sheet) share one header row — scope="col" lets screen readers announce
      the column ("Hours", "Rate", "Amount") for each numeric cell. */
-  function itemHead(): string {
-    return `<tr><th scope="col">Date</th><th scope="col">Description</th>` +
-      `<th scope="col" class="num">Hours</th><th scope="col" class="num">Rate</th>` +
-      `<th scope="col" class="num">Amount</th></tr>`;
-  }
+  const itemHead = lineItemsHeadRow;
 
   /* #300: first-run empty state — a fresh install gets a one-click path to
      fictional sample data; everyone else gets straight to a new invoice.
@@ -48,139 +63,194 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
   function emptyInvoices(): string {
     const demoCta = workspaceEmpty(db) ? `
       <form method="post" action="/demo/load" class="inline">
-        <button class="md-text-button" type="submit">${icon("info")}<span>Load demo data</span></button>
+        ${button({ label: "Load demo data", icon: "info", variant: "ghost", type: "submit" })}
       </form>` : "";
-    return `<div class="empty-state" data-enter="3">
-      <img class="empty-mascot" src="/static/mascot-empty.png" alt="" width="132" height="132">
-      <h3 class="md-title-large">No zinvoices yet</h3>
-      <p class="muted">Turn tracked time into a zinvoice — or explore first with fictional sample data.</p>
-      <div class="row">${demoCta}</div>
+    return emptyState({
+      image: { src: staticUrl("mascot-empty.webp"), width: 132, height: 132 },
+      title: "No Zinvoices yet",
+      body: "Turn tracked time into a Zinvoice — or explore first with fictional sample data.",
+      action: demoCta || undefined,
+    });
+  }
+
+  function rowTotal(r: any): number {
+    return round2(r.subtotal * (1 + (r.tax_rate || 0) / 100));
+  }
+
+  /* The mock's summary figures. Outstanding means sent (incl.
+     overdue) — drafts carry their own card, as in the mock. The
+     revenue totals in site/lib/revenue.ts use the same definition
+     (#1126). */
+  function invoiceStats(rows: any[]) {
+    const sum = (xs: any[]) => round2(xs.reduce((a, r) => a + rowTotal(r), 0));
+    const sent = rows.filter(r => r.status === "sent");
+    const drafts = rows.filter(r => r.status === "draft");
+    const month = todayStr().slice(0, 7);
+    const paidMonth = rows.filter(r => r.status === "paid" && r.paid_at && String(r.paid_at).startsWith(month));
+    const overdueCount = sent.filter(r => isOverdue(r)).length;
+    const payDays = paidMonth
+      .filter(r => r.paid_at && r.issue_date)
+      .map(r => daysBetween(String(r.issue_date), String(r.paid_at).slice(0, 10)))
+      .filter(d => d >= 0);
+    const avgPayDays = payDays.length
+      ? Math.round(payDays.reduce((a, d) => a + d, 0) / payDays.length)
+      : null;
+    return {
+      outstanding: sum(sent), outstandingCount: sent.length, overdueCount,
+      drafts: sum(drafts), draftsCount: drafts.length,
+      paidMonth: sum(paidMonth), paidMonthCount: paidMonth.length, avgPayDays,
+    };
+  }
+
+  /* #1222: the header sub must not repeat the stat cards below it —
+     it carries the counts the cards don't say instead. */
+  function statsSub(rows: any[]): string {
+    const st = invoiceStats(rows);
+    const parts = [`${rows.length} Zinvoice${rows.length === 1 ? "" : "s"}`];
+    if (st.draftsCount) parts.push(`${st.draftsCount} draft${st.draftsCount === 1 ? "" : "s"}`);
+    if (st.overdueCount) parts.push(`${st.overdueCount} overdue`);
+    return parts.join(" · ");
+  }
+
+  function statsRowHtml(rows: any[], oob = false): string {
+    const st = invoiceStats(rows);
+    const monthName = new Intl.DateTimeFormat("en-US", { month: "long", timeZone: "UTC" }).format(new Date(`${todayStr()}T12:00:00Z`));
+    const outstandingSub = `${st.outstandingCount} open invoice${st.outstandingCount === 1 ? "" : "s"}`;
+    const paidSub = st.paidMonthCount ? `${st.paidMonthCount} invoice${st.paidMonthCount === 1 ? "" : "s"} paid` : "No payments yet";
+    return `<div class="ui-stat-row" id="inv-stats"${oob ? ' hx-swap-oob="true"' : ""}>` +
+      card({ content: statBlock({ label: "Outstanding", value: money(st.outstanding), sub: outstandingSub }) }) +
+      card({ content: statBlock({ label: "Drafts", value: String(st.draftsCount), sub: `${money(st.drafts)} not yet sent` }) }) +
+      card({ content: statBlock({ label: `Paid · ${monthName}`, value: money(st.paidMonth), sub: paidSub }) }) +
+      `</div>`;
+  }
+
+  /* Status chips: the detail view's head still uses this one-chip form. */
+  function invBadge(r: any): string {
+    if (isOverdue(r)) return statusChip("sent", { overdue: true });
+    if (r.status === "paid") return statusChip("paid", { icon: "check" });
+    return statusChip(r.status === "sent" ? "sent" : "draft");
+  }
+
+  /* Map DB rows into the zinvoiceTable component (site/ui/zinvoice-table.ts):
+     formatting and the overdue rule live here, the markup lives there. */
+  function tableRow(r: any): ZinvoiceTableRow {
+    const overdue = isOverdue(r);
+    const status: ZinvoiceTableRow["status"] = r.status === "paid" ? "paid" : r.status === "sent" ? "sent" : "draft";
+    /* The tooltip says when the status happened. A send before sent_at was
+       recorded falls back to the issue date — labelled Issued, not Sent. */
+    const day = (v: unknown) => shortYmd(String(v).slice(0, 10));
+    const sent = r.sent_at ? `Sent ${day(r.sent_at)}` : r.issue_date ? `Issued ${day(r.issue_date)}` : "Sent";
+    const history = status === "paid" ? (r.paid_at ? `Paid ${day(r.paid_at)}` : "Paid")
+      : status === "sent" ? (overdue && r.due_date ? `${sent} · was due ${day(r.due_date)}` : sent)
+      : "Not sent yet";
+    return {
+      number: String(r.number),
+      href: `/invoices?invoice=${r.id}`,
+      client: r.client_name || undefined,
+      status,
+      overdue,
+      overdueDays: overdue && r.due_date ? Math.max(0, daysBetween(r.due_date as string, todayStr())) : undefined,
+      due: status === "sent" && r.due_date ? shortYmd(r.due_date) : undefined,
+      history,
+      total: money(rowTotal(r)),
+    };
+  }
+
+  function invoiceTableRowsHtml(rows: any[]): string {
+    return zinvoiceTableRows(rows.map(tableRow));
+  }
+
+  function invoiceTableHtml(rows: any[], filtered: boolean): string {
+    return zinvoiceTable({
+      rows: rows.map(tableRow),
+      emptyBody: filtered ? "No Zinvoices match this filter." : "No Zinvoices yet.",
+      emptyActionHtml: filtered ? linkButton({ label: "Clear filter", href: "/invoices", variant: "ghost" }) : undefined,
+    });
+  }
+
+  const FILTERS = [
+    { key: "all", label: "All" },
+    { key: "draft", label: "Draft" },
+    { key: "sent", label: "Sent" },
+    { key: "paid", label: "Paid" },
+    { key: "overdue", label: "Overdue" },
+  ] as const;
+
+  function filterRowHtml(active: string, q: string): string {
+    const hrefFor = (key: string) => {
+      const params = new URLSearchParams();
+      if (key !== "all") params.set("status", key);
+      if (q) params.set("q", q);
+      const qs = params.toString();
+      return qs ? `/invoices?${qs}` : "/invoices";
+    };
+    const chips = FILTERS.map(f => ({
+      key: f.key, label: f.label, href: hrefFor(f.key),
+      /* The chips swap the list region in place, so switching a status
+         never reloads the page or re-runs the layout. */
+      attrs: `hx-get="${esc(hrefFor(f.key))}" hx-target="#inv-list-region" hx-swap="innerHTML" hx-push-url="true"`,
+    }));
+    return `<div class="inv-filter-row">
+      ${filterChips({ items: chips, active, label: "Filter Zinvoices by status" })}
+      <form method="get" action="/invoices" class="inv-search"
+        hx-get="/invoices" hx-target="#inv-list-region" hx-swap="innerHTML" hx-push-url="true">
+        ${active !== "all" ? `<input type="hidden" name="status" value="${esc(active)}">` : ""}
+        ${textField({ id: "inv-q", label: "Search Zinvoices", labelHidden: true, icon: "search", name: "q", type: "search", value: q, placeholder: "Search client or number" })}
+      </form>
     </div>`;
   }
 
-  /* #364: one invoice row — the whole row is the tap target into the detail
-     pane (two-pane, ≥840px) or the detail screen (single-pane). */
-  function invoiceRow(r: any, selected: boolean): string {
-    const od = isOverdue(r) ? daysBetween(r.due_date as string, todayStr()) : 0;
-    /* #442: keep each date phrase on one line so the narrow list pane wraps
-       at the middots instead of splitting "2026-" from "10-09". #481: the
-       middot is a leading separator INSIDE the nowrap span — it used to sit
-       in the raw text between spans, dangling at the end of the broken line
-       ("issued 2026-09-24 ·" / "due 2026-10-09"). Wraps now happen before
-       a middot, never after one. #588: long client names broke between the
-       segments instead ("Northwind Traders · issued Sep 28" / "· due Oct 13").
-       The segments now sit inside one nowrap .inv-dates group, so the wrap
-       lands between the client name and the dates, never before a middot. */
-    const seg = (label: string, val: string) => `<span class="inv-date">· ${label} ${esc(val)}</span>`;
-    /* #770: a paid invoice is done — the row only needs when the money
-       landed; issued/due stay in the detail pane. One short segment also
-       keeps the nowrap dates group from wrapping whole onto a second line
-       with a dangling leading middot. #772: unpaid rows get the same
-       treatment — one segment ("due", or "issued" when there's no due
-       date yet) so the narrow list pane can't wrap the dates group whole
-       onto line 2 either. */
-    const dates = r.status === "paid"
-      ? (r.paid_at ? seg("paid", shortYmd(r.paid_at)) : "")
-      : (r.due_date ? seg("due", shortYmd(r.due_date)) : seg("issued", shortYmd(r.issue_date)));
-    return `<li class="md-list-item inv-row${selected ? " selected" : ""}">
-      <a class="inv-row-hit" href="/invoices?invoice=${r.id}" aria-label="View zinvoice ${esc(r.number)}">
-        <div class="md-list-item-content">
-          <div class="md-list-item-headline">${esc(r.number)} ${statusPill(r.status)}${od ? ` <span class="attn-chip">${od}d overdue</span>` : ""}</div>
-          <div class="md-list-item-supporting">${r.client_name ? esc(r.client_name) : "<em>No client</em>"} <span class="inv-dates">${dates}</span></div>
-        </div>
-        <div class="md-list-item-trailing"><span class="dur">${money(round2(r.subtotal * (1 + (r.tax_rate || 0) / 100)))}</span></div>
-      </a>
-    </li>`;
-  }
-
-  function outstandingTotal(rows: any[]): number {
-    return rows
-      .filter(r => r.status !== "paid")
-      .reduce((a, r) => a + r.subtotal * (1 + (r.tax_rate || 0) / 100), 0);
-  }
-
-  function invoiceListHtml(rows: any[], selectedId: number | null): string {
-    return `<ul class="md-list" id="inv-list">${rows.map(r => invoiceRow(r, selectedId === r.id)).join("")}</ul>`;
-  }
-
-  /* #364: out-of-band refresh for the list pane after a detail-pane action
-     changes an invoice — the row pill and the outstanding total must not go
-     stale. The action's invoice stays selected: the detail pane is showing it. */
+  /* Out-of-band refresh after a detail action changes an invoice — the
+     stat cards and the header sub must not go stale. On the detail view
+     none of these targets exist, so the swaps are no-ops there. */
   function invoiceListOob(selectedId: number): string {
     const rows = qInvoices.all() as any[];
-    return `<ul class="md-list" id="inv-list" hx-swap-oob="true">${rows.map(r => invoiceRow(r, selectedId === r.id)).join("")}</ul>`
-      + `<p class="muted" id="inv-outstanding" hx-swap-oob="true">Outstanding: <strong>${money(outstandingTotal(rows))}</strong></p>`;
+    return `<tbody id="inv-list" hx-swap-oob="true">${invoiceTableRowsHtml(rows)}</tbody>`
+      + statsRowHtml(rows, true)
+      + `<p class="ui-app-sub" id="inv-sub" hx-swap-oob="true">${esc(statsSub(rows))}</p>`;
   }
 
-  function detailPlaceholder(): string {
-    return `<div class="detail-placeholder">${icon("receipt")}<p class="muted">Select a zinvoice to preview it here.</p></div>`;
-  }
-
-  /* #364: M3 list-detail — the list pane owns the outstanding summary,
-     unbilled time, and invoice rows; the detail pane shows the selected
-     invoice (or a placeholder). Below 840px the panes take turns via
-     .has-selection. #805: isDefault marks the route's first-invoice
-     fallback — the detail pane gets content on desktop, but has-selection
-     stays unset so single-pane (mobile) still opens on the list. */
-  function invoicesPage(selected: (Invoice & { items: InvoiceItem[] }) | null, origin: string, isDefault = false): string {
+  /* The list follows the suite mock: header, stat cards, filter chips +
+     search, and a table card. A selected zinvoice renders as its own
+     detail view (invoiceDetailBody) instead of a side pane. */
+  function invoicesPage(selected: (Invoice & { items: InvoiceItem[] }) | null, origin: string, filters: { status?: string; q?: string } = {}): string {
     const rows = qInvoices.all() as any[];
-    const head = `
-      <div class="page-head page-head-invoices" data-enter="2">
-        <h1 class="md-headline-small">Zinvoices</h1>
-        <div class="page-head-actions">
-          ${rows.length ? `<a class="md-text-button" href="/export/invoices.csv" download aria-label="Export CSV">${icon("download")}<span class="btn-label">Export CSV</span><span class="btn-label-short">CSV</span></a>` : ""}
-          <a class="md-filled-button" href="/invoices/new" aria-label="New zinvoice">${icon("add")}<span class="btn-label">New zinvoice</span></a>
-        </div>
-      </div>`;
+    if (selected) {
+      return layout(`Zinvoice ${selected.number}`,
+        `<div data-enter="3">${invoiceDetailBody(selected, origin)}</div>`, "invoices");
+    }
+    const head = appHeader({
+      title: "Zinvoices",
+      sub: rows.length ? statsSub(rows) : undefined,
+      subId: "inv-sub",
+      actions:
+        (rows.length ? linkButton({ label: "Export CSV", href: "/export/invoices.csv", variant: "ghost", icon: "download", download: true, ariaLabel: "Export CSV" }) : "") +
+        linkButton({ label: "New Zinvoice", href: "/invoices/new", variant: "primary", icon: "add", ariaLabel: "New Zinvoice" }),
+    });
     if (!rows.length) {
       return layout("Zinvoices", `${head}
-        <div class="scroll-region" data-enter="3">${emptyInvoices()}</div>`, "invoices", true);
+        <div data-enter="3">${emptyInvoices()}</div>`, "invoices");
     }
+    const active = FILTERS.some(f => f.key === filters.status) ? String(filters.status) : "all";
+    const q = String(filters.q || "").trim();
     return layout("Zinvoices", `${head}
-      <div class="invoice-list-detail${selected && !isDefault ? " has-selection" : ""}" data-enter="3">
-        <section class="invoice-list-pane" aria-label="Zinvoice list">
-          <p class="muted" id="inv-outstanding">Outstanding: <strong>${money(outstandingTotal(rows))}</strong></p>
-          ${unbilledSection(rows)}
-          ${invoiceListHtml(rows, selected ? selected.id : null)}
-        </section>
-        <section class="invoice-detail-pane" id="invoice-detail-pane" aria-label="Zinvoice detail">
-          ${selected ? invoiceDetailBody(selected, origin) : detailPlaceholder()}
-        </section>
-      </div>
-      <script>(function(){
-        /* #364: two-pane selection. At ≥840px a row click swaps the detail
-           pane in place (the fragment pushes ?invoice=<id> and OOB-marks the
-           selected row); below that the link navigates to the single-pane
-           detail screen. Delegated so it survives the list's OOB swaps. */
-        var wrap = document.querySelector(".invoice-list-detail");
-        if (!wrap || !window.htmx) return;
-        var mq = window.matchMedia("(min-width: 840px)");
-        wrap.addEventListener("click", function(ev){
-          var link = ev.target.closest(".inv-row-hit");
-          if (!link || !mq.matches) return;
-          ev.preventDefault();
-          window.htmx.ajax("GET", link.getAttribute("href") + "&fragment=detail",
-            { target: "#invoice-detail-pane", swap: "innerHTML scroll:top" });
-        });
-      })();</script>`, "invoices", true);
+      <div data-enter="3">${invoiceListRegionHtml(rows, active, q)}</div>`, "invoices");
   }
 
-  /** #328: per-client finished, unbilled time with an "Invoice" shortcut into
-      the "invoice the rest" prefill. Hidden when nothing is unbilled, and when
-      the workspace has no invoices yet (the empty state owns that case). */
-  function unbilledSection(rows: any[]): string {
-    if (!rows.length) return "";
-    const unbilled = unbilledByClient();
-    if (!unbilled.length) return "";
-    return `<h3 class="md-title-medium unbilled-head">Unbilled time</h3>
-      <ul class="md-list">${unbilled.map(u => `
-        <li class="md-list-item">
-          <div class="md-list-item-content">
-            <div class="md-list-item-headline">${esc(u.name)}</div>
-            <div class="md-list-item-supporting">${fmtDur(u.secs)} unbilled</div>
-          </div>
-          <div class="md-list-item-trailing"><a class="md-text-button" href="/invoices/new?client_id=${u.id}">Zinvoice</a></div>
-        </li>`).join("")}</ul>`;
+  function invoiceListRegionHtml(rows: any[], active: string, q: string): string {
+    const ql = q.toLowerCase();
+    const shown = rows.filter(r =>
+      (active === "all" || (active === "overdue" ? isOverdue(r) : r.status === active)) &&
+      (!ql || String(r.client_name || "").toLowerCase().includes(ql) || String(r.number || "").toLowerCase().includes(ql)));
+    return `<div id="inv-list-region">${statsRowHtml(rows)}${filterRowHtml(active, q)}${invoiceTableHtml(shown, active !== "all" || !!q)}</div>`;
+  }
+
+  /** The htmx response for a filter/search change: stats, active chips,
+   *  search field, and the narrowed table, without the page shell. */
+  function invoiceListRegion(filters: { status?: string; q?: string } = {}): string {
+    const rows = qInvoices.all() as any[];
+    const active = FILTERS.some(f => f.key === filters.status) ? String(filters.status) : "all";
+    return invoiceListRegionHtml(rows, active, String(filters.q || "").trim());
   }
 
   /* Milestone 20: NewInvParams type lives in lib/types.ts. */
@@ -199,182 +269,155 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     };
   }
 
-  /** Step 1: pick client + date range. Step 2 (preview): editable line items. */
-  function invoiceNewPage(p: NewInvParams, preview?: { items: any[]; emptyMsg?: string }): string {
-    const clients = db.query("SELECT id, name, rate FROM clients ORDER BY name").all() as any[];
-    const selClient = clients.find(c => String(c.id) === p.client_id);
-    const step1 = `
-      <div class="md-card form-card">
-        <h3 class="md-title-medium">1 · Pick unbilled time</h3>
-        <div class="form-info">
-          ${icon("info")}
-          <p>Only finished, unbilled entries on this client's projects are included. Client hourly rates can be set on the <a href="/manage">Clients page</a>.</p>
-        </div>
-        <form method="post" action="/invoices/preview" class="form" hx-post="/invoices/preview" hx-target="#invoice-step2" hx-swap="innerHTML">
-          <div class="md-text-field filled">
-            <select name="client_id" id="inv-client" required aria-label="Client">
-              <option value="">Choose a client…</option>${clientOptions(p.client_id ? Number(p.client_id) : null)}
-            </select>
-            <label for="inv-client">Client</label>
-          </div>
-          <div class="two-field" id="inv-range">
-            <div class="md-text-field filled"><input type="date" id="inv-from" name="from" value="${esc(p.from)}" required placeholder=" "><label for="inv-from">From</label></div>
-            <div class="md-text-field filled"><input type="date" id="inv-to" name="to" value="${esc(p.to)}" required placeholder=" "><label for="inv-to">To</label></div>
-          </div>
-          <div class="two-field">
-            <div class="md-text-field filled has-prefix"><span class="affix prefix" aria-hidden="true">$</span><input type="number" name="rate" id="inv-rate" value="${esc(p.rate || (selClient ? String(selClient.rate || "") : ""))}" min="0" step="0.01" placeholder=" " aria-label="Hourly rate"><label for="inv-rate">Hourly rate</label></div>
-            <div class="md-text-field filled has-suffix"><input type="number" name="tax_rate" id="inv-tax" value="${esc(p.tax_rate)}" min="0" step="0.01" placeholder=" " aria-label="Tax"><label for="inv-tax">Tax</label><span class="affix suffix" aria-hidden="true">%</span></div>
-          </div>
-          <div class="two-field">
-            <div class="md-text-field"><input type="text" id="inv-number" name="number" value="${esc(p.number)}" required placeholder=" "><label for="inv-number">Zinvoice number</label></div>
-          </div>
-          <div class="two-field">
-            <div class="md-text-field filled"><input type="date" name="issue_date" id="inv-issue" value="${esc(p.issue_date)}" required placeholder=" "><label for="inv-issue">Issue date</label></div>
-            <div class="md-text-field filled"><input type="date" name="due_date" id="inv-due" value="${esc(p.due_date)}" placeholder=" "><label for="inv-due">Due date</label></div>
-          </div>
-          <div class="md-text-field"><input type="text" name="notes" id="inv-notes" value="${esc(p.notes)}" placeholder=" " aria-label="Notes (optional)"><label for="inv-notes">Notes (optional)</label></div>
-          <div class="md-text-field"><input type="text" name="internal_notes" id="inv-internal" value="${esc(p.internal_notes)}" placeholder=" " aria-label="Internal notes (only you see this)"><label for="inv-internal">Internal notes (only you see this)</label></div>
-          <div class="row end"><button class="md-filled-button" type="submit">Preview line items</button></div>
-        </form>
-      </div>
-      <script>(function(){
-        var sel=document.getElementById('inv-client'), rate=document.getElementById('inv-rate'),
-            issue=document.getElementById('inv-issue'), due=document.getElementById('inv-due'),
-            rangeEl=document.getElementById('inv-range'), rangeTouched=false;
-        function addDaysStr(ymd,n){var p=ymd.split('-').map(Number);var d=new Date(p[0],p[1]-1,p[2]+n);
-          return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
-        /* #293: due date follows the selected client's terms (no HTMX
-           round-trip — the days ride on data-terms-days). */
-        function deriveDue(){
-          var opt=sel.options[sel.selectedIndex];
-          if(opt&&opt.dataset.termsDays&&issue.value&&due) due.value=addDaysStr(issue.value,parseInt(opt.dataset.termsDays,10));
-        }
-        /* #328: "invoice the rest" — a hand-edited range is never clobbered.
-           Delegated on the wrapper so it survives the HTMX range swap. */
-        if(rangeEl) rangeEl.addEventListener('change',function(){rangeTouched=true;});
-        sel.addEventListener('change',function(){
-          var opt=sel.options[sel.selectedIndex];
-          if(opt&&opt.dataset.rate&&!rate.value) rate.value=opt.dataset.rate;
-          deriveDue();
-          if(sel.value&&!rangeTouched&&window.htmx)
-            window.htmx.ajax('GET','/partial/invoice-rest?client_id='+encodeURIComponent(sel.value),{target:'#inv-range',swap:'innerHTML'});
-        });
-        if(issue) issue.addEventListener('change',deriveDue);
-        /* #668: manual line items — the Add button appends an editable row
-           to the step-2 table and bumps the groups count the POST handler
-           reads. Delegated on document so it survives the HTMX step-2 swap;
-           inputs are looked up within the button's own form (never by id —
-           #215), and hidden inputs stay inside the td (#536). */
-        document.addEventListener('click',function(ev){
-          var btn=ev.target.closest('[data-add-item]');
-          if(!btn) return;
-          var form=btn.closest('form');
-          if(!form) return;
-          var groups=form.querySelector('input[name="groups"]');
-          var body=form.querySelector('tbody');
-          if(!groups||!body) return;
-          var i=parseInt(groups.value,10)||0;
-          var tr=document.createElement('tr');
-          tr.innerHTML=
-            '<td></td>'+
-            '<td><input type="text" name="g'+i+'_desc" class="cell-input" aria-label="Item description"></td>'+
-            '<td><input type="number" name="g'+i+'_hours" min="0" step="0.01" class="cell-input num" aria-label="Hours"></td>'+
-            '<td><input type="number" name="g'+i+'_rate" min="0" step="0.01" class="cell-input num" aria-label="Rate"></td>'+
-            '<td class="num"><input type="hidden" name="g'+i+'_ids" value="">'+
-            '<input type="hidden" name="g'+i+'_date_from" value="">'+
-            '<input type="hidden" name="g'+i+'_date_to" value=""></td>';
-          body.appendChild(tr);
-          groups.value=String(i+1);
-          var desc=tr.querySelector('input[name="g'+i+'_desc"]');
-          if(desc) desc.focus();
-        });
-      })();</script>`;
+  /* #1121: the mock's wizard step labels. */
+  const STEP_ITEMS = ["Client & period", "Pick time", "Review & send"];
 
-
-    return layout("New zinvoice", `
-      <div class="page-narrow" data-enter="2">
-      <div class="page-head">
-        <h1 class="md-headline-small">New zinvoice</h1>
-        <a class="md-text-button" href="/invoices">Cancel</a>
-      </div>
-      ${step1}<div id="invoice-step2">${invoiceStep2(p, preview)}</div>
-      </div>`, "invoices");
+  /* #1121: the client picker's options as data — the rate and effective
+     terms days ride as data attributes, which the step-1 script reads to
+     prefill the rate and derive the due date (#293). This replaces the
+     manage factory's clientOptions HTML the wizard used to inject. */
+  function clientPickerOptions(clients: any[]) {
+    const g = termsKey(null, getMeta(db, "business_payment_terms"));
+    return [
+      { value: "", label: "Choose a client…" },
+      ...clients.map(c => {
+        const days = termsDays(c.payment_terms || g);
+        const data: Record<string, string | number> = { rate: c.rate || 0 };
+        if (days !== null) data["terms-days"] = days;
+        return { value: String(c.id), label: c.name as string, data };
+      }),
+    ];
   }
 
-  /* #71: step-2 card as a fragment — the preview action swaps #invoice-step2 in place. */
-  function invoiceStep2(p: NewInvParams, preview?: { items: any[]; emptyMsg?: string; rounding?: number | null }): string {
+  function fmtBillHours(h: number): string {
+    return round2(Number(h) || 0).toFixed(2);
+  }
+
+  function fmtTrackedHours(h: number): string {
+    return fmtDur(Math.round((Number(h) || 0) * 3600));
+  }
+
+  /* Without a business name the PDF and the client's page have no sender —
+     warn wherever a Zinvoice is about to be created or sent (never blocks). */
+  function noSenderAlert(): string {
+    if ((getMeta(db, "business_name") || "").trim()) return "";
+    return inlineAlert({
+      tone: "warning",
+      text: "Your business name isn't set, so this Zinvoice won't say who it's from.",
+      actionHtml: linkButton({ label: "Set business name", href: "/settings", size: "sm" }),
+      id: "no-sender-alert",
+    });
+  }
+
+  /* The mock's live preview card: the checked lines, the total, the due
+     date, and the create actions (Save draft / Send Zinvoice). It renders
+     on the page and again as the preview fragment's out-of-band swap, so
+     its fields (due date, number, tax, notes) round-trip through the
+     preview POST with the rest of the form. */
+  function previewCardHtml(p: NewInvParams, preview?: { items: any[]; emptyMsg?: string }): string {
+    const t = preview ? invoiceTotals(preview.items, Number(p.tax_rate) || 0) : { subtotal: 0, tax: 0, total: 0 };
+    /* Nothing to create yet — no preview, or a preview with zero line
+       items — leaves both create actions disabled instead of submitting
+       to the create route's plain-text 400. */
+    const noItems = !preview || preview.items.length === 0;
+    return wizardPreviewCard({
+      number: p.number,
+      chipHtml: invBadge({ status: "draft" }),
+      lines: preview ? preview.items.map(it => ({ label: `${it.description} — ${fmtBillHours(it.hours)} h`, amount: money(it.amount) })) : [],
+      total: money(t.total),
+      dueDate: p.due_date, issueDate: p.issue_date, taxRate: p.tax_rate,
+      notes: p.notes, internalNotes: p.internal_notes,
+      disabled: noItems,
+      noticeHtml: noSenderAlert(),
+    });
+  }
+
+  /** Step 1: pick client + date range. Step 2 (preview): editable line items. */
+  function invoiceNewPage(p: NewInvParams, preview?: { items: any[]; emptyMsg?: string }): string {
+    const clients = db.query("SELECT id, name, rate, payment_terms FROM clients ORDER BY name").all() as any[];
+    const selClient = clients.find(c => String(c.id) === p.client_id);
+    const sub = selClient ? `${selClient.name} · unbilled through ${shortYmd(p.to)}` : undefined;
+    const step1 = wizardStep1({
+      clientOptions: clientPickerOptions(clients), clientId: p.client_id,
+      from: p.from, to: p.to,
+      rate: p.rate || (selClient ? String(selClient.rate || "") : ""),
+    });
+
+    return layout("New Zinvoice", `
+      ${appHeader({ title: "New Zinvoice", sub: sub || "Pick a client and period", subId: "inv-new-sub", actions: linkButton({ label: "Cancel", href: "/invoices", variant: "ghost" }) })}
+      ${wizardLayout({
+        stepItems: STEP_ITEMS, current: preview ? 1 : 0,
+        step1Html: step1,
+        step2Html: preview ? invoiceStep2(p, preview, true) : emptyStep2(),
+        previewHtml: previewCardHtml(p, preview),
+      })}
+      ${ZINVOICE_WIZARD_SCRIPT}`, "invoices");
+  }
+
+  /* #71: step-2 as a fragment — the preview action swaps #invoice-step2 in
+     place and advances the steps indicator and the live preview card
+     out-of-band. The rows are the mock's unbilled-time table: grouped,
+     editable line items with an include checkbox per row (in the date
+     cell, so the shared header row stays identical to the sheet's). */
+  /** Before a client is picked there is no preview to swap in, but the
+   *  left card should still read as the two-step mock: an empty unbilled
+   *  table with the manual-line action, not a dead page with a button. */
+  function emptyStep2(): string {
+    return wizardLinesSection({});
+  }
+
+  function invoiceStep2(p: NewInvParams, preview?: { items: any[]; emptyMsg?: string; rounding?: number | null }, embedded = false): string {
     if (!preview) return "";
-    const roundingNote = preview.rounding
-      ? `<div class="form-info">${icon("info")}<p>Entry durations are rounded up to ${preview.rounding}-minute increments.</p></div>`
-      : "";
-    /* #668: no unbilled entries used to be a dead end — the wizard now
-       offers manual line items instead, so one-time (untracked) work can
-       be invoiced without inventing time entries. */
-    const emptyNote = preview.emptyMsg
-      ? `<div class="form-info">${icon("info")}<p>${esc(preview.emptyMsg)}</p></div>`
-      : "";
-    const rows = preview.items.map((it, i) => `
-        <tr>
-          <td>${esc(shortDateRange(it.date_from, it.date_to))}</td>
-          <td><input type="text" name="g${i}_desc" value="${esc(it.description)}" class="cell-input" aria-label="Item description"></td>
-          <td><input type="number" name="g${i}_hours" value="${it.hours}" min="0" step="0.01" class="cell-input num" aria-label="Hours"></td>
-          <td><input type="number" name="g${i}_rate" value="${it.rate}" min="0" step="0.01" class="cell-input num" aria-label="Rate"></td>
-          <td class="num">${money(it.amount)}<input type="hidden" name="g${i}_ids" value="${it.entry_ids.join(",")}"><input type="hidden" name="g${i}_date_from" value="${esc(it.date_from || "")}"><input type="hidden" name="g${i}_date_to" value="${esc(it.date_to || "")}"></td>
-        </tr>`).join("");
-    const t = invoiceTotals(preview.items, Number(p.tax_rate) || 0);
-    return `
-      <div class="md-card form-card">
-        <h3 class="md-title-medium">2 · Review line items</h3>
-        ${emptyNote}
-        ${roundingNote}
-        <form method="post" action="/invoices" class="form">
-          <input type="hidden" name="client_id" value="${esc(p.client_id)}">
-          <input type="hidden" name="number" value="${esc(p.number)}">
-          <input type="hidden" name="issue_date" value="${esc(p.issue_date)}">
-          <input type="hidden" name="due_date" value="${esc(p.due_date)}">
-          <input type="hidden" name="tax_rate" value="${esc(p.tax_rate)}">
-          <input type="hidden" name="notes" value="${esc(p.notes)}">
-          <input type="hidden" name="internal_notes" value="${esc(p.internal_notes)}">
-          <input type="hidden" name="groups" value="${preview.items.length}">
-          <div class="table-wrap"><table class="md-table">
-            <thead>${itemHead()}</thead>
-            <tbody>${rows}</tbody>
-            <tfoot>
-              <tr><td colspan="4">Subtotal</td><td class="num">${money(t.subtotal)}</td></tr>
-              <tr><td colspan="4">Tax (${esc(p.tax_rate)}%)</td><td class="num">${money(t.tax)}</td></tr>
-              <tr class="grand"><td colspan="4">Total</td><td class="num">${money(t.total)}</td></tr>
-            </tfoot>
-          </table></div>
-          <div class="row"><button type="button" class="md-text-button" data-add-item>${icon("add")}<span>Add line item</span></button></div>
-          <p class="muted tiny">Amounts recalculate on save. Entries are marked billed when the zinvoice is created.</p>
-          <div class="row end"><button class="md-filled-button" type="submit">Create zinvoice</button></div>
-        </form>
-      </div>`;
+    const section = wizardLinesSection({
+      emptyMsg: preview.emptyMsg,
+      roundingMinutes: preview.rounding,
+      lines: preview.items.map(it => ({
+        description: it.description, hours: it.hours, rate: it.rate, amount: money(it.amount),
+        dateFrom: it.date_from || "", dateTo: it.date_to || "",
+        dateLabel: shortDateRange(it.date_from, it.date_to), entryIds: it.entry_ids,
+      })),
+    });
+    if (embedded) return section;
+    return `<div id="inv-steps" hx-swap-oob="true">${steps({ items: STEP_ITEMS, current: 1 })}</div>`
+      + section
+      + `<div id="inv-preview" hx-swap-oob="true">${previewCardHtml(p, preview)}</div>`;
   }
 
   /** #899: per-day tracked hours behind the invoice — the time-breakdown
-      chart's data. Each entry rounds UP to 5 minutes like invoicing (#199),
-      so the chart totals agree with the tracked lines. Empty when no
-      time entries are linked to the invoice. */
+      chart's data. Each entry rounds UP to 5 minutes like invoicing (#199).
+      #1049: days accumulate the rounded seconds unrounded — rounding each
+      day to 2dp first made the chart total disagree with the billed hours
+      (1.33 + 1.33 = 2.66 shown for 2.67 billed); consumers round once, at
+      display. Empty when no time entries are linked to the invoice. */
   function timeBreakdown(inv: { id: number }): { date: string; hours: number }[] {
     const rows = db.query(
-      `SELECT substr(start_time, 1, 10) AS day, start_time, end_time
+      `SELECT start_time, end_time, tz
        FROM time_entries WHERE invoice_id = ? AND end_time IS NOT NULL`
     ).all(inv.id) as any[];
     const byDay = new Map<string, number>();
     for (const r of rows) {
-      const h = Math.ceil(durationSeconds(String(r.start_time), String(r.end_time)) / 300) * 300 / 3600;
-      if (h > 0) byDay.set(r.day, round2((byDay.get(r.day) ?? 0) + h));
+      r.day = entryDay(r, INVOICE_ZONE); /* #1081: the day it was worked */
+      const secs = Math.ceil(durationSeconds(String(r.start_time), String(r.end_time)) / 300) * 300;
+      if (secs > 0) byDay.set(r.day, (byDay.get(r.day) ?? 0) + secs);
     }
     return [...byDay.entries()]
-      .map(([date, hours]) => ({ date, hours }))
+      .map(([date, secs]) => ({ date, hours: secs / 3600 }))
       .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  }
+
+  /** #1049: the one total every breakdown surface must agree on — the
+      billed line items' hours (billing rounds per project group, so a
+      per-day sum can still differ by 0.01h on multi-project invoices).
+      Falls back to the tracked days when the invoice carries no items. */
+  function breakdownTotal(inv: { items?: InvoiceItem[] }, days: { hours: number }[]): number {
+    if (inv.items?.length) return round2(inv.items.reduce((a, it) => a + (Number(it.hours) || 0), 0));
+    return round2(days.reduce((a, d) => a + d.hours, 0));
   }
 
   /** #899: hand-rolled SVG bar chart of tracked time per day (weekly
       buckets when the range is long, so bars stay readable). Mirrors the
       revenue chart's markup. */
-  function breakdownChart(days: { date: string; hours: number }[]): string {
+  function breakdownChart(days: { date: string; hours: number }[], totalOverride?: number): string {
     type Bucket = { label: string; hours: number };
     let buckets: Bucket[], per: string;
     if (days.length > 40) {
@@ -386,7 +429,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       };
       for (const d of days) {
         const wk0 = mondayOf(d.date);
-        wk.set(wk0, round2((wk.get(wk0) ?? 0) + d.hours));
+        wk.set(wk0, (wk.get(wk0) ?? 0) + d.hours);
       }
       buckets = [...wk.entries()].sort().map(([date, hours]) => ({ label: "Wk of " + shortYmd(date), hours }));
       per = "week";
@@ -394,23 +437,12 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       buckets = days.map(d => ({ label: shortYmd(d.date), hours: d.hours }));
       per = "day";
     }
-    const max = Math.max(1, ...buckets.map(b => b.hours));
-    const W = 600, baseline = 150, areaH = 120, n = buckets.length;
-    const slot = W / n, bw = Math.min(34, slot * 0.62);
-    const bars = buckets.map((b, i) => {
-      const h = Math.max(3, Math.round(b.hours / max * areaH));
-      const x = (i * slot + (slot - bw) / 2).toFixed(1);
-      const cx = (i * slot + slot / 2).toFixed(1);
-      return `<g><title>${esc(`${b.label}: ${b.hours} hrs tracked`)}</title>` +
-        `<rect x="${x}" y="${baseline - h}" width="${bw.toFixed(1)}" height="${h}" rx="4" class="tb-bar"/>` +
-        `<text x="${cx}" y="${baseline + 18}" text-anchor="middle">${esc(b.label)}</text></g>`;
-    }).join("");
-    const total = round2(buckets.reduce((a, b) => a + b.hours, 0));
-    return `<section class="inv-breakdown" aria-label="Time breakdown">` +
-      `<div class="md-title-medium">Time breakdown</div>` +
-      `<p class="muted inv-breakdown-sub">Tracked time per ${per} — ${total} hrs total</p>` +
-      `<svg class="tb-chart" viewBox="0 0 ${W} 180" role="img" aria-label="Tracked time per ${per}">${bars}</svg>` +
-      `</section>`;
+    const total = totalOverride ?? round2(buckets.reduce((a, b) => a + b.hours, 0));
+    return timeBreakdownChart({
+      per: per as "day" | "week",
+      totalLabel: fmtTrackedHours(total),
+      bars: buckets.map(b => ({ label: b.label, hours: b.hours, tip: `${b.label}: ${fmtTrackedHours(b.hours)} tracked` })),
+    });
   }
 
   /** /invoices/:id — printable detail with status actions. */
@@ -422,7 +454,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       <tr>
         <td class="inv-date">${esc(shortDateRange(it.date_from, it.date_to))}</td>
         <td class="desc">${esc(it.description)}</td>
-        <td class="num inv-hours${it.hours === 1 ? " inv-hours-1" : ""}">${it.hours}</td>
+        <td class="num inv-hours${it.hours === 1 ? " inv-hours-1" : ""}">${fmtBillHours(it.hours)}</td>
         <td class="num inv-rate">${money(it.rate)}</td>
         <td class="num inv-amount">${money(it.amount)}</td>
       </tr>`).join("");
@@ -437,14 +469,8 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
        otherwise untouched (same spot, same styling, same label).
        #494: no native title — "Paid via Stripe" already says what the
        title="Marked paid automatically by a Stripe payment" restated. */
-    const paidChip = inv.paid_via_stripe
-      ? ` <span class="stripe-paid-chip">${icon("bolt")}<span>Paid via Stripe</span></span>` : "";
-    /* #243: billing period derives from the line-item dates.
-       #582: year-aware ("Sep 1 – Sep 28, 2026"), matching the PDF, so the
-       period is never ambiguous across year boundaries. */
-    const froms = inv.items.map(it => it.date_from).filter(Boolean).sort() as string[];
-    const tos = inv.items.map(it => it.date_to || it.date_from).filter(Boolean).sort() as string[];
-    const period = froms.length ? shortDateRangeYear(froms[0], tos[tos.length - 1]) : "";
+    const paidChip = inv.paid_via_stripe ? stripePaidChip() : "";
+    const period = billingPeriod(inv);
     /* #233/#239: single invoice design — dark band, badge, from/bill-to.
        Business profile comes from meta; empty profile hides the From block. */
     const bizName = getMeta(db, "business_name");
@@ -453,7 +479,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
        #293: fixed list — print the canned description.
        #295: pay-when-paid has no fixed due date, so the due line is suppressed. */
     const termsKey_ = termsKey(inv.client_payment_terms, getMeta(db, "business_payment_terms"));
-    const terms = termsDescription(termsKey_);
+    const terms = clientTermsDescription(termsKey_);
     /* #612: the issued/billing dates move out of the header band.
        #615: they sit directly above the table headers, i.e. below the
        parties row. The #560 nowrap treatment (each phrase in its own
@@ -470,7 +496,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
     const badgeLabel = inv.status === "paid" ? "Paid" : inv.status === "draft" ? "Draft" : "Unpaid";
     const head = `
         <div class="inv-modern-band">
-          <div class="inv-modern-title">Zinvoice</div>
+          <div class="inv-modern-title">Invoice</div>
           <div class="inv-modern-right">
             <div class="inv-modern-number">${esc(inv.number)}</div>
             <span class="inv-modern-badge${badgeCls}">${badgeLabel}</span>${paidChip}
@@ -485,9 +511,9 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
         ${datesLine}`;
     /* #859: only a sent zinvoice has something due — a draft was never sent,
        so the sheet's grand-total row reads "Total" like a paid one. */
-    return `<div class="md-card invoice-sheet template-modern" id="invoice-sheet">
+    return `<div class="invoice-sheet template-modern" id="invoice-sheet">
         ${head}
-        <div class="table-wrap"><table class="md-table">
+        <div class="table-wrap"><table class="inv-table">
           <thead>${itemHead()}</thead>
           <tbody>${items || `<tr><td colspan="5" class="muted">No line items.</td></tr>`}</tbody>
           <tfoot>
@@ -500,7 +526,7 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
              the Total-not-Total-due row and the dropped pay-online link. */
           inv.status === "paid" ? "" : `<p class="inv-terms">${esc(terms)}</p>`}
         ${inv.notes ? `<p class="inv-notes">${esc(inv.notes)}</p>` : ""}
-        ${(() => { const bd = timeBreakdown(inv); return bd.length ? breakdownChart(bd) : ""; })()}
+        ${(() => { const bd = timeBreakdown(inv); return bd.length ? breakdownChart(bd, breakdownTotal(inv, bd)) : ""; })()}
       </div>`;
   }
 
@@ -524,11 +550,23 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
 
   /* #301: single code path for the PDF input, shared by the download route
      and the send-time freeze. Extracted from the old inline route assembly. */
+  /** #1350: the Zinvoice's billing period. The period stored from the
+      wizard wins (it may start before the first worked day — Saturday vs
+      Monday). Older Zinvoices have none: #243 derives it from the line-item
+      dates. #582: year-aware ("Sep 1 – Sep 28, 2026"). */
+  function billingPeriod(inv: Invoice & { items: InvoiceItem[] }): string {
+    if (inv.period_from && inv.period_to) return shortDateRangeYear(inv.period_from, inv.period_to);
+    const froms = inv.items.map(it => it.date_from).filter(Boolean).sort() as string[];
+    const tos = inv.items.map(it => it.date_to || it.date_from).filter(Boolean).sort() as string[];
+    return froms.length ? shortDateRangeYear(froms[0], tos[tos.length - 1]) : "";
+  }
+
   function invoicePdfInput(inv: Invoice & { items: InvoiceItem[] }, origin: string): PdfInvoice {
     const t = invoiceTotals(inv.items, inv.tax_rate);
     /* #289/#293/#295: effective terms key drives the canned description
        and whether the PDF due line is shown. */
     const termsKey_ = termsKey(inv.client_payment_terms, getMeta(db, "business_payment_terms"));
+    const bd = timeBreakdown(inv);
     return {
       number: inv.number,
       status: inv.status,
@@ -537,13 +575,17 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
       clientEmail: inv.client_email || undefined, /* #627 */
       issueDate: inv.issue_date,
       dueDate: inv.due_date,
+      /* #1350: print the stored period; legacy Zinvoices keep #624 (the
+         per-line Date column states the dates). */
+      period: inv.period_from && inv.period_to ? billingPeriod(inv) : undefined,
       items: inv.items.map(it => ({
         description: it.description, hours: it.hours, rate: it.rate, amount: it.amount,
         dateFrom: it.date_from ?? null, dateTo: it.date_to ?? null, /* #243 */
       })),
       subtotal: t.subtotal, tax: t.tax, taxRate: inv.tax_rate, total: t.total,
       notes: inv.notes,
-      timeBreakdown: timeBreakdown(inv), /* #899: per-day tracked hours → PDF page-2 chart */
+      timeBreakdown: bd, /* #899: per-day tracked hours → PDF page-2 chart */
+      timeBreakdownTotal: breakdownTotal(inv, bd), /* #1049: PDF total = billed hours */
       fromName: getMeta(db, "business_name") || undefined,
       fromEmail: getMeta(db, "business_email") || undefined,
       fromAddress: getMeta(db, "business_address") || undefined,
@@ -552,9 +594,12 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
          #293: fixed list — print the canned description.
          #295: pay-when-paid has no fixed due date — suppress the PDF due line.
          #639: paid invoices have nothing left to pay — drop the link. */
-      terms: termsDescription(termsKey_),
+      terms: clientTermsDescription(termsKey_),
       hideDue: termsKey_ === "pay_when_paid",
       payUrl: inv.public_token && inv.status !== "paid" ? `${origin}/i/${inv.public_token}` : undefined,
+      payByCard: !!inv.stripe_payment_link,
+      overdue: inv.status === "sent" && isOverdue(inv),
+      paymentInstructions: getMeta(db, "business_payment_instructions") || undefined,
     };
   }
 
@@ -562,196 +607,168 @@ export function createInvoiceViews(deps: InvoiceViewDeps) {
      App surface only (never on the public invoice page or print). Upload is
      optional; a nudge encourages attaching proof when a paid invoice has
      none. */
-  function paymentProofSection(inv: Invoice): string {
+  function proofSection(inv: Invoice): string {
     if (inv.status !== "sent" && inv.status !== "paid") return "";
     const proofs = listProofs(db, inv.id);
     const fmtSize = (n: number) => n < 1024 ? `${n} B` : `${(n / 1024).toFixed(0)} KB`;
-    const rows = proofs.map(p => `
-      <div class="proof-row">
-        <a class="proof-name" href="/invoices/${inv.id}/payment-proof/${p.id}" target="_blank" rel="noopener">${esc(p.filename)}</a>
-        <span class="proof-meta muted">${fmtSize(p.size)} · ${esc(shortYmd(p.created_at.slice(0, 10)))}</span>
-        <span class="proof-icons">
-          <a class="md-icon-button" href="/invoices/${inv.id}/payment-proof/${p.id}" download="${esc(p.filename)}" data-tip="Download" aria-label="Download proof">${icon("download")}</a>
-          <form method="post" action="/invoices/${inv.id}/payment-proof/${p.id}/delete" class="inline">
-            <button class="md-icon-button danger" type="submit" data-tip="Delete proof" aria-label="Delete proof" data-confirm="Delete this proof of payment?">${icon("delete")}</button>
-          </form>
-        </span>
-      </div>`).join("");
-    const nudge = inv.status === "paid" && proofs.length === 0 ? `
-      <p class="proof-nudge muted">No proof attached — add the bank receipt or payment confirmation so this payment stays verifiable.</p>` : "";
-    return `<section class="payment-proof no-print" id="proof" aria-label="Proof of payment">
-      <div class="internal-notes-label">${icon("receipt")} Proof of payment</div>
-      ${rows}
-      ${nudge}
-      <form method="post" action="/invoices/${inv.id}/payment-proof" enctype="multipart/form-data" class="proof-upload" data-invoice-id="${inv.id}">
-        <label class="proof-file-label" for="proof-file-${inv.id}">Choose file</label>
-        <input id="proof-file-${inv.id}" class="proof-file-input" type="file" name="proof" accept="image/png,image/jpeg,image/gif,image/webp,application/pdf" required>
-      </form>
-      <p class="proof-hint muted">PNG, JPEG, GIF, WebP or PDF, up to 10 MB. Optional — cash payments have no file.</p>
-      <script>(function(){
-        /* Upload proof without full page refresh. Guarded global so htmx
-           re-renders of the detail pane don't stack listeners. */
-        if (window.__proofPickerWired) return;
-        window.__proofPickerWired = true;
-        document.addEventListener("change", function(ev){
-          var t = ev.target;
-          if (!t || t.type !== "file" || !t.classList || !t.classList.contains("proof-file-input")) return;
-          var form = t.closest("form");
-          if (!t.files || !t.files[0] || !form) return;
-          var fd = new FormData(form);
-          fetch(form.action, { method: "POST", body: fd, headers: { "X-Proof-Upload": "1" } })
-            .then(function(res){ if (!res.ok) throw new Error("upload failed"); return res.text(); })
-            .then(function(){
-              /* Re-fetch the invoice detail and swap just the proof section */
-              var invId = form.getAttribute("data-invoice-id");
-              return fetch("/invoices?invoice=" + invId, { headers: { "X-Proof-Refresh": "1" } });
-            })
-            .then(function(res){ return res.text(); })
-            .then(function(pageHtml){
-              var doc = new DOMParser().parseFromString(pageHtml, "text/html");
-              var fresh = doc.getElementById("proof");
-              var current = document.getElementById("proof");
-              if (fresh && current) current.outerHTML = fresh.outerHTML;
-            })
-            .catch(function(){ form.submit(); });
-        });
-      })();</script>
-    </section>`;
+    return paymentProofSection({
+      invoiceId: inv.id,
+      uploadAction: `/invoices/${inv.id}/payment-proof`,
+      nudge: inv.status === "paid" && proofs.length === 0,
+      proofs: proofs.map(p => ({
+        filename: p.filename,
+        href: `/invoices/${inv.id}/payment-proof/${p.id}`,
+        meta: `${fmtSize(p.size)} · ${shortYmd(p.created_at.slice(0, 10))}`,
+        deleteHtml: `<form method="post" action="/invoices/${inv.id}/payment-proof/${p.id}/delete" class="inline">
+            ${iconButton({ icon: "delete", label: "Delete proof", danger: true, type: "submit", attrs: `data-confirm="Delete this proof of payment?" data-confirm-label="Delete proof"` })}
+          </form>`,
+      })),
+    });
   }
 
   /* #71: detail body as a fragment — status/Stripe/link actions swap
-     #invoice-detail in place instead of reloading the page. */
+     #invoice-detail in place instead of reloading the page. The layout
+     follows the suite mock: title head, a lines-table card on the left,
+     and a status card + public link card rail on the right. */
   function invoiceDetailBody(inv: Invoice & { items: InvoiceItem[] }, origin: string): string {
     const hxDetail = `hx-target="#invoice-detail" hx-swap="outerHTML"`;
     const next = inv.status === "draft" ? "sent" : inv.status === "sent" ? "paid" : null;
     const nextLabel = next === "sent" ? "Mark sent" : next === "paid" ? "Mark paid" : "";
+    const nextBtnLabel = next === "sent" ? "Mark Zinvoice sent" : next === "paid" ? "Mark Zinvoice paid" : "";
     const nextConfirm = next === "sent"
-      ? "Mark this zinvoice as sent? Sent zinvoices can't be edited."
-      : next === "paid" ? "Mark this zinvoice as paid?" : "";
+      ? "Mark this Zinvoice as sent? Sent Zinvoices can't be edited."
+      : next === "paid" ? "Mark this Zinvoice as paid?" : "";
     const t = invoiceTotals(inv.items, inv.tax_rate);
     const token = getPublicToken(inv.id);
     const clientLink = token ? `${origin}/i/${token}` : null;
-    /* #229: compact single-line share rows — label + truncated URL, icon-only
-       actions at the end, rendered after the invoice. The copy handler is
-       delegated and id-free so htmx swaps stay safe. */
-    const copyScript = `<script>(function(){
-      /* #621: the Clipboard API only exists in secure contexts, but the app
-         is served over plain HTTP on the Tailscale IP — so fall back to the
-         legacy execCommand path there instead of silently doing nothing. */
-      function copyText(text, done){
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(text).then(done, function(){ legacyCopy(text, done); });
-        } else {
-          legacyCopy(text, done);
-        }
-      }
-      function legacyCopy(text, done){
-        var ta = document.createElement(\"textarea\");
-        ta.value = text;
-        ta.setAttribute(\"readonly\", \"\");
-        ta.style.position = \"fixed\";
-        ta.style.opacity = \"0\";
-        document.body.appendChild(ta);
-        ta.select();
-        try { if (document.execCommand(\"copy\")) done(); } catch (e) { /* keep it honest: no fake success */ }
-        document.body.removeChild(ta);
-      }
-      function wire(sec){
-        if (sec.dataset.copyWired) return;
-        sec.dataset.copyWired = \"1\";
-        sec.addEventListener(\"click\", function(ev){
-          var btn = ev.target.closest(\"[data-copy]\");
-          if (!btn || !btn.dataset.url) return;
-          copyText(btn.dataset.url, function(){
-            btn.classList.add(\"copied\");
-            setTimeout(function(){ btn.classList.remove(\"copied\"); }, 1200);
-          });
-        });
-      }
-      document.querySelectorAll(\".share-lines\").forEach(wire);
-    })();</script>`;
+    const od = isOverdue(inv) ? daysBetween(inv.due_date as string, todayStr()) : 0;
+    const bd = timeBreakdown(inv);
+    const trackedHours = breakdownTotal(inv, bd);
+    /* #229: the copy handler (ZINVOICE_COPY_SCRIPT) is delegated and id-free
+       so htmx swaps stay safe; it covers the head's Copy pay link button and
+       the public link card's copy button. */
     const copyBtn = (url: string) => `
-      <button class="md-icon-button" type="button" data-copy data-url="${esc(url)}" data-tip="Copy link" aria-label="Copy link">${icon("copy")}</button>`;
-    const actBtn = (action: string, ic: string, label: string, cls = "", confirm = "", confirmLabel = "Delete", tip = label) => `
+      ${iconButton({ icon: "copy", label: "Copy link", attrs: `data-copy data-url="${esc(url)}"` })}`;
+    const actBtn = (action: string, ic: string, label: string, cls = "", confirm = "", confirmLabel = label, tip = label) => `
       <form method="post" action="${action}" hx-post="${action}" ${hxDetail}>
-        <button class="md-icon-button ${cls}" type="submit" data-tip="${tip}" aria-label="${label}"${confirm ? ` data-confirm="${confirm}" data-confirm-label="${confirmLabel}"` : ""}>${icon(ic)}</button>
+        ${iconButton({ icon: ic, label, tip, danger: cls === "ui-icon-btn-danger", type: "submit", attrs: confirm ? `data-confirm="${confirm}" data-confirm-label="${confirmLabel}"` : undefined })}
       </form>`;
-    const clientLine = clientLink ? `
-      <div class="share-line">
-        <span class="share-label">Client link</span>
-        <span class="share-url-wrap" data-tip="${esc(clientLink)}"><span class="share-url">${esc(clientLink)}</span></span>
-        <span class="share-icons">
-          ${copyBtn(clientLink)}
-          ${actBtn(`/invoices/${inv.id}/public-token/regenerate`, "refresh", "Regenerate link (invalidates the old one)", "", "Regenerate the client link? The old URL will stop working.", "Regenerate", "Regenerate link")}
-          ${actBtn(`/invoices/${inv.id}/public-token/revoke`, "delete", "Revoke link", "danger", "Revoke the client link? The current URL will stop working.", "Revoke")}
-        </span>
-      </div>` : `
-      <div class="share-line">
-        <span class="share-label">Client link</span>
-        <span class="share-icons">
-          <form method="post" action="/invoices/${inv.id}/public-token/regenerate" hx-post="/invoices/${inv.id}/public-token/regenerate" ${hxDetail}>
-            <button class="md-tonal-button" type="submit">${icon("add")}<span>Create client link</span></button>
-          </form>
-        </span>
-      </div>`;
+    const clientLine = clientLink
+      ? shareLine({
+          label: "Client link", url: clientLink,
+          actionsHtml: copyBtn(clientLink) +
+            actBtn(`/invoices/${inv.id}/public-token/regenerate`, "refresh", "Regenerate link (invalidates the old one)", "", "Regenerate the client link? The old URL will stop working.", "Regenerate", "Regenerate link") +
+            actBtn(`/invoices/${inv.id}/public-token/revoke`, "delete", "Revoke link", "ui-icon-btn-danger", "Revoke the client link? The current URL will stop working.", "Revoke"),
+        })
+      : shareLine({
+          label: "Client link",
+          actionsHtml: `<form method="post" action="/invoices/${inv.id}/public-token/regenerate" hx-post="/invoices/${inv.id}/public-token/regenerate" ${hxDetail}>
+            ${button({ label: "Create client link", icon: "add", type: "submit" })}
+          </form>`,
+        });
     /* #231: the Stripe payment row is gone from our UI — the public invoice
        page is the payment surface (it already renders Pay when a link
        exists). The link is still auto-created server-side on send. If that
        fails we show a one-line warning with a retry, so a missing Pay button
        can never fail silently. */
-    const stripeWarn = (inv.status === "sent" && stripeConfigured() && !inv.stripe_payment_link) ? `
-      <div class="share-line">
-        <span class="share-label warn">Payment link</span>
-        <span class="share-url">Couldn't create it — the client won't see a Pay button</span>
-        <span class="share-icons">
-          ${actBtn(`/invoices/${inv.id}/stripe-link`, "refresh", "Retry payment link")}
-        </span>
-      </div>` : "";
-    /* #302: internal-only notes live outside invoiceDoc (which also feeds the
-       public page and print) — app surface only, never on client surfaces. */
-    const internalBlock = inv.internal_notes ? `
-      <aside class="internal-notes no-print" aria-label="Internal notes">
-        <div class="internal-notes-label">Internal notes</div>
-        <p>${esc(inv.internal_notes)}</p>
-      </aside>` : "";
-    const shareLines = `
-      <section class="share-lines no-print" aria-label="Share">
-        ${clientLine}
-        ${stripeWarn}
-        ${copyScript}
-      </section>`;
+    const stripeWarn = (inv.status === "sent" && stripeConfigured() && !inv.stripe_payment_link)
+      ? shareLine({ label: "Payment link", warn: true, text: "Couldn't create it — the client won't see a Pay button", actionsHtml: actBtn(`/invoices/${inv.id}/stripe-link`, "refresh", "Retry payment link") })
+      : "";
+    const canPay = inv.status === "sent" && (!!inv.stripe_payment_link || !!(getMeta(db, "business_payment_instructions") || "").trim());
+    /* #1224: a sent Zinvoice with no card link and no saved instructions
+       leaves the client's page without any way to pay — say so here, to the
+       user, never on the public page. */
+    const noPayPathWarn = (inv.status === "sent" && !canPay && !stripeWarn)
+      ? shareLine({ label: "How to pay", warn: true, note: "Your client won't see how to pay.", actionsHtml: linkButton({ label: "Add payment instructions", href: "/settings", size: "sm" }) })
+      : "";
+    const publicLinkCard = zinvoiceShareCard({ canPay, linesHtml: clientLine + stripeWarn + noPayPathWarn });
+    /* The timeline carries only events the data records: creation
+       (created_at), the send (sent_at, recorded from now on) and payment
+       (paid_at). There is no viewed-at column, so it never invents one. */
+    const createdYmd = String(inv.created_at || "").slice(0, 10);
+    const statusChipHtml = invBadge(inv);
+    const stripeChip = inv.paid_via_stripe ? stripePaidChip() : "";
+    const progress = inv.status === "draft" ? 0 : inv.status === "sent" ? 50 : 100;
+    const dueInDays = inv.status === "sent" && inv.due_date ? daysBetween(todayStr(), inv.due_date) : null;
+    const progressTone = od ? "error" : dueInDays !== null && dueInDays >= 0 && dueInDays <= 7 ? "warning" : "neutral";
+    let statusLine: string;
+    if (inv.status === "draft") statusLine = `${createdYmd ? `Created ${shortYmd(createdYmd)} · ` : ""}Not sent yet`;
+    else if (inv.status === "paid") statusLine = inv.paid_at ? `Paid ${shortYmd(inv.paid_at)}` : "Paid";
+    else if (od) statusLine = `Overdue ${od}d · Due ${shortYmd(inv.due_date as string)}`;
+    else if (inv.due_date) {
+      const d = daysBetween(todayStr(), inv.due_date);
+      statusLine = `Due in ${d} day${d === 1 ? "" : "s"} · Due ${shortYmd(inv.due_date)}`;
+    } else statusLine = "Sent · No due date";
+    const activity: string[] = [];
+    if (inv.paid_at) activity.push(`${shortYmd(inv.paid_at)} — Paid${inv.paid_via_stripe ? " via Stripe" : ""}`);
+    /* Recorded since sent_at exists; older sends have no event — never invented. */
+    if (inv.sent_at) activity.push(`${shortYmd(inv.sent_at)} — Sent`);
+    if (createdYmd) activity.push(`${shortYmd(createdYmd)} — Created${trackedHours > 0 ? ` from ${fmtTrackedHours(trackedHours)} of tracked time` : ""}`);
+    const statusCard = zinvoiceStatusCard({ chipHtml: statusChipHtml, extraChipHtml: stripeChip, progress, tone: progressTone, line: statusLine, activity });
+    const totals = [
+      ...(inv.tax_rate ? [
+        { label: "Subtotal", amount: money(t.subtotal) },
+        { label: `Tax (${inv.tax_rate}%)`, amount: money(t.tax) },
+      ] : []),
+      { label: "Time breakdown total", amount: fmtTrackedHours(inv.items.reduce((a, it) => a + (Number(it.hours) || 0), 0)) },
+      { label: inv.status === "sent" ? "Total due" : "Total", amount: money(t.total) },
+    ];
+    const linesCard = card({
+      content: lineItemsTable({
+        items: inv.items.map(it => ({
+          dateRange: shortDateRange(it.date_from, it.date_to),
+          description: it.description,
+          hours: fmtBillHours(it.hours),
+          rate: money(it.rate),
+          amount: money(it.amount),
+        })),
+        totals,
+      }) + (inv.notes ? `<p class="inv-notes">${esc(inv.notes)}</p>` : ""),
+    });
+    const internalBlock = inv.internal_notes ? internalNotes(inv.internal_notes) : "";
     /* #424: the paid label stays exactly where it always was — first in the
-       detail actions row. Only its styling changes: plain muted text becomes
-       an M3 chip (check icon + label). Nothing else in the header moves. */
+       detail actions row. Only its styling changes (now the ui paid chip:
+       check icon + label). Nothing else in the header moves. */
+    const termsLabel = PAYMENT_TERMS[termsKey(inv.client_payment_terms, termsKey(null, getMeta(db, "business_payment_terms")))].label;
     return `<div id="invoice-detail">
-      <div class="page-head no-print">
-        <div class="invoice-detail-head">
-          <a class="md-text-button detail-back" href="/invoices">${icon("arrow_left")}Zinvoices</a>
-        </div>
-        <div class="row">
-          ${inv.status === "paid" && inv.paid_at ? `<span class="md-chip">${icon("check")}Paid ${esc(shortYmd(inv.paid_at))}</span>` : ""}
-          <a class="md-icon-button tip-right" href="/invoices/${inv.id}.pdf" download data-tip="Download PDF" aria-label="Download PDF">${icon("download")}</a>
+      ${zinvoiceDetailHead({
+        backHref: "/invoices",
+        title: `Zinvoice ${inv.number}${inv.client_name ? ` — ${inv.client_name}` : ""}`,
+        sub: `Issued ${shortYmd(inv.issue_date)}${inv.due_date ? ` · Due ${shortYmd(inv.due_date)}` : ""} · ${termsLabel}`,
+        actionsHtml: `
+          ${inv.status === "paid" && inv.paid_at ? statusChip("paid", { icon: "check", suffix: shortYmd(inv.paid_at) }) : ""}
+          ${clientLink ? iconButton({ icon: "copy", label: "Copy pay link", className: "tip-right", attrs: `data-copy data-url="${esc(clientLink)}"` }) : ""}
+          <a class="ui-icon-btn tip-right" href="/invoices/${inv.id}.pdf" download data-tip="Download PDF" aria-label="Download PDF">${icon("download")}</a>
           ${next ? `<form method="post" action="/invoices/${inv.id}/status" class="inline" hx-post="/invoices/${inv.id}/status" ${hxDetail}>
             <input type="hidden" name="status" value="${next}">
-            <button class="md-icon-button tip-right" type="submit" data-tip="${nextLabel}" aria-label="${nextLabel}" data-confirm="${nextConfirm}" data-confirm-label="${nextLabel}">${icon("check")}</button>
+            ${button({ label: nextBtnLabel, variant: "primary", icon: "check", type: "submit", attrs: `data-confirm="${nextConfirm}" data-confirm-label="${nextLabel}"` })}
           </form>` : ""}
           ${inv.status === "draft" ? `<form method="post" action="/invoices/${inv.id}/delete" class="inline">
-            <button class="md-icon-button danger tip-right" type="submit" data-tip="Delete draft" aria-label="Delete draft" data-confirm="Delete this draft zinvoice? Its entries become unbilled again.">${icon("delete")}</button>
-          </form>` : ""}
+            ${iconButton({ icon: "delete", label: "Delete draft", danger: true, className: "tip-right", type: "submit", attrs: `data-confirm="Delete this draft Zinvoice? Its entries become unbilled again." data-confirm-label="Delete draft"` })}
+          </form>` : ""}`,
+      })}
+      ${inv.status === "draft" ? noSenderAlert() : ""}
+      <div class="inv-detail-grid">
+        <div class="inv-detail-main">
+          ${linesCard}
+          ${bd.length ? breakdownChart(bd, trackedHours) : ""}
+          ${internalBlock}
+          ${proofSection(inv)}
+        </div>
+        <div class="inv-detail-rail">
+          ${statusCard}
+          ${publicLinkCard}
         </div>
       </div>
-      ${invoiceDoc(inv)}
-      ${internalBlock}
-      ${shareLines}
-      ${paymentProofSection(inv)}
+      ${ZINVOICE_COPY_SCRIPT}
       </div>`;
   }
 
-  /* #364: list-detail replaced the standalone detail page — the detail body
-     now renders inside the detail pane (or as the fragment the pane swaps). */
+  /* The detail body renders as the standalone detail view (invoicesPage
+     with a selection) or as the fragment its own actions swap in place. */
   return {
     invoicesPage, defaultNewInvParams, invoiceNewPage, invoiceStep2,
-    invoiceSheet, invoiceDoc, invoiceDetailBody, invoiceListOob,
+    invoiceSheet, invoiceDoc, invoiceDetailBody, invoiceListOob, invoiceListRegion,
     invoiceDocumentHtml, invoicePdfInput, /* #301 */
   };
 }

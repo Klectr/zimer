@@ -14,7 +14,6 @@
  */
 
 import type { AccountsDb } from "../lib/accounts.ts";
-import { logo } from "../lib/icons.ts";
 import {
   createBilling,
   createCheckoutSession,
@@ -24,6 +23,14 @@ import {
   type Subscription,
 } from "../lib/billing.ts";
 import { originMatches } from "../lib/http.ts"; /* #912 */
+import { settingsSection } from "../ui/settings-section.ts";
+import { planCard } from "../ui/plan-card.ts";
+import { tag } from "../ui/tag.ts";
+import { button } from "../ui/button.ts";
+import { card } from "../ui/card.ts";
+import { logoLockup } from "../ui/logo-lockup.ts";
+import { shortYmd } from "../lib/format.ts";
+import { staticUrl } from "../lib/static-assets.ts";
 
 export interface BillingDeps {
   HOSTED: boolean;
@@ -62,8 +69,69 @@ export function createSubscriptionGate(opts: {
   return { inactiveAuthedUser };
 }
 
-/** #736: the subscription wall. Minimal M3 public chrome (same as the
- *  login/signup pages): logo, status headline, what-happens-next copy,
+/* #1121: the mock's Billing section for the settings body — plan line,
+ * status tag, and the manage/subscribe action. Hosted only; self-host
+ * and signed-out requests render nothing. The CTA follows #783: users
+ * with a Stripe customer get the portal, everyone else checkout. */
+export function createBillingSection(opts: {
+  HOSTED: boolean;
+  accounts: AccountsDb | null;
+  billing: Billing | null;
+}) {
+  const { HOSTED, accounts, billing } = opts;
+  return function billingSectionHtml(req: Request): string {
+    if (!HOSTED || !accounts || !billing) return "";
+    const user = accounts.sessionUserFromRequest(req);
+    if (!user) return "";
+    const sub = billing.getSubscriptionStatus(user.id);
+    const day = (iso: string | null | undefined) => (iso ? shortYmd(iso.slice(0, 10)) : null);
+    let statusTag: string;
+    let line: string;
+    if (!sub) {
+      const createdMs = Date.parse(user.created_at);
+      const trialEndMs = createdMs + TRIAL_DAYS * 24 * 3600 * 1000;
+      if (Number.isFinite(createdMs) && Date.now() < trialEndMs) {
+        statusTag = tag({ label: "Trial", tone: "primary" });
+        line = `Trial ends ${day(new Date(trialEndMs).toISOString())}. Subscribe any time to keep your data flowing.`;
+      } else {
+        statusTag = tag({ label: "No subscription", tone: "neutral" });
+        line = "Subscribe to keep using Zimer.";
+      }
+    } else if (sub.status === "trialing") {
+      statusTag = tag({ label: "Trialing", tone: "primary" });
+      line = sub.trial_ends_at ? `Trial ends ${day(sub.trial_ends_at)}.` : "Your trial is running.";
+    } else if (sub.status === "active") {
+      statusTag = tag({ label: "Active", tone: "success" });
+      line = sub.current_period_end ? `Next charge ${day(sub.current_period_end)}. Early rate locked — your price doesn't rise when new signups move up.` : "Your plan is active.";
+    } else if (sub.status === "past_due") {
+      statusTag = tag({ label: "Past due", tone: "error" });
+      line = "Your last payment failed — update your card to keep Zimer running.";
+    } else if (sub.status === "canceled") {
+      statusTag = tag({ label: "Canceled", tone: "neutral" });
+      const end = day(sub.current_period_end);
+      line = end && Date.parse(sub.current_period_end!) > Date.now() ? `Access runs until ${end}.` : "Your subscription has ended.";
+    } else {
+      statusTag = tag({ label: sub.status || "Unknown", tone: "neutral" });
+      line = "Manage your subscription in the billing portal.";
+    }
+    const action = sub?.stripe_customer_id
+      ? `<form method="post" action="/billing/portal" style="margin:0">${button({ label: "Manage subscription", type: "submit" })}</form>`
+      : `<form method="post" action="/billing/checkout" style="margin:0">${button({ label: "Subscribe · $12/month", type: "submit", variant: "primary" })}</form>`;
+    const body = planCard({
+      amount: "$12",
+      period: "/ month · flat, no seats",
+      blurb: line,
+      features: [],
+      ctaHtml: action,
+      statusHtml: statusTag,
+      bare: true,
+    });
+    return settingsSection({ level: 2, id: "billing-section", title: "Billing — Hosted plan", bodyHtml: body });
+  };
+}
+
+/** #736: the subscription wall. Minimal ui public chrome (same shell as
+ *  the login/signup pages): logo, status headline, what-happens-next copy,
  *  and one pumpkin CTA. No app nav, no auth gate.
  *
  *  #783: the CTA depends on Stripe state. Past-due users have a customer,
@@ -77,24 +145,23 @@ function billingWallPage(sub: Subscription | null): string {
     ? "Your last payment didn't go through, so Zimer is paused until billing is current."
     : "Your 14-day trial has ended, so Zimer is paused until you subscribe.";
   const cta = failed || sub?.stripe_customer_id
-    ? `<form method="POST" action="/billing/portal" style="margin:0"><button class="md-filled-button" type="submit">Manage billing</button></form>`
-    : `<form method="POST" action="/billing/checkout" style="margin:0">
-         <button class="md-filled-button" type="submit">Subscribe · $12/month</button>
-       </form>`;
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+    ? `<form method="POST" action="/billing/portal" style="margin:0">${button({ label: "Manage billing", variant: "primary", size: "lg", block: true, type: "submit" })}</form>`
+    : `<form method="POST" action="/billing/checkout" style="margin:0">${button({ label: "Subscribe · $12/month", variant: "primary", size: "lg", block: true, type: "submit" })}</form>`;
+  const content =
+    logoLockup() +
+    `<h1 class="ui-page-title" style="margin-top:var(--spacing-md)">${headline}</h1>` +
+    `<p class="ui-app-sub">${copy}</p>` +
+    `<p class="muted">Nothing is deleted — your time entries, clients, and Zinvoices are saved and waiting.</p>` +
+    cta +
+    `<form method="POST" action="/logout" style="margin-top:var(--spacing-md)">${button({ label: "Log out", variant: "ghost", size: "sm", type: "submit" })}</form>`;
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${headline} · Zimer</title>
-  <link rel="stylesheet" href="/static/style.css">
-  <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
-  <script src="/static/motion.js" defer></script></head>
+  <link rel="stylesheet" href="${staticUrl("style.css")}">
+  <link rel="icon" type="image/svg+xml" href="${staticUrl("logo.svg")}">
+  </head>
   <body><main class="login">
-  <div class="md-card" style="border-radius:28px;padding:28px;max-width:420px">
-  <h1 class="md-headline-small" style="margin-top:0;display:flex;align-items:center;gap:12px">${logo(32)}<span>Zimer</span></h1>
-  <h2 class="md-title-large" style="margin:0 0 8px">${headline}</h2>
-  <p>${copy}</p>
-  <p class="muted">Nothing is deleted — your time entries, clients, and zinvoices are saved and waiting.</p>
-  ${cta}
-  <form method="POST" action="/logout" class="muted tiny" style="margin:20px 0 0"><button type="submit" class="md-text-button" style="padding:0;font-size:inherit">Log out</button></form>
-  </div></main></body></html>`;
+  ${card({ content })}
+  </main></body></html>`;
 }
 
 export function createBillingRouter(deps: BillingDeps) {

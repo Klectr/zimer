@@ -8,9 +8,9 @@ export const buttonStories: Story[] = [
     title: "Variants",
     render: () =>
       `<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">` +
-      button({ label: "Send Zinvoice" }) +
-      button({ label: "Save draft", variant: "tonal" }) +
-      button({ label: "Cancel", variant: "text" }) +
+      button({ label: "Send Zinvoice", variant: "primary" }) +
+      button({ label: "Save draft" }) +
+      button({ label: "Cancel", variant: "ghost" }) +
       `</div>`,
   },
   {
@@ -19,8 +19,39 @@ export const buttonStories: Story[] = [
     title: "Danger",
     render: () =>
       `<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">` +
-      button({ label: "Delete client", variant: "text", danger: true }) +
-      button({ label: "Delete entry", variant: "text", danger: true }) +
+      button({ label: "Delete entry", danger: true }) +
+      button({ label: "Delete client", variant: "ghost", danger: true }) +
+      button({ label: "Delete Zinvoice", variant: "primary", danger: true }) +
+      `</div>`,
+  },
+  {
+    id: "button-sizes",
+    group: "Button",
+    title: "Sizes",
+    render: () =>
+      `<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">` +
+      button({ label: "Small", size: "sm" }) +
+      button({ label: "Medium" }) +
+      button({ label: "Large", size: "lg", variant: "primary" }) +
+      `</div>`,
+  },
+  {
+    id: "button-icon",
+    group: "Button",
+    title: "With icon",
+    render: () =>
+      `<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">` +
+      button({ label: "Save", type: "submit", variant: "primary", icon: "save" }) +
+      button({ label: "Save", type: "submit", icon: "save" }) +
+      `</div>`,
+  },
+  {
+    id: "button-spinner",
+    group: "Button",
+    title: "With request spinner (logo hands replace the icon in flight)",
+    render: () =>
+      `<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">` +
+      button({ label: "Check for updates", icon: "refresh", spinner: true, attrs: 'id="check-updates-btn"' }) +
       `</div>`,
   },
   {
@@ -29,9 +60,9 @@ export const buttonStories: Story[] = [
     title: "Disabled",
     render: () =>
       `<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">` +
-      button({ label: "Send Zinvoice", disabled: true }) +
-      button({ label: "Save draft", variant: "tonal", disabled: true }) +
-      button({ label: "Cancel", variant: "text", disabled: true }) +
+      button({ label: "Send Zinvoice", variant: "primary", disabled: true }) +
+      button({ label: "Save draft", disabled: true }) +
+      button({ label: "Cancel", variant: "ghost", disabled: true }) +
       `</div>`,
   },
 ];

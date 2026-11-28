@@ -33,12 +33,12 @@ function timerPage(): string {
     layout,
     demoBanner: () => "",
     projectOptions: () => "",
+    projectOptionRows: () => [],
     revenueTotals: () => ({ invoiced: 0, paid: 0, outstanding: 0 }),
     revenueMonthly: () => [],
     revenueByClient: () => [],
     revenueOverdue: () => [],
-    m3ProgressBar: () => "",
-    dayTargetSecs: 8 * 3600,
+    dayTargetSecs: () => 8 * 3600,
   };
   return createTimerViews(deps as any).dashboardPage();
 }
@@ -52,7 +52,7 @@ function calendarWeekHtml(): string {
     qRange: { all: () => [] } as unknown as Statement,
     entrySelect: "",
     layout,
-    projectOptions: () => "",
+    projectOptionRows: () => [],
     weekTargetBar: () => "",
     calHourPx: 56,
   };
@@ -64,12 +64,10 @@ function invoicePages() {
     db: stubDb,
     qInvoices: { all: () => [] } as unknown as Statement,
     layout,
-    clientOptions: () => "",
     getPublicToken: () => null,
     stripeConfigured: () => false,
     nextInvoiceNumber: () => "INV-0001",
     invoiceTotals: () => ({ subtotal: 0, tax: 0, total: 0 }),
-    statusPill: (s: string) => `<span class="pill">${s}</span>`,
     isOverdue: () => false,
     unbilledByClient: () => [],
   } as any);
@@ -80,16 +78,18 @@ function invoicePages() {
 }
 
 function managePages() {
-  const views = createManageViews({ db: stubDb, layout });
+  const views = createManageViews({ db: stubDb, layout, unbilledByClient: () => [] });
   return {
-    manage: views.managePage({ kind: "none" }),
+    manage: views.managePage(),
     settings: views.settingsPage(""),
   };
 }
 
 describe("page-level h1 (#701)", () => {
-  test("timer page has exactly one h1: Today", () => {
-    expect(h1Texts(timerPage())).toEqual(["Today"]);
+  test("timer page has exactly one h1: the greeting", () => {
+    const h1 = h1Texts(timerPage());
+    expect(h1).toHaveLength(1);
+    expect(h1[0]).toMatch(/^Good (morning|afternoon|evening)$/);
   });
   test("calendar page has exactly one h1: the week nav title", () => {
     const h1 = h1Texts(calendarWeekHtml());
@@ -99,25 +99,29 @@ describe("page-level h1 (#701)", () => {
   test("invoices list page has exactly one h1: Zinvoices", () => {
     expect(h1Texts(invoicePages().list)).toEqual(["Zinvoices"]);
   });
-  test("new invoice page has exactly one h1: New zinvoice", () => {
-    expect(h1Texts(invoicePages().form)).toEqual(["New zinvoice"]);
+  test("new invoice page has exactly one h1: New Zinvoice", () => {
+    expect(h1Texts(invoicePages().form)).toEqual(["New Zinvoice"]);
   });
-  test("manage page has exactly one h1: Clients", () => {
-    expect(h1Texts(managePages().manage)).toEqual(["Clients"]);
+  test("manage page has exactly one h1: Manage", () => {
+    expect(h1Texts(managePages().manage)).toEqual(["Manage"]);
+  });
+  test("settings page h1 carries the ui title class (migrated in #1100)", () => {
+    expect(managePages().settings).toContain('<h1 class="ui-app-title">Settings</h1>');
   });
   test("settings page has exactly one h1: Settings", () => {
     expect(h1Texts(managePages().settings)).toEqual(["Settings"]);
   });
-  test("promoted headings keep their M3 classes (no visual change)", () => {
-    for (const html of [
-      timerPage(),
-      calendarWeekHtml(),
-      invoicePages().list,
-      invoicePages().form,
-      managePages().manage,
-      managePages().settings,
-    ]) {
-      expect(html).toContain('<h1 class="md-headline-small">');
-    }
+  test("timer page h1 carries the ui title class (appHeader, #1121)", () => {
+    expect(timerPage()).toMatch(/<h1 class="ui-app-title">Good (morning|afternoon|evening)<\/h1>/);
+  });
+  test("manage page h1 carries the ui title class (migrated in #1105)", () => {
+    expect(managePages().manage).toContain('<h1 class="ui-app-title">Manage</h1>');
+  });
+  test("zinvoices page h1s carry the ui title class (list: appHeader, #1121)", () => {
+    expect(invoicePages().list).toContain('<h1 class="ui-app-title">Zinvoices</h1>');
+    expect(invoicePages().form).toContain('<h1 class="ui-app-title">New Zinvoice</h1>');
+  });
+  test("the calendar week heading carries the ui page title (migrated in #1111)", () => {
+    expect(calendarWeekHtml()).toContain('<h1 class="ui-page-title">');
   });
 });

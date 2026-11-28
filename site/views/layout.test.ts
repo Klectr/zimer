@@ -18,6 +18,12 @@ describe("layout theme override (#884)", () => {
     expect(styleIdx).toBeGreaterThan(cssIdx);
     expect(head).toContain("--primary:#ffb4a8");
   });
+  test("the stylesheet URL carries its content-hash version (#993)", () => {
+    const { layout } = createLayoutViews(noRunning, () => "");
+    const head = layout("T", "body");
+    expect(head).toMatch(/href="\/static\/style\.css\?v=[0-9a-f]{12}"/);
+    expect(head).toMatch(/src="\/static\/dialog\.js\?v=[0-9a-f]{12}"/);
+  });
   test("default theme emits pumpkin values", () => {
     const { layout } = createLayoutViews(noRunning, () => themeCss(themeKey("")));
     expect(layout("T", "body")).toContain("--primary:#fb923c");
@@ -37,6 +43,105 @@ describe("layout entry edit dialog (#903)", () => {
     expect(body).toContain('id="entry-scrim"');
     expect(body).toContain('id="entry-dialog-body"');
     expect(body).toContain('aria-labelledby="entry-dialog-title"');
+  });
+});
+
+/** #1177: the lazy shell dialogs reset their body on open, so a stale form
+ *  from the previous open can't paint or be submitted while the next
+ *  fragment loads. Same treatment as the client settings dialog. */
+describe("layout lazy dialogs reset their body on open (#1177)", () => {
+  test("entry dialog body starts on the loading placeholder", () => {
+    const { layout } = createLayoutViews(noRunning);
+    const body = layout("T", "body");
+    expect(body).toContain('<div id="entry-dialog-body"><p class="muted">Loading…</p></div>');
+  });
+
+  test("entry opener resets the body before the dialog shows and the fragment load", () => {
+    const { layout } = createLayoutViews(noRunning);
+    const body = layout("T", "body");
+    const script = body.indexOf("getElementById('entry-dialog-body')");
+    const open = body.indexOf("function open(id){", script);
+    const reset = body.indexOf("body.innerHTML='<p class=\"muted\">Loading…</p>';", open);
+    const show = body.indexOf("scrim.hidden=false;", open);
+    const load = body.indexOf("htmx.ajax('GET','/entries/'+id+'/edit','#entry-dialog-body');", open);
+    expect(open).toBeGreaterThan(-1);
+    expect(reset).toBeGreaterThan(open);
+    expect(show).toBeGreaterThan(reset);
+    expect(load).toBeGreaterThan(reset);
+  });
+});
+
+/** #1189: a lazy load that lands after a close/reopen for another record
+ *  must not swap in — each opener bumps a load generation, the request is
+ *  stamped with it, and a stale stamp is dropped at beforeSwap. */
+describe("layout lazy dialogs drop stale loads (#1189)", () => {
+  test("entry opener bumps the load generation before the fragment load", () => {
+    const { layout } = createLayoutViews(noRunning);
+    const body = layout("T", "body");
+    const script = body.indexOf("getElementById('entry-dialog-body')");
+    const open = body.indexOf("function open(id){", script);
+    const bump = body.indexOf("loadGen++;", open);
+    const load = body.indexOf("htmx.ajax('GET','/entries/'+id+'/edit','#entry-dialog-body');", open);
+    expect(open).toBeGreaterThan(-1);
+    expect(bump).toBeGreaterThan(open);
+    expect(load).toBeGreaterThan(bump);
+  });
+
+  test("entry loads are stamped at request time and dropped before swap when stale", () => {
+    const { layout } = createLayoutViews(noRunning);
+    const body = layout("T", "body");
+    expect(body).toContain("e.detail.xhr.tkEntryGen=loadGen;");
+    expect(body).toContain("if(g!=null&&g!==loadGen) e.detail.shouldSwap=false;");
+  });
+
+  test("the entry dialog bumps the load generation on close too", () => {
+    const { layout } = createLayoutViews(noRunning);
+    const body = layout("T", "body");
+    const eScript = body.indexOf("getElementById('entry-dialog-body')");
+    const eClose = body.indexOf("function closeDialog(refocus){", eScript);
+    expect(eClose).toBeGreaterThan(-1);
+    expect(body.indexOf("loadGen++;", eClose)).toBeGreaterThan(eClose);
+  });
+
+  test("the entry dialog's close captures the generation so a reopen during the fade cancels the hide (#1192)", () => {
+    const { layout } = createLayoutViews(noRunning);
+    const body = layout("T", "body");
+    const eScript = body.indexOf("getElementById('entry-dialog-body')");
+    const eClose = body.indexOf("function closeDialog(refocus){", eScript);
+    expect(eClose).toBeGreaterThan(-1);
+    const eBump = body.indexOf("loadGen++;", eClose);
+    const eCapture = body.indexOf("var gen=loadGen, done=false,", eClose);
+    expect(eCapture).toBeGreaterThan(eBump);
+    expect(body.indexOf("if(done||gen!==loadGen) return;", eClose)).toBeGreaterThan(eCapture);
+  });
+});
+
+/** #1195: the nav drawer's close fade gets the #1192 treatment — a reopen
+ *  during the fade bumps the drawer generation, so the stale finish()
+ *  captured at close time no-ops instead of hiding the reopened drawer. */
+describe("layout nav drawer close fade (#1195)", () => {
+  test("drawer opener and close both bump the drawer generation", () => {
+    const { layout } = createLayoutViews(noRunning);
+    const body = layout("T", "body");
+    const script = body.indexOf("getElementById('nav-drawer-scrim')");
+    const open = body.indexOf("function open(){", script);
+    expect(open).toBeGreaterThan(-1);
+    expect(body.indexOf("drawerGen++;", open)).toBeGreaterThan(open);
+    const close = body.indexOf("function close(refocus){", script);
+    expect(close).toBeGreaterThan(-1);
+    expect(body.indexOf("drawerGen++;", close)).toBeGreaterThan(close);
+  });
+
+  test("drawer close captures the generation so a reopen during the fade cancels the hide", () => {
+    const { layout } = createLayoutViews(noRunning);
+    const body = layout("T", "body");
+    const script = body.indexOf("getElementById('nav-drawer-scrim')");
+    const close = body.indexOf("function close(refocus){", script);
+    expect(close).toBeGreaterThan(-1);
+    const bump = body.indexOf("drawerGen++;", close);
+    const capture = body.indexOf("var gen=drawerGen, done=false,", close);
+    expect(capture).toBeGreaterThan(bump);
+    expect(body.indexOf("if(done||gen!==drawerGen) return;", close)).toBeGreaterThan(capture);
   });
 });
 
@@ -71,10 +176,10 @@ describe("trialBannerHtml", () => {
     expect(trialBannerHtml(baseOpts(13))).toContain("Your trial ends tomorrow");
   });
 
-  test("CTA posts to /billing/checkout with the pumpkin filled button", () => {
+  test("CTA posts to /billing/checkout with the pumpkin primary button", () => {
     const html = trialBannerHtml(baseOpts(12));
     expect(html).toContain('method="POST" action="/billing/checkout"');
-    expect(html).toContain('class="md-filled-button"');
+    expect(html).toContain('class="ui-btn ui-btn-primary"');
     expect(html).toContain("Subscribe · $12/month");
   });
 
@@ -103,15 +208,15 @@ describe("trialBannerHtml", () => {
 
 describe("createLayoutViews trialBanner thunk", () => {
   const banner = "<div>TRIAL-BANNER</div>";
-  test("renders the banner between the app bar and the chrome when provided", () => {
+  test("renders the banner in the content column above main when provided", () => {
     const { layout } = createLayoutViews(noRunning, undefined, () => banner);
     const html = layout("Today", "<p>body</p>", "timer", true);
     expect(html).toContain(banner);
-    const headerIdx = html.indexOf("</header>");
-    const chromeIdx = html.indexOf('<div class="app-chrome">');
+    const sidebarIdx = html.indexOf('<aside class="ui-side">');
+    const mainIdx = html.indexOf('<main id="main"');
     const bannerIdx = html.indexOf(banner);
-    expect(bannerIdx).toBeGreaterThan(headerIdx);
-    expect(bannerIdx).toBeLessThan(chromeIdx);
+    expect(bannerIdx).toBeGreaterThan(sidebarIdx);
+    expect(bannerIdx).toBeLessThan(mainIdx);
   });
 
   test("no banner markup when the thunk is omitted", () => {
@@ -175,10 +280,23 @@ describe("PostHog snippet (#928)", () => {
     expect(html).not.toContain("zimer_utm");
   });
 
-  test("#998: app snippet keeps session-recording config out and capture off", () => {
+  test("#1438: both modes pin surveys, dead clicks and web vitals off in init", () => {
+    for (const html of [
+      posthogSnippet("phc_test123", "https://us.i.posthog.com", 42),
+      posthogSnippet("phc_test123", "https://us.i.posthog.com", null, { landing: true }),
+    ]) {
+      expect(html).toContain("disable_surveys: true");
+      expect(html).toContain("capture_dead_clicks: false");
+      expect(html).toContain("capture_performance: false");
+    }
+  });
+
+  test("#1239: app snippet disables session recording in init and keeps capture off", () => {
     const html = posthogSnippet("phc_test123", "https://us.i.posthog.com", 42);
-    expect(html).not.toContain("disable_session_recording");
+    expect(html).toContain("disable_session_recording: true");
     expect(html).not.toContain("person_profiles");
+    expect(html).toContain("autocapture: false");
+    expect(html).toContain("capture_pageview: false");
   });
 
   test("key is JSON-escaped, not interpolated raw", () => {
@@ -189,32 +307,50 @@ describe("PostHog snippet (#928)", () => {
   });
 });
 
-/** #949: on compact screens the icon-only app-bar actions are undiscoverable,
+/** #949: on compact screens the icon-only actions are undiscoverable,
  *  so a hamburger opens a labeled navigation drawer carrying the same four
- *  actions as icon+text rows. Desktop keeps the #654 icon row. */
+ *  actions as icon+text rows. #1223 trimmed both the drawer and the sidebar
+ *  footer to Settings (page link) + Log out. */
 describe("layout navigation drawer (#949)", () => {
-  test("app bar carries the hamburger and the desktop icon row", () => {
+  test("compact head carries the hamburger; the sidebar footer keeps only Log out (#1223)", () => {
     const { layout } = createLayoutViews(noRunning);
-    const body = layout("T", "body");
+    const body = layout("T", "body", "timer");
     expect(body).toContain('id="appbar-menu-btn"');
-    expect(body).toContain('id="appbar-settings-btn"');
+    expect(body).not.toContain('id="appbar-settings-btn"');
+    const foot = body.slice(body.indexOf('<div class="ui-side-foot">'), body.indexOf("</aside>"));
+    expect(foot).toContain('action="/logout"');
+    expect(foot).not.toContain('href="/backup"');
+    expect(foot).not.toContain('href="/export/entries.csv"');
+    expect(body).toContain('<aside class="ui-side">');
+    expect(body).toContain('class="ui-navitem is-active" aria-current="page"');
+    expect(body).toContain('href="/settings"');
   });
 
-  test("drawer carries all four actions as labeled rows", () => {
+  test("drawer carries Settings (a link to the page) and Log out (#1223)", () => {
     const { layout } = createLayoutViews(noRunning);
     const body = layout("T", "body");
-    expect(body).toContain('id="nav-drawer-scrim"');
-    expect(body).toContain('id="drawer-settings-btn"');
-    expect(body).toContain("<span>Settings</span>");
-    expect(body).toContain("<span>Export entries CSV</span>");
-    expect(body).toContain("<span>Download backup</span>");
-    expect(body).toContain("<span>Log out</span>");
+    const drawer = body.slice(body.indexOf('id="nav-drawer-scrim"'), body.indexOf("</nav>", body.indexOf('id="nav-drawer-scrim"')));
+    expect(drawer).toContain('<a class="nav-drawer-row" href="/settings">');
+    expect(drawer).toContain("<span>Settings</span>");
+    expect(drawer).toContain("<span>Log out</span>");
+    expect(drawer).not.toContain("Export entries CSV");
+    expect(drawer).not.toContain("Download backup");
+  });
+
+  test("there is one Settings surface: no settings dialog in the shell (#1223)", () => {
+    const { layout } = createLayoutViews(noRunning);
+    const body = layout("T", "body");
+    expect(body).not.toContain('id="settings-scrim"');
+    /* #1335: toasts come from the server's HX-Trigger tk-toast event. */
+    expect(body).toContain("document.body.addEventListener('tk-toast',function(e){");
+    expect(body).toContain("window.tkSnackbar(msg);");
+    expect(body).not.toContain("elt.id==='daily-target-form'");
   });
 
   test("drawer header is the spec headline — no close button", () => {
     const { layout } = createLayoutViews(noRunning);
     const body = layout("T", "body");
-    const drawer = body.slice(body.indexOf('id="nav-drawer-scrim"'), body.indexOf('id="settings-scrim"'));
+    const drawer = body.slice(body.indexOf('id="nav-drawer-scrim"'), body.indexOf("</nav>", body.indexOf('id="nav-drawer-scrim"')));
     expect(drawer).toContain('<div class="nav-drawer-head">Menu</div>');
     expect(drawer).not.toContain('id="nav-drawer-close"');
   });
@@ -223,7 +359,7 @@ describe("layout navigation drawer (#949)", () => {
     const { layout } = createLayoutViews(noRunning, undefined, undefined, undefined,
       () => `<form method="POST" action="/demo/load" class="nav-drawer-form nav-drawer-demo"><button class="nav-drawer-row" type="submit"><span>Load demo data</span></button></form>`);
     const body = layout("T", "body");
-    const drawer = body.slice(body.indexOf('id="nav-drawer-scrim"'), body.indexOf('id="settings-scrim"'));
+    const drawer = body.slice(body.indexOf('id="nav-drawer-scrim"'), body.indexOf("</nav>", body.indexOf('id="nav-drawer-scrim"')));
     expect(drawer).toContain('action="/demo/load"');
     expect(drawer).toContain("<span>Load demo data</span>");
   });
@@ -233,5 +369,33 @@ describe("layout navigation drawer (#949)", () => {
     const body = layout("T", "body");
     const drawer = body.slice(body.indexOf('id="nav-drawer-scrim"'));
     expect(drawer).toContain('<form method="POST" action="/logout" class="nav-drawer-logout">');
+  });
+});
+
+/** Same template-literal trap in the entry-dialog script: escaped path
+ *  regexes must survive into the page. */
+describe("layout inline scripts parse", () => {
+  test("every inline script parses", () => {
+    const { layout } = createLayoutViews(noRunning);
+    const html = layout("T", "body");
+    const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]!);
+    for (const script of scripts) expect(() => new Function(script)).not.toThrow();
+  });
+});
+
+describe("client_tz on every POST (#1081)", () => {
+  test("htmx posts and plain form posts both carry the browser's zone", () => {
+    const html = createLayoutViews(noRunning).layout("T", "<p>x</p>");
+    expect(html).toContain("e.detail.parameters['client_tz']=tz");
+    expect(html).toContain("put(f,'client_tz',tz)");
+  });
+});
+
+describe("client_day script", () => {
+  test("the layout ships the script that adds the local day to every POST", () => {
+    const html = createLayoutViews(noRunning).layout("T", "<p>x</p>");
+    expect(html).toContain("htmx:configRequest");
+    expect(html).toContain("e.detail.parameters['client_day']=day()");
+    expect(html).toContain("put(f,'client_day',day())");
   });
 });

@@ -19,7 +19,7 @@ describe("pwa head wiring (#936)", () => {
     expect(head()).toContain('<link rel="manifest" href="/static/manifest.webmanifest">');
   });
   test("theme-color matches the dark surface", () => {
-    expect(head()).toContain('<meta name="theme-color" content="#131318">');
+    expect(head()).toContain('<meta name="theme-color" content="#08090a">');
   });
   test("service worker registration is present", () => {
     expect(head()).toContain('navigator.serviceWorker.register("/static/sw.js")');
@@ -44,8 +44,8 @@ describe("pwa manifest (#936)", () => {
     expect(manifest.display).toBe("standalone");
   });
   test("theme colors match the dark surface", () => {
-    expect(manifest.theme_color).toBe("#131318");
-    expect(manifest.background_color).toBe("#131318");
+    expect(manifest.theme_color).toBe("#08090a");
+    expect(manifest.background_color).toBe("#08090a");
   });
   test("declares 192 and 512 png icons that exist at the right size", () => {
     const bySize = Object.fromEntries(
@@ -72,5 +72,10 @@ describe("pwa service worker (#936)", () => {
   test("network-first so deploys never serve stale assets", () => {
     expect(sw).toContain("fetch(event.request)");
     expect(sw).toContain("caches.match(event.request)");
+  });
+  test("#1416: versioned (?v=) assets bypass the SW so they cannot accumulate or bind wrong bytes", () => {
+    expect(sw).toContain('url.searchParams.has("v")');
+    expect(sw).toContain('const CACHE = "zimer-static-v2"');
+    expect(sw).not.toContain('const CACHE = "zimer-static-v1"');
   });
 });

@@ -1,28 +1,33 @@
 import { describe, expect, test } from "bun:test";
-import { button } from "./button";
+import { button, linkButton } from "./button";
 
 describe("button", () => {
-  test("defaults to a filled submit-free button", () => {
-    const html = button({ label: "Send Zinvoice" });
+  test("defaults to the default (surface) variant, submit-free", () => {
+    const html = button({ label: "Save draft" });
     expect(html).toContain('type="button"');
-    expect(html).toContain('class="md-filled-button"');
-    expect(html).toContain(">Send Zinvoice</button>");
+    expect(html).toContain('class="ui-btn"');
+    expect(html).toContain(">Save draft</button>");
   });
 
-  test("maps variants to the app's button classes", () => {
-    expect(button({ label: "A", variant: "tonal" })).toContain('class="md-tonal-button"');
-    expect(button({ label: "A", variant: "text" })).toContain('class="md-text-button"');
+  test("maps variants to the ui button classes", () => {
+    expect(button({ label: "A", variant: "primary" })).toContain('class="ui-btn ui-btn-primary"');
+    expect(button({ label: "A", variant: "ghost" })).toContain('class="ui-btn ui-btn-ghost"');
   });
 
-  test("danger adds the danger modifier on the text variant", () => {
-    expect(button({ label: "Delete", variant: "text", danger: true })).toContain(
-      'class="md-text-button danger"',
+  test("danger is styled on every variant (solid error on primary)", () => {
+    expect(button({ label: "Delete", danger: true })).toContain('class="ui-btn ui-btn-danger"');
+    expect(button({ label: "Delete", variant: "ghost", danger: true })).toContain(
+      'class="ui-btn ui-btn-ghost ui-btn-danger"',
+    );
+    expect(button({ label: "Delete", variant: "primary", danger: true })).toContain(
+      'class="ui-btn ui-btn-primary ui-btn-danger"',
     );
   });
 
-  test("danger throws on variants that have no danger styling", () => {
-    expect(() => button({ label: "Delete", danger: true })).toThrow("danger");
-    expect(() => button({ label: "Delete", variant: "tonal", danger: true })).toThrow("danger");
+  test("sizes add the size class; md is the unclassed default", () => {
+    expect(button({ label: "A", size: "sm" })).toContain('class="ui-btn ui-btn-sm"');
+    expect(button({ label: "A", size: "lg" })).toContain('class="ui-btn ui-btn-lg"');
+    expect(button({ label: "A", size: "md" })).toContain('class="ui-btn"');
   });
 
   test("disabled renders the disabled attribute", () => {
@@ -37,5 +42,37 @@ describe("button", () => {
     const html = button({ label: "<script>alert(1)</script>" });
     expect(html).not.toContain("<script>");
     expect(html).toContain("&lt;script&gt;");
+  });
+});
+
+describe("button icon", () => {
+  test("icon renders before the label via the icon system", () => {
+    const html = button({ label: "Save", type: "submit", icon: "save" });
+    expect(html).toContain("<svg");
+    expect(html.indexOf("<svg")).toBeLessThan(html.indexOf("Save"));
+    expect(button({ label: "Save" })).not.toContain("<svg");
+  });
+});
+
+describe("linkButton className", () => {
+  test("extra class lands on the anchor for behavior hooks", () => {
+    const html = linkButton({ label: "Clients", href: "/manage", icon: "arrow_left", variant: "ghost", className: "detail-back" });
+    expect(html).toContain('class="ui-btn ui-btn-ghost detail-back"');
+    expect(html).toContain('href="/manage"');
+  });
+  test("download and ariaLabel render on the anchor (#1121)", () => {
+    const html = linkButton({ label: "Export CSV", href: "/export/invoices.csv", download: true, ariaLabel: "Export CSV" });
+    expect(html).toContain(" download ");
+    expect(html).toContain('aria-label="Export CSV"');
+    expect(linkButton({ label: "X", href: "/x" })).not.toContain("download");
+  });
+});
+
+describe("button spinner", () => {
+  test("spinner renders the logo mark span for htmx-request progress states", () => {
+    const html = button({ label: "Check for updates", spinner: true });
+    expect(html).toContain('<span class="btn-spinner" aria-hidden="true">');
+    expect(html).toContain("tk-logo-hands");
+    expect(button({ label: "Plain" })).not.toContain("btn-spinner");
   });
 });

@@ -25,7 +25,6 @@ function invoiceViews() {
     db: stubDb,
     qInvoices: { all: () => [] } as unknown as Statement,
     layout: (_t: string, b: string) => b,
-    clientOptions: () => "",
     getPublicToken: () => null,
     stripeConfigured: () => false,
     nextInvoiceNumber: () => "INV-0001",
@@ -33,7 +32,6 @@ function invoiceViews() {
       subtotal: 0, tax: 0,
       total: items.reduce((a: number, it: any) => a + Number(it.amount || 0), 0),
     }),
-    statusPill: (s: string) => `<span class="pill">${s}</span>`,
     isOverdue: () => false,
     unbilledByClient: () => [],
   });
@@ -43,20 +41,20 @@ describe("#753: mascot placements", () => {
   test("landing hero shows the mascot, OG tags, and PNG favicon", () => {
     const { landingPage } = createLandingViews();
     const html = landingPage("https://example.com"); /* #865 */
-    expect(html).toContain('class="landing-mascot"');
-    expect(html).toContain('src="/static/mascot.png"');
+    expect(html).toContain('class="ui-hero-mascot"');
+    expect(html).toContain('src="/static/mascot-56.webp?v=');
     expect(html).toContain('property="og:image" content="https://example.com/static/og-image-v3.png"');
     expect(html).toContain('name="twitter:card" content="summary_large_image"');
-    expect(html).toContain('href="/static/favicon-32.png"');
-    expect(html).toContain('rel="apple-touch-icon" href="/static/alien-180.png"');
+    expect(html).toContain('href="/static/favicon-32.png?v=');
+    expect(html).toContain('rel="apple-touch-icon" href="/static/alien-180.png?v=');
     expect(html).not.toContain("logo.svg");
   });
 
   test("invoices empty state shows the stopwatch mascot, not the receipt icon", () => {
     const html = invoiceViews().invoicesPage(null, "/invoices");
     expect(html).toContain('class="empty-mascot"');
-    expect(html).toContain('src="/static/mascot-empty.png"');
-    expect(html).toContain("No zinvoices yet");
+    expect(html).toContain('src="/static/mascot-empty.webp?v=');
+    expect(html).toContain("No Zinvoices yet");
   });
 
   test("timer first-run demo banner shows the mascot", () => {
@@ -64,7 +62,7 @@ describe("#753: mascot placements", () => {
     const html = demoBanner(db);
     expect(html).toContain("New here?");
     expect(html).toContain('class="demo-mascot"');
-    expect(html).toContain('src="/static/mascot.png"');
+    expect(html).toContain('src="/static/mascot-88.webp?v=');
   });
 });
 

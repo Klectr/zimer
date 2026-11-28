@@ -37,8 +37,7 @@ describe("#731: landing page router", () => {
     expect(body).toContain("$12/month");
     expect(body).toContain("14-day free trial");
     expect(body).toContain('href="/signup"');
-    expect(body).toContain('href="#pricing"');
-    /* #1017: the repo is public — the Self-host plan links out to it. */
+    /* #1017: the repo is public — the closing band links out to it. */
     expect(body).toContain('href="https://github.com/Klectr/zimer"');
     expect(body).toContain("View on GitHub");
     expect(body).toContain("support@klectr.dev");
@@ -70,19 +69,23 @@ describe("#731: landing page router", () => {
     expect(body).toContain('<meta name="twitter:image:alt"');
   });
 
-  test("#1062: the page names the buyer and the wedge", async () => {
+  test("the mock's bento and two-plan price grid carry the wedge", async () => {
     const { res, body } = await get(true, false, "/");
     expect(res!.status).toBe(200);
-    expect(body).toContain("Built for freelancers and solo work");
-    for (const title of ["For one-person businesses", "Your data stays yours", "The bill stays the same", "Switching takes minutes"]) {
+    for (const title of ["Timer to Zinvoice in two clicks", "Your data, your file", "No surveillance"]) {
       expect(body).toContain(title);
     }
-    expect(body).toContain("Freelancers, contractors, and solo shops.");
-    expect(body).toContain("Self-hosted time tracking on your own server");
-    expect(body).toContain("One tier, everything included.");
-    /* The who/wedge section sits between the features and pricing. */
-    expect(body.indexOf("Built for freelancers and solo work")).toBeGreaterThan(body.indexOf("Everything from first tap to paid"));
-    expect(body.indexOf("Built for freelancers and solo work")).toBeLessThan(body.indexOf('id="pricing"'));
+    expect(body).toContain("Start with your next job");
+    expect(body).toContain("No seats, no meters, no per-client pricing.");
+    expect(body).toContain("Cancel keeps your data.");
+    expect(body).toContain("Self-hosted");
+    expect(body).toContain("Hosted");
+    /* The hero product carries the mock's timer + zinvoice preview. */
+    expect(body).toContain("Zinvoice #1042");
+    expect(body).toContain("$1,827.50");
+    expect(body).toContain("01:24:08");
+    /* The bento sits above the price grid. */
+    expect(body.indexOf("Everything from first tap to paid")).toBeLessThan(body.indexOf("Start with your next job"));
   });
 
   test("hosted authed visitor falls through (null) — / keeps serving the app", async () => {
@@ -126,11 +129,15 @@ describe("#731: landing page view", () => {
 });
 
 describe("#1044: hero leads with the promise and the product", () => {
-  test("the app screenshot renders inside the hero section", async () => {
+  test("the hero centers the promise and shows the timer + zinvoice product", async () => {
     const { body } = await get(true, false, "/");
-    const hero = body!.slice(body!.indexOf('<section class="landing-hero">'), body!.indexOf("</section>"));
-    expect(hero).toContain("landing-shot");
-    expect(hero).toContain("The time tracker that turns your hours into an invoice.");
+    const hero = body!.slice(body!.indexOf('<section class="ui-hero">'), body!.indexOf("</section>"));
+    expect(hero).toContain("Your Zimer is your Zinvoice.");
+    expect(hero).toContain("ui-landing-mini");
+    expect(hero).toContain("01:24:08");
+    expect(hero).toContain("Zinvoice #1042");
+    expect(hero).toContain("Start tracking free");
+    expect(hero).toContain("See how it works");
   });
 });
 

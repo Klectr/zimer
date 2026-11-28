@@ -16,6 +16,10 @@ export function createDb(dataDir: string) {
 export function createDbAt(dbPath: string) {
   const db = new Database(dbPath, { create: true });
   db.exec("PRAGMA journal_mode = WAL;");
+  db.exec("PRAGMA busy_timeout = 5000;");
+  db.exec("PRAGMA synchronous = NORMAL;");
+  db.exec("PRAGMA cache_size = -8000;");
+  db.exec("PRAGMA temp_store = MEMORY;");
   /* NOTE: the ON DELETE actions declared below are NOT enforced by SQLite
      (no PRAGMA foreign_keys). Delete routes null out / clean up referencing
      rows explicitly — see the client/project/invoice delete handlers. */
@@ -114,6 +118,15 @@ db.exec(`DROP TABLE IF EXISTS recurring_schedules;`);
     ["clients", "website", "TEXT"],
     ["clients", "address", "TEXT"],
     ["time_entries", "invoice_id", "INTEGER REFERENCES invoices(id) ON DELETE SET NULL"],
+    /* Issue #1082: billable flag. Default 1, so every existing entry stays
+       billable and today's invoicing is unchanged. Non-billable time can
+       never land on a Zinvoice. */
+    ["time_entries", "billable", "INTEGER NOT NULL DEFAULT 1"],
+    /* Issue #1081: the IANA zone an entry was logged in. Every display and
+       day-bucketing reads it, so 8am logged in California stays 8am viewed
+       from Florida. NULL on entries logged before it existed — those keep
+       rendering in the viewer's zone (lib/wall.ts). */
+    ["time_entries", "tz", "TEXT"],
     ["invoices", "template", "TEXT NOT NULL DEFAULT 'classic'"],
     ["invoices", "stripe_payment_link", "TEXT"],
     /* Issue #645: payment-link ID (plink_...) for webhook matching — Stripe
@@ -131,6 +144,16 @@ db.exec(`DROP TABLE IF EXISTS recurring_schedules;`);
        afterwards, so re-downloads are byte-identical. */
     ["invoices", "pdf_snapshot", "BLOB"],
     ["invoices", "html_snapshot", "TEXT"],
+    /* Issue #1350: the billing period chosen in the wizard (YYYY-MM-DD,
+       inclusive). Billing periods don't start on the first worked day (e.g.
+       Saturday → second Friday), so it can't be derived from the entries.
+       NULL on older Zinvoices: surfaces fall back to the line-item dates. */
+    ["invoices", "period_from", "TEXT"],
+    ["invoices", "period_to", "TEXT"],
+    /* The day the Zinvoice was sent (YYYY-MM-DD, like paid_at). NULL on
+       drafts and on Zinvoices sent before it was recorded — surfaces fall
+       back to the issue date and say "Issued", never inventing a send. */
+    ["invoices", "sent_at", "TEXT"],
   ] as const) {
     try { db.exec(`ALTER TABLE ${tbl} ADD COLUMN ${col} ${def}`); }
     catch { /* column already exists */ }
@@ -163,8 +186,8 @@ db.exec(`DROP TABLE IF EXISTS recurring_schedules;`);
   catch { /* column already gone */ }
 
   const ENTRY_SELECT = `
-  SELECT e.id, e.project_id, e.description, e.start_time, e.end_time, e.invoice_id,
-         p.name AS project_name, c.name AS client_name, c.color AS client_color,
+  SELECT e.id, e.project_id, e.description, e.start_time, e.end_time, e.invoice_id, e.billable, e.tz,
+         p.name AS project_name, c.name AS client_name, c.color AS client_color, c.rate AS client_rate,
          i.number AS invoice_number, i.status AS invoice_status
   FROM time_entries e
   LEFT JOIN projects p ON p.id = e.project_id
@@ -183,8 +206,12 @@ db.exec(`DROP TABLE IF EXISTS recurring_schedules;`);
    FROM invoices i LEFT JOIN clients c ON c.id = i.client_id WHERE i.id = ?`);
   const qInvoiceItems = db.query("SELECT * FROM invoice_items WHERE invoice_id = ? ORDER BY id");
   const qInvoices = db.query(
-    `SELECT i.*, c.name AS client_name, c.color AS client_color,
+    `SELECT i.id, i.client_id, i.number, i.issue_date, i.due_date, i.status,
+          i.tax_rate, i.paid_at, i.sent_at, i.period_from, i.period_to,
+          c.name AS client_name, c.color AS client_color,
           c.payment_terms AS client_payment_terms,
+          (SELECT p.name FROM time_entries e JOIN projects p ON p.id = e.project_id
+            WHERE e.invoice_id = i.id AND e.project_id IS NOT NULL LIMIT 1) AS project_name,
           COALESCE((SELECT SUM(amount) FROM invoice_items WHERE invoice_id = i.id), 0) AS subtotal
    FROM invoices i LEFT JOIN clients c ON c.id = i.client_id ORDER BY i.issue_date DESC, i.id DESC`);
 

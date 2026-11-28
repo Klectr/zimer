@@ -3,21 +3,47 @@
  *  the calendar entry dialog must not offer Delete on it — same rule as the
  *  Today list's entry row (see timer.test.ts).
  */
-import { describe, expect, test } from "bun:test";
+import { describe, expect, setSystemTime, test } from "bun:test";
 import type { Database, Statement } from "bun:sqlite";
 import { createCalendarViews } from "./calendar.ts";
 
 describe("calendar dialog delete guard (#462)", () => {
+  const stubQuery = () => ({
+    get: (..._a: unknown[]) => ({ n: 1 }),
+    all: (..._a: unknown[]) => [],
+  });
   test("openEdit hides Delete for running entries, not just locked ones", async () => {
     const src = await Bun.file("site/views/calendar.ts").text();
     const openEdit = src.slice(src.indexOf("function openEdit(el)"), src.indexOf("function close(){"));
-    expect(openEdit).toContain("classList.contains('running')");
+    expect(openEdit).toContain("classList.contains('is-running')");
     expect(openEdit).toMatch(/delBtn\.hidden\s*=\s*!!locked\s*\|\|\s*running/);
   });
 
-  test("grid marks running entries so openEdit can find them", async () => {
-    const src = await Bun.file("site/views/calendar.ts").text();
-    expect(src).toContain('cal-entry${running ? " running" : ""}');
+  test("grid marks running entries so openEdit can find them", () => {
+    const running = {
+      id: 13, description: "live work", project_id: null, project_name: null,
+      client_name: null, client_color: null, invoice_id: null,
+      invoice_number: null, invoice_status: null,
+      start_time: "2026-09-21T15:00:00.000Z", end_time: null,
+    };
+    const db = {
+      query: (_sql: string) => ({ get: () => ({ n: 1 }), all: () => [running] }),
+    } as unknown as Database;
+    const views = createCalendarViews({
+      db,
+      qOne: stubQuery(),
+      qRange: stubQuery(),
+      entrySelect: "SELECT",
+      layout: (_t: string, b: string) => b,
+      projectOptionRows: () => [],
+      weekTargetBar: () => "",
+      calHourPx: 64,
+    } as any);
+    const html = views.weekInner("2026-09-20", "America/Chicago");
+    const tags = html.match(/<div class="ui-viz-block[^>]*>/g) || [];
+    const tag = tags.find((t) => t.includes('data-id="13"'));
+    expect(tag).toBeDefined();
+    expect(tag!).toContain("is-running");
   });
 });
 
@@ -52,12 +78,38 @@ describe("calendar entry aria-label (#479)", () => {
       qRange: stubQuery(),
       entrySelect: "SELECT",
       layout: (_t: string, b: string) => b,
-      projectOptions: () => "",
+      projectOptionRows: () => [],
       weekTargetBar: () => "",
       calHourPx: 64,
     } as any);
     return views.weekInner("2026-09-20", "America/Chicago");
   }
+
+  test("entry dialog actions render ui button classes (no unresolved variant)", () => {
+    const db = {
+      query: (_sql: string) => ({ get: () => ({ n: 1 }), all: () => [] }),
+    } as unknown as Database;
+    const views = createCalendarViews({
+      db,
+      qOne: stubQuery(),
+      qRange: stubQuery(),
+      entrySelect: "SELECT",
+      layout: (_t: string, b: string) => b,
+      projectOptionRows: () => [],
+      weekTargetBar: () => "",
+      calHourPx: 64,
+    } as any);
+    const html = views.weekGrid();
+    expect(html).not.toContain('class="undefined"');
+    expect(html).toContain('class="ui-btn ui-btn-ghost ui-btn-danger" id="cal-delete" hidden');
+    expect(html).toContain('class="ui-btn ui-btn-primary" id="cal-save"');
+    /* #1217: dialog buttons are verb + noun, never bare Save/Delete. */
+    expect(html).toContain(">Save entry</button>");
+    expect(html).toContain(">Delete entry</button>");
+    expect(html).not.toContain(">Save</button>");
+    expect(html).not.toContain(">Delete</button>");
+    expect(html).toContain("tkConfirm('Delete this entry? This cannot be undone.', 'Delete entry')");
+  });
 
   function labelFor(html: string, id: number): string {
     const m = html.match(new RegExp(`data-id="${id}"[^>]*aria-label="([^"]*)"`));
@@ -81,7 +133,7 @@ describe("calendar entry aria-label (#479)", () => {
 });
 
 /** #486: finish the data-tip sweep — week-nav chevrons used the OS-native
- *  title= tooltip while the rest of the app shows M3 plain tooltips. */
+ *  title= tooltip while the rest of the app shows plain tooltips. */
 describe("week-nav tooltips (#486)", () => {
   const stubQuery = () => ({
     get: (..._a: unknown[]) => ({ n: 1 }),
@@ -97,7 +149,7 @@ describe("week-nav tooltips (#486)", () => {
       qRange: stubQuery(),
       entrySelect: "SELECT",
       layout: (_t: string, b: string) => b,
-      projectOptions: () => "",
+      projectOptionRows: () => [],
       weekTargetBar: () => "",
       calHourPx: 64,
     } as any);
@@ -132,15 +184,15 @@ describe("calendar nav edge tooltips (#554, #572)", () => {
       qRange: stubQuery(),
       entrySelect: "SELECT",
       layout: (_t: string, b: string) => b,
-      projectOptions: () => "",
+      projectOptionRows: () => [],
       weekTargetBar: () => "",
       calHourPx: 64,
     } as any);
   }
   test("week mode: next-week chevron right-aligns its tooltip", () => {
     const html = views().weekInner("2026-09-20", "America/Chicago");
-    expect(html).toContain('class="md-icon-button tip-right" href="/calendar?week=2026-09-27"');
-    expect(html).not.toContain('class="md-icon-button tip-right" href="/calendar?week=2026-09-13"');
+    expect(html).toContain('class="ui-icon-btn tip-right" href="/calendar?week=2026-09-27"');
+    expect(html).not.toContain('class="ui-icon-btn tip-right" href="/calendar?week=2026-09-13"');
   });
   test("carousel: chevrons step a full week in each direction", () => {
     const html = views().weekInner("2026-09-20", "America/Chicago");
@@ -170,13 +222,13 @@ describe("calendar week carousel (#572)", () => {
       qRange: stubQuery(),
       entrySelect: "SELECT",
       layout: (_t: string, b: string) => b,
-      projectOptions: () => "",
+      projectOptionRows: () => [],
       weekTargetBar: () => "",
       calHourPx: 64,
     } as any);
   }
   const stripCount = (html: string) => (html.match(/class="cal-strip"/g) || []).length;
-  const laneCount = (html: string) => (html.match(/class="cal-day[ "]/g) || []).length;
+  const laneCount = (html: string) => (html.match(/class="ui-viz-col/g) || []).length;
 
   test("weekInner renders three strips tagged with their Sundays", () => {
     const html = views().weekInner("2026-09-20", "America/Chicago");
@@ -223,14 +275,99 @@ describe("calendar week carousel (#572)", () => {
     expect(html).not.toContain('class="cal-strip"');
     expect(html).toContain('class="cal-pane-tpl"');
   });
-  test("dayInner is gone", () => {
-    expect((views() as any).dayInner).toBeUndefined();
+});
+
+/** #1501: the ?week= params were shape-checked only, so an impossible date
+ *  (2026-02-30, month 13) rolled over in the Date math and silently rendered
+ *  a different week. A week that is not a real calendar day falls back to
+ *  the current week, like a missing/garbled one always did. */
+describe("calendar week param must be a real date (#1501)", () => {
+  const stubQuery = () => ({
+    get: (..._a: unknown[]) => ({ n: 1 }),
+    all: (..._a: unknown[]) => [],
+  });
+  function views() {
+    const db = {
+      query: (_sql: string) => ({ get: () => ({ n: 1 }), all: () => [] }),
+    } as unknown as Database;
+    return createCalendarViews({
+      db,
+      qOne: stubQuery(),
+      qRange: stubQuery(),
+      entrySelect: "SELECT",
+      layout: (_t: string, b: string) => b,
+      projectOptionRows: () => [],
+      weekTargetBar: () => "",
+      calHourPx: 64,
+    } as any);
+  }
+  test("weekInner with an impossible week renders the current week", () => {
+    setSystemTime(new Date("2026-09-23T17:00:00.000Z"));
+    try {
+      const html = views().weekInner("2026-02-30", "America/Chicago");
+      expect(html).toContain('data-sun="2026-09-20"');
+      expect(html).not.toContain('data-sun="2026-03-01"');
+      expect(html).not.toContain('data-sun="2026-03-08"');
+    } finally { setSystemTime(); }
+  });
+  test("weekStrip with a month-13 week renders the current week", () => {
+    setSystemTime(new Date("2026-09-23T17:00:00.000Z"));
+    try {
+      const html = views().weekStrip("2026-13-01", "America/Chicago");
+      expect(html).toContain('data-date="2026-09-20"');
+      expect(html).toContain('data-date="2026-09-26"');
+    } finally { setSystemTime(); }
+  });
+  test("weekGrid drops an impossible week from the partial URL, keeps a real one", () => {
+    expect(views().weekGrid("2026-02-30")).toContain('hx-get="/partial/week"');
+    expect(views().weekGrid("2026-02-30")).not.toContain("2026-02-30");
+    expect(views().weekGrid("2026-09-20")).toContain('hx-get="/partial/week?week=2026-09-20"');
+  });
+});
+
+/** #1505: a valid ?week= that is not a Sunday was treated as the week
+ *  start, rendering a Wed–Tue week. It snaps to the Sunday of its
+ *  containing week, like ?day= already does; Sundays are unchanged. */
+describe("calendar week param snaps to Sunday (#1505)", () => {
+  const stubQuery = () => ({
+    get: (..._a: unknown[]) => ({ n: 1 }),
+    all: (..._a: unknown[]) => [],
+  });
+  function views() {
+    const db = {
+      query: (_sql: string) => ({ get: () => ({ n: 1 }), all: () => [] }),
+    } as unknown as Database;
+    return createCalendarViews({
+      db,
+      qOne: stubQuery(),
+      qRange: stubQuery(),
+      entrySelect: "SELECT",
+      layout: (_t: string, b: string) => b,
+      projectOptionRows: () => [],
+      weekTargetBar: () => "",
+      calHourPx: 64,
+    } as any);
+  }
+  test("weekInner with a Wednesday week renders the Sunday-start week", () => {
+    const html = views().weekInner("2026-09-23", "America/Chicago");
+    expect(html).toContain('data-sun="2026-09-20"');
+    expect(html).not.toContain('data-sun="2026-09-23"');
+  });
+  test("weekStrip with a Saturday week renders the Sunday-start week", () => {
+    const html = views().weekStrip("2026-09-26", "America/Chicago");
+    expect(html).toContain('data-date="2026-09-20"');
+    expect(html).toContain('data-date="2026-09-26"');
+  });
+  test("weekGrid snaps a mid-week date to Sunday in the partial URL", () => {
+    expect(views().weekGrid("2026-09-23")).toContain('hx-get="/partial/week?week=2026-09-20"');
+    expect(views().weekGrid("2026-09-20")).toContain('hx-get="/partial/week?week=2026-09-20"');
   });
 });
 
 /** #500: finish the data-tip sweep — the calendar entry card's invoiced-mark
- *  info was the last native title= tooltip on the grid; it now uses the house
- *  M3 plain tooltip (data-tip) like the timer page's inv-mark chip (#498). */
+ *  info was the last native title= tooltip on the grid. On the ui visualizer
+ *  the mark rides the block itself: the is-invoiced class plus the invoice
+ *  number in data-locked (sent/paid time is locked), never a native title. */
 describe("calendar entry invoiced-mark tooltip (#500)", () => {
   const stubQuery = () => ({
     get: (..._a: unknown[]) => ({ n: 1 }),
@@ -258,27 +395,31 @@ describe("calendar entry invoiced-mark tooltip (#500)", () => {
       qRange: stubQuery(),
       entrySelect: "SELECT",
       layout: (_t: string, b: string) => b,
-      projectOptions: () => "",
+      projectOptionRows: () => [],
       weekTargetBar: () => "",
       calHourPx: 64,
     } as any);
     return views.weekInner("2026-09-20", "America/Chicago");
   }
   function cardTag(html: string, id: number): string {
-    const m = html.match(new RegExp(`<div class="cal-entry[^>]*data-id="${id}"[^>]*>`));
-    if (!m) throw new Error(`no cal-entry card with data-id=${id}`);
-    return m[0];
+    const tags = html.match(/<div class="ui-viz-block[^>]*>/g) || [];
+    const tag = tags.find((t) => t.includes(`data-id="${id}"`));
+    if (!tag) throw new Error(`no ui-viz-block with data-id=${id}`);
+    return tag;
   }
-  test("invoiced entry card uses data-tip, not the native title", () => {
+  test("invoiced entry block is marked and carries its invoice number, no native title", () => {
     const html = weekInnerHtml([plain, invoiced]);
     const tag = cardTag(html, 21);
-    expect(tag).toContain('data-tip="Zinvoiced on INV-0042"');
+    expect(tag).toContain("is-invoiced");
+    expect(tag).toContain('data-locked="INV-0042"');
     expect(tag).not.toContain("title=");
   });
-  test("plain entries get no mark tip at all", () => {
+  test("plain entries get no mark at all", () => {
     const html = weekInnerHtml([plain, invoiced]);
     const tag = cardTag(html, 20);
+    expect(tag).not.toContain("is-invoiced");
     expect(tag).not.toContain("data-tip=");
+    expect(tag).not.toContain("data-locked");
     expect(tag).not.toContain("title=");
   });
   test("resize handles carry no native title", () => {
@@ -326,14 +467,14 @@ describe("calendar week-only carousel (#572)", () => {
       qRange: qr,
       entrySelect: "SELECT",
       layout: (_t: string, b: string) => b,
-      projectOptions: () => "",
+      projectOptionRows: () => [],
       weekTargetBar: () => "",
       calHourPx: 64,
     } as any);
   }
 
-  const laneCount = (html: string) => (html.match(/class="cal-day[ "]/g) || []).length;
-  const agSectionCount = (html: string) => (html.match(/class="cal-ag-day[ "]/g) || []).length;
+  const laneCount = (html: string) => (html.match(/class="ui-viz-col/g) || []).length;
+  const agSectionCount = (html: string) => (html.match(/class="ui-agenda-day"/g) || []).length;
 
   test("weekInner renders three full weeks: 21 lanes and 21 agenda sections", () => {
     const html = viewsFor([monEntry, tueEntry]).weekInner("2026-09-20", "America/Chicago");
@@ -380,21 +521,26 @@ describe("calendar week-only carousel (#572)", () => {
   });
 
   test("nudge chip says \"Zinvoice this week\" on the current week (#592)", () => {
-    const aside = asideOf(viewsFor([monEntry, tueEntry]).weekInner(undefined, "America/Chicago"));
-    expect(aside).toContain("Zinvoice this week");
-    expect(aside).not.toContain("Zinvoice this period");
+    /* "now" is inside the fixtures' week: a week only shows entries whose
+       own wall day falls in it (#1081), so the current week must be theirs. */
+    setSystemTime(new Date("2026-09-23T17:00:00.000Z"));
+    try {
+      const aside = asideOf(viewsFor([monEntry, tueEntry]).weekInner(undefined, "America/Chicago"));
+      expect(aside).toContain("Zinvoice this week");
+      expect(aside).not.toContain("Zinvoice this period");
+    } finally { setSystemTime(); }
   });
 
   test("nudge chip omits the amount when no billable time is invoiced yet (#1035)", () => {
     const aside = asideOf(viewsFor([monEntry, tueEntry]).weekInner("2026-09-20", "America/Chicago"));
     expect(aside).toContain("nudge-chip");
-    expect(aside).not.toContain("not yet zinvoiced");
+    expect(aside).not.toContain("not yet Zinvoiced");
   });
 
   test("nudge chip shows the amount once part of the week is invoiced (#1035)", () => {
     const invoicedMon = { ...monEntry, invoice_id: 7, invoice_number: "INV-0001", invoice_status: "sent" };
     const aside = asideOf(viewsFor([invoicedMon, tueEntry]).weekInner("2026-09-20", "America/Chicago"));
-    expect(aside).toContain("1h not yet zinvoiced");
+    expect(aside).toContain("1h not yet Zinvoiced");
   });
 
   test("slim chip rides inline in the summary, beside the total (#1041)", () => {
@@ -425,11 +571,6 @@ describe("calendar week-only carousel (#572)", () => {
     expect(agSectionCount(html)).toBe(7);
   });
 
-  test("no day mode survives", () => {
-    const html = viewsFor([]).weekInner("2026-09-20", "America/Chicago");
-    expect(html).not.toContain("data-mode=");
-    expect(html).not.toContain("/partial/day");
-  });
 });
 
 /** #524:/** #524: the supporting-pane summary's week-over-week delta slot — with no
@@ -453,7 +594,7 @@ describe("week summary delta (#524)", () => {
       qRange: { get: (..._a: unknown[]) => ({ n: 1 }), all: (..._a: unknown[]) => prevRows },
       entrySelect: "SELECT",
       layout: (_t: string, b: string) => b,
-      projectOptions: () => "",
+      projectOptionRows: () => [],
       weekTargetBar: () => "",
       calHourPx: 64,
     } as any);
@@ -511,6 +652,64 @@ describe("week summary delta (#524)", () => {
   });
 });
 
+/** #1219 item 8: on the current week the delta compares against the
+ *  previous week only up to the same moment, so an early-week partial total
+ *  isn't measured against a full week. Future weeks show no delta. */
+describe("week summary delta is pro-rated on the current week (#1219)", () => {
+  const entry = {
+    id: 21, description: "work", project_id: 3, project_name: "p",
+    client_name: "Acme", client_color: null, invoice_id: null,
+    invoice_number: null, invoice_status: null,
+    start_time: "2026-09-21T15:00:00.000Z", end_time: "2026-09-21T16:00:00.000Z",
+  };
+  function summaryAt(now: string, prevRows: unknown[]) {
+    setSystemTime(new Date(now));
+    try {
+      const db = { query: (_sql: string) => ({ get: () => ({ n: 1 }), all: () => [entry] }) } as unknown as Database;
+      const views = createCalendarViews({
+        db,
+        qOne: { get: () => ({ n: 1 }), all: () => [] },
+        qRange: { get: () => ({ n: 1 }), all: () => prevRows },
+        entrySelect: "SELECT",
+        layout: (_t: string, b: string) => b,
+        projectOptionRows: () => [],
+        weekTargetBar: () => "",
+        calHourPx: 64,
+      } as any);
+      return views.weekInner("2026-09-20", "America/Chicago");
+    } finally {
+      setSystemTime();
+    }
+  }
+  /* Tue 2026-09-22 12:00 Chicago → the cutoff is Tue 2026-09-15 17:00Z. */
+  const NOW = "2026-09-22T17:00:00.000Z";
+  const monPrev = { ...entry, start_time: "2026-09-14T15:00:00.000Z", end_time: "2026-09-14T16:00:00.000Z" };
+  const thuPrev = { ...entry, start_time: "2026-09-17T15:00:00.000Z", end_time: "2026-09-17T17:00:00.000Z" };
+
+  test("previous-week time after the same moment is ignored", () => {
+    const html = summaryAt(NOW, [monPrev, thuPrev]);
+    expect(html).toContain('aria-label="0% unchanged vs this time last week"');
+    expect(html).not.toContain("% down vs this time last week");
+  });
+
+  test("an entry spanning the cutoff counts only up to it", () => {
+    const spanning = { ...entry, start_time: "2026-09-15T16:30:00.000Z", end_time: "2026-09-15T19:00:00.000Z" };
+    const html = summaryAt(NOW, [spanning]);
+    /* 30m counted against this week's 1h → +100%. */
+    expect(html).toContain('aria-label="100% up vs this time last week"');
+  });
+
+  test("past weeks keep full-week vs full-week wording", () => {
+    const html = summaryAt("2026-10-05T17:00:00.000Z", [monPrev, thuPrev]);
+    expect(html).toContain('aria-label="67% down vs prev week"');
+  });
+
+  test("future weeks show no delta", () => {
+    const html = summaryAt("2026-09-10T17:00:00.000Z", [monPrev]);
+    expect(html).not.toContain("cal-delta");
+  });
+});
+
 /** #530: entry cards are tabindex="0" role="button" — Enter/Space must
  *  activate them (openEdit), not just land focus on them. */
 describe("calendar entry keyboard activation (#530)", () => {
@@ -522,7 +721,7 @@ describe("calendar entry keyboard activation (#530)", () => {
     );
     expect(handler).toContain("e.key==='Enter'");
     expect(handler).toContain("e.key===' '");
-    expect(handler).toMatch(/closest\('\.cal-entry,.cal-ag-row'\)/);
+    expect(handler).toMatch(/closest\('\.ui-viz-block,\[data-entry-row\]'\)/);
     expect(handler).toContain("openEdit(card)");
     expect(handler).toContain("e.preventDefault()");
   });
@@ -545,7 +744,7 @@ describe("calendar dialog description suggestions (#578)", () => {
       qRange: null,
       entrySelect: "SELECT",
       layout: (_t: string, b: string) => b,
-      projectOptions: () => "",
+      projectOptionRows: () => [],
       weekTargetBar: () => "",
       calHourPx: 64,
     } as any);
@@ -585,7 +784,7 @@ describe("calendar dialog placement (#669)", () => {
       qRange: { get: (..._a: unknown[]) => ({ n: 1 }), all: (..._a: unknown[]) => [] },
       entrySelect: "SELECT",
       layout: (_t: string, b: string) => b,
-      projectOptions: () => "",
+      projectOptionRows: () => [],
       weekTargetBar: () => "",
       calHourPx: 64,
     } as any);
@@ -618,29 +817,50 @@ describe("calendar dialog placement (#669)", () => {
   });
 });
 
-/** #704: the 30s placeNow tick grows the running card's height as the timer
- *  runs. It never synced the cal-compact class, so a timer started short
- *  kept its 999px pill radius and stretched into an oval until the next
- *  reload. The tick must toggle the class on the true (unfloored) height,
- *  with the same <26px threshold the server render uses. */
-describe("running entry pill sync (#704)", () => {
+/** The 30s placeNow tick grows the running block's height as the timer
+ *  runs, in the visualizer's geometry (height -4, 22px floor), capped at
+ *  the lane's midnight edge so a late-night timer can't stretch past it. */
+describe("running entry growth tick (#704, #857)", () => {
   async function placeNowSrc() {
     const src = await Bun.file("site/views/calendar.ts").text();
     return src.slice(src.indexOf("function placeNow(){"), src.indexOf("/* Scroll one strip"));
   }
 
-  test("placeNow toggles cal-compact on the running entry", async () => {
+  test("placeNow grows running blocks on the tick", async () => {
     const s = await placeNowSrc();
-    expect(s).toContain("classList.toggle('cal-compact',trueH<26)");
+    expect(s).toContain("querySelectorAll('.ui-viz-block.is-running')");
+    expect(s).toMatch(/var trueH=\(\(nowMin-sm\)\/60\)\*HOUR-4;/);
+    expect(s).toMatch(/style\.height=Math\.min\(Math\.max\(trueH,22\),Math\.max\(capH,trueH\)\)/);
   });
 
-  test("the toggle keys off the unfloored height, not the 26px floor", async () => {
+  test("placeNow caps the running block's growth at midnight", async () => {
     const s = await placeNowSrc();
-    expect(s).toMatch(/var trueH=\(\(nowMin-sm\)\/60\)\*HOUR;/);
-    /* #857: the tick now caps the floor at midnight; the toggle still keys
-       off unfloored trueH. */
-    expect(s).toMatch(/var capH=\(\(1440-sm\)\/60\)\*HOUR-2;/);
-    expect(s).toMatch(/style\.height=Math\.min\(Math\.max\(trueH,26\),Math\.max\(capH,trueH\)\)/);
+    expect(s).toContain("((1440-sm)/60)*HOUR-2");
+  });
+});
+
+/** #1546 follow-up: toLocalInput's Intl branch must convert BC-era years
+ *  back to astronomical years (1 BC = year 0), like wall.ts #1544 — without
+ *  era handling a year-0 entry renders as 0001 in the edit dialog. */
+describe("toLocalInput year handling (#1546)", () => {
+  async function loadToLocalInput() {
+    const src = await Bun.file("site/views/calendar.ts").text();
+    const js = src.slice(src.indexOf("var p2=function"), src.indexOf("function suffix()"));
+    return new Function(`${js}; return toLocalInput;`)() as (iso: string, zone?: string) => string;
+  }
+
+  test("year 0 and sub-1000 years survive the zone branch", async () => {
+    const toLocalInput = await loadToLocalInput();
+    expect(toLocalInput("0000-06-15T12:00:00.000Z", "UTC")).toBe("0000-06-15T12:00");
+    expect(toLocalInput("0099-06-15T12:00:00.000Z", "UTC")).toBe("0099-06-15T12:00");
+    expect(toLocalInput("2026-06-15T12:00:00.000Z", "UTC")).toBe("2026-06-15T12:00");
+  });
+
+  test("the no-zone fallback pads the year too", async () => {
+    const toLocalInput = await loadToLocalInput();
+    const d = new Date(2000, 5, 15, 12, 0);
+    d.setFullYear(99);
+    expect(toLocalInput(d.toISOString())).toBe("0099-06-15T12:00");
   });
 });
 
@@ -663,18 +883,22 @@ describe("edit-entry floating labels (#709)", () => {
       qRange: { get: () => ({ n: 1 }), all: () => [] },
       entrySelect: "SELECT",
       layout: (_t: string, b: string) => b,
-      projectOptions: () => "",
+      projectOptionRows: () => [],
       weekTargetBar: () => "",
       calHourPx: 64,
     } as any);
     return views.editPage(7) as string;
   }
 
+  test("save button is verb + noun (#1217)", () => {
+    expect(editPageHtml()).toContain(">Save entry</button>");
+  });
+
   test("each field's label is wired to its input via matching id/for", () => {
     const html = editPageHtml();
     for (const id of ["ee-desc", "ee-project", "ee-start", "ee-end"]) {
       expect(html).toContain(`id="${id}"`);
-      expect(html).toContain(`<label for="${id}">`);
+      expect(html).toContain(`<label class="ui-field-label" for="${id}">`);
     }
   });
 });
@@ -695,11 +919,16 @@ describe("entry edit dialog fragment (#903)", () => {
       qRange: { get: () => ({ n: 1 }), all: () => [] },
       entrySelect: "SELECT",
       layout: (_t: string, b: string) => b,
-      projectOptions: () => "",
+      projectOptionRows: () => [],
       weekTargetBar: () => "",
       calHourPx: 64,
     } as any);
   }
+
+  test("dialog save button is verb + noun (#1217)", () => {
+    const html = dialogViews().editEntryDialog(7) as string;
+    expect(html).toContain(">Save entry</button>");
+  });
 
   test("fragment carries the dialog head and an htmx form", () => {
     const html = dialogViews().editEntryDialog(7) as string;
@@ -715,7 +944,7 @@ describe("entry edit dialog fragment (#903)", () => {
     const html = dialogViews().editEntryDialog(7) as string;
     for (const id of ["ee-desc", "ee-project", "ee-start", "ee-end"]) {
       expect(html).toContain(`id="${id}"`);
-      expect(html).toContain(`<label for="${id}">`);
+      expect(html).toContain(`<label class="ui-field-label" for="${id}">`);
     }
   });
 
@@ -727,7 +956,7 @@ describe("entry edit dialog fragment (#903)", () => {
       qRange: { get: () => ({ n: 1 }), all: () => [] },
       entrySelect: "SELECT",
       layout: (_t: string, b: string) => b,
-      projectOptions: () => "",
+      projectOptionRows: () => [],
       weekTargetBar: () => "",
       calHourPx: 64,
     } as any);
@@ -755,7 +984,7 @@ describe("calendar pane hint (#766)", () => {
       qRange: stubQuery(),
       entrySelect: "SELECT",
       layout: (_t: string, b: string) => b,
-      projectOptions: () => "",
+      projectOptionRows: () => [],
       weekTargetBar: () => "",
       calHourPx: 64,
     } as any);
@@ -772,303 +1001,6 @@ describe("calendar pane hint (#766)", () => {
   });
 });
 
-/** #841: slots stored under the legacy gold default render with the theme
- *  primary variable, so a scheme change needs no data migration. */
-describe("calendar slot theme color (#841)", () => {
-  const stubQuery = () => ({
-    get: (..._a: unknown[]) => ({ n: 1 }),
-    all: (..._a: unknown[]) => [],
-  });
-  const goldEntry = {
-    id: 30, description: "legacy gold client", project_id: null, project_name: null,
-    client_name: "Acme", client_color: "#f2c14e", invoice_id: null,
-    invoice_number: null, invoice_status: null,
-    start_time: "2026-09-21T15:00:00.000Z", end_time: "2026-09-21T16:00:00.000Z",
-  };
-  const blueEntry = { ...goldEntry, id: 31, client_color: "#7cc4ff" };
-  function weekInnerHtml(entries: unknown[]) {
-    const db = {
-      query: (_sql: string) => ({ get: () => ({ n: 1 }), all: () => entries }),
-    } as unknown as Database;
-    const views = createCalendarViews({
-      db,
-      qOne: stubQuery(),
-      qRange: stubQuery(),
-      entrySelect: "SELECT",
-      layout: (_t: string, b: string) => b,
-      projectOptions: () => "",
-      weekTargetBar: () => "",
-      calHourPx: 64,
-    } as any);
-    return views.weekInner("2026-09-20", "America/Chicago");
-  }
-  function cardTag(html: string, id: number): string {
-    const m = html.match(new RegExp(`<div class="cal-entry[^>]*data-id="${id}"[^>]*>`));
-    if (!m) throw new Error(`no cal-entry card with data-id=${id}`);
-    return m[0];
-  }
-  test("legacy gold client color renders the theme primary variable", () => {
-    const tag = cardTag(weekInnerHtml([goldEntry]), 30);
-    expect(tag).toContain("--c:var(--md-sys-color-primary)");
-    expect(tag).not.toContain("#f2c14e");
-  });
-  test("explicit client colors pass through untouched", () => {
-    const tag = cardTag(weekInnerHtml([blueEntry]), 31);
-    expect(tag).toContain("--c:#7cc4ff");
-  });
-});
-
-/** #845/#847: day columns keep rounded top/bottom corners at every scroll
- *  position. #845 put the rounded top on the sticky header itself, but the
- *  lane's purple night band scrolled underneath and peeked through the
- *  header's rounded corner cutouts (#847). Now the sticky header is opaque
- *  page-bg and square (nothing can peek through it); a ::before top cutter
- *  on the lane re-rounds the lane's visible top edge, and the ::after bottom
- *  cutter re-rounds the visible bottom edge. #849: the top cutter moved from
- *  the header to the lane so it paints below entries (z-0 vs entries z-1) —
- *  the header-anchored cutter bit dark specks out of entries touching the
- *  lane top. #877: the top cutter moved to z-1, above the translucent night
- *  bands (z-auto) — at scroll-top the band's opaque top-12px backing covered
- *  the z-0 cutter, but scrolled past 12px the band's translucent region slid
- *  over the cutter's dark crescents and they read through as notches; above
- *  the band the crescents are clean dark cuts at every scroll offset. Entries
- *  moved to z-2 to stay above the cutters. */
-describe("calendar column rounding (#845, #847, #849)", () => {
-  test("sticky day header is opaque page-bg and square — no corner cutouts to peek through", async () => {
-    const css = await Bun.file("site/static/style.css").text();
-    const head = css.match(/body\.app-fixed \.cal-day-head,\s*body\.app-fixed \.cal-gutter-spacer\s*\{[^}]*\}/);
-    expect(head).not.toBeNull();
-    expect(head![0]).toMatch(/background:\s*var\(--md-sys-color-surface\)/);
-    expect(head![0]).not.toMatch(/border-radius/);
-  });
-  test("top cutter re-rounds the lane's visible top edge directly under the header", async () => {
-    const css = await Bun.file("site/static/style.css").text();
-    const cutter = css.match(/\.cal-day-col::before\s*\{[^}]*\}/);
-    expect(cutter).not.toBeNull();
-    expect(cutter![0]).toMatch(/position:\s*sticky/);
-    expect(cutter![0]).toMatch(/top:\s*var\(--cal-head-h\)/);
-    expect(cutter![0]).toMatch(/z-index:\s*3/);
-    expect(cutter![0]).toMatch(/background:\s*var\(--md-sys-color-surface\)/);
-    expect(cutter![0]).toMatch(/pointer-events:\s*none/);
-    expect(cutter![0]).toMatch(/mask:/);
-  });
-  test("#849: entries paint above both corner cutters so cutters can't bite them", async () => {
-    const css = await Bun.file("site/static/style.css").text();
-    const entry = css.match(/\.cal-entry\s*\{[^}]*\}/);
-    expect(entry).not.toBeNull();
-    expect(entry![0]).toMatch(/z-index:\s*2/);
-    const bottomCutter = css.match(/\.cal-day-col::after\s*\{[^}]*\}/);
-    expect(bottomCutter).not.toBeNull();
-    expect(bottomCutter![0]).toMatch(/z-index:\s*0/);
-  });
-  test("#877: top cutter paints above the translucent night band so its dark crescents can't show through it", async () => {
-    const css = await Bun.file("site/static/style.css").text();
-    const cutter = css.match(/\.cal-day-col::before\s*\{[^}]*\}/);
-    expect(cutter).not.toBeNull();
-    expect(cutter![0]).toMatch(/z-index:\s*3/);
-    // night band stays z-auto (below the z-3 cutter, above the lane bg)
-    const band = css.match(/\.cal-night\s*\{[^}]*\}/);
-    expect(band).not.toBeNull();
-    expect(band![0]).not.toMatch(/z-index/);
-    // entries stay above the cutter (the #849 fringe fix, now at z-2)
-    const entry = css.match(/\.cal-entry\s*\{[^}]*\}/);
-    expect(entry).not.toBeNull();
-    expect(entry![0]).toMatch(/z-index:\s*2/);
-  });
-  test("#881: now-dot straddles the lane edge; sticky headers overlap the gutters so the dot hides with the line", async () => {
-    const css = await Bun.file("site/static/style.css").text();
-    // the dot straddling the lane edge (left:-5px) is the correct design —
-    // #880 tucked it inside the lane instead; reverted
-    const dot = css.match(/\.cal-now::before\s*\{[^}]*\}/);
-    expect(dot).not.toBeNull();
-    expect(dot![0]).toMatch(/left:\s*-5px/);
-    expect(dot![0]).toMatch(/top:\s*-4px/);
-    // each day head overlaps 4px into the gutters on both sides, closing the
-    // 8px inter-lane gaps in the header band (the dot's gutter half then
-    // hides under the opaque sticky header with the line)
-    const head = css.match(/\.cal-grid\s*>\s*\.cal-day\s+\.cal-day-head\s*\{[^}]*\}/);
-    expect(head).not.toBeNull();
-    expect(head![0]).toMatch(/margin-left:\s*-4px/);
-    expect(head![0]).toMatch(/margin-right:\s*-4px/);
-    // Sunday is the last grid child — its head must not overhang the grid edge
-    const sun = css.match(/\.cal-grid\s*>\s*\.cal-day:nth-child\(8\)\s+\.cal-day-head\s*\{[^}]*\}/);
-    expect(sun).not.toBeNull();
-    expect(sun![0]).toMatch(/margin-right:\s*0/);
-    // the line itself stays full lane width, above entries
-    const line = css.match(/\.cal-now\s*\{[^}]*\}/);
-    expect(line).not.toBeNull();
-    expect(line![0]).toMatch(/left:\s*0/);
-    expect(line![0]).toMatch(/right:\s*0/);
-    expect(line![0]).toMatch(/z-index:\s*4/);
-  });
-  test("lane tone is a shared variable across day states", async () => {
-    const css = await Bun.file("site/static/style.css").text();
-    expect(css).toMatch(/\.cal-day\s*\{\s*--lane-bg:/);
-    expect(css).toMatch(/\.cal-day\.today\s*\{\s*--lane-bg:/);
-    expect(css).toMatch(/\.cal-day\.paced-short\s*\{\s*--lane-bg:/);
-    expect(css).toMatch(/\.cal-day-col\s*\{[^}]*background-color:\s*var\(--lane-bg\)/);
-  });
-  test("lane keeps full rounding; sticky cutter re-rounds the visible bottom", async () => {
-    const css = await Bun.file("site/static/style.css").text();
-    const lane = css.match(/\.cal-day-col\s*\{[^}]*\}/);
-    expect(lane).not.toBeNull();
-    expect(lane![0]).toMatch(/border-radius:\s*var\(--md-sys-shape-corner-medium\)/);
-    const cutter = css.match(/\.cal-day-col::after\s*\{[^}]*\}/);
-    expect(cutter).not.toBeNull();
-    expect(cutter![0]).toMatch(/position:\s*sticky/);
-    expect(cutter![0]).toMatch(/bottom:\s*0/);
-    expect(cutter![0]).toMatch(/margin-top:\s*auto/);
-    expect(cutter![0]).toMatch(/pointer-events:\s*none/);
-    expect(cutter![0]).toMatch(/mask:/);
-  });
-});
-
-/** #853: the AM night band's top corners showed tiny dark notches — the
- *  translucent band lets the ::before top cutter's page-bg crescents read
- *  through it. The band's top corner zone (12px) now has an opaque lane-bg
- *  backing with the purple composited over it, so the corners render cleanly
- *  while the rest of the band stays translucent (hour lines show through).
- *  Plus cal-edge-top: entries starting at 00:00 touch the lane's top edge and
- *  paint above the z-0 cutter, so they get the lane's medium radius on their
- *  top corners — mirrors #851's cal-edge-bottom. */
-describe("calendar top-edge rounding (#853)", () => {
-  test("night band's top corner zone has an opaque lane-bg backing under the purple", async () => {
-    const css = await Bun.file("site/static/style.css").text();
-    const band = css.match(/\.cal-night-am\s*\{[^}]*\}/);
-    expect(band).not.toBeNull();
-    /* band keeps the lane's medium radius on its top corners … */
-    expect(band![0]).toMatch(/border-radius:\s*var\(--md-sys-shape-corner-medium\)\s+var\(--md-sys-shape-corner-medium\)\s+0\s+0/);
-    /* … and layers purple over an opaque lane-bg backing for exactly the
-       top corner zone, with the translucent purple below it. */
-    expect(band![0]).toMatch(/linear-gradient\(var\(--lane-bg\),\s*var\(--lane-bg\)\)\s+left top\s*\/\s*100%\s*var\(--md-sys-shape-corner-medium\)/);
-  });
-  test("cal-edge-top gives midnight-start entries the lane's medium top radius (compact pills excluded)", async () => {
-    const css = await Bun.file("site/static/style.css").text();
-    const rule = css.match(/\.cal-entry\.cal-edge-top:not\(\.cal-compact\)\s*\{[^}]*\}/);
-    expect(rule).not.toBeNull();
-    expect(rule![0]).toMatch(/border-top-left-radius:\s*var\(--md-sys-shape-corner-medium\)/);
-    expect(rule![0]).toMatch(/border-top-right-radius:\s*var\(--md-sys-shape-corner-medium\)/);
-  });
-
-  const stubQuery = () => ({
-    get: (..._a: unknown[]) => ({ n: 1 }),
-    all: (..._a: unknown[]) => [],
-  });
-  /* 2026-09-21 is CDT (UTC-5): 05:00Z is local midnight. */
-  const midnightEntry = {
-    id: 31, description: "midnight start", project_id: null, project_name: null,
-    client_name: null, client_color: null, invoice_id: null,
-    invoice_number: null, invoice_status: null,
-    start_time: "2026-09-21T05:00:00.000Z", end_time: "2026-09-21T06:30:00.000Z",
-  };
-  const middayEntry = {
-    id: 32, description: "midday", project_id: null, project_name: null,
-    client_name: null, client_color: null, invoice_id: null,
-    invoice_number: null, invoice_status: null,
-    start_time: "2026-09-21T15:00:00.000Z", end_time: "2026-09-21T16:00:00.000Z",
-  };
-  const compactMidnight = {
-    id: 33, description: "compact midnight", project_id: null, project_name: null,
-    client_name: null, client_color: null, invoice_id: null,
-    invoice_number: null, invoice_status: null,
-    start_time: "2026-09-21T05:00:00.000Z", end_time: "2026-09-21T05:15:00.000Z",
-  };
-  function weekInnerHtml(entries: unknown[]) {
-    const db = {
-      query: (_sql: string) => ({ get: () => ({ n: 1 }), all: () => entries }),
-    } as unknown as Database;
-    const views = createCalendarViews({
-      db,
-      qOne: stubQuery(),
-      qRange: stubQuery(),
-      entrySelect: "SELECT",
-      layout: (_t: string, b: string) => b,
-      projectOptions: () => "",
-      weekTargetBar: () => "",
-      calHourPx: 64,
-    } as any);
-    return views.weekInner("2026-09-20", "America/Chicago");
-  }
-  function classesFor(html: string, id: number): string {
-    const m = html.match(new RegExp(`data-id="${id}"[^>]*class="([^"]*)"|class="([^"]*)"[^>]*data-id="${id}"`));
-    if (!m) throw new Error(`no cal-entry with data-id=${id}`);
-    return (m[1] ?? m[2] ?? "");
-  }
-  test("entry starting at 00:00 is flagged cal-edge-top; others are not", () => {
-    const html = weekInnerHtml([midnightEntry, middayEntry, compactMidnight]);
-    expect(classesFor(html, 31)).toContain("cal-edge-top");
-    expect(classesFor(html, 32)).not.toContain("cal-edge-top");
-    /* compact pills keep their 999px rounding — never flagged. */
-    expect(classesFor(html, 33)).not.toContain("cal-edge-top");
-    expect(classesFor(html, 33)).toContain("cal-compact");
-  });
-});
-
-/** #857: a short entry starting near midnight got the 22px minimum-height
- *  floor with no room cap, so its card poked past the lane's bottom edge.
- *  Midnight now caps the floor (same shape as #279's next-entry cap), and
- *  the placeNow tick applies the same cap to running entries. */
-describe("calendar midnight lane cap (#857)", () => {
-  const stubQuery = () => ({
-    get: (..._a: unknown[]) => ({ n: 1 }),
-    all: (..._a: unknown[]) => [],
-  });
-  /* 2026-09-21 is CDT (UTC-5): 04:50Z is 23:50 local. */
-  const lateEntry = {
-    id: 34, description: "almost midnight", project_id: null, project_name: null,
-    client_name: null, client_color: null, invoice_id: null,
-    invoice_number: null, invoice_status: null,
-    start_time: "2026-09-22T04:50:00.000Z", end_time: "2026-09-22T04:55:00.000Z",
-  };
-  const middayShortEntry = {
-    id: 35, description: "midday short", project_id: null, project_name: null,
-    client_name: null, client_color: null, invoice_id: null,
-    invoice_number: null, invoice_status: null,
-    start_time: "2026-09-21T15:00:00.000Z", end_time: "2026-09-21T15:05:00.000Z",
-  };
-  function weekInnerHtml(entries: unknown[]) {
-    const db = {
-      query: (_sql: string) => ({ get: () => ({ n: 1 }), all: () => entries }),
-    } as unknown as Database;
-    const views = createCalendarViews({
-      db,
-      qOne: stubQuery(),
-      qRange: stubQuery(),
-      entrySelect: "SELECT",
-      layout: (_t: string, b: string) => b,
-      projectOptions: () => "",
-      weekTargetBar: () => "",
-      calHourPx: 64,
-    } as any);
-    return views.weekInner("2026-09-20", "America/Chicago");
-  }
-  function cardBox(html: string, id: number): { top: number; height: number; cls: string } {
-    const m = html.match(new RegExp(`style="top:([0-9.]+)px;height:([0-9.]+)px[^"]*"[^>]*data-id="${id}"`));
-    if (!m) throw new Error(`no cal-entry card with data-id=${id}`);
-    const c = html.match(new RegExp(`class="([^"]*)"[^>]*data-id="${id}"`));
-    return { top: parseFloat(m[1]), height: parseFloat(m[2]), cls: c ? c[1] : "" };
-  }
-  test("last entry of the day never extends past the lane bottom (24 * 64px)", () => {
-    const html = weekInnerHtml([lateEntry]);
-    const box = cardBox(html, 34);
-    expect(box.top + box.height).toBeLessThanOrEqual(24 * 64);
-    /* still compact — the floor treatment is capped, not removed. */
-    expect(box.cls).toContain("cal-compact");
-  });
-  test("midday short entries still get the full 22px floor", () => {
-    const html = weekInnerHtml([middayShortEntry]);
-    const box = cardBox(html, 35);
-    /* 22px floor minus the 4px #273 inset. */
-    expect(box.height).toBeCloseTo(18, 0);
-    expect(box.cls).toContain("cal-compact");
-  });
-  test("placeNow caps the running-entry floor at midnight", async () => {
-    const src = await Bun.file("site/views/calendar.ts").text();
-    const placeNow = src.slice(src.indexOf("function placeNow()"), src.indexOf("function syncCalHint()"));
-    expect(placeNow).toContain("((1440-sm)/60)*HOUR");
-  });
-});
-
 /** #946: on mobile, starting a scroll with the finger on a time entry opened
  *  the entry editor instead of scrolling — the pointerdown handler called
  *  openEdit immediately. The fix defers openEdit to pointerup behind a
@@ -1076,7 +1008,7 @@ describe("calendar midnight lane cap (#857)", () => {
 describe("calendar entry tap-vs-scroll (#946)", () => {
   function downHandler(src: string) {
     return src.slice(
-      src.indexOf("document.addEventListener('pointerdown'"),
+      src.indexOf("function startTap("),
       src.indexOf("/* #213: the server's clock")
     );
   }
@@ -1106,15 +1038,23 @@ describe("mobile week-summary compaction (#945)", () => {
     const block = css.match(/@media\s*\(max-width:\s*839px\)\s*\{[^}]*\.cal-supporting[^}]*\}/);
     expect(block).not.toBeNull();
     expect(css).toMatch(/@media\s*\(max-width:\s*839px\)[\s\S]*?\.cal-supporting\s*\{[^}]*gap:\s*6px/);
-    /* Hint stays visible but compact — never display:none. */
-    expect(css).toMatch(/@media\s*\(max-width:\s*839px\)[\s\S]*?\.cal-supporting\s+\.cal-hint\s*\{[^}]*font-size:\s*0\.6875rem/);
+    /* Hint stays visible but compact — never display:none. The assertion is
+       scoped to the 839px block itself: a lazy [\s\S]*? match across the
+       whole sheet also matches the 840–1279px block's identical declaration
+       and passes vacuously. */
+    const compactBlock = css
+      .split("@media")
+      .find((b) => b.startsWith(" (max-width: 839px)") && b.includes(".cal-hint"));
+    expect(compactBlock).toBeDefined();
+    expect(compactBlock!).toMatch(/\.cal-supporting\s+\.cal-hint\s*\{[^}]*font-size:\s*0\.6875rem/);
     expect(css).not.toMatch(/\.cal-supporting\s+\.cal-hint\s*\{[^}]*display:\s*none/);
     /* CTA, progress, and clients legend are tightened. */
     expect(css).toMatch(/@media\s*\(max-width:\s*839px\)[\s\S]*?\.cal-supporting\s+\.nudge-chip\s*\{[^}]*padding:\s*4px 10px/);
     expect(css).toMatch(/@media\s*\(max-width:\s*839px\)[\s\S]*?\.cal-supporting\s+\.week-clients\s*\{[^}]*gap:\s*4px 12px/);
   });
+  /* The hint lives with the calendar pane sections (site/views/calendar-pane.ts). */
   test("agenda hint text is the short mobile version", async () => {
-    const src = await Bun.file("site/views/calendar.ts").text();
+    const src = await Bun.file("site/views/calendar-pane.ts").text();
     expect(src).toContain("Tap + to log time, tap an entry to edit.");
   });
 });
@@ -1126,11 +1066,397 @@ describe("calendar summary pane breakpoint (#1077)", () => {
        crosses its 639px grid floor around 1231px, and 1280 is the chosen
        breakpoint above that crossing. */
     expect(css).toMatch(/@media\s*\(min-width:\s*1280px\)\s*\{[^}]*\.cal-pane-layout\s*\{[^}]*grid-template-areas:\s*"grid summary"/);
-    /* No 840px block may carry the calendar pane (the timer page's own
-       .pane-layout keeps its separate 840px rule — this is scoped to
+    /* No 840px block may carry the calendar pane (scoped to
        .cal-pane-layout only). */
     expect(css).not.toMatch(/@media\s*\(min-width:\s*840px\)\s*\{[^}]*\.cal-pane-layout/);
     /* The stacked default (summary above grid) remains the base layout. */
     expect(css).toMatch(/\.cal-pane-layout\s*\{[^}]*grid-template-areas:\s*"summary" "grid"/);
+  });
+});
+
+/** #1121: both calendar project pickers render through selectField,
+ *  fed by projectOptionRows — the quick-create dialog's cal-project and
+ *  the edit form's ee-project (selected + locked-disabled states). */
+describe("calendar project pickers (#1121)", () => {
+  const rows = [{ id: 5, name: "Website", client: "Acme" }, { id: 6, name: "Admin", client: null }];
+  function viewsFor(entry: any) {
+    const stub = () => ({ get: () => entry, all: () => [], run: () => {} });
+    const db = { query: () => stub() } as unknown as Database;
+    return createCalendarViews({
+      db, qOne: stub() as unknown as Statement, qRange: stub() as unknown as Statement,
+      entrySelect: "SELECT", layout: (_t: string, b: string) => b,
+      projectOptionRows: () => rows, weekTargetBar: () => "", calHourPx: 64,
+    } as any);
+  }
+  const baseEntry = {
+    id: 11, description: "Work", project_id: 5, project_name: "Website",
+    client_name: "Acme", client_color: null, invoice_id: null,
+    invoice_number: null, invoice_status: null,
+    start_time: "2026-09-21T15:00:00.000Z", end_time: "2026-09-21T16:00:00.000Z",
+  };
+
+  test("quick-create dialog picker is a selectField with row labels", () => {
+    const html = viewsFor(baseEntry).calendarPage();
+    expect(html).toContain('<select class="ui-input ui-select" id="cal-project"><option value="">No project</option><option value="5">Website (Acme)</option><option value="6">Admin</option></select>');
+  });
+
+  test("edit picker carries the entry's project as selected", () => {
+    const html = viewsFor(baseEntry).editEntryDialog(11)!;
+    expect(html).toContain('<select class="ui-input ui-select" id="ee-project" name="project_id">');
+    expect(html).toContain('<option value="5" selected>Website (Acme)</option>');
+  });
+
+  test("edit picker is disabled for invoiced (locked) entries", () => {
+    const html = viewsFor({ ...baseEntry, invoice_id: 42, invoice_status: "sent" }).editEntryDialog(11)!;
+    expect(html).toContain('<select class="ui-input ui-select" id="ee-project" name="project_id" disabled>');
+  });
+});
+
+/** #1132: entries use the ui tint treatment (the viz-block pattern). Dead
+ *  CSS (the old night-sky decoration) is caught by css-coverage.test.ts. */
+describe("calendar legacy decoration removal (#1132)", () => {
+  test("entry blocks are the ui-viz tint treatment", async () => {
+    const css = await Bun.file("site/static/style.css").text();
+    const block = css.match(/\.ui-viz-block \{[^}]*\}/);
+    expect(block).not.toBeNull();
+    expect(block![0]).toContain("background: color-mix(in srgb, var(--entry, var(--color-text-tertiary)) 16%, transparent)");
+    expect(block![0]).toContain("border: 1px solid color-mix(in srgb, var(--entry, var(--color-text-tertiary)) 45%, transparent)");
+    expect(block![0]).toContain("box-sizing: border-box");
+    expect(block![0]).toContain("border-radius: var(--radius-sm)");
+  });
+
+});
+
+/** The suite mock's legend row under the week grid: billable and invoiced
+ *  swatches plus a CSV download scoped to the visible week. */
+describe("calendar legend (#1202 parity)", () => {
+  test("each week strip carries the legend and a week-scoped CSV export", () => {
+    const db = { query: (_sql: string) => ({ get: () => ({ n: 1 }), all: () => [] }) } as unknown as Database;
+    const views = createCalendarViews({
+      db,
+      qOne: { get: () => ({ n: 1 }), all: () => [] } as unknown as Statement,
+      qRange: { get: () => ({ n: 1 }), all: () => [] } as unknown as Statement,
+      entrySelect: "SELECT",
+      layout: (_t: string, b: string) => b,
+      projectOptionRows: () => [],
+      weekTargetBar: () => "",
+      calHourPx: 64,
+    } as any);
+    const html = views.weekInner("2026-11-01", "America/Chicago");
+    expect(html).toContain('class="cal-legend"');
+    expect(html).toContain("Invoiced");
+    expect(html).toContain("Running");
+    /* #1216: blocks are client-colored, so the legend names only the states
+       that override client color, in the tones they render. */
+    const legend = html.match(/<div class="cal-legend">([\s\S]*?)<\/div>/)?.[1] ?? "";
+    expect(legend).not.toContain("ui-tag-primary");
+    expect(legend).not.toContain("Billable");
+    expect(legend).toContain('<span class="ui-tag ui-tag-neutral">Invoiced</span>');
+    expect(legend).toContain('<span class="ui-tag ui-tag-success"><span class="ui-tag-dot"></span>Running</span>');
+    expect(html).toContain("/export/entries.csv?from=2026-10-25&amp;to=2026-11-01");
+  });
+
+  test("grid day headers shorten to weekday + day number so they never collide", () => {
+    const db = { query: (_sql: string) => ({ get: () => ({ n: 1 }), all: () => [] }) } as unknown as Database;
+    const views = createCalendarViews({
+      db,
+      qOne: { get: () => ({ n: 1 }), all: () => [] } as unknown as Statement,
+      qRange: { get: () => ({ n: 1 }), all: () => [] } as unknown as Statement,
+      entrySelect: "SELECT",
+      layout: (_t: string, b: string) => b,
+      projectOptionRows: () => [],
+      weekTargetBar: () => "",
+      calHourPx: 64,
+    } as any);
+    const html = views.weekInner("2026-11-01", "America/Chicago");
+    const head = html.match(/<span class="ui-viz-day-name">([^<]+)<\/span>/)?.[1];
+    expect(head).toMatch(/^[SMTWF] \d+$/);
+    expect(html).toContain('class="ui-tooltip');
+    expect(html).toContain('role="tooltip"');
+    expect(html).toMatch(/Sunday (Oct|Nov) \d+ \u00b7 \d+h? ?\d*m? tracked/);
+    expect(html).not.toContain('<span class="ui-viz-day-name">Sun Nov');
+  });
+});
+
+describe("calendar grid day totals (#1287)", () => {
+  const stubQuery = () => ({
+    get: (..._a: unknown[]) => ({ n: 1 }),
+    all: (..._a: unknown[]) => [],
+  });
+
+  function weekInnerHtml(entries: unknown[]) {
+    const db = {
+      query: (_sql: string) => ({ get: () => ({ n: 1 }), all: () => entries }),
+    } as unknown as Database;
+    const views = createCalendarViews({
+      db,
+      qOne: stubQuery(),
+      qRange: stubQuery(),
+      entrySelect: "SELECT",
+      layout: (_t: string, b: string) => b,
+      projectOptionRows: () => [],
+      weekTargetBar: () => "",
+      calHourPx: 64,
+    } as any);
+    return views.weekInner("2026-09-20", "America/Chicago");
+  }
+
+  test("empty days render no header total; the tooltip still says 0h tracked", () => {
+    const html = weekInnerHtml([]);
+    const totals = [...html.matchAll(/<span class="ui-viz-day-total" data-day-total>([^<]*)<\/span>/g)].map((m) => m[1]);
+    expect(totals.length).toBeGreaterThan(0);
+    expect(totals.every((t) => t === "")).toBe(true);
+    expect(html).toContain("0h tracked");
+  });
+
+  test("a day with time shows its total; the other days stay blank", () => {
+    const entry = {
+      id: 21, description: "work", project_id: null, project_name: null,
+      client_name: null, client_color: null, invoice_id: null,
+      invoice_number: null, invoice_status: null,
+      start_time: "2026-09-21T15:00:00.000Z", end_time: "2026-09-21T16:00:00.000Z",
+    };
+    const html = weekInnerHtml([entry]);
+    const totals = [...html.matchAll(/<span class="ui-viz-day-total" data-day-total>([^<]*)<\/span>/g)].map((m) => m[1]);
+    expect(totals.length).toBeGreaterThan(0);
+    expect(totals.filter((t) => t !== "")).toEqual(["1h"]);
+    expect(totals[8]).toBe("1h");
+    expect(html).toContain("1h tracked");
+  });
+
+  test("a sub-minute day still shows its total in header and tooltip", () => {
+    const entry = {
+      id: 22, description: "blip", project_id: null, project_name: null,
+      client_name: null, client_color: null, invoice_id: null,
+      invoice_number: null, invoice_status: null,
+      start_time: "2026-09-21T15:00:00.000Z", end_time: "2026-09-21T15:00:30.000Z",
+    };
+    const html = weekInnerHtml([entry]);
+    const totals = [...html.matchAll(/<span class="ui-viz-day-total" data-day-total>([^<]*)<\/span>/g)].map((m) => m[1]);
+    expect(totals.filter((t) => t !== "")).toEqual(["30s"]);
+    expect(html).toContain("30s tracked");
+  });
+});
+
+/** The stacked breakpoint (840–1279) has the full content width but no
+ *  side rail. Keep the summary to one compact band: total and billable
+ *  inline, the zinvoice action beside the arrows, no tall empty block. */
+describe("intermediate week summary (#1202 parity)", () => {
+  test("840–1279 compacts the summary and moves the zinvoice action to the nav", async () => {
+    const css = await Bun.file("site/static/style.css").text();
+    expect(css).toContain("@media (min-width: 840px) and (max-width: 1279px)");
+    expect(css).toContain(".week-nav-actions .nudge-nav { display: none; }");
+    expect(css).toContain(".week-nav-actions .nudge-nav { display: inline-flex;");
+    expect(css).toContain(".cal-supporting .cal-summary { display: flex;");
+    expect(css).toContain(".cal-supporting .cal-summary .nudge-chip { display: none; }");
+    expect(css).toContain(".cal-supporting { gap: 6px;");
+  });
+});
+
+describe("calendar client color (#1212)", () => {
+  const stubQuery = () => ({
+    get: (..._a: unknown[]) => ({ n: 1 }),
+    all: (..._a: unknown[]) => [],
+  });
+  test("grid block and agenda row carry the client's color; no-client stays neutral", () => {
+    const colored = {
+      id: 21, description: "brand work", project_id: 3, project_name: "Brand",
+      client_name: "Brightline Co", client_color: "#60a5fa", invoice_id: null,
+      invoice_number: null, invoice_status: null,
+      start_time: "2026-09-21T15:00:00.000Z", end_time: "2026-09-21T16:00:00.000Z",
+    };
+    const plain = { ...colored, id: 22, client_name: null, client_color: null, project_id: null, project_name: null };
+    const db = {
+      query: (_sql: string) => ({ get: () => ({ n: 1 }), all: () => [colored, plain] }),
+    } as unknown as Database;
+    const views = createCalendarViews({
+      db, qOne: stubQuery(), qRange: stubQuery(), entrySelect: "SELECT",
+      layout: (_t: string, b: string) => b, projectOptionRows: () => [],
+      weekTargetBar: () => "", calHourPx: 64,
+    } as any);
+    const html = views.weekInner("2026-09-20", "America/Chicago");
+    const tags = html.match(/<div class="ui-viz-block[^>]*>/g) || [];
+    expect(tags.find((t) => t.includes('data-id="21"'))!).toContain("--entry:#60a5fa");
+    expect(tags.find((t) => t.includes('data-id="22"'))!).toContain("--entry:var(--color-text-tertiary)");
+    expect(html).toContain('class="ui-row-dot" style="background:#60a5fa"');
+  });
+
+  test("legacy gold maps to the primary var; a malicious stored color renders neutral with no injection", () => {
+    const gold = {
+      id: 23, description: "gold work", project_id: 3, project_name: "Brand",
+      client_name: "Old Co", client_color: "#f2c14e", invoice_id: null,
+      invoice_number: null, invoice_status: null,
+      start_time: "2026-09-21T15:00:00.000Z", end_time: "2026-09-21T16:00:00.000Z",
+    };
+    const evil = { ...gold, id: 24, client_color: "#60a5fa;position:fixed;inset:0" };
+    const db = {
+      query: (_sql: string) => ({ get: () => ({ n: 1 }), all: () => [gold, evil] }),
+    } as unknown as Database;
+    const views = createCalendarViews({
+      db, qOne: stubQuery(), qRange: stubQuery(), entrySelect: "SELECT",
+      layout: (_t: string, b: string) => b, projectOptionRows: () => [],
+      weekTargetBar: () => "", calHourPx: 64,
+    } as any);
+    const html = views.weekInner("2026-09-20", "America/Chicago");
+    const tags = html.match(/<div class="ui-viz-block[^>]*>/g) || [];
+    expect(tags.find((t) => t.includes('data-id="23"'))!).toContain("--entry:var(--color-primary)");
+    expect(tags.find((t) => t.includes('data-id="24"'))!).toContain("--entry:var(--color-text-tertiary)");
+    expect(html).not.toContain("position:fixed");
+  });
+});
+
+/** #1219 (item 1): past/future weeks opened at midnight — hours of empty
+ *  grid above the first entry. The strip script now opens on the week's
+ *  earliest entry (30 min headroom), 8 AM for an empty week, and keeps
+ *  now-line centring only while now is inside the entry range. */
+describe("calendar initial scroll (#1219)", () => {
+  test("initStripScroll no longer parks lineless strips at midnight", async () => {
+    const src = await Bun.file("site/views/calendar.ts").text();
+    const init = src.slice(src.indexOf("function initStripScroll"), src.indexOf("function centerVisible"));
+    expect(init).not.toContain("scrollTop=0");
+    expect(init).toContain("stripOpenMin(range)");
+    expect(init).toContain("stripEntryRange(strip)");
+  });
+
+  test("open target: earliest entry minus 30 min, 8 AM when the week is empty", async () => {
+    const src = await Bun.file("site/views/calendar.ts").text();
+    expect(src).toContain("function stripOpenMin(range){ return range?Math.max(0,range.first-30):480; }");
+    expect(src).toContain("function stripEntryRange(strip){");
+    expect(src).toContain("getAttribute('data-start')");
+    expect(src).toContain("getAttribute('data-end')");
+  });
+
+  test("now-line centring is gated on now inside the entry range, in both scroll paths", async () => {
+    const src = await Bun.file("site/views/calendar.ts").text();
+    expect(src).toContain("function nowOutsideRange(line,range){");
+    const cvStart = src.indexOf("function centerVisible");
+    const cv = src.slice(cvStart, src.indexOf("placeNow();", cvStart));
+    expect(cv).toContain("nowOutsideRange(line,range)");
+    expect(cv).toContain("stripOpenMin(range)");
+  });
+});
+
+/** #1219 follow-up: a running block's data-end is a render-time snapshot
+ *  (start+15), so stripEntryRange must extend it to now — otherwise the
+ *  now-line gate treats a live timer as long finished and opens the week
+ *  on the earliest entry with the running block off-screen. */
+describe("calendar initial scroll — running entries (#1219)", () => {
+  test("stripEntryRange extends running blocks to now", async () => {
+    const src = await Bun.file("site/views/calendar.ts").text();
+    const fn = src.slice(src.indexOf("function stripEntryRange"), src.indexOf("function stripOpenMin"));
+    expect(fn).toContain("classList.contains('is-running')");
+    expect(fn).toContain("nowMin>em");
+  });
+});
+
+/** #1219: the live drag/resize paint and the dialog duration readout format
+ *  durations with the inline fmtD, while the server renders the same figures
+ *  with fmtDur. fmtD drifted: "1h 5m" / "1h 0m" / "0m" where a reload shows
+ *  "1h 05m" / "1h" / blank — totals changed format after any drag, and an
+ *  emptied day gained a "0m" the server never renders. */
+describe("calendar live duration format (#1219)", () => {
+  test("fmtD mirrors fmtDur: padded minutes, no 00m, blank at zero", async () => {
+    const src = await Bun.file("site/views/calendar.ts").text();
+    const start = src.indexOf("function fmtD");
+    const fnSrc = src.slice(start, src.indexOf("function fmt12", start));
+    const fmtD = new Function(`${fnSrc}; return fmtD;`)() as (mins: number) => string;
+    expect(fmtD(0)).toBe("");
+    expect(fmtD(5)).toBe("5m");
+    expect(fmtD(30)).toBe("30m");
+    expect(fmtD(60)).toBe("1h");
+    expect(fmtD(65)).toBe("1h 05m");
+    expect(fmtD(125)).toBe("2h 05m");
+    expect(fmtD(600)).toBe("10h");
+  });
+
+  test("fmtD matches fmtDur across every whole minute in a day", async () => {
+    const { fmtDur } = await import("../lib/format.ts");
+    const src = await Bun.file("site/views/calendar.ts").text();
+    const start = src.indexOf("function fmtD");
+    const fnSrc = src.slice(start, src.indexOf("function fmt12", start));
+    const fmtD = new Function(`${fnSrc}; return fmtD;`)() as (mins: number) => string;
+    /* Zero is the one deliberate difference: fmtDur(0) is "0s", and the
+       server call sites guard it to blank — fmtD mirrors the rendering. */
+    for (let m = 1; m < 1440; m++) expect(fmtD(m)).toBe(fmtDur(m * 60));
+  });
+});
+
+/** #1219: the pan flags the track while it slides (phones collapse the
+ *  neighbour strips at rest) and clears it once the track is back at rest. */
+describe("carousel pan marks the track while sliding (#1219)", () => {
+  test("pan adds is-panning; settlePan removes it after the no-anim reset", async () => {
+    const src = await Bun.file("site/views/calendar.ts").text();
+    const pan = src.indexOf("function pan(dir){");
+    expect(src.indexOf("trackEl.classList.add('is-panning');", pan)).toBeGreaterThan(pan);
+    const settle = src.indexOf("function settlePan(dir){");
+    const reset = src.indexOf("trackEl.classList.remove('no-anim');", settle);
+    const clear = src.indexOf("trackEl.classList.remove('is-panning');", settle);
+    expect(reset).toBeGreaterThan(settle);
+    expect(clear).toBeGreaterThan(reset);
+  });
+});
+
+/** #1348: one weekInner render must not compute the current week twice
+ *  (pane + its own carousel strip) or re-run workspaceEmpty's COUNT
+ *  queries in every pane. Three distinct weeks are rendered, so the
+ *  entry query and the COUNT batch each run exactly three times total
+ *  (once per week / once per render), and the output is unchanged. */
+describe("weekInner shares week data and the empty check (#1348)", () => {
+  test("current week computed once; workspaceEmpty counted once", () => {
+    let entryQueries = 0;
+    let countQueries = 0;
+    const db = {
+      query: (sql: string) => {
+        if (sql.includes("COUNT(*)")) countQueries++;
+        else if (sql.includes("WHERE e.start_time")) entryQueries++;
+        return { get: () => ({ n: 1 }), all: () => [] };
+      },
+    } as unknown as Database;
+    const stub = () => ({ get: () => null, all: () => [] });
+    const views = createCalendarViews({
+      db,
+      qOne: stub(),
+      qRange: stub(),
+      entrySelect: "SELECT",
+      layout: (_t: string, b: string) => b,
+      projectOptionRows: () => [],
+      weekTargetBar: () => "",
+      calHourPx: 64,
+    } as any);
+    entryQueries = 0;
+    countQueries = 0;
+    const html = views.weekInner("2026-09-20", "America/Chicago");
+    expect(entryQueries).toBe(3);
+    expect(countQueries).toBe(3);
+    expect(html.match(/cal-strip"/g)).toHaveLength(3);
+    expect(html).toContain("cal-pane-layout");
+  });
+});
+
+describe("weekInner first-run hint follows the shared empty check (#1348)", () => {
+  function render(n: number) {
+    const db = {
+      query: (_sql: string) => ({ get: () => ({ n }), all: () => [] }),
+    } as unknown as Database;
+    const stub = () => ({ get: () => null, all: () => [] });
+    const views = createCalendarViews({
+      db,
+      qOne: stub(),
+      qRange: stub(),
+      entrySelect: "SELECT",
+      layout: (_t: string, b: string) => b,
+      projectOptionRows: () => [],
+      weekTargetBar: () => "",
+      calHourPx: 64,
+    } as any);
+    return views.weekInner("2026-09-20", "America/Chicago");
+  }
+
+  test("empty workspace: hint in the live pane and all three strip templates", () => {
+    expect(render(0).match(/cal-first-run/g)).toHaveLength(4);
+  });
+
+  test("non-empty workspace: no hint anywhere", () => {
+    expect(render(1)).not.toContain("cal-first-run");
   });
 });

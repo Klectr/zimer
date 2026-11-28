@@ -35,7 +35,7 @@ function mockFetch() {
 function setup() {
   const db = createDb(mkdtempSync(join(tmpdir(), "tk-signup-"))).db;
   const accounts = createAccountsDb(mkdtempSync(join(tmpdir(), "tk-signup-acct-")));
-  const views = createManageViews({ db, layout: (_t: string, b: string) => b });
+  const views = createManageViews({ db, layout: (_t: string, b: string) => b, unbilledByClient: () => [] });
   const noop = () => "";
   const tenant = {
     db, dbPath: "",
@@ -49,7 +49,7 @@ function setup() {
     timerPartial: noop, todayPartial: noop, weekInner: noop, weekStrip: noop,
     calendarPage: noop, editPage: () => null,
     managePage: views.managePage, clientSelection: views.clientSelection,
-    clientDetailBody: views.clientDetailBody, clientListOob: views.clientListOob,
+    clientDialogBody: views.clientDialogBody, clientDialogProjects: views.clientDialogProjects, manageListsOob: views.manageListsOob,
     bizProfileSection: noop, dailyTargetSection: views.dailyTargetSection, clientSettingsForm: views.clientSettingsForm, settingsPage: noop,
     invoicesPage: noop, invoiceNewPage: noop,
     defaultNewInvParams: () => ({}), invoiceStep2: noop,

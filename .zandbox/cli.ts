@@ -58,18 +58,19 @@ function init(): void {
   writeFileSync(configPath, CONFIG);
   copied.push("stories/example.stories.ts", "zandbox.config.ts");
 
+  let hasScript = false;
   const pkgPath = join(ROOT, "package.json");
   if (existsSync(pkgPath)) {
     const pkg = JSON.parse(readFileSync(pkgPath, "utf8")) as { scripts?: Record<string, string> };
     pkg.scripts ??= {};
-    pkg.scripts.lab ??= "bun run ./.zandbox/server.ts";
     pkg.scripts.zandbox ??= "bun run ./.zandbox/server.ts";
     writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
-    copied.push("package.json scripts (lab, zandbox)");
+    copied.push("package.json script (zandbox)");
+    hasScript = true;
   }
 
   console.log(`Zandbox initialized: ${copied.join(", ")}`);
-  console.log("Next: bun run lab — then map your stylesheet in zandbox.config.ts (assets) and point designMd at your DESIGN.md if you have one.");
+  console.log(`Next: ${hasScript ? "bun run zandbox" : "bun run .zandbox/server.ts"} — then map your stylesheet in zandbox.config.ts (assets) and point designMd at your DESIGN.md if you have one.`);
 }
 
 const command = process.argv[2];

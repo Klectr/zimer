@@ -3,9 +3,11 @@
  *  invoices, CSV export, backup, demo data).
  *  Returns null when nothing matched so the caller can fall through. */
 
+import { entryDay, entryZone, hmOf, onWallDays, validTz, wallDayParam, wallParts, widenedWindow, ymdOf, type WallDay } from "../lib/wall.ts";
+import { INVOICE_ZONE } from "../lib/domain.ts";
 import { join, normalize, sep } from "node:path";
 import type { Database, Statement } from "bun:sqlite";
-import { addDays, clientColor, csvCell, entryIsLocked, esc, isPaymentTermsKey, round2, termsDays, termsKey, todayStr } from "../lib/format.ts";
+import { addDays, clientColor, clientDay, csvCell, entryIsLocked, isPaymentTermsKey, round2, termsDays, termsKey, todayStr, utcWeekday, validYmd } from "../lib/format.ts";
 import type { Entry, Invoice, InvoiceItem } from "../lib/types.ts";
 import type { ClientSel } from "../views/manage.ts"; /* #367 */
 import type { PdfInvoice } from "../pdf.ts";
@@ -19,6 +21,13 @@ import { THEMES, themeCss, themeKey } from "../lib/theme.ts"; /* #884 */
 import type { AccountsDb } from "../lib/accounts.ts"; /* #732 */
 import { findTenantByPublicToken } from "../lib/tenants.ts"; /* #741 */
 import { countProofs, deleteProof, getProof, insertProof, listProofs, sanitizeFilename, validateProofFile, PROOF_MAX_BYTES, PROOF_MAX_PER_INVOICE } from "../lib/payment_proofs.ts"; /* #956 */
+import { servedVersion, staticUrl } from "../lib/static-assets.ts"; /* #993 */
+import { billableFromForm, endAfterStart, entryFormTimes, entryLinkable, existingClientId, existingProjectId, normalizeEntryTimestamp, nonNegativeRate, stopEndTime, validDayBounds } from "./api.ts"; /* #1434, #1442, #1450, #1452, #1462, #1464, #1516 */
+import { textField } from "../ui/field.ts";
+import { card } from "../ui/card.ts";
+import { settingsDataList, settingsDataRow, settingsSection } from "../ui/settings-section.ts";
+import { button, linkButton } from "../ui/button.ts";
+import { inlineAlert } from "../ui/alert.ts";
 
 /* #733: everything derived from one tenant's SQLite bundle. Resolved per
    request from the session (session → user → tenant tree, cached by user
@@ -36,27 +45,33 @@ export interface WebTenant {
   errorPage: (authed: boolean) => string;
   dashboardPage: () => string;
   timerPartial: () => string;
-  todayPartial: (from?: string, to?: string) => string;
+  todayPartial: (from?: string, to?: string, wall?: WallDay) => string;
+  todayStatsPartial: (from?: string, to?: string, weekFrom?: string, weekTo?: string, wall?: WallDay) => string;
   weekInner: (weekStr?: string, tz?: string) => string;
   weekStrip: (weekStr?: string, tz?: string) => string;
   calendarPage: (week?: string) => string;
   editPage: (id: number) => string | null;
   editEntryDialog: (id: number) => string | null; /* #903 */
-  managePage: (selected: ClientSel | null) => string; /* #367 */
-  clientSelection: (raw: string | null) => ClientSel | null; /* #367 */
-  clientDetailBody: (sel: ClientSel) => string; /* #367 */
-  clientListOob: (sel: ClientSel | null) => string; /* #367 */
+  managePage: () => string;
+  clientSelection: (raw: string | null) => ClientSel | null;
+  clientDialogBody: (sel: ClientSel) => string;
+  clientDialogProjects: (sel: ClientSel, error?: string) => string;
+  manageListsOob: () => string;
   bizProfileSection: () => string;
   dailyTargetSection: () => string; /* #908 */
-  clientSettingsForm: (c: any) => string; /* #630 */
+  dailyTargetControl: () => string;
+  preferencesSection: () => string;
+  clientSettingsForm: (c: any, error?: string) => string; /* #630 */
   settingsPage: (body: string) => string; /* #693 */
   themeSectionHtml: () => string; /* #884 */
+  themeDotsHtml: () => string;
   invoicesPage: (selected: (Invoice & { items: InvoiceItem[] }) | null, origin: string) => string;
   invoiceNewPage: (p: any, preview?: any) => string;
   defaultNewInvParams: () => any;
   invoiceStep2: (p: any, preview?: any) => string;
   invoiceDetailBody: (inv: Invoice & { items: InvoiceItem[] }, origin: string) => string;
   invoiceListOob: (selectedId: number) => string; /* #364 */
+  invoiceListRegion: (filters?: { status?: string; q?: string }) => string;
   invoiceDoc: (inv: Invoice & { items: InvoiceItem[] }) => string;
   publicInvoicePage: (inv: Invoice & { items: InvoiceItem[] }, origin: string, tokenPath: string) => string;
   getInvoice: (id: number) => (Invoice & { items: InvoiceItem[] }) | null;
@@ -75,15 +90,14 @@ export interface WebTenant {
 
 /** #912: the CSRF rejection page — minimal public chrome, no app nav leaked. */
 function csrfBlockedPage(): string {
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Request blocked · Zimer</title>
-  <link rel="stylesheet" href="/static/style.css">
-  <link rel="icon" type="image/svg+xml" href="/static/logo.svg"></head>
+  <link rel="stylesheet" href="${staticUrl("style.css")}">
+  <link rel="icon" type="image/svg+xml" href="${staticUrl("logo.svg")}"></head>
   <body><main class="login">
-  <div class="md-card" style="border-radius:28px;padding:28px;max-width:420px">
-  <h1 class="md-headline-small" style="margin-top:0">Request blocked</h1>
-  <p class="muted">This action was refused because it didn't come from the app itself. If you reached this page from inside Zimer, please try again.</p>
-  </div></main></body></html>`;
+  ${card({ content: `<h1 class="ui-page-title" style="margin-top:0">Request blocked</h1>
+  <p class="muted">This action was refused because it didn't come from the app itself. If you reached this page from inside Zimer, please try again.</p>` })}
+  </main></body></html>`;
 }
 
 export interface WebDeps {
@@ -100,7 +114,7 @@ export interface WebDeps {
   csvResponse: (filename: string, rows: string[][]) => Response;
   shareOrigin: (req: Request) => string;
   PORT: number;
-  loginPage: () => string;
+  loginPage: (error?: string) => string;
   signupPage: (error?: string) => string; /* #732 */
   hostedLoginPage: (error?: string) => string; /* #732 */
   HOSTED: boolean; /* #732 */
@@ -126,6 +140,9 @@ export interface WebDeps {
      is authenticated but past entitlement. Optional so older callers keep
      compiling; server.ts always passes it in hosted mode. */
   inactiveAuthedUser?: (req: Request) => boolean;
+  /* #1121: hosted Billing section for the settings body; absent on
+     self-host, where the route renders no billing section. */
+  billingSectionHtml?: (req: Request) => string;
   /* #741: hosted cross-tenant public-invoice routing. When set (hosted),
      /i/:token resolves by scanning the tenant DBs instead of using the
      session tenant; self-host never sets them. */
@@ -139,16 +156,20 @@ export function createWebRouter(deps: WebDeps) {
     shareOrigin, PORT, loginPage, signupPage, hostedLoginPage, HOSTED, accounts,
     changelogPage, termsPage, privacyPage, noSuchInvoicePage, rateLimitPage,
     notFoundPage: publicNotFound, errorPage: publicError,
-    invoicePdf, stripeConfigured,
+    invoicePdf, stripeConfigured, billingSectionHtml,
     workspaceEmpty, demoIds, seedDemoData, removeDemoData, entryToJson,
     inactiveAuthedUser, /* #736 */
     dataDir, tenantById, /* #741 */
   } = deps;
 
   /* #308: rate limits for the public surface — in-memory, per client IP.
-     A page view pulls ~4 subrequests (html, css, logo, motion.js). */
+     A page view pulls ~4 subrequests (html, css, logo). */
   const invoiceLimiter = createRateLimiter({ windowMs: 60_000, max: 60 });
   const loginLimiter = createRateLimiter({ windowMs: 5 * 60_000, max: 10 });
+  /* #987: password-change attempts are throttled per user, like logins
+     are per IP (#308) — a held session must not become an offline-speed
+     guessing oracle for the account password. */
+  const passwordLimiter = createRateLimiter({ windowMs: 5 * 60_000, max: 10 });
 
   /* #732: page auth in hosted mode is a valid account session; self-host
      keeps the single shared token. */
@@ -176,16 +197,23 @@ export function createWebRouter(deps: WebDeps) {
         if (path.startsWith("/static/")) {
           const p = normalize(join(STATIC_DIR, path.slice("/static/".length)));
           if (!p.startsWith(STATIC_DIR + sep) && p !== STATIC_DIR) return new Response("Forbidden", { status: 403 });
+          if (/\.test\.[^/]+$/i.test(path)) return html(pages.notFoundPage(authedPage(req, TOKEN)), 404);
           const f = Bun.file(p);
           if (!(await f.exists())) return html(pages.notFoundPage(authedPage(req, TOKEN)), 404);
-          /* #374: filenames aren't fingerprinted, so browsers must revalidate
-             every load — otherwise a deploy's new CSS/JS never reaches cached
-             clients. ETag from size+mtime; If-None-Match gets a 304. */
-          const etag = `"${f.size.toString(36)}-${Math.floor(f.lastModified / 1000).toString(36)}"`;
+          /* #374/#993: unversioned URLs revalidate every load (ETag from
+             size+mtime; If-None-Match gets a 304 carrying the same ETag and
+             Cache-Control the 200 would) so a deploy's new CSS/JS always
+             reaches clients. A ?v= carrying the file's current content
+             hash is content-addressed: serve it immutable. */
+          const etag = `"${f.size.toString(36)}-${Math.floor(f.lastModified).toString(36)}"`;
+          const v = url.searchParams.get("v");
+          const cacheControl = v && v === servedVersion(p)
+            ? "public, max-age=31536000, immutable"
+            : "public, no-cache";
           if (req.headers.get("if-none-match") === etag) {
-            return new Response(null, { status: 304 });
+            return new Response(null, { status: 304, headers: { ETag: etag, "Cache-Control": cacheControl } });
           }
-          return new Response(f, { headers: { ETag: etag, "Cache-Control": "public, no-cache" } });
+          return new Response(f, { headers: { ETag: etag, "Cache-Control": cacheControl } });
         }
         if (path === "/login") {
           if (method === "GET") {
@@ -225,7 +253,7 @@ export function createWebRouter(deps: WebDeps) {
                 },
               });
             }
-            return html(loginPage().replace("</form>", `<p class="error">Wrong token.</p></form>`), 401);
+            return html(loginPage("Wrong token."), 401);
           }
         }
         /* #732: hosted signup — 404 in self-host mode. */
@@ -373,6 +401,37 @@ export function createWebRouter(deps: WebDeps) {
           const inv = idRow ? t.getInvoice(idRow.id) : null;
           return inv ? html(t.publicInvoicePage(inv, shareOrigin(req), `/i/${pub[1]}`)) : html(noSuchInvoicePage(), 404);
         }
+        /* #1291: PDF download for the client holding the link — same token
+           lookup, rate limit and tenant routing as the page above. Fresh
+           PDF from current data, like the authed download (#609): no stored
+           snapshot is served. */
+        const pubPdf = path.match(/^\/i\/([A-Za-z0-9_-]{16,64})\.pdf$/);
+        if (pubPdf && method === "GET") {
+          const rl = invoiceLimiter.check(clientIp(req));
+          if (!rl.allowed) {
+            return html(rateLimitPage(), 429, { "Retry-After": String(rl.retryAfterSec) });
+          }
+          let t = tenant;
+          if (HOSTED && dataDir && tenantById) {
+            const userId = findTenantByPublicToken(dataDir, pubPdf[1]);
+            t = userId !== null ? tenantById(userId) : null;
+          }
+          if (!t) return html(noSuchInvoicePage(), 404);
+          const idRow = t.db.query("SELECT id FROM invoices WHERE public_token = ?").get(pubPdf[1]) as { id: number } | null;
+          const inv = idRow ? t.getInvoice(idRow.id) : null;
+          /* The PDF embeds the invoice's current public token as its pay
+             link — never serve one minted for a rotated/revoked token. */
+          if (!inv || inv.public_token !== pubPdf[1]) return html(noSuchInvoicePage(), 404);
+          const pdf = invoicePdf(t.invoicePdfInput(inv, shareOrigin(req)));
+          const filename = inv.number.replace(/[^A-Za-z0-9._-]+/g, "_") + ".pdf";
+          return new Response(pdf, {
+            headers: {
+              "Content-Type": "application/pdf",
+              "Content-Disposition": `attachment; filename="${filename}"`,
+              "Cache-Control": "private, no-store",
+            },
+          });
+        }
         /* Malformed /i/ paths (too short, bad chars): same dead-end. */
         if (method === "GET" && (path === "/i" || path === "/i/" || path.startsWith("/i/"))) {
           return html(noSuchInvoicePage(), 404);
@@ -425,14 +484,30 @@ export function createWebRouter(deps: WebDeps) {
           const {
             db, dbPath, qRunning, qOne, qRange, qInvoice, qInvoices,
             notFoundPage, errorPage,
-            dashboardPage, timerPartial, todayPartial, weekInner, weekStrip,
-            calendarPage, editPage, editEntryDialog, managePage, clientSelection, clientDetailBody, clientListOob, bizProfileSection, dailyTargetSection, clientSettingsForm, settingsPage, themeSectionHtml, invoicesPage, invoiceNewPage,
+            dashboardPage, timerPartial, todayPartial, todayStatsPartial, weekInner, weekStrip,
+            calendarPage, editPage, editEntryDialog, managePage, clientSelection, clientDialogBody, clientDialogProjects, manageListsOob, bizProfileSection, dailyTargetSection, dailyTargetControl, preferencesSection, clientSettingsForm, settingsPage, themeSectionHtml, themeDotsHtml, invoicesPage, invoiceNewPage, invoiceListRegion,
             defaultNewInvParams, invoiceStep2, invoiceDetailBody, invoiceListOob, invoiceDoc, publicInvoicePage,
             getInvoice, invoiceTotals,
             nextInvoiceNumber, stripeLinkFor, unbilledEntries,
             groupToLineItems, clientRestFrom, ensurePublicToken, getPublicToken, mintPublicToken,
             invoicePdfInput, freezeInvoiceSnapshots,
           } = tenant;
+
+          /* #1048: the "invoice the rest" To date — the latest of today, the
+             client's latest unbilled day, and From itself, so the range never
+             inverts and always covers future-dated unbilled entries. */
+          function restRangeTo(clientId: number, from: string): string {
+            let to = todayStr();
+            if (from > to) to = from;
+            /* #1081: the client's latest unbilled wall day. */
+            const rows = db.query(
+              `SELECT e.start_time, e.tz FROM time_entries e
+               JOIN projects p ON p.id = e.project_id
+               WHERE p.client_id = ? AND e.invoice_id IS NULL AND e.end_time IS NOT NULL AND e.billable = 1`
+            ).all(clientId) as { start_time: string; tz: string | null }[];
+            for (const r of rows) { const d = entryDay(r, INVOICE_ZONE); if (d > to) to = d; }
+            return to;
+          }
 
           if (path === "/" && method === "GET") return html(dashboardPage());
           if (path === "/partial/timer" && method === "GET") return html(timerPartial());
@@ -448,10 +523,26 @@ export function createWebRouter(deps: WebDeps) {
              (?from=&to=, from client-local midnight); validate strictly,
              fall back to the server's day. */
           if (path === "/partial/today" && method === "GET") {
-            const from = url.searchParams.get("from") || "", to = url.searchParams.get("to") || "";
-            const iso = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:?\d{2})$/;
-            const ok = iso.test(from) && iso.test(to) && !isNaN(Date.parse(from)) && !isNaN(Date.parse(to));
-            return html(ok ? todayPartial(from, to) : todayPartial());
+            /* #1516: validDayBounds rejects impossible dates (Date.parse
+               rolls 2026-02-30 to Mar 2) and reversed pairs — both fall
+               back to the server day. */
+            const bounds = validDayBounds(url.searchParams.get("from") || "", url.searchParams.get("to") || "");
+            /* #1081: ?day=&tz= picks entries by their own wall day. */
+            const wall = wallDayParam(url.searchParams.get("day"), url.searchParams.get("tz")) ?? undefined;
+            return html(bounds ? todayPartial(bounds[0], bounds[1], wall) : todayPartial(undefined, undefined, wall));
+          }
+          /* #1121: the dashboard stat row with the client's day + week
+             bounds, validated the same way; each pair falls back to the
+             server's bounds independently. */
+          if (path === "/partial/today-stats" && method === "GET") {
+            /* #1516: as /partial/today — impossible or reversed bounds
+               fall back per pair instead of shifting the window. */
+            const day = validDayBounds(url.searchParams.get("from") || "", url.searchParams.get("to") || "");
+            const week = validDayBounds(url.searchParams.get("wfrom") || "", url.searchParams.get("wto") || "");
+            return html(todayStatsPartial(
+              day?.[0], day?.[1],
+              week?.[0], week?.[1],
+              wallDayParam(url.searchParams.get("day"), url.searchParams.get("tz")) ?? undefined)); /* #1081 */
           }
           /* #328: "invoice the rest" for the new-invoice client picker — returns the
              #inv-range fields with from/to filled from the client's billing
@@ -460,34 +551,40 @@ export function createWebRouter(deps: WebDeps) {
           if (path === "/partial/invoice-rest" && method === "GET") {
             const cid = url.searchParams.get("client_id") || "";
             let from = defaultNewInvParams().from;
+            let to = todayStr();
             if (/^\d+$/.test(cid)) {
               const restFrom = clientRestFrom(Number(cid));
               if (restFrom) from = restFrom;
+              to = restRangeTo(Number(cid), from);
+            } else if (from > to) {
+              to = from;
             }
-            const to = todayStr();
-            return html(`<div class="md-text-field filled"><input type="date" id="inv-from" name="from" value="${esc(from)}" required placeholder=" "><label>From</label></div>
-            <div class="md-text-field filled"><input type="date" id="inv-to" name="to" value="${esc(to)}" required placeholder=" "><label>To</label></div>`);
+            return html(textField({ id: "inv-from", label: "From", name: "from", type: "date", value: from, required: true })
+            + textField({ id: "inv-to", label: "To", name: "to", type: "date", value: to, required: true }));
           }
           if (path === "/timer/start" && method === "POST") {
             if (qRunning.get()) return html(timerPartial(), 409);
             const form = await req.formData();
-            const pid = form.get("project_id");
-            db.query("INSERT INTO time_entries (project_id, description, start_time) VALUES (?, ?, ?)")
-              .run(pid ? Number(pid) : null, String(form.get("description") || ""), new Date().toISOString());
+            const pidRaw = form.get("project_id");
+            const pid = pidRaw ? existingProjectId(db, String(pidRaw)) : null;
+            if (pidRaw && pid === null) return new Response("project_id not found", { status: 400, headers: { "HX-Trigger": JSON.stringify({ "tk-toast": "That project no longer exists" }) } });
+            /* #1081: the timer records the zone you started it in. */
+            db.query("INSERT INTO time_entries (project_id, description, start_time, tz) VALUES (?, ?, ?, ?)")
+              .run(pid, String(form.get("description") || ""), new Date().toISOString(), validTz(form.get("client_tz")));
             return html(timerPartial(), 200, { "HX-Trigger": "timer-updated, timer-started" });
           }
           if (path === "/timer/stop" && method === "POST") {
             const running = qRunning.get() as Entry | null;
-            if (running) db.query("UPDATE time_entries SET end_time = ? WHERE id = ?").run(new Date().toISOString(), running.id);
+            if (running) db.query("UPDATE time_entries SET end_time = ? WHERE id = ?").run(stopEndTime(running.start_time), running.id);
             return html(timerPartial(), 200, { "HX-Trigger": "timer-updated, timer-stopped" });
           }
           if (path === "/calendar" && method === "GET") {
             /* #572: day mode is gone; old ?day= links redirect to the
                containing week. Invalid values fall back to this week. */
-            const dp = url.searchParams.get("day");
-            if (dp && /^\d{4}-\d{2}-\d{2}$/.test(dp)) {
+            const dp = validYmd(url.searchParams.get("day")); /* #1501 */
+            if (dp) {
               const [y, m, d] = dp.split("-").map(Number);
-              const sun = addDays(dp, -new Date(Date.UTC(y, m - 1, d, 12)).getUTCDay());
+              const sun = addDays(dp, -utcWeekday(y, m, d));
               return new Response(null, { status: 302, headers: { Location: `/calendar?week=${sun}` } });
             }
             return html(calendarPage(url.searchParams.get("week") || undefined));
@@ -496,15 +593,22 @@ export function createWebRouter(deps: WebDeps) {
           if (path === "/entries" && method === "POST") {
             const form = await req.formData();
             const endRaw = String(form.get("end_time") || "");
-            const pid = form.get("project_id") ? Number(form.get("project_id")) : null;
+            const pidRaw = form.get("project_id");
+            const pid = pidRaw ? existingProjectId(db, String(pidRaw)) : null;
+            if (pidRaw && pid === null) return new Response("project_id not found", { status: 400 });
             const desc = String(form.get("description") || "");
             const startRaw = String(form.get("start_time"));
             /* #964: bare datetimes parse as UTC — reject them loudly instead
-               of silently corrupting the entry's times. */
-            if (!/(Z|[+-]\d{2}:?\d{2})$/.test(startRaw) || (endRaw && !/(Z|[+-]\d{2}:?\d{2})$/.test(endRaw)))
-              return new Response("start_time/end_time must include a timezone offset", { status: 400 });
-            const startIso = new Date(startRaw).toISOString();
-            const endIso = endRaw ? new Date(endRaw).toISOString() : null;
+               of silently corrupting the entry's times. #1434: impossible
+               calendar dates are rejected too (Feb 30 rolled to Mar 2;
+               month 13 threw) — same validator as the API (#1432). */
+            const times = entryFormTimes(form); /* #1081 */
+            const startIso = times.toIso(startRaw);
+            const endIso = endRaw ? times.toIso(endRaw) : null;
+            if (!startIso || (endRaw && !endIso))
+              return new Response("start_time/end_time must be a valid timestamp with a timezone offset", { status: 400 });
+            if (!endAfterStart(startIso, endIso))
+              return new Response("end_time must be after start_time", { status: 400 });
             /* #930: idempotent against rapid re-submits (double-tap on save) —
                an identical entry created seconds ago is returned, not duplicated. */
             const dupe = db.query(
@@ -514,8 +618,8 @@ export function createWebRouter(deps: WebDeps) {
                  AND created_at >= strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-10 seconds')`
             ).get(pid, desc, startIso, endIso) as { id: number } | null;
             if (dupe) return json({ ok: true, id: dupe.id }, 200);
-            const ins = db.query("INSERT INTO time_entries (project_id, description, start_time, end_time) VALUES (?, ?, ?, ?)")
-              .run(pid, desc, startIso, endIso);
+            const ins = db.query("INSERT INTO time_entries (project_id, description, start_time, end_time, billable, tz) VALUES (?, ?, ?, ?, ?, ?)")
+              .run(pid, desc, startIso, endIso, billableFromForm(form, 1), times.zone);
             return json({ ok: true, id: Number(ins.lastInsertRowid) }, 201);
           }
 
@@ -536,22 +640,37 @@ export function createWebRouter(deps: WebDeps) {
           /* #334: sent/paid time is a frozen record — edit form and calendar
              resize both land here. */
           const cur = qOne.get(id) as Entry | null;
-          if (cur && entryIsLocked(cur))
+          if (!cur) /* #1472: stale edit (entry deleted elsewhere) — toast for htmx, themed 404 for a plain post, never a silent success */
+            return isHtmx(req)
+              ? new Response("Entry not found.", { status: 404, headers: { "HX-Trigger": JSON.stringify({ "tk-toast": "That entry no longer exists" }) } })
+              : html(notFoundPage(authedPage(req, TOKEN)), 404);
+          if (entryIsLocked(cur))
             return new Response("This time is invoiced and can't be edited.", { status: 403 });
           const form = await req.formData();
           const endRaw = String(form.get("end_time") || "");
-          const pid = form.get("project_id");
+          const pidRaw = form.get("project_id");
+          const pid = pidRaw ? existingProjectId(db, String(pidRaw)) : null;
+          if (pidRaw && pid === null) return new Response("project_id not found", { status: 400 });
           const startRaw = String(form.get("start_time"));
           /* #964: bare datetimes parse as UTC — reject them loudly instead
-             of silently corrupting the entry's times. */
-          if (!/(Z|[+-]\d{2}:?\d{2})$/.test(startRaw) || (endRaw && !/(Z|[+-]\d{2}:?\d{2})$/.test(endRaw)))
-            return new Response("start_time/end_time must include a timezone offset", { status: 400 });
-          db.query("UPDATE time_entries SET description = ?, project_id = ?, start_time = ?, end_time = ? WHERE id = ?")
+             of silently corrupting the entry's times. #1434: impossible
+             calendar dates are rejected too — same validator as the API
+             (#1432). */
+          const times = entryFormTimes(form); /* #1081 */
+          const startIso = times.toIso(startRaw);
+          const endIso = endRaw ? times.toIso(endRaw) : null;
+          if (!startIso || (endRaw && !endIso))
+            return new Response("start_time/end_time must be a valid timestamp with a timezone offset", { status: 400 });
+          if (!endAfterStart(startIso, endIso))
+            return new Response("end_time must be after start_time", { status: 400 });
+          db.query("UPDATE time_entries SET description = ?, project_id = ?, start_time = ?, end_time = ?, billable = ?, tz = COALESCE(?, tz) WHERE id = ?")
             .run(
               String(form.get("description") || ""),
-              pid ? Number(pid) : null,
-              new Date(startRaw).toISOString(),
-              endRaw ? new Date(endRaw).toISOString() : null,
+              pid,
+              startIso,
+              endIso,
+              billableFromForm(form, cur.billable === 0 ? 0 : 1), /* #1082: absent (calendar drag/resize) keeps it */
+              times.zone, /* #1081: the zone the wall times were entered in; absent keeps the entry's */
               id);
           return isHtmx(req)
             /* #903: the timer edit dialog posts via htmx — answer HX-Trigger
@@ -561,7 +680,9 @@ export function createWebRouter(deps: WebDeps) {
         }
         if (m && method === "DELETE") {
           const cur = qOne.get(Number(m[1])) as Entry | null; /* #334 */
-          if (cur && entryIsLocked(cur))
+          if (!cur) /* #1478: stale delete (entry deleted elsewhere) — 404 + toast, never a silent success */
+            return new Response("Entry not found.", { status: 404, headers: { "HX-Trigger": JSON.stringify({ "tk-toast": "That entry no longer exists" }) } });
+          if (entryIsLocked(cur))
             return new Response("This time is invoiced and can't be deleted.", { status: 403 });
           db.query("DELETE FROM time_entries WHERE id = ?").run(Number(m[1]));
           return new Response("", { status: 200 });
@@ -596,25 +717,52 @@ export function createWebRouter(deps: WebDeps) {
         /* Milestone 10: CSV exports — accountant-friendly columns, UTF-8 BOM so
            Excel detects the encoding. */
         if (path === "/export/entries.csv" && method === "GET") {
+          /* #1507: a present from/to must be a real calendar date in order —
+             string-comparing garbage filtered out every row and returned a
+             header-only CSV that read as "no entries that week". Mirror the
+             API entries list (#1494) and the invoice preview (#1490): 400.
+             Absent params keep the full export; to stays exclusive. */
+          const fromRaw = (url.searchParams.get("from") || "").trim();
+          const toRaw = (url.searchParams.get("to") || "").trim();
+          const from = fromRaw ? validYmd(fromRaw) : "";
+          const to = toRaw ? validYmd(toRaw) : "";
+          if ((fromRaw && !from) || (toRaw && !to))
+            return new Response("Export range must be valid dates (YYYY-MM-DD).", { status: 400 });
+          if (from && to && from > to)
+            return new Response("Export range must start on or before it ends.", { status: 400 });
           const rows = db.query(`
-            SELECT e.description, e.start_time, e.end_time,
+            SELECT e.description, e.start_time, e.end_time, e.billable, e.tz,
                    p.name AS project, c.name AS client, c.rate AS rate
             FROM time_entries e
             LEFT JOIN projects p ON p.id = e.project_id
             LEFT JOIN clients c ON c.id = p.client_id
             ORDER BY e.start_time`).all() as any[];
+          /* The calendar's week export passes from/to (to exclusive), so
+             "Export week CSV" downloads that week instead of the whole file.
+             from/to were parsed and validated above (#1507). */
           const out = ["date,client,project,description,start,end,hours,billable,rate,amount"];
           for (const r of rows) {
+            /* #1081: dates and times are the entry's own wall clock (legacy
+               rows with no zone: UTC, as before). */
+            const zone = entryZone(r, INVOICE_ZONE);
+            const sp = wallParts(r.start_time, zone);
+            const day = ymdOf(sp);
+            if (from && day < from) continue;
+            if (to && day >= to) continue;
             const start = new Date(r.start_time);
             const end = r.end_time ? new Date(r.end_time) : null;
             const hours = end ? (end.getTime() - start.getTime()) / 3600000 : 0;
-            const billable = r.project ? "yes" : "no";
+            /* #1082: billable = the entry's flag, and it needs a project
+               (hence a client) to be billed at all. Non-billable time
+               carries no amount. */
+            const isBillable = !!r.project && r.billable !== 0;
+            const billable = isBillable ? "yes" : "no";
             const rate = Number(r.rate || 0);
-            const amount = (hours * rate).toFixed(2);
+            const amount = isBillable ? (hours * rate).toFixed(2) : "0.00";
             const cells = [
-              start.toISOString().slice(0, 10), r.client || "", r.project || "",
-              r.description || "", start.toISOString().slice(11, 16),
-              end ? end.toISOString().slice(11, 16) : "",
+              day, r.client || "", r.project || "",
+              r.description || "", hmOf(sp),
+              end ? hmOf(wallParts(end, zone)) : "",
               hours.toFixed(2), billable, rate.toFixed(2), amount,
             ];
             out.push(cells.map(csvCell).join(","));
@@ -624,48 +772,29 @@ export function createWebRouter(deps: WebDeps) {
 
         if (path === "/export/invoices.csv" && method === "GET") {
           const rows = db.query(`
-            SELECT i.number, i.issue_date, i.due_date, i.status, i.tax_rate, i.paid_at,
+            SELECT i.number, i.issue_date, i.due_date, i.status, i.tax_rate, i.paid_at, i.sent_at,
                    c.name AS client,
                    (SELECT COUNT(*) FROM invoice_items WHERE invoice_id = i.id) AS items,
                    (SELECT COALESCE(SUM(amount), 0) FROM invoice_items WHERE invoice_id = i.id) AS subtotal
             FROM invoices i LEFT JOIN clients c ON c.id = i.client_id
             ORDER BY i.issue_date DESC`).all() as any[];
-          const out = ["number,client,issue_date,due_date,status,paid_date,items,subtotal,tax,total"];
+          const out = ["number,client,issue_date,due_date,status,sent_date,paid_date,items,subtotal,tax,total"];
           for (const r of rows) {
             const subtotal = Number(r.subtotal || 0);
             const tax = subtotal * Number(r.tax_rate || 0) / 100;
             const cells = [r.number, r.client || "", r.issue_date, r.due_date || "",
-              r.status, r.paid_at || "", String(r.items), subtotal.toFixed(2), tax.toFixed(2),
+              r.status, r.sent_at || "", r.paid_at || "", String(r.items), subtotal.toFixed(2), tax.toFixed(2),
               (subtotal + tax).toFixed(2)];
             out.push(cells.map(csvCell).join(","));
           }
           return csvResponse(out.join("\n"), "zimer-invoices.csv");
         }
 
-        /* #367: M3 list-detail — ?client=<id> (or "none") selects into the
-           detail pane (two-pane ≥840px) or the single-pane detail screen;
-           fragment=detail is the HTMX swap the list pane's row clicks request. */
+        if (path === "/clients" && method === "GET") {
+          return new Response(null, { status: 301, headers: { Location: "/manage" } });
+        }
         if (path === "/manage" && method === "GET") {
-          const sp = new URL(req.url).searchParams;
-          let sel = clientSelection(sp.get("client"));
-          /* #805: same default as zinvoices — first client fills the detail
-             pane on desktop; no has-selection, so mobile still opens the list. */
-          let isDefault = false;
-          if (!sel) {
-            const first = db.query("SELECT * FROM clients ORDER BY name").get() as any;
-            if (first) { sel = { kind: "client", client: first }; isDefault = true; }
-            /* #835: with no clients at all, the No-client row is the first
-               row — default to it so the detail pane has content. */
-            else { sel = { kind: "none" }; isDefault = true; }
-          }
-          if (sp.get("fragment") === "detail" && isHtmx(req)) {
-            if (!sel) return new Response("Client not found.", { status: 404 });
-            /* #367: the OOB list carries the selected row — the pushed-URL
-               history snapshot then restores the right selection on back. */
-            const push = sel.kind === "client" ? `/manage?client=${sel.client.id}` : "/manage?client=none";
-            return html(clientDetailBody(sel) + clientListOob(sel), 200, { "HX-Push-Url": push });
-          }
-          return html(managePage(sel, isDefault));
+          return html(managePage());
         }
         /* #233: business profile for the Modern PDF template's FROM block.
            #245: rendered inside the settings modal (GET) and saved from it
@@ -673,15 +802,18 @@ export function createWebRouter(deps: WebDeps) {
         if (path === "/business-profile" && method === "GET") return html(bizProfileSection());
         if (path === "/business-profile" && method === "POST") {
           const form = await req.formData();
+          /* #243: payment terms. #293: fixed option list — reject anything
+             that isn't a known key. #1524: validate before any setMeta —
+             a rejected save must write nothing, not partially apply the
+             fields above the check. */
+          const gterms = String(form.get("business_payment_terms") || "").trim();
+          if (!isPaymentTermsKey(gterms)) return new Response("Unknown payment terms.", { status: 400 });
           setMeta(db, "business_name", String(form.get("business_name") || "").trim());
           setMeta(db, "business_email", String(form.get("business_email") || "").trim());
           setMeta(db, "business_address", String(form.get("business_address") || "").trim());
-          /* #243: payment terms. #293: fixed option list — reject anything
-             that isn't a known key. */
-          const gterms = String(form.get("business_payment_terms") || "").trim();
-          if (!isPaymentTermsKey(gterms)) return new Response("Unknown payment terms.", { status: 400 });
+          setMeta(db, "business_payment_instructions", String(form.get("business_payment_instructions") || "").replace(/\r\n/g, "\n").trim());
           setMeta(db, "business_payment_terms", gterms);
-          if (isHtmx(req)) return html(bizProfileSection());
+          if (isHtmx(req)) return html(bizProfileSection(), 200, { "HX-Trigger": JSON.stringify({ "tk-toast": "Business profile saved" }) });
           return new Response(null, { status: 302, headers: { Location: "/manage" } });
         }
         /* #908: daily hours target — pacing bars + calendar short-day tint.
@@ -693,20 +825,94 @@ export function createWebRouter(deps: WebDeps) {
           if (!Number.isFinite(hours) || hours < 1 || hours > 24)
             return new Response("Enter a daily target between 1 and 24 hours.", { status: 400 });
           setMeta(db, "day_target_hours", String(hours));
-          if (isHtmx(req)) return html(dailyTargetSection());
+          if (isHtmx(req)) return html(dailyTargetControl(), 200, { "HX-Trigger": JSON.stringify({ "tk-toast": "Daily target saved" }) });
           return new Response(null, { status: 302, headers: { Location: "/settings" } });
+        }
+        /* #987: hosted-only Account section — the signed-in email and the
+           change-password form. Self-host has no password (token auth), so
+           the section never renders there. */
+        function accountSectionHtml(user: { email: string }, error?: string): string {
+          const body =
+            (error ? inlineAlert({ tone: "error", text: error }) : "") +
+            `<form method="post" action="/settings/password" class="ui-settings-form" hx-post="/settings/password" hx-target="#account" hx-swap="outerHTML">` +
+            `<div class="ui-settings-form-2col">` +
+            textField({ id: "acct-current-password", label: "Current password", name: "current_password", type: "password", required: true, autocomplete: "current-password" }) +
+            textField({ id: "acct-new-password", label: "New password", name: "new_password", type: "password", required: true, autocomplete: "new-password" }) +
+            `</div>` +
+            `<div class="ui-settings-actions">${button({ label: "Change password", type: "submit" })}</div>` +
+            `</form>`;
+          return settingsSection({
+            level: 2, id: "account", title: "Account",
+            hint: `Signed in as ${user.email}. Changing your password signs out your other devices.`,
+            bodyHtml: body,
+          });
         }
         /* #883: settings modal body — business profile, theme, Updates
            section, support channel. The License section left with the
            retired $59 key. */
         if (path === "/settings" && method === "GET") {
-          const updates = updateSectionHtml();
-          const support = `<p class="muted tiny" style="margin-top:24px">Need help? <a href="mailto:support@klectr.dev">support@klectr.dev</a></p>`;
-          const body = bizProfileSection() + dailyTargetSection() + themeSectionHtml() + updates + support;
+          const billingHtml = billingSectionHtml ? billingSectionHtml(req) : "";
+          const accountUser = HOSTED && accounts ? accounts.sessionUserFromRequest(req) : null;
+          const accountHtml = accountUser ? accountSectionHtml(accountUser) : "";
+          /* #1223: self-hosted gets one merged About & updates card (the
+             About card takes the plan slot); hosted keeps the plain
+             Updates card under the Billing card. */
+          const updates = billingHtml
+            ? updateSectionHtml()
+            : updateSectionHtml({ aboutActionsHtml:
+                linkButton({ label: "Changelog", href: "/changelog", variant: "ghost", size: "sm" }) +
+                linkButton({ label: "Install guide", href: "https://github.com/Klectr/zimer#self-hosting", external: true, variant: "ghost", size: "sm" }) });
+          const support = `<p class="ui-settings-support">Need help? <a href="mailto:support@klectr.dev">support@klectr.dev</a></p>`;
+          /* The suite mock's "Your data" card, in the same two-column
+             grid as the profile and billing sections. */
+          const dataRow = (ic: "database" | "table" | "receipt", title: string, desc: string, href: string, aria: string) =>
+            settingsDataRow({ icon: ic, title, desc, actionHtml: linkButton({ label: "Download", href, download: true, icon: "download", size: "sm", ariaLabel: aria }) });
+          const dataSection = settingsSection({
+            level: 2, id: "your-data", title: "Your data",
+            hint: "Leaving is allowed, so the exports actually work: clients, entries and Zinvoices come with you.",
+            bodyHtml: settingsDataList([
+              dataRow("database", "Full backup", "The whole SQLite file. Restore it anywhere.", "/backup", "Download backup"),
+              dataRow("table", "Entries CSV", "Every time entry, for spreadsheets.", "/export/entries.csv", "Download entries CSV"),
+              dataRow("receipt", "Zinvoices CSV", "Every Zinvoice with its totals.", "/export/invoices.csv", "Download Zinvoices CSV"),
+            ]),
+          });
+          /* One column, in order of use: what prints on Zinvoices, the
+             hosted plan, everyday preferences, exports, then about/updates. */
+          const body =
+            `<div class="ui-settings-stack">` +
+            bizProfileSection() + billingHtml + accountHtml + preferencesSection() + dataSection + updates +
+            support + `</div>`;
           if (isHtmx(req)) return html(body);
           /* #693: direct visits get the full app layout — the bare fragment
              renders unstyled. */
           return html(settingsPage(body));
+        }
+        /* #987/#1421: change password — hosted accounts only (self-host
+           uses the token, there is no password to change). Every session
+           is revoked and a fresh one is set on the response. */
+        if (path === "/settings/password" && method === "POST") {
+          if (!HOSTED || !accounts) return new Response("Not found.", { status: 404 });
+          const user = accounts.sessionUserFromRequest(req);
+          if (!user) return new Response(null, { status: 302, headers: { Location: "/login" } });
+          const rl = passwordLimiter.check(`pw:${user.id}`);
+          if (!rl.allowed) {
+            const msg = "Too many attempts. Wait a few minutes and try again.";
+            if (isHtmx(req)) return html(accountSectionHtml(user, msg), 429);
+            return new Response(msg, { status: 429 });
+          }
+          const form = await req.formData();
+          const r = await accounts.changePassword(
+            user.id,
+            String(form.get("current_password") || ""),
+            String(form.get("new_password") || "")
+          );
+          if (r.error) {
+            if (isHtmx(req)) return html(accountSectionHtml(user, r.error), 422);
+            return new Response(r.error, { status: 400 });
+          }
+          const cookie = accounts.sessionCookie(req, r.token!);
+          if (isHtmx(req)) return html(accountSectionHtml(user), 200, { "HX-Trigger": JSON.stringify({ "tk-toast": "Password changed" }), "Set-Cookie": cookie });
+          return new Response(null, { status: 302, headers: { Location: "/settings", "Set-Cookie": cookie } });
         }
         /* #884: accent theme. Unknown keys are rejected — the dots only ever
            post known keys, so this guards hand-built requests. The OOB
@@ -716,7 +922,7 @@ export function createWebRouter(deps: WebDeps) {
           const key = String(form.get("theme") || "").trim().toLowerCase();
           if (!THEMES.some((t) => t.key === key)) return new Response("Unknown theme.", { status: 400 });
           setMeta(db, "theme", key);
-          if (isHtmx(req)) return html(themeSectionHtml() +
+          if (isHtmx(req)) return html(themeDotsHtml() +
             `<style id="theme-style" hx-swap-oob="true">${themeCss(key)}</style>`);
           return new Response(null, { status: 302, headers: { Location: "/settings" } });
         }
@@ -728,20 +934,47 @@ export function createWebRouter(deps: WebDeps) {
         }
         if (path === "/clients" && method === "POST") {
           const form = await req.formData();
-          const r = db.query("INSERT INTO clients (name, color, rate) VALUES (?, ?, ?) RETURNING id")
-            .get(String(form.get("name")), clientColor(form.get("color")),
-                 Number(form.get("rate") || 0)) as any;
-          /* #367: plain POST (see the add-client form) — land on the new
-             client selected, on every width. */
-          return new Response(null, { status: 302, headers: { Location: `/manage?client=${r.id}` } });
+          /* #1454: mirror the settings route — a name is required; trim it
+             so a blank, whitespace-only, or missing field stores nothing
+             (a missing field would otherwise store the string "null", and
+             a non-string part would store "[object File]"). */
+          const nameRaw = form.get("name");
+          const name = typeof nameRaw === "string" ? nameRaw.trim() : "";
+          if (!name)
+            return new Response("Client name is required.", { status: 400 });
+          /* #1442: mirror the settings route's rate rule — a provided rate
+             must be finite and at or above 0 (blank/absent → 0).
+             #1528: the rounded value must stay finite too, as on invoice
+             rates — round2(1e308) overflows and could never be invoiced. */
+          const rate = nonNegativeRate(form.get("rate"));
+          if (rate === null || !Number.isFinite(round2(rate)))
+            return new Response("Hourly rate must be a number at or above 0.", { status: 400 });
+          /* #1160: the add form collects email at creation (the page-manage
+             mock always had it) — trimmed, blank stored as NULL, same rule
+             as the settings route's contact fields. */
+          const email = String(form.get("email") || "").trim();
+          const r = db.query("INSERT INTO clients (name, color, rate, email) VALUES (?, ?, ?, ?) RETURNING id")
+            .get(name, clientColor(form.get("color")),
+                 rate, email || null) as any;
+          return new Response(null, { status: 302, headers: { Location: "/manage" } });
         }
-        /* #630: client settings modal — all seven editable client fields.
-           Replaces the old inline /name, /contact, /rate, and /terms routes.
-           Name is required; rate must be a number at or above 0 (blank → 0,
-           the column is NOT NULL); payment terms are blank (NULL → global
-           fallback) or a known key; contact fields are trimmed with blanks
-           stored as NULL; textarea newlines arrive as CRLF (multipart
-           normalization) — store plain LF. */
+        m = path.match(/^\/clients\/(\d+|none)\/dialog$/);
+        if (m && method === "GET") {
+          const sel = clientSelection(m[1]);
+          if (!sel) return new Response("Client not found.", { status: 404 });
+          return html(clientDialogBody(sel));
+        }
+        /* #630: client settings modal — all eight editable client fields
+           (#1160 added color). Replaces the old inline /name, /contact,
+           /rate, and /terms routes. Name is required; rate must be a number
+           at or above 0 (blank → 0, the column is NOT NULL); payment terms
+           are blank (NULL → global fallback) or a known key; contact fields
+           are trimmed with blanks stored as NULL; textarea newlines arrive
+           as CRLF (multipart normalization) — store plain LF. #1160: an
+           HTMX save that fails validation answers 422 with the form
+           re-rendered around the error and the submitted values (htmx
+           swaps it via the manage page's beforeSwap hook, so the error
+           shows inline in the dialog); plain posts keep the 400 text. */
         m = path.match(/^\/clients\/(\d+)\/settings$/);
         if (m && method === "GET") {
           const sel = clientSelection(m[1]);
@@ -751,26 +984,45 @@ export function createWebRouter(deps: WebDeps) {
         if (m && method === "POST") {
           const form = await req.formData();
           const name = String(form.get("name") || "").trim();
-          if (!name) return new Response("Client name is required.", { status: 400 });
           const rateRaw = String(form.get("rate") || "").trim();
           const rate = rateRaw === "" ? 0 : Number(rateRaw);
-          if (!Number.isFinite(rate) || rate < 0)
-            return new Response("Hourly rate must be a number at or above 0.", { status: 400 });
           const terms = String(form.get("payment_terms") || "").trim();
-          if (terms !== "" && !isPaymentTermsKey(terms)) return new Response("Unknown payment terms.", { status: 400 });
+          const existingSel = clientSelection(m[1]);
+          if (!existingSel || existingSel.kind !== "client")
+            return new Response("Client not found.", { status: 404, headers: { "HX-Trigger": JSON.stringify({ "tk-toast": "That client no longer exists" }) } });
+          const existingColor = existingSel.client.color;
+          const fail = (msg: string) => {
+            if (!isHtmx(req)) return new Response(msg, { status: 400 });
+            const sel = clientSelection(m[1]);
+            const base = sel && sel.kind === "client" ? sel.client : { id: Number(m[1]) };
+            const submitted = {
+              ...base,
+              name: String(form.get("name") || ""), rate: rateRaw, payment_terms: terms,
+              email: String(form.get("email") || ""), phone: String(form.get("phone") || ""),
+              website: String(form.get("website") || ""), address: String(form.get("address") || ""),
+              color: form.has("color") ? String(form.get("color")) : (base as any).color,
+            };
+            return html(clientSettingsForm(submitted, msg), 422);
+          };
+          if (!name) return fail("Client name is required.");
+          if (!Number.isFinite(rate) || rate < 0 || !Number.isFinite(round2(rate)))
+            return fail("Hourly rate must be a number at or above 0.");
+          if (terms !== "" && !isPaymentTermsKey(terms)) return fail("Unknown payment terms.");
           const clean = (v: unknown) => { const s = String(v || "").trim(); return s || null; };
           const addr = clean(form.get("address"));
-          db.query("UPDATE clients SET name = ?, rate = ?, payment_terms = ?, email = ?, phone = ?, website = ?, address = ? WHERE id = ?")
+          db.query("UPDATE clients SET name = ?, rate = ?, payment_terms = ?, email = ?, phone = ?, website = ?, address = ?, color = ? WHERE id = ?")
             .run(name, rate, terms || null, clean(form.get("email")), clean(form.get("phone")),
-                 clean(form.get("website")), addr && addr.replace(/\r\n/g, "\n"), Number(m[1]));
+                 clean(form.get("website")), addr && addr.replace(/\r\n/g, "\n"), form.has("color") ? clientColor(form.get("color")) : (existingColor ?? clientColor(null)), Number(m[1]));
           if (isHtmx(req)) {
             const sel = clientSelection(m[1]);
-            return html(sel && sel.kind === "client" ? clientSettingsForm(sel.client) : "");
+            return html(sel && sel.kind === "client" ? clientSettingsForm(sel.client) + manageListsOob() : "");
           }
-          return new Response(null, { status: 302, headers: { Location: `/manage?client=${m[1]}` } });
+          return new Response(null, { status: 302, headers: { Location: "/manage" } });
         }
         m = path.match(/^\/clients\/(\d+)\/delete$/);
         if (m && method === "POST") {
+          if (!db.query("SELECT id FROM clients WHERE id = ?").get(Number(m[1])))
+            return new Response("Client not found.", { status: 404, headers: { "HX-Trigger": JSON.stringify({ "tk-toast": "That client no longer exists" }) } });
           /* FK actions in the schema are not enforced (no PRAGMA foreign_keys):
              null these out explicitly so nothing dangles. */
           db.transaction(() => {
@@ -783,27 +1035,50 @@ export function createWebRouter(deps: WebDeps) {
         }
         if (path === "/projects" && method === "POST") {
           const form = await req.formData();
+          /* #1454: same name rule as client create — trimmed, required.
+             The add form is HTMX, which never swaps a bare 400, so an HTMX
+             rejection answers 422 with the projects fragment re-rendered
+             around the error (the manage page's beforeSwap hook swaps 422s
+             for this route, same as client settings); plain posts keep 400. */
+          const nameRaw = form.get("name");
+          const name = typeof nameRaw === "string" ? nameRaw.trim() : "";
           const cid = form.get("client_id");
+          if (!name) {
+            if (isHtmx(req)) {
+              const sel = clientSelection(cid ? String(cid) : "none");
+              if (sel) return html(clientDialogProjects(sel, "Project name is required."), 422);
+            }
+            return new Response("Project name is required.", { status: 400 });
+          }
+          const clientId = cid ? existingClientId(db, String(cid)) : null;
+          if (cid && clientId === null) {
+            if (isHtmx(req)) {
+              const sel = clientSelection("none");
+              if (sel) return html(clientDialogProjects(sel, "That client no longer exists."), 422);
+            }
+            return new Response("That client no longer exists.", { status: 400 });
+          }
           db.query("INSERT INTO projects (name, client_id) VALUES (?, ?)")
-            .run(String(form.get("name")), cid ? Number(cid) : null);
-          const sel = clientSelection(cid ? String(cid) : "none"); /* #367 */
-          if (isHtmx(req)) return html(clientDetailBody(sel!) + clientListOob(sel));
-          const push = cid ? `/manage?client=${cid}` : "/manage?client=none";
-          return new Response(null, { status: 302, headers: { Location: push } });
+            .run(name, clientId);
+          const sel = clientSelection(clientId ? String(clientId) : "none");
+          if (isHtmx(req)) {
+            return html(clientDialogProjects(sel!) + manageListsOob());
+          }
+          return new Response(null, { status: 302, headers: { Location: "/manage" } });
         }
         m = path.match(/^\/projects\/(\d+)\/delete$/);
         if (m && method === "POST") {
           /* Which detail pane owns this project — needed before the delete. */
           const p = db.query("SELECT client_id FROM projects WHERE id = ?").get(Number(m[1])) as any;
+          if (!p) return new Response("Project not found.", { status: 404, headers: { "HX-Trigger": JSON.stringify({ "tk-toast": "That project no longer exists" }) } });
           /* Schema FK is not enforced: null entries explicitly. */
           db.transaction(() => {
             db.query("UPDATE time_entries SET project_id = NULL WHERE project_id = ?").run(Number(m[1]));
             db.query("DELETE FROM projects WHERE id = ?").run(Number(m[1]));
           })();
-          const sel = clientSelection(p && p.client_id ? String(p.client_id) : "none"); /* #367 */
-          if (isHtmx(req)) return html(clientDetailBody(sel!) + clientListOob(sel));
-          const push = p && p.client_id ? `/manage?client=${p.client_id}` : "/manage?client=none";
-          return new Response(null, { status: 302, headers: { Location: push } });
+          const sel = clientSelection(p && p.client_id ? String(p.client_id) : "none");
+          if (isHtmx(req)) return html(clientDialogProjects(sel!) + manageListsOob());
+          return new Response(null, { status: 302, headers: { Location: "/manage" } });
         }
 
         /* #299: one-click "invoice this period". /invoices/new?from=YYYY-MM-DD&to=YYYY-MM-DD
@@ -812,21 +1087,27 @@ export function createWebRouter(deps: WebDeps) {
            and step 2 renders immediately with the grouped line items.
            #328: ?client_id=N (without from/to) is "invoice the rest" — preselects the
            client and fills the range from the day after its last invoice through-date
-           (or its earliest unbilled entry) to tomorrow. */
+           (or its earliest unbilled entry) through its latest unbilled
+           day — never before today and never before From (#1048). */
         function prefillNewInvoice(sp: URLSearchParams): { p: any; preview?: any } {
           const p: any = defaultNewInvParams();
-          const from = sp.get("from"), to = sp.get("to");
-          const ymdRe = new RegExp("^\\d{4}-\\d{2}-\\d{2}$");
-          if (from && to && ymdRe.test(from) && ymdRe.test(to) && from < to) {
+          /* #1510: real calendar dates only — a shape-only check let
+             2026-02-30 render verbatim and roll over in addDays; a
+             single-day range (from == to) is valid, as in preview/create. */
+          const from = validYmd(sp.get("from")), to = validYmd(sp.get("to"));
+          if (from && to && from <= to) {
             p.from = from; p.to = to;
             const f = from + "T00:00:00", t = to + "T00:00:00";
-            const billable = db.query(`
-            SELECT DISTINCT c.id, c.rate, c.payment_terms
+            /* #1081: clients with unbilled time on these wall days. */
+            const [wf, wt] = widenedWindow(from, addDays(to, 1));
+            const inRange = onWallDays(db.query(`
+            SELECT c.id, c.rate, c.payment_terms, e.start_time, e.tz
             FROM time_entries e
             JOIN projects pr ON pr.id = e.project_id
             JOIN clients c ON c.id = pr.client_id
-            WHERE e.invoice_id IS NULL AND e.end_time IS NOT NULL
-              AND e.start_time >= ? AND e.start_time < date(?, '+1 day')`).all(f, t) as any[];
+            WHERE e.invoice_id IS NULL AND e.end_time IS NOT NULL AND e.billable = 1
+              AND e.start_time >= ? AND e.start_time < ?`).all(wf, wt) as any[], from, addDays(to, 1), INVOICE_ZONE);
+            const billable = [...new Map(inRange.map((r: any) => [r.id, r])).values()];
             if (billable.length !== 1) return { p };
             const c = billable[0];
             p.client_id = String(c.id);
@@ -847,7 +1128,7 @@ export function createWebRouter(deps: WebDeps) {
               p.client_id = String(c.id);
               const restFrom = clientRestFrom(Number(c.id));
               if (restFrom) p.from = restFrom;
-              p.to = todayStr();
+              p.to = restRangeTo(Number(c.id), p.from);
               if (c.rate !== null && c.rate !== "") p.rate = String(c.rate);
               const days = termsDays(termsKey(c.payment_terms, getMeta(db, "business_payment_terms")));
               if (days !== null) p.due_date = addDays(p.issue_date, days);
@@ -857,9 +1138,9 @@ export function createWebRouter(deps: WebDeps) {
         }
 
         /* ---- invoicing pages ---- */
-        /* #364: M3 list-detail — ?invoice=<id> selects into the detail pane
-           (two-pane ≥840px) or the single-pane detail screen; fragment=detail
-           is the HTMX swap the list pane's row clicks request. */
+        /* ?invoice=<id> selects the standalone detail view; fragment=detail
+           is the HTMX swap the detail view's own actions request. The list
+           honors ?status= and ?q= filters (the mock's chips + search). */
         if (path === "/invoices" && method === "GET") {
           const sp = new URL(req.url).searchParams;
           const selRaw = sp.get("invoice");
@@ -873,16 +1154,11 @@ export function createWebRouter(deps: WebDeps) {
               { "HX-Push-Url": `/invoices?invoice=${inv.id}` });
           }
           const selected = selId ? getInvoice(selId) : null;
-          /* #805: default the two-pane detail to the first zinvoice so the
-             pane has content on desktop load. isDefault keeps has-selection
-             unset, so the single-pane (mobile) layout still opens on the
-             list — the URL stays /invoices until the user picks one. */
-          let shown = selected, isDefault = false;
-          if (!shown) {
-            const first = (qInvoices.all() as any[])[0];
-            if (first) { shown = getInvoice(first.id); isDefault = !!shown; }
-          }
-          return html(invoicesPage(shown, shareOrigin(req), isDefault));
+          const filters = { status: sp.get("status") || "all", q: sp.get("q") || "" };
+          /* Filter chips and the search field swap the list region in place;
+             a full page load still gets the shell. */
+          if (isHtmx(req) && !selected) return html(invoiceListRegion(filters));
+          return html(invoicesPage(selected, shareOrigin(req), filters));
         }
         if (path === "/invoices/new" && method === "GET") {
           const sp = new URL(req.url).searchParams;
@@ -904,25 +1180,125 @@ export function createWebRouter(deps: WebDeps) {
             internal_notes: String(form.get("internal_notes") || ""),
           };
           if (!p.client_id || !p.from || !p.to) {
-            if (isHtmx(req)) return html(`<div class="md-card form-card"><p class="error">Pick a client and a date range first.</p></div>`, 400); // #71
+            if (isHtmx(req)) return html(`<div class="ui-card form-card"><p class="error">Pick a client and a date range first.</p></div>`, 400); // #71
             return html(invoiceNewPage(p), 400);
           }
-          const entries = unbilledEntries(Number(p.client_id), p.from + "T00:00:00", p.to + "T00:00:00");
+          /* #1444: validate rate/tax like the create route — a negative or
+             non-finite value must not render into step 2. HTMX gets the
+             error fragment (a bare 400 is never swapped in); other callers
+             get the plain response, as the create route answers. */
+          const previewFail = (msg: string) => isHtmx(req)
+            ? html(`<div class="ui-card form-card"><p class="error">${msg}</p></div>`, 400)
+            : new Response(msg, { status: 400 });
+          const previewRate = nonNegativeRate(form.get("rate"));
+          if (previewRate === null || !Number.isFinite(round2(previewRate)))
+            return previewFail("Rate must be a number at or above 0.");
+          const previewTax = nonNegativeRate(form.get("tax_rate"));
+          if (previewTax === null || !Number.isFinite(round2(previewTax)))
+            return previewFail("Tax rate must be a number at or above 0.");
+          /* #1490: the preview queries by client and range — validate both
+             like the create route does (#1468, #1486). A stale or tampered
+             client_id, or a garbage or reversed from/to, would otherwise
+             render the "no unbilled entries" empty message, claiming a
+             client has no billable time when the query itself was invalid. */
+          const previewClientId = existingClientId(db, p.client_id);
+          if (previewClientId === null)
+            return previewFail("That client no longer exists.");
+          const rangeFrom = validYmd(form.get("from"));
+          const rangeTo = validYmd(form.get("to"));
+          if (!rangeFrom || !rangeTo)
+            return previewFail("Date range must be valid dates (YYYY-MM-DD).");
+          if (rangeFrom > rangeTo)
+            return previewFail("Date range must start on or before it ends.");
+          p.client_id = String(previewClientId);
+          p.from = rangeFrom;
+          p.to = rangeTo;
+          /* #1488: mirror the create route's date rule (#1486) — a provided
+             issue_date or due_date must be a real calendar day, or the
+             preview renders step 2 with a garbage date that only fails at
+             final submit. Absent issue_date defaults to today in p;
+             absent due_date stays blank. */
+          const previewIssue = form.get("issue_date") ? validYmd(form.get("issue_date")) : null;
+          if (form.get("issue_date") && !previewIssue)
+            return previewFail("Issue date must be a valid date (YYYY-MM-DD).");
+          if (previewIssue) p.issue_date = previewIssue;
+          const previewDue = form.get("due_date") ? validYmd(form.get("due_date")) : null;
+          if (form.get("due_date") && !previewDue)
+            return previewFail("Due date must be a valid date (YYYY-MM-DD).");
+          if (previewDue) p.due_date = previewDue;
+          const entries = unbilledEntries(previewClientId, p.from + "T00:00:00", p.to + "T00:00:00");
           const preview = !entries.length
             ? { items: [], emptyMsg: "No unbilled, finished entries on this client's projects in that range." }
-            : { items: groupToLineItems(entries, Number(p.rate) || 0), rounding: 5 };
+            : { items: groupToLineItems(entries, previewRate), rounding: 5 };
+          if (preview.items.some(it => !Number.isFinite(it.amount)))
+            return previewFail("Rate must be a number at or above 0.");
           if (isHtmx(req)) return html(invoiceStep2(p, preview)); // #71: swap step 2 in place
           return html(invoiceNewPage(p, preview));
         }
         if (path === "/invoices" && method === "POST") {
           const form = await req.formData();
+          /* #1442: mirror the settings/API rate rule — a provided tax_rate
+             must be finite and at or above 0 (blank/absent → 0). */
+          const taxRate = nonNegativeRate(form.get("tax_rate"));
+          if (taxRate === null || !Number.isFinite(round2(taxRate)))
+            return new Response("Tax rate must be a number at or above 0.", { status: 400 });
+          /* #1486: mirror the API rule (#1436) — a provided issue_date or
+             due_date must be a real calendar day; verbatim garbage would
+             feed ordering, overdue math, the PDF and the CSV export.
+             Absent issue_date defaults to today; absent due_date stays null. */
+          const issueDate = form.get("issue_date") ? validYmd(form.get("issue_date")) : todayStr();
+          if (!issueDate)
+            return new Response("Issue date must be a valid date (YYYY-MM-DD).", { status: 400 });
+          const dueDate = form.get("due_date") ? validYmd(form.get("due_date")) : null;
+          if (form.get("due_date") && !dueDate)
+            return new Response("Due date must be a valid date (YYYY-MM-DD).", { status: 400 });
+          /* #1512: groups is the line-item loop bound — Infinity would
+             spin it forever and a huge integer (1e12) nearly as long, on a
+             single-threaded server; non-integers are rejected as invalid
+             input. The wizard emits one line per project plus manual
+             lines, so 1000 is far above any real invoice. */
           const groups = Number(form.get("groups") || 0);
+          if (!Number.isInteger(groups) || groups < 0 || groups > 1000)
+            return new Response("Line item count must be a whole number from 0 to 1000.", { status: 400 });
           const items: { description: string; hours: number; rate: number; amount: number; entry_ids: number[]; date_from: string | null; date_to: string | null }[] = [];
+          let totalEntryIds = 0;
           for (let i = 0; i < groups; i++) {
             const hours = round2(Number(form.get(`g${i}_hours`) || 0));
-            const rate = round2(Number(form.get(`g${i}_rate`) || 0));
             const ids = String(form.get(`g${i}_ids`) || "").split(",").map(Number).filter(n => n > 0);
-            if (hours <= 0) continue;
+            /* #1444: non-finite hours (NaN from garbage, Infinity) drop the
+               row, mirroring the API clean step — NaN evades hours <= 0 and
+               would orphan the invoice header on the item insert. */
+            if (!Number.isFinite(hours) || hours <= 0) continue;
+            /* #1522: entry ids get the same aggregate bound as the API
+               (#1514) — each surviving id gets a per-id linkable check
+               below, so an unbounded id list across the groups would
+               defeat the #1512 groups bound. */
+            totalEntryIds += ids.length;
+            if (totalEntryIds > 1000)
+              return new Response("Entry ids must contain at most 1000 entries in total.", { status: 400 });
+            /* #1442: per-group rates follow the same rule, checked on the
+               rows that survive the hours filter (as #1440 does in the API);
+               the rounded value must stay finite too (round2 can overflow). */
+            const rateRaw = nonNegativeRate(form.get(`g${i}_rate`));
+            if (rateRaw === null || !Number.isFinite(round2(rateRaw)))
+              return new Response("Rate must be a number at or above 0.", { status: 400 });
+            const rate = round2(rateRaw);
+            /* #1444: finite hours and rate can still multiply to Infinity —
+               never store a non-finite amount. */
+            if (!Number.isFinite(round2(hours * rate)))
+              return new Response("Rate must be a number at or above 0.", { status: 400 });
+            /* #1488: per-line billing dates are stored dates — mirror the
+               API rule (#1436): a provided one on a surviving row must be a
+               real calendar day; verbatim garbage would feed the PDF and
+               the period fallback. Blank stays null. */
+            const dateFromRaw = form.get(`g${i}_date_from`);
+            const dateFrom = dateFromRaw ? validYmd(dateFromRaw) : null;
+            if (dateFromRaw && !dateFrom)
+              return new Response("Date from must be a valid date (YYYY-MM-DD).", { status: 400 });
+            const dateToRaw = form.get(`g${i}_date_to`);
+            const dateTo = dateToRaw ? validYmd(dateToRaw) : null;
+            if (dateToRaw && !dateTo)
+              return new Response("Date to must be a valid date (YYYY-MM-DD).", { status: 400 });
             items.push({
               /* #668: manual rows carry no entry ids (one-time work with no
                  tracked time) — their description defaults to "Item" while
@@ -930,22 +1306,49 @@ export function createWebRouter(deps: WebDeps) {
               description: String(form.get(`g${i}_desc`) || (ids.length ? "Time" : "Item")),
               hours, rate, amount: round2(hours * rate), entry_ids: ids,
               /* #243: per-line billing dates from the grouped entries */
-              date_from: String(form.get(`g${i}_date_from`) || "") || null,
-              date_to: String(form.get(`g${i}_date_to`) || "") || null,
+              date_from: dateFrom,
+              date_to: dateTo,
             });
           }
-          if (!items.length) return new Response("No line items — nothing to zinvoice.", { status: 400 });
+          if (!items.length) return new Response("No line items — nothing to Zinvoice.", { status: 400 });
+          /* #1448: per-row amounts are finite, but the derived totals can
+             still overflow when rows sum past the finite range or a finite
+             subtotal meets a huge tax rate — never store those. */
+          const subtotal = round2(items.reduce((a, it) => a + it.amount, 0));
+          const tax = round2(subtotal * taxRate / 100);
+          if (!Number.isFinite(subtotal) || !Number.isFinite(tax) || !Number.isFinite(round2(subtotal + tax)))
+            return new Response("Invoice total is too large.", { status: 400 });
           const number = String(form.get("number") || nextInvoiceNumber());
           if (db.query("SELECT 1 FROM invoices WHERE number = ?").get(number))
             return new Response("Zinvoice number already exists.", { status: 400 });
-          const clientId = form.get("client_id") ? Number(form.get("client_id")) : null;
-          const dueRaw = String(form.get("due_date") || "");
+          /* #1468: a provided client_id must name a real client, as on
+             project create — a stale or tampered id would store an invoice
+             that renders client-less. Absent stays client-less. */
+          const cidRaw = form.get("client_id");
+          const clientId = cidRaw ? existingClientId(db, String(cidRaw)) : null;
+          if (cidRaw && clientId === null)
+            return new Response("That client no longer exists.", { status: 400 });
+          /* #1470: the wizard's entry ids come back as form fields — each
+             one must still be billable to this invoice (finished, not on
+             another invoice, this client's time), or a stale preview would
+             steal the entry onto this invoice. */
+          for (const it of items) {
+            for (const eid of it.entry_ids) {
+              if (!entryLinkable(db, eid, clientId))
+                return new Response("One of those entries is no longer available to invoice.", { status: 400 });
+            }
+          }
+          /* #1350: keep the wizard's From/To as the Zinvoice's billing period.
+             Only a well-formed, ordered pair is stored; anything else stays
+             NULL and the surfaces fall back to the line-item dates. */
+          const pFrom = validYmd(form.get("from")), pTo = validYmd(form.get("to"));
+          const [periodFrom, periodTo] = pFrom && pTo && pFrom <= pTo ? [pFrom, pTo] : [null, null];
           const inv = db.query(
-            `INSERT INTO invoices (client_id, number, issue_date, due_date, tax_rate, notes, internal_notes)
-             VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id`)
-            .get(clientId, number, String(form.get("issue_date") || todayStr()),
-                 dueRaw || null, Number(form.get("tax_rate") || 0), String(form.get("notes") || ""),
-                 String(form.get("internal_notes") || "")) as any;
+            `INSERT INTO invoices (client_id, number, issue_date, due_date, tax_rate, notes, internal_notes, period_from, period_to)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`)
+            .get(clientId, number, issueDate,
+                 dueDate, taxRate, String(form.get("notes") || ""),
+                 String(form.get("internal_notes") || ""), periodFrom, periodTo) as any;
           const insItem = db.query(
             "INSERT INTO invoice_items (invoice_id, description, hours, rate, amount, date_from, date_to) VALUES (?, ?, ?, ?, ?, ?, ?)");
           const linkEntry = db.query("UPDATE time_entries SET invoice_id = ? WHERE id = ?");
@@ -956,6 +1359,14 @@ export function createWebRouter(deps: WebDeps) {
             }
           })();
           mintPublicToken(inv.id); /* #227: client link exists from birth */
+          /* The wizard's Send Zinvoice submits intent=send: create + send in
+             one step, with the same side effects as the status route's
+             draft → sent transition (freeze, then the Stripe link). */
+          if (String(form.get("intent") || "") === "send") {
+            db.query("UPDATE invoices SET status = 'sent', sent_at = COALESCE(?, date('now')) WHERE id = ?").run(clientDay(form.get("client_day")), inv.id);
+            freezeInvoiceSnapshots(inv.id, shareOrigin(req));
+            if (stripeConfigured()) { await stripeLinkFor(inv.id); }
+          }
           return new Response(null, { status: 302, headers: { Location: `/invoices?invoice=${inv.id}` } }); /* #364 */
         }
         m = path.match(/^\/invoices\/(\d+)$/);
@@ -988,11 +1399,13 @@ export function createWebRouter(deps: WebDeps) {
           const form = await req.formData();
           const inv = qInvoice.get(Number(m[1])) as Invoice | null;
           const want = String(form.get("status") || "");
-          const ok = !!inv && ((inv.status === "draft" && want === "sent") || (inv.status === "sent" && want === "paid"));
+          if (!inv) return new Response("Invoice not found.", { status: 404, headers: { "HX-Trigger": JSON.stringify({ "tk-toast": "That invoice no longer exists" }) } });
+          const ok = (inv.status === "draft" && want === "sent") || (inv.status === "sent" && want === "paid");
           if (!ok) return new Response("Invalid status transition.", { status: 400 });
+          /* The user's local day (their browser sends client_day), else UTC. */
           db.query(want === "paid"
-            ? "UPDATE invoices SET status = 'paid', paid_at = date('now') WHERE id = ?"
-            : "UPDATE invoices SET status = ? WHERE id = ?").run(...(want === "paid" ? [inv!.id] : [want, inv!.id]));
+            ? "UPDATE invoices SET status = 'paid', paid_at = COALESCE(?, date('now')) WHERE id = ?"
+            : "UPDATE invoices SET status = 'sent', sent_at = COALESCE(?, date('now')) WHERE id = ?").run(clientDay(form.get("client_day")), inv!.id);
           /* #301: freeze the rendered document at send (re-frozen at paid for
              the status badge) — served verbatim from here on. */
           freezeInvoiceSnapshots(inv!.id, shareOrigin(req));
@@ -1067,6 +1480,7 @@ export function createWebRouter(deps: WebDeps) {
         }
         m = path.match(/^\/invoices\/(\d+)\/public-token\/regenerate$/);
         if (m && method === "POST") {
+          if (!qInvoice.get(Number(m[1]))) return new Response("Invoice not found.", { status: 404, headers: { "HX-Trigger": JSON.stringify({ "tk-toast": "That invoice no longer exists" }) } });
           mintPublicToken(Number(m[1]));
           freezeInvoiceSnapshots(Number(m[1]), shareOrigin(req)); /* #606: new token -> re-freeze */
           if (isHtmx(req)) { const full = getInvoice(Number(m[1])); if (full) return html(invoiceDetailBody(full, shareOrigin(req))); } // #71
@@ -1074,6 +1488,7 @@ export function createWebRouter(deps: WebDeps) {
         }
         m = path.match(/^\/invoices\/(\d+)\/public-token\/revoke$/);
         if (m && method === "POST") {
+          if (!qInvoice.get(Number(m[1]))) return new Response("Invoice not found.", { status: 404, headers: { "HX-Trigger": JSON.stringify({ "tk-toast": "That invoice no longer exists" }) } });
           db.query("UPDATE invoices SET public_token = NULL WHERE id = ?").run(Number(m[1]));
           freezeInvoiceSnapshots(Number(m[1]), shareOrigin(req)); /* #606: revoked link must leave the PDF */
           if (isHtmx(req)) { const full = getInvoice(Number(m[1])); if (full) return html(invoiceDetailBody(full, shareOrigin(req))); } // #71
@@ -1083,7 +1498,7 @@ export function createWebRouter(deps: WebDeps) {
         if (m && method === "POST") {
           const inv = qInvoice.get(Number(m[1])) as Invoice | null;
           if (!inv) return html(notFoundPage(authedPage(req, TOKEN)), 404);
-          if (inv.status !== "draft") return new Response("Only draft zinvoices can be deleted.", { status: 400 });
+          if (inv.status !== "draft") return new Response("Only draft Zinvoices can be deleted.", { status: 400 });
           db.transaction(() => {
             db.query("UPDATE time_entries SET invoice_id = NULL WHERE invoice_id = ?").run(inv.id);
             db.query("DELETE FROM invoice_items WHERE invoice_id = ?").run(inv.id);
